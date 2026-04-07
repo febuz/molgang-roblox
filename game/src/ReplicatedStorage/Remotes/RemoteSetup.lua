@@ -24,6 +24,11 @@ local serverToClientEvents = {
 	"DailyClaimResult",    -- {success, amount, nextClaimTime}
 	"LeaderboardUpdate",   -- {category, entries} periodic refresh
 	"PlayerDataLoaded",    -- {data} initial data load on join
+	"NPCDialogue",         -- {npcName, text, trustLevel} NPC speech
+	"NPCTrustChanged",     -- {npcName, newTrust} trust level update
+	"MiniGameResult",      -- {score, rewards, badge} mini-game completion
+	"MiniGameOrbSpawned",  -- {orbId, mineralType, color} new orb on conveyor
+	"MiniGamePHRound",     -- {metals} pH puzzle round start
 }
 
 -- ══════════════════════════════════════════════
@@ -39,6 +44,10 @@ local clientToServerEvents = {
 	"RequestDailyClaim",     -- {} login bonus claimen
 	"RequestAtomTransfer",   -- {targetId, elementZ} atoom sturen naar vriend
 	"RequestQuizAnswer",     -- {questionId, answer} quiz antwoord
+	"RequestStartMiniGame",  -- {} start Slakkenspoor mini-game
+	"RequestSortOrb",        -- {orbId, binChoice} sort orb in HGMS game
+	"RequestSetPH",          -- {metalName, phValue} pH puzzle answer
+	"RequestNPCInteract",    -- {npcName} interact with NPC
 }
 
 -- ══════════════════════════════════════════════
