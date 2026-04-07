@@ -278,6 +278,15 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	data.totalMoleculesBuilt = data.totalMoleculesBuilt + 1
 	data.chainEntries = data.chainEntries + 1
 
+	-- Signal ChainRegistry to create chain entry
+	-- Encode atoms as "H:2,O:1" format for attribute transfer
+	local atomParts = {}
+	for sym, count in pairs(recipe.atoms) do
+		table.insert(atomParts, sym .. ":" .. tostring(count))
+	end
+	player:SetAttribute("LastBuiltAtoms", table.concat(atomParts, ","))
+	player:SetAttribute("LastBuiltMolecule", molName)
+
 	-- Check molecule-related badges
 	if data.totalMoleculesBuilt >= 1 and not data.badges["MoleculeArtist"] then
 		data.badges["MoleculeArtist"] = true

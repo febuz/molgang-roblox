@@ -186,7 +186,7 @@ local ELEMENT_DATA = {
 	{94, "Pu", "Plutonium", "Actinide", 10, 7},
 	{95, "Am", "Americium", "Actinide", 10, 8},
 	{96, "Cm", "Curium", "Actinide", 10, 9},
-	{97, "Bk", "Berkelium", "Acthanide", 10, 10},
+	{97, "Bk", "Berkelium", "Actinide", 10, 10},
 	{98, "Cf", "Californium", "Actinide", 10, 11},
 	{99, "Es", "Einsteinium", "Actinide", 10, 12},
 	{100, "Fm", "Fermium", "Actinide", 10, 13},

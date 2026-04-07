@@ -150,40 +150,46 @@ function flushToDataStore()
 end
 
 -- ══════════════════════════════════════════════
--- MOLECULE BUILD REQUEST HANDLER
+-- MOLECULE REGISTRATION (called by EconomyManager after validation)
+-- EconomyManager handles RequestBuildMolecule and validates atoms
+-- After successful build, EconomyManager sets player attribute
+-- We listen for that to register the chain entry
 -- ══════════════════════════════════════════════
 
-Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
-	if type(atomList) ~= "table" then return end
+local Players = game:GetService("Players")
+for _, p in ipairs(Players:GetPlayers()) do
+	p:GetAttributeChangedSignal("LastBuiltMolecule"):Connect(function()
+		local molName = p:GetAttribute("LastBuiltMolecule")
+		local atomsJson = p:GetAttribute("LastBuiltAtoms")
+		if molName and atomsJson then
+			local atoms = {}
+			-- Simple parse: "H:2,O:1" format
+			for pair in string.gmatch(atomsJson, "[^,]+") do
+				local sym, count = string.match(pair, "(%a+):(%d+)")
+				if sym and count then
+					atoms[sym] = tonumber(count)
+				end
+			end
+			RegisterMolecule(p, molName, atoms)
+		end
+	end)
+end
 
-	-- Valideer dat atomList alleen strings en numbers bevat
-	local atomCounts = {}
-	for sym, count in pairs(atomList) do
-		if type(sym) ~= "string" or type(count) ~= "number" then return end
-		if count < 1 or count > 20 then return end
-		atomCounts[sym] = math.floor(count)
-	end
-
-	-- Check of molecuul geldig is
-	local molName, recipe = Chemistry.TryBuildMolecule(atomCounts)
-	if not molName then
-		-- Geen geldig molecuul
-		return
-	end
-
-	-- Check of speler genoeg atomen heeft (server-side validatie)
-	-- Dit wordt afgehandeld door EconomyManager die player data beheert
-	-- Voor nu: registreer het molecuul
-	local entry, bonus = RegisterMolecule(player, molName, atomCounts)
-
-	-- Notify client
-	Remotes.FireClient("MoleculeBuilt", player, {
-		molecule = molName,
-		points = recipe.points,
-		hash = entry.hash,
-		entryNumber = totalEntries,
-		bonus = bonus,
-	})
+Players.PlayerAdded:Connect(function(p)
+	p:GetAttributeChangedSignal("LastBuiltMolecule"):Connect(function()
+		local molName = p:GetAttribute("LastBuiltMolecule")
+		local atomsJson = p:GetAttribute("LastBuiltAtoms")
+		if molName and atomsJson then
+			local atoms = {}
+			for pair in string.gmatch(atomsJson, "[^,]+") do
+				local sym, count = string.match(pair, "(%a+):(%d+)")
+				if sym and count then
+					atoms[sym] = tonumber(count)
+				end
+			end
+			RegisterMolecule(p, molName, atoms)
+		end
+	end)
 end)
 
 -- ══════════════════════════════════════════════
