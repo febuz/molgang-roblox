@@ -1,0 +1,16 @@
+# Roblox build output
+*.rbxl
+*.rbxlx
+*.rbxm
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+node_modules/

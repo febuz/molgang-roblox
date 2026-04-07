@@ -1,0 +1,74 @@
+{
+	"name": "MOLGANG",
+	"tree": {
+		"$className": "DataModel",
+
+		"Workspace": {
+			"$className": "Workspace",
+			"$properties": {
+				"StreamingEnabled": true
+			},
+			"Zones": {
+				"$className": "Folder",
+				"$path": "src/Workspace/Zones"
+			}
+		},
+
+		"ServerScriptService": {
+			"$className": "ServerScriptService",
+			"Core": {
+				"$className": "Folder",
+				"$path": "src/ServerScriptService/Core"
+			}
+		},
+
+		"StarterPlayer": {
+			"$className": "StarterPlayer",
+			"StarterPlayerScripts": {
+				"$className": "StarterPlayerScripts",
+				"$path": "src/StarterPlayerScripts"
+			}
+		},
+
+		"StarterGui": {
+			"$className": "StarterGui",
+			"$properties": {
+				"ScreenOrientation": "Sensor"
+			},
+			"$path": "src/StarterGui"
+		},
+
+		"ReplicatedStorage": {
+			"$className": "ReplicatedStorage",
+			"Data": {
+				"$className": "Folder",
+				"$path": "src/ReplicatedStorage/Data"
+			},
+			"Modules": {
+				"$className": "Folder",
+				"$path": "src/ReplicatedStorage/Modules"
+			},
+			"Remotes": {
+				"$className": "Folder",
+				"$path": "src/ReplicatedStorage/Remotes"
+			}
+		},
+
+		"SoundService": {
+			"$className": "SoundService",
+			"$path": "src/SoundService"
+		},
+
+		"Lighting": {
+			"$className": "Lighting",
+			"$properties": {
+				"Ambient": [0.118, 0.196, 0.157],
+				"Brightness": 0.3,
+				"ClockTime": 14,
+				"GeographicLatitude": 52.37,
+				"Technology": "Future"
+			},
+			"$path": "src/Lighting"
+		}
+	}
+}
