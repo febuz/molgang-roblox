@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATIE
@@ -359,22 +360,8 @@ local function onRequestCollect(player, atomName)
 	elseif elem.rarity == "legendary" then coinReward = 100
 	end
 
-	-- Fire event naar EconomyManager (die handelt DataStore af)
-	-- We sturen het via een BindableEvent of direct attribute
-	local collectData = {
-		elementZ = elementZ,
-		symbol = elem.sym,
-		name = elem.name,
-		rarity = elem.rarity,
-		coinReward = coinReward,
-	}
-
-	-- Store op player voor EconomyManager om op te pikken
-	-- (In productie zou dit via een module gaan, maar voor nu attributes)
-	player:SetAttribute("LastCollectedZ", elementZ)
-	player:SetAttribute("LastCollectedSym", elem.sym)
-	player:SetAttribute("LastCollectReward", coinReward)
-	player:SetAttribute("CollectTimestamp", now)
+	-- Secure server-side bridge (not spoofable by client)
+	PlayerDataBridge.RecordAtomCollect(player.UserId, elementZ, elem.sym, coinReward)
 
 	-- Notify client
 	Remotes.FireClient("AtomCollected", player, {
@@ -426,26 +413,8 @@ task.spawn(function()
 	end
 end)
 
--- Float animation update
-task.spawn(function()
-	while true do
-		local t = tick()
-		for atom, data in pairs(activeAtoms) do
-			if atom.Parent then
-				local alignPos = atom:FindFirstChildWhichIsA("AlignPosition")
-				if alignPos then
-					local baseY = data.zone and 15 or 10
-					alignPos.Position = atom.Position + Vector3.new(0, math.sin(t * 1.5) * 1.5, 0)
-				end
-				local alignOri = atom:FindFirstChildWhichIsA("AlignOrientation")
-				if alignOri then
-					alignOri.CFrame = CFrame.Angles(0, t * 0.8, 0)
-				end
-			end
-		end
-		task.wait(0.1)
-	end
-end)
+-- NOTE: Float animation moved to client-side (AtomCollector.client.lua)
+-- Server no longer iterates 500 atoms every 0.1s for visual-only updates
 
 -- Initial spawn burst wanneer eerste speler joint
 Players.PlayerAdded:Connect(function(player)

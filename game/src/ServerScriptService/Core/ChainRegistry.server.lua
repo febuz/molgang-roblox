@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 -- ══════════════════════════════════════════════
 -- DATASTORES
@@ -150,46 +151,22 @@ function flushToDataStore()
 end
 
 -- ══════════════════════════════════════════════
--- MOLECULE REGISTRATION (called by EconomyManager after validation)
--- EconomyManager handles RequestBuildMolecule and validates atoms
--- After successful build, EconomyManager sets player attribute
--- We listen for that to register the chain entry
+-- MOLECULE REGISTRATION (polled from secure PlayerDataBridge)
+-- EconomyManager validates atoms and records build in the bridge
+-- We poll the bridge to register chain entries — no client spoofing possible
 -- ══════════════════════════════════════════════
 
 local Players = game:GetService("Players")
-for _, p in ipairs(Players:GetPlayers()) do
-	p:GetAttributeChangedSignal("LastBuiltMolecule"):Connect(function()
-		local molName = p:GetAttribute("LastBuiltMolecule")
-		local atomsJson = p:GetAttribute("LastBuiltAtoms")
-		if molName and atomsJson then
-			local atoms = {}
-			-- Simple parse: "H:2,O:1" format
-			for pair in string.gmatch(atomsJson, "[^,]+") do
-				local sym, count = string.match(pair, "(%a+):(%d+)")
-				if sym and count then
-					atoms[sym] = tonumber(count)
-				end
+task.spawn(function()
+	while true do
+		for _, p in ipairs(Players:GetPlayers()) do
+			local buildData = PlayerDataBridge.GetPendingBuild(p.UserId)
+			if buildData then
+				RegisterMolecule(p, buildData.molName, buildData.atoms)
 			end
-			RegisterMolecule(p, molName, atoms)
 		end
-	end)
-end
-
-Players.PlayerAdded:Connect(function(p)
-	p:GetAttributeChangedSignal("LastBuiltMolecule"):Connect(function()
-		local molName = p:GetAttribute("LastBuiltMolecule")
-		local atomsJson = p:GetAttribute("LastBuiltAtoms")
-		if molName and atomsJson then
-			local atoms = {}
-			for pair in string.gmatch(atomsJson, "[^,]+") do
-				local sym, count = string.match(pair, "(%a+):(%d+)")
-				if sym and count then
-					atoms[sym] = tonumber(count)
-				end
-			end
-			RegisterMolecule(p, molName, atoms)
-		end
-	end)
+		task.wait(0.2)
+	end
 end)
 
 -- ══════════════════════════════════════════════
