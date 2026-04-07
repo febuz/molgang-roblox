@@ -1277,4 +1277,62 @@ end
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
 updateScale()
 
+-- ══════════════════════════════════════════════
+-- MOBILE TOUCH BUTTONS
+-- On-screen buttons for P (Periodic Table) and W (Wallet)
+-- Only shown when TouchEnabled = true
+-- ══════════════════════════════════════════════
+
+if UserInputService.TouchEnabled then
+	local mobileBar = Instance.new("Frame")
+	mobileBar.Name = "MobileButtons"
+	mobileBar.Size = UDim2.new(0, 200, 0, 50)
+	mobileBar.Position = UDim2.new(1, -210, 1, -60)
+	mobileBar.BackgroundTransparency = 1
+	mobileBar.Parent = screenGui
+
+	local mbLayout = Instance.new("UIListLayout")
+	mbLayout.FillDirection = Enum.FillDirection.Horizontal
+	mbLayout.Padding = UDim.new(0, 8)
+	mbLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	mbLayout.Parent = mobileBar
+
+	local function createMobileBtn(text, color, callback)
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.fromOffset(60, 44)
+		btn.BackgroundColor3 = color
+		btn.BackgroundTransparency = 0.3
+		btn.Text = text
+		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		btn.TextScaled = true
+		btn.Font = Enum.Font.GothamBold
+		btn.Parent = mobileBar
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 10)
+		corner.Parent = btn
+
+		btn.MouseButton1Click:Connect(callback)
+		return btn
+	end
+
+	-- Periodic Table button
+	createMobileBtn("PT", Color3.fromRGB(34, 197, 94), function()
+		local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
+		if ptGui then ptGui.Enabled = not ptGui.Enabled end
+	end)
+
+	-- Wallet button
+	createMobileBtn("MC", Color3.fromRGB(255, 215, 0), function()
+		local wGui = playerGui:FindFirstChild("WalletGui")
+		if wGui then wGui.Enabled = not wGui.Enabled end
+	end)
+
+	-- Minimap toggle
+	createMobileBtn("MAP", Color3.fromRGB(56, 189, 248), function()
+		local minimap = screenGui:FindFirstChild("MiniMap", true)
+		if minimap then minimap.Visible = not minimap.Visible end
+	end)
+end
+
 print("[MOLGANG] HUDController loaded successfully")
