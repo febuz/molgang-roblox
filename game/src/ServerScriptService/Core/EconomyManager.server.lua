@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -146,17 +147,17 @@ end
 
 -- ══════════════════════════════════════════════
 -- ATOM COLLECTION HANDLER
--- Uses SetAttribute events from AtomSpawner
+-- Uses secure PlayerDataBridge (server-only, not spoofable by client)
 -- ══════════════════════════════════════════════
 
-local function onAtomCollected(player)
+local function processAtomCollect(player, collectData)
 	local userId = player.UserId
 	local data = playerData[userId]
 	if not data then return end
 
-	local elementZ = player:GetAttribute("LastCollectedZ")
-	local symbol = player:GetAttribute("LastCollectedSym")
-	local coinReward = player:GetAttribute("LastCollectReward")
+	local elementZ = collectData.elementZ
+	local symbol = collectData.symbol
+	local coinReward = collectData.coinReward
 
 	if not elementZ or not symbol then return end
 
@@ -216,11 +217,17 @@ local function onAtomCollected(player)
 	end
 end
 
--- Watch for collect timestamp changes
-Players.PlayerAdded:Connect(function(player)
-	player:GetAttributeChangedSignal("CollectTimestamp"):Connect(function()
-		onAtomCollected(player)
-	end)
+-- Poll PlayerDataBridge for pending collections (secure server-side)
+task.spawn(function()
+	while true do
+		for _, player in ipairs(Players:GetPlayers()) do
+			local collectData = PlayerDataBridge.GetPendingCollect(player.UserId)
+			if collectData then
+				processAtomCollect(player, collectData)
+			end
+		end
+		task.wait(0.1) -- check 10x per second
+	end
 end)
 
 -- ══════════════════════════════════════════════
@@ -278,14 +285,8 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	data.totalMoleculesBuilt = data.totalMoleculesBuilt + 1
 	data.chainEntries = data.chainEntries + 1
 
-	-- Signal ChainRegistry to create chain entry
-	-- Encode atoms as "H:2,O:1" format for attribute transfer
-	local atomParts = {}
-	for sym, count in pairs(recipe.atoms) do
-		table.insert(atomParts, sym .. ":" .. tostring(count))
-	end
-	player:SetAttribute("LastBuiltAtoms", table.concat(atomParts, ","))
-	player:SetAttribute("LastBuiltMolecule", molName)
+	-- Signal ChainRegistry via secure server-side bridge
+	PlayerDataBridge.RecordMoleculeBuild(player.UserId, molName, recipe.atoms)
 
 	-- Check molecule-related badges
 	if data.totalMoleculesBuilt >= 1 and not data.badges["MoleculeArtist"] then
