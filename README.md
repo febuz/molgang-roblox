@@ -25,22 +25,31 @@ MOLGANG/
 ├── game/
 │   ├── default.project.json          # Rojo 7.4.4 project config
 │   └── src/
-│       ├── ServerScriptService/Core/  # 8 server scripts
+│       ├── ServerScriptService/Core/  # 12 server scripts
 │       │   ├── AtomSpawner.server.lua     # Weighted spawn across 6 zones
 │       │   ├── ChainRegistry.server.lua   # XRPL blockchain simulation
 │       │   ├── ANKLending.server.lua      # Cooperative lending (real transfers)
 │       │   ├── EconomyManager.server.lua  # MolCoin economy + data persistence
 │       │   ├── Leaderboards.server.lua    # 4-category OrderedDataStore
+│       │   ├── MaterialManager.server.lua # PBR materials across all 6 zones
+│       │   ├── NPCSystem.server.lua       # 12 chemistry NPCs + trust system
 │       │   ├── QuantumDots.server.lua     # Superheavy element spawns
+│       │   ├── QRBridge.server.lua        # Roblox ↔ Web Game QR session bridge
 │       │   ├── QuizSystem.server.lua      # 500+ educational questions
+│       │   ├── SlakkenspoorMiniGame.server.lua # HGMS + pH puzzle mini-games
 │       │   ├── WorldBuilder.server.lua    # 6 zones, 4000x4000 studs
 │       │   └── PlayerDataBridge.lua       # Secure server-only data bridge
-│       ├── StarterPlayerScripts/      # 3 client scripts
+│       ├── StarterPlayerScripts/      # 6 client scripts
 │       │   ├── AtomCollector.client.lua   # Proximity detection + anti-cheat
+│       │   ├── CharacterController.client.lua # Momentum + head tracking + foot IK
+│       │   ├── GUIManager.client.lua      # Shortcuts, audio, zone music
 │       │   ├── HUDController.client.lua   # Full HUD + mobile buttons
-│       │   └── GUIManager.client.lua      # Shortcuts, audio, zone music
-│       ├── StarterGui/                # 2 GUI scripts
+│       │   ├── InteractionSystem.client.lua   # Raycast highlight + inspect + grab
+│       │   └── NPCDialogueClient.client.lua   # NPC speech bubbles + trust UI
+│       ├── StarterGui/                # 4 GUI scripts
+│       │   ├── MiniGameGui.client.lua     # Slakkenspoor mini-game overlay
 │       │   ├── PeriodicTableGui.client.lua # 118-element interactive table
+│       │   ├── QRBridgeGui.client.lua     # QR panel for web game link
 │       │   └── WalletGui.client.lua       # MolWallet + ChainExplorer
 │       ├── ReplicatedStorage/         # Shared data & modules
 │       │   ├── Data/Elements.lua          # All 118 elements (real data)
@@ -51,13 +60,29 @@ MOLGANG/
 │       └── SoundService/              # Zone-based ambient audio
 ```
 
+## Architecture (Full Stack)
+
+```
+MOLGANG/
+├── game/              Roblox game (29 Luau scripts, Rojo 7.4.4)
+├── bridge/            Cloudflare Worker — QR/JWT session bridge
+│   └── src/worker.ts  POST /v1/generate-qr, /v1/verify-session
+└── web-game/          Three.js HD renderer (Vite 6, TypeScript)
+    └── src/           Scenes, renderer, HUD, join flow
+```
+
 ## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
 | Game Engine | Roblox (Luau) |
 | Build Tool | Rojo 7.4.4 |
+| Web Renderer | Three.js r168, WebGL2 (WebGPU-ready) |
+| Web Bundler | Vite 6 + TypeScript |
+| Edge API | Cloudflare Workers + KV + R2 |
+| Auth | HS256 JWT (Web Crypto API, no library) |
 | DataStore | ProfileService pattern + OrderedDataStore |
+| Blockchain | XRPL (simulation) + Hedera Mirror Node API |
 | Security | Server-side validation, PlayerDataBridge, rate limiting |
 | Platform | Linux (Ubuntu 24.04, Flatpak Roblox Studio via Vinegar) |
 | GPU | 2x NVIDIA RTX 3090 (rendering + Studio) |
@@ -65,12 +90,14 @@ MOLGANG/
 
 ## Stats
 
-- **20 Luau scripts**, ~9500 lines of code
+- **29 Luau scripts**, ~13,600 lines of code
 - **118 elements** with real atomic masses, facts, and group colors
 - **30+ molecules** with validated chemistry rules
 - **6 game zones** across 4000x4000 studs floating archipelago
 - **500+ quiz questions** generated from real chemistry data
 - **4 leaderboard categories** with global rankings
+- **12 NPCs** with chemistry expertise and trust system
+- **2 Slakkenspoor mini-games**: HGMS sorter + pH puzzle
 
 ## Security Model
 
@@ -83,12 +110,16 @@ MOLGANG/
 ## Build & Run
 
 ```bash
-# Build .rbxl file
-cd game
-/path/to/rojo build -o MOLGANG.rbxl
+# Roblox game
+cd game && /path/to/rojo build -o MOLGANG.rbxl
 
-# Or serve live to Roblox Studio
-/path/to/rojo serve
+# Bridge Worker (local dev)
+cd bridge && npm install && npm run dev
+# Deploy: npm run deploy (requires wrangler auth + secrets)
+
+# Web Game (local dev)
+cd web-game && npm install && npm run dev
+# Visit: http://localhost:5173
 ```
 
 ## Zones

@@ -29,6 +29,7 @@ local serverToClientEvents = {
 	"MiniGameResult",      -- {score, rewards, badge} mini-game completion
 	"MiniGameOrbSpawned",  -- {orbId, mineralType, color} new orb on conveyor
 	"MiniGamePHRound",     -- {metals} pH puzzle round start
+	"ShowQR",              -- {qrUrl, sessionToken, expiresAt} show QR bridge panel
 }
 
 -- ══════════════════════════════════════════════
@@ -48,6 +49,8 @@ local clientToServerEvents = {
 	"RequestSortOrb",        -- {orbId, binChoice} sort orb in HGMS game
 	"RequestSetPH",          -- {metalName, phValue} pH puzzle answer
 	"RequestNPCInteract",    -- {npcName} interact with NPC
+	"RequestQR",             -- {} request QR code generation for web bridge
+	"GrabObject",            -- {objectName, position, released} grabbed object update
 }
 
 -- ══════════════════════════════════════════════

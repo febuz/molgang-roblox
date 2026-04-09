@@ -346,13 +346,120 @@ builderSlotLayout.Parent = builderSlotContainer
 -- Build result indicator
 local buildStatus = createTextLabel(builderFrame, {
 	Name = "BuildStatus",
-	Size = UDim2.new(1, -16, 0, 18),
-	Position = UDim2.new(0, 8, 0, 80),
+	Size = UDim2.new(0, 100, 0, 18),
+	Position = UDim2.new(0, 8, 0, 76),
 	Text = "",
 	Font = Enum.Font.GothamBold,
 	TextColor3 = COLORS.success,
-	TextXAlignment = Enum.TextXAlignment.Center,
+	TextXAlignment = Enum.TextXAlignment.Left,
 })
+
+-- BUILD button — fires RequestBuildMolecule to server
+local buildBtn = Instance.new("TextButton")
+buildBtn.Name = "BuildBtn"
+buildBtn.Size = UDim2.new(0, 56, 0, 20)
+buildBtn.Position = UDim2.new(1, -64, 0, 74)
+buildBtn.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+buildBtn.BackgroundTransparency = 0.2
+buildBtn.Text = "BUILD"
+buildBtn.TextColor3 = Color3.fromRGB(5, 15, 10)
+buildBtn.TextScaled = true
+buildBtn.Font = Enum.Font.GothamBlack
+buildBtn.BorderSizePixel = 0
+buildBtn.Parent = builderFrame
+createCorner(buildBtn, 6)
+
+-- Slot state: which atomic numbers are queued for building
+local builderQueue = {} -- list of atomicNumbers
+
+local function updateBuildBtn()
+	if #builderQueue > 0 then
+		buildBtn.BackgroundTransparency = 0.1
+		buildBtn.AutoButtonColor = true
+		buildStatus.Text = #builderQueue .. " atom(s)"
+		buildStatus.TextColor3 = COLORS.accent
+	else
+		buildBtn.BackgroundTransparency = 0.5
+		buildStatus.Text = "Selecteer atomen"
+		buildStatus.TextColor3 = COLORS.textSecondary
+	end
+end
+updateBuildBtn()
+
+-- BUILD button click → fire to server
+buildBtn.MouseButton1Click:Connect(function()
+	if #builderQueue == 0 then return end
+
+	-- Convert atomic number list to symbol→count map
+	local Elements = require(ReplicatedStorage.Data.Elements)
+	local atomMap = {}
+	for _, atomicNum in ipairs(builderQueue) do
+		local elem = Elements[atomicNum]
+		if elem then
+			atomMap[elem.sym] = (atomMap[elem.sym] or 0) + 1
+		end
+	end
+
+	Remotes.FireServer("RequestBuildMolecule", atomMap)
+	builderQueue = {}
+	updateBuildBtn()
+	-- Clear slot visuals
+	for _, child in pairs(builderSlotContainer:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+end)
+
+-- CLEAR button: reset builder queue
+local clearBtn = Instance.new("TextButton")
+clearBtn.Name = "ClearBtn"
+clearBtn.Size = UDim2.new(0, 30, 0, 20)
+clearBtn.Position = UDim2.new(1, -100, 0, 74)
+clearBtn.BackgroundColor3 = Color3.fromRGB(100, 60, 60)
+clearBtn.BackgroundTransparency = 0.3
+clearBtn.Text = "X"
+clearBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+clearBtn.TextScaled = true
+clearBtn.Font = Enum.Font.GothamBold
+clearBtn.BorderSizePixel = 0
+clearBtn.Parent = builderFrame
+createCorner(clearBtn, 6)
+
+clearBtn.MouseButton1Click:Connect(function()
+	builderQueue = {}
+	updateBuildBtn()
+	for _, child in pairs(builderSlotContainer:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+end)
+
+-- Helper: add atom to builder queue from inventory slot click
+local function addAtomToBuilder(atomicNumber, symbol)
+	if #builderQueue >= 5 then
+		buildStatus.Text = "Max 5 atomen!"
+		buildStatus.TextColor3 = COLORS.warning or Color3.fromRGB(255, 200, 50)
+		return
+	end
+	table.insert(builderQueue, atomicNumber)
+
+	-- Show in slot container
+	local slotVis = Instance.new("Frame")
+	slotVis.Size = UDim2.new(0, 24, 0, 24)
+	slotVis.BackgroundColor3 = COLORS.accent
+	slotVis.BackgroundTransparency = 0.4
+	slotVis.BorderSizePixel = 0
+	slotVis.Parent = builderSlotContainer
+	createCorner(slotVis, 4)
+
+	local slotLabel = createTextLabel(slotVis, {
+		Size = UDim2.new(1, 0, 1, 0),
+		Text = symbol or tostring(atomicNumber),
+		Font = Enum.Font.GothamBold,
+		TextColor3 = COLORS.textPrimary,
+		TextXAlignment = Enum.TextXAlignment.Center,
+	})
+
+	updateBuildBtn()
+end
 
 --------------------------------------------------------------------------------
 -- 3. MOLCOIN WALLET (TOP RIGHT)

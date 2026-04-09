@@ -8,7 +8,7 @@ Chemistry.Valence = {
 	H = 1, O = 2, N = 3, C = 4, Ca = 2, Fe = 2, S = 2, Cl = 1,
 	Si = 4, V = 5, Al = 3, Na = 1, K = 1, Mg = 2, P = 3, F = 1,
 	Br = 1, I = 1, Ti = 4, Cr = 3, Mn = 2, Co = 2, Ni = 2, Cu = 2,
-	Zn = 2, Ag = 1, Au = 3, Pt = 4, Li = 1, Be = 2, B = 3,
+	Zn = 2, Ag = 1, Au = 3, Pt = 4, Li = 1, Be = 2, B = 3, Fe = 3,
 }
 
 -- Geldige moleculen met punten
@@ -51,6 +51,19 @@ Chemistry.Molecules = {
 
 	-- Speciale Molgang moleculen (legendary)
 	MolCrystal = {atoms = {V = 1, Ti = 1, Fe = 1, Si = 1, O = 5}, points = 2000, name = 'MolKristal', color = Color3.fromRGB(255, 215, 100)},
+
+	-- Quantum & Advanced Synthesis (zone-specific)
+	SiO4   = {atoms = {Si = 1, O = 4},             points = 600,  name = 'Silicaat',           color = Color3.fromRGB(200, 220, 255)},
+	FeO    = {atoms = {Fe = 1, O = 1},             points = 280,  name = 'Ijzer(II)oxide',    color = Color3.fromRGB(100, 60, 40)},
+	Fe3O4  = {atoms = {Fe = 3, O = 4},             points = 900,  name = 'Magnetiet',         color = Color3.fromRGB(50, 40, 30)},
+	NH4NO3 = {atoms = {N = 2, H = 4, O = 3},       points = 520,  name = 'Ammoniumnitraat',  color = Color3.fromRGB(200, 220, 255)},
+	CuSO4  = {atoms = {Cu = 1, S = 1, O = 4},      points = 550,  name = 'Kopersulfaat',     color = Color3.fromRGB(68, 150, 255)},
+	ZnO    = {atoms = {Zn = 1, O = 1},             points = 320,  name = 'Zinkoxide',        color = Color3.fromRGB(255, 255, 200)},
+	Ag2O   = {atoms = {Ag = 2, O = 1},             points = 1200, name = 'Zilveroxide',      color = Color3.fromRGB(200, 180, 150)},
+	SiMg   = {atoms = {Si = 1, Mg = 1},            points = 850,  name = 'Silicium-Magnesium Legering', color = Color3.fromRGB(180, 200, 220)},
+	K2SiO3 = {atoms = {K = 2, Si = 1, O = 3},      points = 1100, name = 'Kaliumsilicaat',   color = Color3.fromRGB(220, 200, 180)},
+	SiH4   = {atoms = {Si = 1, H = 4},             points = 680,  name = 'Silaan',            color = Color3.fromRGB(150, 200, 220)},
+	P4O10  = {atoms = {P = 4, O = 10},             points = 1300, name = 'Fosfopentoxide',  color = Color3.fromRGB(255, 200, 100)},
 }
 
 -- Molecuulgewicht berekenen vanuit atoomlijst

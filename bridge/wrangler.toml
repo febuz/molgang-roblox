@@ -1,0 +1,28 @@
+name = "molgang-bridge"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+BRIDGE_ENV = "production"
+SESSION_TTL_SECONDS = "300"
+QR_BASE_URL = "https://bridge.molgang.app/qr"
+
+# KV namespace for session storage
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# R2 bucket for QR images
+[[r2_buckets]]
+binding = "QR_BUCKET"
+bucket_name = "molgang-qr"
+
+# Secrets (set via: wrangler secret put SECRET_NAME)
+# JWT_SECRET           — HS256 signing key
+# ROBLOX_API_SECRET    — shared secret with Roblox server script
+# HEDERA_OPERATOR_ID   — Hedera testnet operator account
+# HEDERA_OPERATOR_KEY  — Hedera testnet operator private key
+
+[dev]
+port = 8787
