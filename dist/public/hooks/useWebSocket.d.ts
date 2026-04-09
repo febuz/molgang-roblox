@@ -1,5 +1,5 @@
 export declare function useWebSocket(): {
-    wsData: any;
-    socket: any;
+    wsData: null;
+    socket: null;
 };
 //# sourceMappingURL=useWebSocket.d.ts.map

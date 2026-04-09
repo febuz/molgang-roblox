@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useWebSocket } from '../hooks/useWebSocket';
 import './Dashboard.css';
 
 interface Agent {
@@ -21,19 +20,12 @@ export default function Dashboard({ systemHealth }: { systemHealth: SystemHealth
   const [agents, setAgents] = useState<Agent[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { wsData } = useWebSocket();
 
   useEffect(() => {
     loadDashboardData();
-    const interval = setInterval(loadDashboardData, 5000);
+    const interval = setInterval(loadDashboardData, 10000);
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (wsData?.agentStatus) {
-      setAgents(wsData.agentStatus);
-    }
-  }, [wsData?.agentStatus]);
 
   const loadDashboardData = async () => {
     try {

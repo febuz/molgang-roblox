@@ -32,19 +32,16 @@ app.use(express.json());
 app.use(express.static('dist/public'));
 app.use(express.static('public'));
 
-// Serve React frontend
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '/../dist/public/index.html'));
-});
-
-// SPA routing fallback
-app.get('*', (req, res, next) => {
-  if (!req.path.startsWith('/api') && !req.path.startsWith('/health')) {
-    res.sendFile(path.join(__dirname, '/../dist/public/index.html'));
-  } else {
-    next();
-  }
-});
+// Helper function to serve React frontend
+function serveSPAFile(req: express.Request, res: express.Response) {
+  const indexPath = path.resolve(__dirname, '..', 'dist', 'public', 'index.html');
+  res.type('html').sendFile(indexPath, (err: any) => {
+    if (err) {
+      logger.error('Error serving index.html:', err);
+      res.status(500).send('Error loading dashboard');
+    }
+  });
+}
 
 // Legacy static HTML dashboard (kept for compatibility)
 app.get('/dashboard-static', (req, res) => {
@@ -287,6 +284,17 @@ async function initialize() {
 
     // 5. Setup API routes
     setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter });
+
+    // 5b. Register SPA routes (must be after all API routes!)
+    app.get('/', serveSPAFile);
+    app.all('*', (req, res, next) => {
+      // Skip API and static file routes
+      if (req.path.startsWith('/api') || req.path.startsWith('/health') ||
+          req.path.includes('.') || req.path.startsWith('/socket')) {
+        return next();
+      }
+      serveSPAFile(req, res);
+    });
 
     // 6. Setup WebSocket handlers for real-time updates
     setupWebSocketHandlers(io, { lightrag, kafka });
