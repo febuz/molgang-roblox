@@ -12,6 +12,10 @@ local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
+-- Wait for tutorial system to initialize
+task.wait(1)
+local TutorialSystem = _G.TutorialSystem or {checkProgress = function() end}
+
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
 -- ══════════════════════════════════════════════
@@ -316,6 +320,9 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 		chainTokensEarned = 0,
 	})
 
+	-- Check tutorial progress
+	TutorialSystem.checkProgress(player, userId, data)
+
 	-- ChainRegistry handles the chain entry
 	-- (the ChainRegistry script also listens to this event)
 end)
@@ -443,6 +450,9 @@ Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityType
 		type = facilityType,
 		position = {X = pos.X, Y = pos.Y, Z = pos.Z},
 	})
+
+	-- Check tutorial progress
+	TutorialSystem.checkProgress(player, userId, data)
 
 	print("[EconomyManager] Facility built:", player.Name, facilityType)
 end)
