@@ -23,7 +23,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/.service.pid"
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  🚀 Starting Custom Paperclip Agent System${NC}"
+echo -e "${BLUE}  🚀 Starting VirtualPC Autonomous Agent System${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}\n"
 
 # Check if already running

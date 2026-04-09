@@ -1,0 +1,26 @@
+[Unit]
+Description=VirtualPC Autonomous Agent System
+Documentation=file:///home/knight2/virtualpc/README.md
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=knight2
+WorkingDirectory=/home/knight2/virtualpc
+ExecStart=/home/knight2/virtualpc/start.sh
+ExecStop=/home/knight2/virtualpc/stop.sh
+Restart=on-failure
+RestartSec=10s
+
+# Keep service alive
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=virtualpc
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=32768
+
+[Install]
+WantedBy=multi-user.target

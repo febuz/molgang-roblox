@@ -1,0 +1,31 @@
+[sudo] password for knight2: [INFO] 🚀 Custom Paperclip starting... 
+[INFO] 📊 Initializing LightRAG... 
+[INFO] ✓ LightRAG connected to Neo4j 
+[INFO] ✓ LightRAG connected 
+[INFO] 📦 Initializing Agent API Wrapper... 
+[INFO] ✓ AgentAPIWrapper initialized 
+[INFO] ✓ Agent API Wrapper ready (caching + rate limiting) 
+[INFO] 🔄 Initializing Kafka... 
+{"level":"WARN","timestamp":"2026-04-09T22:05:28.381Z","logger":"kafkajs","message":"KafkaJS v2.0.0 switched default partitioner. To retain the same partitioning behavior as in previous versions, create the producer with the option \"createPartitioner: Partitioners.LegacyPartitioner\". See the migration guide at https://kafka.js.org/docs/migration-guide-v2.0.0#producer-new-default-partitioner for details. Silence this warning by setting the environment variable \"KAFKAJS_NO_PARTITIONER_WARNING=1\""}
+{"level":"WARN","timestamp":"2026-04-09T22:05:28.381Z","logger":"kafkajs","message":"[Producer] Limiting retries for the idempotent producer may invalidate EoS guarantees"}
+{"level":"ERROR","timestamp":"2026-04-09T22:05:28.433Z","logger":"kafkajs","message":"[Connection] Response CreateTopics(key: 19, version: 3)","broker":"localhost:9092","clientId":"custom-paperclip","error":"Topic creation errors","correlationId":2,"size":412}
+[INFO] ✓ Created 7 topics 
+[INFO] ✓ Kafka connected 
+[INFO] ✓ Kafka connected 
+[INFO] 🤖 Initializing Model Router... 
+[INFO] ✓ Model Router initialized - Multi-tier orchestration ready 
+[INFO] ✓ Model Router ready (multi-tier orchestration enabled) 
+[INFO] 🎯 Registering LightRAG skills... 
+[INFO] ✓ Registered 4 LightRAG skills 
+[INFO] ✓ Skills registered 
+[INFO] ✓ Routes configured 
+[INFO] 
+╔════════════════════════════════════════════════╗
+║  Custom Paperclip Ready                        ║
+╠════════════════════════════════════════════════╣
+║  Status: Running                               ║
+║  Port: 3100                                 ║
+║  Components: LightRAG, Kafka, Model Router    ║
+║  Agents: Ready to execute                      ║
+╚════════════════════════════════════════════════╝
+       

@@ -1,0 +1,336 @@
+---
+# MOLGANG Phase 5 - Kubernetes Deployment
+# Scalable infrastructure for 1M concurrent players
+# Auto-scaling with resource limits
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: molgang
+---
+
+# ConfigMap for environment variables
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: molgang-config
+  namespace: molgang
+data:
+  NODE_ENV: production
+  PORT: "3100"
+  LOG_LEVEL: info
+  NEO4J_URI: bolt://neo4j:7687
+  NEO4J_USER: neo4j
+  KAFKA_BROKERS: kafka:9092
+  REDIS_CLUSTER_NODES: "redis-0.redis:6379,redis-1.redis:6379,redis-2.redis:6379"
+  DEPLOYMENT_ENV: kubernetes
+---
+
+# Redis StatefulSet for session state
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: molgang
+spec:
+  serviceName: redis
+  replicas: 3
+  selector:
+    matchLabels:
+      app: redis
+      tier: cache
+  template:
+    metadata:
+      labels:
+        app: redis
+        tier: cache
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+          name: client
+        - containerPort: 16379
+          name: gossip
+        command:
+        - redis-server
+        - "--cluster-enabled"
+        - "yes"
+        - "--cluster-config-file"
+        - "/data/nodes.conf"
+        - "--cluster-node-timeout"
+        - "5000"
+        - "--bind"
+        - "0.0.0.0"
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+---
+
+# Redis Service for cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: molgang
+  labels:
+    app: redis
+spec:
+  clusterIP: None
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: client
+  - port: 16379
+    targetPort: 16379
+    name: gossip
+  selector:
+    app: redis
+---
+
+# VirtualPC API Deployment with auto-scaling
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: molgang-api
+  namespace: molgang
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: molgang-api
+  template:
+    metadata:
+      labels:
+        app: molgang-api
+        version: v1
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - molgang-api
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: api
+        image: molgang-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3100
+          name: http
+        envFrom:
+        - configMapRef:
+            name: molgang-config
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3100
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3100
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+      volumes:
+      - name: logs
+        emptyDir: {}
+---
+
+# Service for API
+apiVersion: v1
+kind: Service
+metadata:
+  name: molgang-api
+  namespace: molgang
+  labels:
+    app: molgang-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3100
+    targetPort: 3100
+    protocol: TCP
+    name: http
+  selector:
+    app: molgang-api
+---
+
+# Horizontal Pod Autoscaler for API
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: molgang-api-hpa
+  namespace: molgang
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: molgang-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Max
+---
+
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: molgang-ingress
+  namespace: molgang
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "600"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - molgang.example.com
+    secretName: molgang-tls
+  rules:
+  - host: molgang.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: molgang-api
+            port:
+              number: 3100
+---
+
+# NetworkPolicy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: molgang-network-policy
+  namespace: molgang
+spec:
+  podSelector:
+    matchLabels:
+      app: molgang-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 3100
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  - to:
+    - podSelector:
+        matchLabels:
+          app: kafka
+    ports:
+    - protocol: TCP
+      port: 9092
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+---
+
+# PodDisruptionBudget for reliability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: molgang-api-pdb
+  namespace: molgang
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: molgang-api
