@@ -1,0 +1,260 @@
+# Kafka Topics Configuration
+# Defines all topics for distributed agent coordination
+#
+# Replication: 3 (production), 1 (development)
+# Retention: 7 days (604800000 ms)
+
+topics:
+  # Task Management
+  - name: agent.tasks
+    description: Tasks assigned to agents for execution
+    partitions: 10
+    replicationFactor: 3
+    config:
+      retention.ms: 604800000  # 7 days
+      compression.type: snappy
+      cleanup.policy: delete
+    schema:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique task ID
+        agent:
+          type: string
+          description: Target agent
+        task_type:
+          type: string
+          enum: [research, coding, analysis, deployment, testing, monitoring]
+        priority:
+          type: string
+          enum: [low, normal, high, critical]
+        payload:
+          type: object
+          description: Task-specific data
+        assigned_at:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
+
+  # Task Results
+  - name: agent.results
+    description: Results and completion status from agents
+    partitions: 10
+    replicationFactor: 3
+    config:
+      retention.ms: 604800000
+      compression.type: snappy
+    schema:
+      type: object
+      properties:
+        task_id:
+          type: string
+        agent:
+          type: string
+        status:
+          type: string
+          enum: [success, failed, partial]
+        result:
+          type: object
+        tokens_used:
+          type: integer
+        execution_time_ms:
+          type: integer
+        completed_at:
+          type: string
+          format: date-time
+
+  # Model API Requests
+  - name: model.requests
+    description: API calls routed to language models (batched and optimized)
+    partitions: 20
+    replicationFactor: 3
+    config:
+      retention.ms: 604800000
+      compression.type: snappy
+      cleanup.policy: delete
+    schema:
+      type: object
+      properties:
+        id:
+          type: string
+        model:
+          type: string
+        prompt:
+          type: string
+        parameters:
+          type: object
+        priority:
+          type: string
+        source_task:
+          type: string
+        batch_id:
+          type: string
+        requested_at:
+          type: string
+          format: date-time
+
+  # Model API Responses
+  - name: model.responses
+    description: Responses from language models
+    partitions: 20
+    replicationFactor: 3
+    config:
+      retention.ms: 604800000
+      compression.type: snappy
+    schema:
+      type: object
+      properties:
+        request_id:
+          type: string
+        model:
+          type: string
+        completion:
+          type: string
+        tokens_prompt:
+          type: integer
+        tokens_completion:
+          type: integer
+        cost_usd:
+          type: number
+        latency_ms:
+          type: integer
+        completed_at:
+          type: string
+          format: date-time
+
+  # LightRAG Memory Updates
+  - name: lightrag.updates
+    description: New facts, decisions, and insights to store in shared memory
+    partitions: 5
+    replicationFactor: 3
+    config:
+      retention.ms: 2592000000  # 30 days
+      compression.type: snappy
+    schema:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [decision, risk, precedent, context]
+        content:
+          type: string
+        agent:
+          type: string
+        metadata:
+          type: object
+        affects:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+
+  # Cost Tracking
+  - name: cost.tracking
+    description: API call costs for budget tracking and optimization
+    partitions: 5
+    replicationFactor: 3
+    config:
+      retention.ms: 2592000000  # 30 days (for cost analysis)
+      compression.type: snappy
+    schema:
+      type: object
+      properties:
+        id:
+          type: string
+        agent:
+          type: string
+        model:
+          type: string
+        tokens_prompt:
+          type: integer
+        tokens_completion:
+          type: integer
+        cost_usd:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+        task_id:
+          type: string
+
+  # System Health
+  - name: system.health
+    description: Health checks and system metrics
+    partitions: 3
+    replicationFactor: 3
+    config:
+      retention.ms: 86400000  # 1 day
+      compression.type: snappy
+    schema:
+      type: object
+      properties:
+        component:
+          type: string
+          enum: [api, lightrag, kafka, models, agents, scheduler]
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        metrics:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+# Consumer Groups
+consumerGroups:
+  - name: agent-executors
+    description: Agents consuming tasks from agent.tasks
+    topics:
+      - agent.tasks
+    sessionTimeout: 30000
+    rebalanceTimeout: 60000
+
+  - name: model-routers
+    description: Model routing service consuming API requests
+    topics:
+      - model.requests
+    sessionTimeout: 30000
+    rebalanceTimeout: 60000
+
+  - name: memory-sync
+    description: Service syncing results and decisions to LightRAG
+    topics:
+      - agent.results
+      - lightrag.updates
+    sessionTimeout: 30000
+    rebalanceTimeout: 60000
+
+  - name: audit-log
+    description: Central audit logging (consumes everything)
+    topics:
+      - agent.tasks
+      - agent.results
+      - model.requests
+      - model.responses
+      - lightrag.updates
+      - cost.tracking
+      - system.health
+    sessionTimeout: 60000
+    rebalanceTimeout: 120000
+
+# Development Configuration (override for local testing)
+development:
+  replicationFactor: 1
+  retention.ms: 86400000  # 1 day for dev
+  partitions: 3
+
+# Production Configuration (override for production)
+production:
+  replicationFactor: 3
+  retention.ms: 604800000  # 7 days
+  partitions: 20
+  minInSyncReplicas: 2
+  compression.type: snappy
