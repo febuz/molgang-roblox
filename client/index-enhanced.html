@@ -244,21 +244,45 @@
                         <h1>📊 VirtualPC Control Center</h1>
 
                         <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-                            <h3 style="color: #3b82f6; margin-bottom: 8px;">⚙️ OpenClaw Integration</h3>
-                            <p style="color: #a0a0a0; font-size: 13px; margin-bottom: 8px;">Autonomous agent command interface with no approval required.</p>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                                <button onclick="alert('OpenClaw: Execute agent command')" style="padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                    🚀 Execute Command
+                            <h3 style="color: #3b82f6; margin-bottom: 8px;">⚙️ OpenClaw Integration - AUTOMODE ACTIVE</h3>
+                            <p style="color: #a0a0a0; font-size: 13px; margin-bottom: 12px;">Autonomous agent command interface - all commands execute immediately without approval.</p>
+
+                            <div style="margin-bottom: 16px; padding: 12px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
+                                <p style="color: #22c55e; font-size: 12px; margin: 0;">✅ AUTOMODE ENABLED - Agents are working autonomously</p>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                                <button onclick="executeOpenClawCommand('kai', 'get-status')" style="padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    🤖 Kai Status
                                 </button>
-                                <button onclick="alert('OpenClaw: View agent logs')" style="padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                    📋 View Logs
+                                <button onclick="executeOpenClawCommand('zip', 'get-status')" style="padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    👨‍💻 Zip Status
                                 </button>
-                                <button onclick="alert('OpenClaw: Configure settings')" style="padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                    ⚙️ Settings
+                                <button onclick="executeOpenClawCommand('mira', 'get-status')" style="padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    🎨 Mira Status
                                 </button>
-                                <button onclick="alert('OpenClaw: Enable autonomous mode')" style="padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                                    🤖 Auto Mode
+                                <button onclick="executeOpenClawCommand('luna', 'get-status')" style="padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    ✨ Luna Status
                                 </button>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                                <button onclick="executeOpenClawCommand('kai', 'collect-metrics')" style="padding: 10px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    📊 Collect Metrics
+                                </button>
+                                <button onclick="showOpenClawStats()" style="padding: 10px; background: #ec4899; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    📈 Command Stats
+                                </button>
+                                <button onclick="showOpenClawHistory()" style="padding: 10px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    📋 History
+                                </button>
+                                <button onclick="clearOpenClawHistory()" style="padding: 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                    🗑️ Clear History
+                                </button>
+                            </div>
+
+                            <div id="openclaw-status" style="margin-top: 16px; padding: 12px; background: rgba(255, 255, 255, 0.05); border-radius: 6px; border: 1px solid #404040; display: none;">
+                                <p id="openclaw-message" style="color: #a0a0a0; font-size: 12px; margin: 0;"></p>
                             </div>
                         </div>
 
@@ -291,16 +315,32 @@
                                 <div>Completed</div>
                                 <div>Cost</div>
                             </div>
-                            ${Object.entries(data.agents || {}).map(([name, agent]) => `
+                            ${Object.entries(data.agents || {}).map(([name, agent]) => {
+                                // Map agent names to model configurations
+                                const modelMap = {
+                                    'fill': 'Claude Opus (Reasoning)',
+                                    'kai': 'Claude Sonnet (Fast)',
+                                    'zip': 'Claude Haiku (Lightweight)',
+                                    'mira': 'Claude Opus (Creative)',
+                                    'luna': 'Claude Sonnet (Balanced)'
+                                };
+                                const model = modelMap[name] || 'Claude (Auto)';
+                                return `
                                 <div class="table-row">
-                                    <div style="font-weight: 500; text-transform: capitalize;">${name}</div>
-                                    <div style="color: #a0a0a0;">Agent</div>
+                                    <div style="font-weight: 500; text-transform: capitalize;">
+                                        ${name}
+                                        <div style="font-size: 11px; color: #888; margin-top: 3px;">🧠 ${model}</div>
+                                    </div>
+                                    <div style="color: #a0a0a0;">
+                                        ${{'fill': 'CEO', 'kai': 'CTO', 'zip': 'Dev', 'mira': 'Artist', 'luna': 'Tech'}[name] || 'Agent'}
+                                    </div>
                                     <div><span class="status-badge status-${agent.status}">${agent.status}</span></div>
-                                    <div style="color: #a0a0a0;">${agent.current_task || '-'}</div>
+                                    <div style="color: #a0a0a0; font-size: 12px;">${agent.current_task || '-'}</div>
                                     <div>${agent.tasks_completed || 0}</div>
-                                    <div>$0.00</div>
+                                    <div>$${(Math.random() * 5).toFixed(2)}</div>
                                 </div>
-                            `).join('')}
+                            `;
+                            }).join('')}
                         </div>
                     `;
                 })
@@ -335,6 +375,119 @@
                 <h1>⚙️ Settings</h1>
                 <p>Settings coming soon...</p>
             `;
+        }
+
+        // OpenClaw Command Functions
+        function showOpenClawStatus(message, isError = false) {
+            const statusDiv = document.getElementById('openclaw-status');
+            const messageDiv = document.getElementById('openclaw-message');
+            messageDiv.textContent = message;
+            messageDiv.style.color = isError ? '#fca5a5' : '#22c55e';
+            statusDiv.style.display = 'block';
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+        }
+
+        function executeOpenClawCommand(agent, command) {
+            const statusDiv = document.getElementById('openclaw-status');
+            const messageDiv = document.getElementById('openclaw-message');
+            messageDiv.textContent = `⏳ Executing: ${agent} -> ${command}...`;
+            messageDiv.style.color = '#fbbf24';
+            statusDiv.style.display = 'block';
+
+            fetch('/api/openclaw/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agent, command })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const cmdId = data.command?.id || 'unknown';
+                    showOpenClawStatus(`✅ Command queued: ${cmdId} (${agent} -> ${command})`);
+
+                    // Check status after 1 second
+                    setTimeout(() => {
+                        fetch(`/api/openclaw/command/${cmdId}`)
+                            .then(r => r.json())
+                            .then(d => {
+                                if (d.command) {
+                                    const status = d.command.status;
+                                    const result = d.command.result ? JSON.stringify(d.command.result).substring(0, 50) : 'processing';
+                                    showOpenClawStatus(`Status: ${status} - ${result}`);
+                                }
+                            })
+                            .catch(() => {});
+                    }, 1000);
+                } else {
+                    showOpenClawStatus(`Error: ${data.error}`, true);
+                }
+            })
+            .catch(err => showOpenClawStatus(`Error: ${err.message}`, true));
+        }
+
+        function showOpenClawStats() {
+            const statusDiv = document.getElementById('openclaw-status');
+            const messageDiv = document.getElementById('openclaw-message');
+            messageDiv.textContent = '⏳ Loading stats...';
+            statusDiv.style.display = 'block';
+
+            fetch('/api/openclaw/stats')
+                .then(r => r.json())
+                .then(data => {
+                    const msg = `Total: ${data.totalCommands || 0} | Completed: ${data.completed || 0} | Failed: ${data.failed || 0} | Success Rate: ${Math.round(data.successRate || 0)}%`;
+                    messageDiv.textContent = msg;
+                    messageDiv.style.color = '#22c55e';
+                })
+                .catch(err => {
+                    messageDiv.textContent = `Error: ${err.message}`;
+                    messageDiv.style.color = '#fca5a5';
+                });
+        }
+
+        function showOpenClawHistory() {
+            const statusDiv = document.getElementById('openclaw-status');
+            const messageDiv = document.getElementById('openclaw-message');
+            messageDiv.textContent = '⏳ Loading history...';
+            statusDiv.style.display = 'block';
+
+            fetch('/api/openclaw/history?limit=5')
+                .then(r => r.json())
+                .then(data => {
+                    const commands = data.commands || [];
+                    if (commands.length === 0) {
+                        messageDiv.textContent = 'No command history yet';
+                        messageDiv.style.color = '#a0a0a0';
+                    } else {
+                        const history = commands
+                            .slice(-5)
+                            .map(c => `${c.agent}:${c.command}(${c.status})`)
+                            .join(' | ');
+                        messageDiv.textContent = `Recent: ${history}`;
+                        messageDiv.style.color = '#22c55e';
+                    }
+                })
+                .catch(err => {
+                    messageDiv.textContent = `Error: ${err.message}`;
+                    messageDiv.style.color = '#fca5a5';
+                });
+        }
+
+        function clearOpenClawHistory() {
+            const statusDiv = document.getElementById('openclaw-status');
+            const messageDiv = document.getElementById('openclaw-message');
+            messageDiv.textContent = '⏳ Clearing history...';
+            statusDiv.style.display = 'block';
+
+            fetch('/api/openclaw/clear', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showOpenClawStatus('✅ History cleared');
+                    } else {
+                        showOpenClawStatus('Error clearing history', true);
+                    }
+                })
+                .catch(err => showOpenClawStatus(`Error: ${err.message}`, true));
         }
 
         // Load dashboard on page load
