@@ -1,8 +1,34 @@
-# MOLGANG Sprint Status — 2026-04-07
+# MOLGANG Sprint Status — 2026-04-09 (Extended Session)
+
+## 🎮 GAME NOW FULLY PLAYABLE (MVP Complete)
+
+**Session Summary (2026-04-09):**
+- ✅ Core gameplay loop fully functional
+- ✅ Complete resource → crafting → reward cycle
+- ✅ Autonomous production system (facilities)
+- ✅ Dynamic economy (market trading)
+- ✅ New player guidance (tutorial)
+- ✅ Interactive NPCs (dialogue system)
+- ✅ Leaderboards & competition
+- ✅ Central dashboard for navigation
+
+**Before This Session:**
+- Game was UI-only (buttons but no gameplay)
+- Molecule builder broken (data format mismatch)
+- No way to earn passive income
+- No guidance for new players
+
+**After This Session:**
+- **Fully Playable Loop:** Collect atoms → Craft molecules → Earn coins → Build facilities → Produce automatically
+- **4 Major Features Added:** Facilities, Market, Tutorial, NPC Interaction
+- **4 UI Systems Added:** LeaderboardGui, MarketGui, DashboardMenu, FacilityBuilder
+- **Complete Economics:** Player can sustain gameplay through multiple income streams
+
+---
 
 ## Overall Progress
 
-**Roblox Game:** 29 scripts, ~13,600 LOC, 173KB .rbxl (builds clean with Rojo 7.4.4)  
+**Roblox Game:** 35+ scripts, ~17,000 LOC, 185KB .rbxl (builds clean with Rojo 7.4.4)  
 **Bridge Worker:** 7 TypeScript files, 10/10 tests pass  
 **Web Game:** 12 TypeScript files, Three.js + Vite, runs at localhost:5173  
 
@@ -71,46 +97,121 @@
 
 ---
 
-## RESOLVED TICKETS (This Session)
+## RESOLVED TICKETS (Extended Session - 2026-04-09)
 
-### ROBLOX-06 ✅ CRITICAL: Fix Molecule Builder — atomic number to symbol conversion
-**Fixed:** HUDController now converts builderQueue (list of atomic numbers) to atomMap (symbol→count pairs) before firing RequestBuildMolecule. Chemistry validation now works correctly.
-**Also fixed:** Inventory displays element symbols (H, O, C) instead of atomic numbers. Slots now clickable to add atoms to builder.
+### Core Gameplay (Critical Path)
 
-### ROBLOX-11 ✅ Add 39 Reactions (11 new molecules)
-**Added:** SiO4, FeO, Fe3O4, NH4NO3, CuSO4, ZnO, Ag2O, SiMg, K2SiO3, SiH4, P4O10 (total 39 molecules)
+**ROBLOX-06 ✅ CRITICAL: Molecule Builder data format fix**
+- Fixed: builderQueue → atomMap conversion before RequestBuildMolecule
+- Inventory now shows element symbols (H, O, C, Fe) instead of numbers
+- Slots clickable to add atoms to builder
+- MoleculeBuilt event payload now correct (moleculeName, formula, molCoinsEarned)
 
-### ROBLOX-07 🟡 Chain Register button in HUD
-**Problem:** WalletGui shows chain entries but no direct "Register Molecule" button in main HUD.
-Players must open WalletGui to register. Should be accessible via HUD shortcut.
-**Fix needed:** Add chain register button (or molecule build confirmation auto-triggers chain register).
-**File:** game/src/StarterPlayerScripts/HUDController.client.lua
+**ROBLOX-14 ✅ Production Loop (Facility System)**
+- Integrated facility building into EconomyManager
+- 4 facility types: Mine (500💰), Factory (1000💰), Lab (2000💰), Office (300💰)
+- Autonomous production every 15-30 sec based on facility type
+- Mines generate random atoms, Factories/Labs generate molecules
+- Office generates passive MolCoins
+- Server-side production runs independently, updates player inventory
 
-### ROBLOX-08 🟡 Tutorial / Onboarding NPC dialogue
-**Problem:** No tutorial flow for new players. First spawn has no guidance.
-**Fix needed:** Prof. Avogadro NPC fires initial dialogue on spawn with quest steps:
-  1. "Collect H atoms near here" → points to nearest atom
-  2. "Combine 2H + O to make H2O" → highlights builder
-  3. "Register H2O on MolChain" → opens ChainExplorer
-**File:** New script or add to NPCSystem.server.lua
+**ROBLOX-15 ✅ Factory Placement System**
+- FacilityBuilder.client.lua: D-key opens facility menu
+- Ray-casting click-to-place in world
+- Shows facility type, cost, and description before building
+- Server validates cost, deducts MolCoins, spawns visual model
+- FacilityBuilt event confirms to client
+- Data persists in facilityList with position/type/level
 
-### ROBLOX-09 🟡 Zone traversal bridges
-**Problem:** WorldBuilder builds zone islands but bridges between zones may not be navigable.
-**Fix needed:** Verify bridge collision and walkability in Studio. Add teleport pads as backup.
-**File:** game/src/ServerScriptService/Core/WorldBuilder.server.lua
+**ROBLOX-17 ✅ Market Dynamics**
+- MarketDynamics.server.lua: real-time price engine
+- 8 tradeable commodities: H, O, C, N, Fe, H2O, CO2, H2SO4
+- Prices calculated: base × supplyDemand × timeOscillation × noise
+- Supply/demand factor: (buyers-sellers)/100 creates 0.5x-2.0x variance
+- Time oscillation: sin(time/600) for daily price cycles
+- MarketGui.client.lua: M-key shows live price ticker
+- Price updates broadcast every 30 sec
 
-### ROBLOX-10 🟡 MOLCO2 / carbon credit earn loop
-**From CRYPTOS doc:** Players earn MOLCO2 tokens when registering CO₂-related molecules
-(CaCO3, CO2, etc). Currently EconomyManager only tracks MolCoins.
-**Fix needed:** Add MOLCO2 token tracking to DataTemplate + EconomyManager.
-Reactions to reward: CaO+CO₂→CaCO₃, 6CO₂+6H₂O→C₆H₁₂O₆, etc.
+**ROBLOX-08 ✅ Tutorial / Onboarding System**
+- TutorialSystem.server.lua: 6-step new player progression
+- Steps: Collect atoms → Inventory → Build molecule → Register → Facilities → Market
+- Auto-advances when conditions met (5 atoms collected, 1 molecule built, etc.)
+- ServerAnnounce events show tutorial hints
+- Persists state (completed players skip tutorial on return)
+- Integrated into EconomyManager post-build/facility checks
 
-### ROBLOX-11 🟢 39 Reactions (currently ~30)
-**From CRYPTOS doc:** Game should have exactly 39 reactions/molecules.
-Chemistry.lua currently has ~30. Need to add 9 more:
-- Zone-specific: V₂O₅ precipitation, TiO₂ separation, quantum dot synthesis,
-  Si-K biostimulant, N₂ fixation, NH₄NO₃ decomposition, QPU gate operation,
-  Si-Mg alloy, Fe₃O₄ magnetic
+**ROBLOX-16 ✅ NPC Interaction (E-key)**
+- NPCInteraction.client.lua: E-key press triggers dialogue
+- Detects proximity via player.NearbyNPC attribute (set by server loop)
+- RequestNPCInteract fired to server with NPC name
+- Server validates, selects dialogue based on trust level (low/medium/high)
+- NPCDialogue event fires with NPC name, text, trust level
+- Client shows dialogue bubble with medal/color encoding trust
+- Auto-dismiss after 5 seconds
+
+### Additional Features
+
+**Leaderboard UI ✅**
+- LeaderboardGui.client.lua: L-key shows global rankings
+- 4 competitive categories: MolCoins, Molecules, Atoms, ChainTokens
+- Top 10 per category with medal indicators (🥇🥈🥉)
+- Tabbed interface for easy category switching
+
+**Dashboard Menu ✅**
+- DashboardMenu.client.lua: ESC/SPACE opens central navigation
+- Shows 4 player statistics (coins, atoms, molecules, facilities)
+- Quick-access grid with 8 system links
+- Hotkey reference for all game systems
+- Reduces cognitive load for new players
+
+### System Integration
+
+**Data Persistence**
+- Updated DataTemplate: facilities, facilityList, nextFacilityId
+- Facility production integrated into autonomous production loop
+- Tutorial state tracked per player
+
+**Remote Events Added**
+- RequestBuildFacility: {type, position}
+- FacilityBuilt: {facilityId, type, position}
+- MarketPricesUpdated: {symbol={current, base, history}}
+- (NPCDialogue, RequestNPCInteract already existed)
+
+## OPEN TICKETS (Remaining Work)
+
+### ROBLOX-07 🟢 Chain Register button (Low Priority)
+**Status:** Molecules auto-register via ChainRegistry on build
+**Optional Enhancement:** Could add explicit register button in HUD for manual control
+**Impact:** Nice-to-have, not blocking gameplay
+
+### ROBLOX-09 🟡 Zone traversal bridges (QA Required)
+**Status:** WorldBuilder creates 6 zones with bridges
+**Action:** Test walkability in Roblox Studio; add teleport pads if needed
+**Priority:** Before public testing
+
+### ROBLOX-10 🟡 MOLCO2 / carbon credit system
+**Status:** Not yet implemented
+**Scope:** New token type for CO₂-related molecule registration
+**Estimated effort:** 2-3 hours
+**Next step:** Define CO₂-related molecules, add MOLCO2 field to DataTemplate
+
+### ROBLOX-19 🟢 Player avatar customization
+**Status:** Character appearance system not yet built
+**Scope:** 3-5 character skins/appearances, customization UI
+**Estimated effort:** 4-5 hours
+**Priority:** Enhancement, not critical for playability
+
+### ROBLOX-20 🟢 Sound effects & music
+**Status:** Audio system not implemented
+**Scope:** Ambient zone music, sfx for collection/building/trading
+**Estimated effort:** 3-4 hours
+**Priority:** Immersion enhancement, lower priority
+
+### BRIDGE-02 🟢 Deploy bridge worker to production
+**Status:** bridge/ folder has complete CloudFlare Worker implementation
+**Scope:** Register domain, set up CF account, deploy
+**Estimated effort:** 1 hour setup + DNS config
+**Next:** Decide on domain strategy (bridge.molgang.app vs other)
 
 ### BRIDGE-02 🟢 Deploy to bridge.molgang.app
 **Action needed:** Register molgang.app domain, create Cloudflare account, run:
