@@ -71,14 +71,14 @@
 
 ---
 
-## OPEN TICKETS (Backlog)
+## RESOLVED TICKETS (This Session)
 
-### ROBLOX-06 🔴 CRITICAL: Fix Molecule Builder — missing build button FireServer
-**Problem:** HUDController has molecule builder slots UI but NO `RequestBuildMolecule.FireServer` call.
-Players can see slot UI but cannot actually trigger a build.
-**Fix needed:** Add build button to builderFrame that collects slotted atoms and fires RequestBuildMolecule.
-**File:** game/src/StarterPlayerScripts/HUDController.client.lua ~line 347
-**Est:** 1-2 hours
+### ROBLOX-06 ✅ CRITICAL: Fix Molecule Builder — atomic number to symbol conversion
+**Fixed:** HUDController now converts builderQueue (list of atomic numbers) to atomMap (symbol→count pairs) before firing RequestBuildMolecule. Chemistry validation now works correctly.
+**Also fixed:** Inventory displays element symbols (H, O, C) instead of atomic numbers. Slots now clickable to add atoms to builder.
+
+### ROBLOX-11 ✅ Add 39 Reactions (11 new molecules)
+**Added:** SiO4, FeO, Fe3O4, NH4NO3, CuSO4, ZnO, Ag2O, SiMg, K2SiO3, SiH4, P4O10 (total 39 molecules)
 
 ### ROBLOX-07 🟡 Chain Register button in HUD
 **Problem:** WalletGui shows chain entries but no direct "Register Molecule" button in main HUD.
@@ -161,3 +161,38 @@ npm test
 cd /media/knight2/EDS2/projects/roblox_molgang/web-game
 npm run dev  # localhost:5173
 ```
+
+---
+
+## GAMEPLAY LOOP NOW FUNCTIONAL (as of commit 675d7b3)
+
+### Complete Core Flow
+1. ✅ Atoms spawn continuously in 6 zones (AtomSpawner every 10 sec)
+2. ✅ Player walks near atom → auto-collects on proximity (12 studs)
+3. ✅ Inventory displays atoms with element SYMBOLS (H, O, C, Fe)
+4. ✅ Player clicks atom in inventory → added to builder queue
+5. ✅ Player clicks BUILD button → validates chemistry recipe
+6. ✅ Server deducts atoms from inventory → creates molecule
+7. ✅ Server awards MolCoins (100-1300 depending on molecule)
+8. ✅ Client shows "Molecule ✓ +100 MolCoins" popup
+9. ✅ Wallet animates coin float effect
+10. ✅ MolCoin balance updates on HUD display
+
+**Status:** The game is NO LONGER UI-only. Players can now:
+- Collect resources (atoms) by walking around
+- See their inventory grow in real-time
+- Craft molecules with visual feedback
+- Earn rewards (MolCoins) that display with animations
+- Progress and see results for their actions
+
+### This Session's Commits
+1. **fix(ROBLOX-06):** Molecule builder—convert atomic numbers to symbol map
+2. **fix(Core gameplay):** Inventory UI, molecule build feedback, builder interaction
+3. **fix(MoleculeBuilt):** Event data format—match client expectations
+
+### Remaining for Full Playability
+- ROBLOX-07: Chain register button (auto-registers on build, may not need UI)
+- ROBLOX-08: Tutorial onboarding flow
+- ROBLOX-09: Zone traversal bridges (already built, needs testing)
+- ROBLOX-10: MOLCO2 token tracking (new feature)
+- Facility building UI (mines, factories for advanced progression)
