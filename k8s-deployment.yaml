@@ -1,0 +1,464 @@
+# VirtualPC Kubernetes Deployment
+# GPU-ready, auto-scaling, production-hardened
+
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtualpc
+
+---
+# ConfigMap - Application Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: virtualpc-config
+  namespace: virtualpc
+data:
+  NODE_ENV: "production"
+  NEO4J_URI: "bolt://neo4j:7687"
+  KAFKA_BROKERS: "kafka:29092"
+  REDIS_URL: "redis://redis:6379"
+  LOG_LEVEL: "info"
+  DAILY_BUDGET_CENTS: "5000"
+  MONTHLY_BUDGET_CENTS: "150000"
+
+---
+# Secret - Sensitive Data
+apiVersion: v1
+kind: Secret
+metadata:
+  name: virtualpc-secrets
+  namespace: virtualpc
+type: Opaque
+stringData:
+  JWT_SECRET: "your-secret-key-here-min-32-chars-change-in-production"
+  ANTHROPIC_API_KEY: "sk-ant-xxxxx"
+  DATABASE_PASSWORD: "secure-password-here"
+
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virtualpc
+  namespace: virtualpc
+
+---
+# Role for accessing GPU resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: virtualpc
+  namespace: virtualpc
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/status"]
+    verbs: ["get"]
+
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: virtualpc
+  namespace: virtualpc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: virtualpc
+subjects:
+  - kind: ServiceAccount
+    name: virtualpc
+    namespace: virtualpc
+
+---
+# Neo4j StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neo4j
+  namespace: virtualpc
+spec:
+  serviceName: neo4j
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neo4j
+  template:
+    metadata:
+      labels:
+        app: neo4j
+    spec:
+      containers:
+      - name: neo4j
+        image: neo4j:latest
+        env:
+        - name: NEO4J_AUTH
+          value: "none"
+        - name: NEO4J_PLUGINS
+          value: '["apoc"]'
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: neo4j-data
+          mountPath: /var/lib/neo4j/data
+        ports:
+        - containerPort: 7687
+          name: bolt
+        - containerPort: 7474
+          name: http
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 7474
+          initialDelaySeconds: 30
+          periodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: neo4j-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "standard"
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+# Kafka StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: virtualpc
+spec:
+  serviceName: kafka
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+      - name: kafka
+        image: confluentinc/cp-kafka:7.5.0
+        env:
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "zookeeper:2181"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://kafka:9092"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "true"
+        - name: KAFKA_NUM_NETWORK_THREADS
+          value: "8"
+        - name: KAFKA_NUM_IO_THREADS
+          value: "8"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /var/lib/kafka/data
+        ports:
+        - containerPort: 29092
+          name: internal
+        - containerPort: 9092
+          name: external
+  volumeClaimTemplates:
+  - metadata:
+      name: kafka-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "standard"
+      resources:
+        requests:
+          storage: 5Gi
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: virtualpc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        ports:
+        - containerPort: 6379
+        livenessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+---
+# VirtualPC API Deployment with GPU Support
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtualpc-api
+  namespace: virtualpc
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: virtualpc-api
+  template:
+    metadata:
+      labels:
+        app: virtualpc-api
+    spec:
+      serviceAccountName: virtualpc
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - virtualpc-api
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: virtualpc-api
+        image: virtualpc:latest
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: virtualpc-config
+        - secretRef:
+            name: virtualpc-secrets
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1000m"
+            nvidia.com/gpu: "1"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+            nvidia.com/gpu: "1"
+        ports:
+        - containerPort: 3100
+          name: api
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3100
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3100
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: virtualpc-api-hpa
+  namespace: virtualpc
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: virtualpc-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Service - ClusterIP for internal communication
+apiVersion: v1
+kind: Service
+metadata:
+  name: virtualpc-api
+  namespace: virtualpc
+  labels:
+    app: virtualpc-api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3100
+    targetPort: 3100
+    protocol: TCP
+    name: api
+  selector:
+    app: virtualpc-api
+
+---
+# Service - LoadBalancer for external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: virtualpc-lb
+  namespace: virtualpc
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3100
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: 3100
+    protocol: TCP
+    name: https
+  selector:
+    app: virtualpc-api
+
+---
+# Neo4j Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: neo4j
+  namespace: virtualpc
+spec:
+  clusterIP: None
+  ports:
+  - port: 7687
+    targetPort: 7687
+    name: bolt
+  - port: 7474
+    targetPort: 7474
+    name: http
+  selector:
+    app: neo4j
+
+---
+# Kafka Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: virtualpc
+spec:
+  clusterIP: None
+  ports:
+  - port: 29092
+    targetPort: 29092
+    name: internal
+  - port: 9092
+    targetPort: 9092
+    name: external
+  selector:
+    app: kafka
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: virtualpc
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app: redis
+
+---
+# PodDisruptionBudget - Ensure availability during updates
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: virtualpc-api-pdb
+  namespace: virtualpc
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: virtualpc-api
+
+---
+# NetworkPolicy - Security isolation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: virtualpc-network-policy
+  namespace: virtualpc
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: virtualpc
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: virtualpc

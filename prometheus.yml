@@ -1,0 +1,44 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'virtualpc'
+    environment: 'production'
+
+scrape_configs:
+  # API Instances
+  - job_name: 'virtualpc-api'
+    static_configs:
+      - targets: ['localhost:3100', 'localhost:3101', 'localhost:3102']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Neo4j
+  - job_name: 'neo4j'
+    static_configs:
+      - targets: ['neo4j:7474']
+    metrics_path: '/metrics'
+
+  # Kafka
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9092']
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Alert rules
+rule_files:
+  - 'alerts.yml'

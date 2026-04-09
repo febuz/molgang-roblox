@@ -1,0 +1,53 @@
+# VirtualPC GPU-Enabled Container
+# Supports NVIDIA CUDA for accelerated inference
+# Multi-instance deployment ready
+
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+WORKDIR /app
+
+# Install Node.js
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    python3 \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dumb-init for signal handling
+RUN apt-get update && apt-get install -y dumb-init && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupId=1001 && useradd -m -u $groupId nodejs
+
+# Copy production dependencies
+COPY --chown=nodejs:nodejs package*.json ./
+RUN npm ci --only=production
+
+# Copy built application
+COPY --chown=nodejs:nodejs dist ./dist
+
+# Create required directories
+RUN mkdir -p /app/logs /app/data && chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Environment variables
+ENV NODE_ENV=production
+ENV CUDA_VISIBLE_DEVICES=0
+ENV GPU_ENABLED=true
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3100/health || exit 1
+
+# Use dumb-init to handle signals
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
+# Start application
+CMD ["node", "dist/index.js"]
+
+# Expose API port
+EXPOSE 3100
