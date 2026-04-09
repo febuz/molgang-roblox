@@ -25,6 +25,16 @@ return {
 		offices = 0,
 	},
 
+	-- Quests & Achievements
+	questProgress = {
+		active = {},
+		completed = {},
+		inProgress = {},
+		lastDaily = {},
+	},
+	unlockedAchievements = {},
+	mahjongWins = 0,
+
 	-- ANK Lending
 	ankLoans = {},      -- { {id, borrower, lender, amount, collateral, due, interest}, ... }
 	stakedCollateral = 0,
