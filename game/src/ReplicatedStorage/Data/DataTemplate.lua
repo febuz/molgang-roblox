@@ -24,6 +24,16 @@ return {
 	chainEntries = 0,       -- totaal aantal registraties door deze speler
 	lastChainHash = '',
 
+	-- Facilities (production buildings)
+	facilities = {
+		mines = 0,
+		factories = 0,
+		researchLabs = 0,
+		offices = 0,
+	},
+	facilityList = {},  -- {[facilityId] = {type='mine', pos={x,y,z}, level=1, production=10, lastProduced=0}}
+	nextFacilityId = 1,
+
 	-- Progress tracking
 	elementsFound = {},     -- set van elementZ nummers: {[1]=true, [8]=true, ...}
 	moleculesBuilt = {},    -- set van molecule namen: {['H2O']=true, ...}

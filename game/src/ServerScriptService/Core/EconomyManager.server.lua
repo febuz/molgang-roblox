@@ -401,6 +401,102 @@ Remotes.GetElementInfo.OnServerInvoke = function(player, z)
 end
 
 -- ══════════════════════════════════════════════
+-- FACILITY BUILDING & PRODUCTION
+-- ══════════════════════════════════════════════
+
+local FACILITY_COSTS = {
+	mine = 500,
+	factory = 1000,
+	researchLab = 2000,
+	office = 300,
+}
+
+Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityType, position)
+	local userId = player.UserId
+	local data = playerData[userId]
+	if not data then return end
+
+	if not FACILITY_COSTS[facilityType] then return end
+	local cost = FACILITY_COSTS[facilityType]
+
+	if data.molCoins < cost then return end
+
+	data.molCoins = data.molCoins - cost
+
+	if not position or not position.X then return end
+	local pos = Vector3.new(math.floor(position.X), math.floor(position.Y), math.floor(position.Z))
+
+	local facilityId = data.nextFacilityId
+	data.nextFacilityId = data.nextFacilityId + 1
+
+	data.facilityList[facilityId] = {
+		type = facilityType,
+		pos = {x = pos.X, y = pos.Y, z = pos.Z},
+		level = 1,
+		lastProduced = os.time(),
+	}
+
+	data.facilities[facilityType] = (data.facilities[facilityType] or 0) + 1
+
+	Remotes.FireClient("FacilityBuilt", player, {
+		facilityId = facilityId,
+		type = facilityType,
+		position = {X = pos.X, Y = pos.Y, Z = pos.Z},
+	})
+
+	print("[EconomyManager] Facility built:", player.Name, facilityType)
+end)
+
+-- Production cycle
+task.spawn(function()
+	local Elements = require(ReplicatedStorage.Data.Elements)
+	local PRODUCTION_CONFIG = {
+		mine = {elements = {1, 6, 7, 8, 11, 12, 14}, rate = 1, interval = 30},
+		factory = {molecules = {"H2O", "CO2", "NH3", "NaCl"}, rate = 0.5, interval = 60},
+		researchLab = {molecules = {"V2O5", "TiO2", "Al2O3"}, rate = 0.2, interval = 120},
+		office = {coins = 10, interval = 45},
+	}
+
+	while true do
+		task.wait(15)
+
+		for userId, data in pairs(playerData) do
+			if not data or not data.facilityList then continue end
+			local now = os.time()
+
+			for fid, facility in pairs(data.facilityList) do
+				if not facility or not facility.type then continue end
+				local cfg = PRODUCTION_CONFIG[facility.type]
+				if not cfg or (now - facility.lastProduced) < cfg.interval then continue end
+
+				facility.lastProduced = now
+
+				if facility.type == "mine" then
+					for _ = 1, cfg.rate do
+						local z = cfg.elements[math.random(1, #cfg.elements)]
+						local elem = Elements[z]
+						if elem then
+							data.atoms[elem.sym] = (data.atoms[elem.sym] or 0) + 1
+						end
+					end
+
+				elseif facility.type == "factory" and math.random() < cfg.rate then
+					local mol = cfg.molecules[math.random(1, #cfg.molecules)]
+					data.molecules[mol] = (data.molecules[mol] or 0) + 1
+
+				elseif facility.type == "researchLab" and math.random() < cfg.rate then
+					local mol = cfg.molecules[math.random(1, #cfg.molecules)]
+					data.molecules[mol] = (data.molecules[mol] or 0) + 1
+
+				elseif facility.type == "office" then
+					data.molCoins = data.molCoins + cfg.coins
+				end
+			end
+		end
+	end
+end)
+
+-- ══════════════════════════════════════════════
 -- PLAYER LIFECYCLE
 -- ══════════════════════════════════════════════
 

@@ -30,6 +30,8 @@ local serverToClientEvents = {
 	"MiniGameOrbSpawned",  -- {orbId, mineralType, color} new orb on conveyor
 	"MiniGamePHRound",     -- {metals} pH puzzle round start
 	"ShowQR",              -- {qrUrl, sessionToken, expiresAt} show QR bridge panel
+	"FacilityBuilt",       -- {facilityId, type, position} facility placed successfully
+	"ProductionNotify",    -- {facilityId, atoms, molecules, coins} production cycle result
 }
 
 -- ══════════════════════════════════════════════
@@ -51,6 +53,7 @@ local clientToServerEvents = {
 	"RequestNPCInteract",    -- {npcName} interact with NPC
 	"RequestQR",             -- {} request QR code generation for web bridge
 	"GrabObject",            -- {objectName, position, released} grabbed object update
+	"RequestBuildFacility",  -- {type, position} build mine/factory/lab/office
 }
 
 -- ══════════════════════════════════════════════
