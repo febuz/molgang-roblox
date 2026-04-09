@@ -32,6 +32,7 @@ local serverToClientEvents = {
 	"ShowQR",              -- {qrUrl, sessionToken, expiresAt} show QR bridge panel
 	"FacilityBuilt",       -- {facilityId, type, position} facility placed successfully
 	"ProductionNotify",    -- {facilityId, atoms, molecules, coins} production cycle result
+	"MarketPricesUpdated", -- {symbol={current,base,history}} market price broadcast
 }
 
 -- ══════════════════════════════════════════════
