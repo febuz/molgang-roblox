@@ -69,14 +69,10 @@ async function initialize() {
     await kafka.connect();
     logger.info('✓ Kafka connected');
 
-    // 3. Initialize Model Router (intelligent routing)
+    // 3. Initialize Model Router (intelligent multi-tier routing)
     logger.info('🤖 Initializing Model Router...');
-    const modelRouter = new ModelRouter({
-      local_models: ['qwen-27b', 'phi-4', 'deepseek-r1'],
-      cloud_models: ['claude-opus', 'mythos'],
-      default_routing: 'intelligent'
-    });
-    logger.info('✓ Model Router ready');
+    const modelRouter = new ModelRouter();
+    logger.info('✓ Model Router ready (multi-tier orchestration enabled)');
 
     // 4. Register LightRAG as skills (Claude Code integration)
     logger.info('🎯 Registering LightRAG skills...');
