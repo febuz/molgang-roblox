@@ -29,6 +29,9 @@ local serverToClientEvents = {
 	"MiniGameResult",      -- {score, rewards, badge} mini-game completion
 	"MiniGameOrbSpawned",  -- {orbId, mineralType, color} new orb on conveyor
 	"MiniGamePHRound",     -- {metals} pH puzzle round start
+	"DayAdvanced",         -- {newDay, timestamp} game day incremented
+	"FacilityBuilt",       -- {facilityName, cost, newBalance} facility construction confirmed
+	"MarketTrade",         -- {action, item, quantity, totalCost/totalRevenue, newBalance} trade confirmed
 }
 
 -- ══════════════════════════════════════════════
@@ -48,6 +51,8 @@ local clientToServerEvents = {
 	"RequestSortOrb",        -- {orbId, binChoice} sort orb in HGMS game
 	"RequestSetPH",          -- {metalName, phValue} pH puzzle answer
 	"RequestNPCInteract",    -- {npcName} interact with NPC
+	"RequestBuildFacility",  -- {facilityName} purchase and build a facility
+	"RequestMarketTrade",    -- {action='sell'|'buy', itemName, quantity} trade on market
 }
 
 -- ══════════════════════════════════════════════

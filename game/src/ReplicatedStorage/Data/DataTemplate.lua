@@ -14,6 +14,9 @@ return {
 	chainTokens = 0,
 	quantumDots = {},   -- { {sym='Og', count=1}, ... }
 
+	-- Game progression
+	day = 1,            -- Current day counter
+
 	-- ANK Lending
 	ankLoans = {},      -- { {id, borrower, lender, amount, collateral, due, interest}, ... }
 	stakedCollateral = 0,

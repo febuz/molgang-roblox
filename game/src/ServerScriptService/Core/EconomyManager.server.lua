@@ -11,6 +11,7 @@ local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local Facilities = require(ReplicatedStorage.Modules.Facilities)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -348,6 +349,162 @@ Remotes.RequestDailyClaim.OnServerEvent:Connect(function(player)
 		streakBonus = streakBonus,
 		nextClaimTime = now + DAILY_CLAIM_COOLDOWN,
 	})
+end)
+
+-- ══════════════════════════════════════════════
+-- DAY ADVANCEMENT
+-- ══════════════════════════════════════════════
+
+-- Track day changes per player
+local lastDayAdvance = {} -- {userId = os.time() of last advance}
+local DAY_ADVANCE_INTERVAL = 600  -- 10 minutes = 1 game day
+
+task.spawn(function()
+	while true do
+		task.wait(30) -- check every 30 seconds
+		local now = os.time()
+		for _, player in ipairs(Players:GetPlayers()) do
+			local userId = player.UserId
+			local data = playerData[userId]
+			if data then
+				local lastAdvance = lastDayAdvance[userId] or 0
+				if now - lastAdvance >= DAY_ADVANCE_INTERVAL then
+					data.day = (data.day or 1) + 1
+					lastDayAdvance[userId] = now
+					-- Notify client of day change
+					Remotes.FireClient("DayAdvanced", player, {
+						newDay = data.day,
+						timestamp = now,
+					})
+					print("[EconomyManager] Player", player.Name, "advanced to day", data.day)
+				end
+			end
+		end
+	end
+end)
+
+-- ══════════════════════════════════════════════
+-- FACILITY BUILDING
+-- ══════════════════════════════════════════════
+
+Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityName)
+	local userId = player.UserId
+	local data = playerData[userId]
+	if not data then return end
+
+	local facility = Facilities.GetFacility(facilityName)
+	if not facility then
+		print("[EconomyManager] Invalid facility:", facilityName)
+		return
+	end
+
+	-- Check funds
+	if data.molCoins < facility.cost then
+		print("[EconomyManager] Insufficient funds for", facilityName)
+		return
+	end
+
+	-- Check max level
+	local canBuild, msg = Facilities.CanBuild(data, facilityName)
+	if not canBuild then
+		print("[EconomyManager] Cannot build", facilityName, ":", msg)
+		return
+	end
+
+	-- Deduct cost
+	data.molCoins = data.molCoins - facility.cost
+
+	-- Add facility
+	Facilities.BuildFacility(data, facilityName)
+
+	-- Notify client
+	Remotes.FireClient("FacilityBuilt", player, {
+		facilityName = facilityName,
+		cost = facility.cost,
+		newBalance = data.molCoins,
+	})
+
+	print("[EconomyManager]", player.Name, "built", facilityName, "for", facility.cost, "MolCoins")
+end)
+
+-- ══════════════════════════════════════════════
+-- MARKET TRADING
+-- ══════════════════════════════════════════════
+
+-- Simple commodity prices (can be made dynamic later)
+local COMMODITY_PRICES = {
+	Iron = 100,
+	Copper = 150,
+	Gold = 500,
+	Vanadium = 300,
+	Tungsten = 400,
+	Aluminum = 80,
+	Carbon = 60,
+	Nitrogen = 70,
+}
+
+Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemName, quantity, offeredPrice)
+	local userId = player.UserId
+	local data = playerData[userId]
+	if not data then return end
+
+	local basePrice = COMMODITY_PRICES[itemName]
+	if not basePrice then
+		print("[EconomyManager] Unknown commodity:", itemName)
+		return
+	end
+
+	-- Allow 20% price variance
+	local minPrice = basePrice * 0.8
+	local maxPrice = basePrice * 1.2
+	local currentPrice = math.max(minPrice, math.min(maxPrice, offeredPrice or basePrice))
+
+	if action == "buy" then
+		local totalCost = currentPrice * quantity
+		if data.molCoins < totalCost then
+			print("[EconomyManager]", player.Name, "insufficient funds for", itemName)
+			return
+		end
+
+		-- Deduct MolCoins, add to inventory
+		data.molCoins = data.molCoins - totalCost
+		data.atoms[itemName] = (data.atoms[itemName] or 0) + quantity
+
+		Remotes.FireClient("MarketTrade", player, {
+			action = "buy",
+			item = itemName,
+			quantity = quantity,
+			totalCost = totalCost,
+			newBalance = data.molCoins,
+		})
+
+		print("[EconomyManager]", player.Name, "bought", quantity, itemName, "for", totalCost)
+
+	elseif action == "sell" then
+		local itemCount = data.atoms[itemName] or 0
+		if itemCount < quantity then
+			print("[EconomyManager]", player.Name, "doesn't have enough", itemName)
+			return
+		end
+
+		-- Deduct from inventory, add MolCoins
+		local totalRevenue = currentPrice * quantity
+		data.atoms[itemName] = itemCount - quantity
+		if data.atoms[itemName] <= 0 then
+			data.atoms[itemName] = nil
+		end
+		data.molCoins = data.molCoins + totalRevenue
+
+		Remotes.FireClient("MarketTrade", player, {
+			action = "sell",
+			item = itemName,
+			quantity = quantity,
+			totalRevenue = totalRevenue,
+			newBalance = data.molCoins,
+		})
+
+		print("[EconomyManager]", player.Name, "sold", quantity, itemName, "for", totalRevenue)
+	end
 end)
 
 -- ══════════════════════════════════════════════
