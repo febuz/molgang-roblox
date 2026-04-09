@@ -210,6 +210,53 @@ handLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 handLayout.Parent = handScroll
 
 -- ═════════════════════════════════════════════════
+-- ACTION BUTTONS (Chi, Pong, Kong, Win)
+-- ═════════════════════════════════════════════════
+
+local actionButtonArea = Instance.new("Frame")
+actionButtonArea.Name = "ActionButtons"
+actionButtonArea.Size = UDim2.new(1, 0, 0, 60)
+actionButtonArea.Position = UDim2.new(0, 0, 1, -60)
+actionButtonArea.BackgroundColor3 = COLORS.panel
+actionButtonArea.BackgroundTransparency = 0.2
+actionButtonArea.Parent = handArea
+createStroke(actionButtonArea, COLORS.accent, 1)
+
+local actionLayout = Instance.new("UIListLayout")
+actionLayout.FillDirection = Enum.FillDirection.Horizontal
+actionLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+actionLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+actionLayout.Padding = UDim.new(0, 8)
+actionLayout.Parent = actionButtonArea
+
+local actions = {"Chi", "Pong", "Kong", "Win"}
+for _, action in ipairs(actions) do
+	local actionBtn = Instance.new("TextButton")
+	actionBtn.Name = action .. "Btn"
+	actionBtn.Size = UDim2.new(0, 80, 0, 40)
+	actionBtn.BackgroundColor3 = (action == "Win") and Color3.fromRGB(0, 200, 100) or COLORS.panelLight
+	actionBtn.TextColor3 = COLORS.textPrimary
+	actionBtn.Text = action
+	actionBtn.Font = Enum.Font.GothamBold
+	actionBtn.TextScaled = true
+	actionBtn.Parent = actionButtonArea
+	createCorner(actionBtn, 6)
+
+	actionBtn.MouseButton1Click:Connect(function()
+		print("[MahjongGui] Action clicked:", action)
+		if action == "Win" then
+			statusLabel.Text = "🎉 Mahjong! You won!\n\nPress Close to return."
+			gameActive = false
+		else
+			statusLabel.Text = "You played: " .. action
+			task.wait(1)
+			displayPlayerHand()
+			statusLabel.Text = "Your turn! Click a tile to discard."
+		end
+	end)
+end
+
+-- ═════════════════════════════════════════════════
 -- GAME LOGIC & STATE
 -- ═════════════════════════════════════════════════
 

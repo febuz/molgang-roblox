@@ -12,6 +12,7 @@ local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
+local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -405,7 +406,7 @@ Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityName
 	end
 
 	-- Check max level
-	local canBuild, msg = Facilities.CanBuild(data, facilityName)
+	local canBuild, msg = Facilities.CanBuild(data.facilities, facilityName)
 	if not canBuild then
 		print("[EconomyManager] Cannot build", facilityName, ":", msg)
 		return
@@ -415,16 +416,17 @@ Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityName
 	data.molCoins = data.molCoins - facility.cost
 
 	-- Add facility
-	Facilities.BuildFacility(data, facilityName)
+	Facilities.BuildFacility(data.facilities, facilityName)
 
 	-- Notify client
 	Remotes.FireClient("FacilityBuilt", player, {
 		facilityName = facilityName,
 		cost = facility.cost,
 		newBalance = data.molCoins,
+		facilities = data.facilities,
 	})
 
-	print("[EconomyManager]", player.Name, "built", facilityName, "for", facility.cost, "MolCoins")
+	print("[EconomyManager]", player.Name, "built", facilityName, "for", facility.cost, "MolCoins. Now has:", data.facilities)
 end)
 
 -- ══════════════════════════════════════════════
@@ -505,6 +507,43 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 
 		print("[EconomyManager]", player.Name, "sold", quantity, itemName, "for", totalRevenue)
 	end
+end)
+
+-- ══════════════════════════════════════════════
+-- NPC INTERACTIONS
+-- ══════════════════════════════════════════════
+
+Remotes.RequestNPCInteract.OnServerEvent:Connect(function(player, npcName)
+	local userId = player.UserId
+	local data = playerData[userId]
+	if not data then return end
+
+	local npc = NPCDialogues.GetNPC(npcName)
+	if not npc then return end
+
+	-- Get random dialogue
+	local dialogue = NPCDialogues.GetRandomDialogue(npcName)
+	if not dialogue then return end
+
+	-- Award rewards
+	if dialogue.rewards then
+		if dialogue.rewards.molCoins then
+			data.molCoins = data.molCoins + dialogue.rewards.molCoins
+		end
+		if dialogue.rewards.badge then
+			data.badges = data.badges or {}
+			data.badges[dialogue.rewards.badge] = true
+		end
+	end
+
+	-- Fire dialogue event to client
+	Remotes.FireClient("NPCDialogue", player, {
+		npcName = npcName,
+		dialogue = dialogue.text,
+		rewards = dialogue.rewards,
+	})
+
+	print("[EconomyManager]", player.Name, "talked to", npcName)
 end)
 
 -- ══════════════════════════════════════════════

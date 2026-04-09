@@ -17,6 +17,14 @@ return {
 	-- Game progression
 	day = 1,            -- Current day counter
 
+	-- Facilities
+	facilities = {
+		mines = 0,
+		factories = 0,
+		researchLabs = 0,
+		offices = 0,
+	},
+
 	-- ANK Lending
 	ankLoans = {},      -- { {id, borrower, lender, amount, collateral, due, interest}, ... }
 	stakedCollateral = 0,

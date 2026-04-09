@@ -28,6 +28,7 @@ local RequestBuildFacility = Remotes:WaitForChild("RequestBuildFacility")
 local RequestMarketTrade = Remotes:WaitForChild("RequestMarketTrade")
 
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
+local ANKLending = require(ReplicatedStorage.Modules.ANKLending)
 
 local playerData = nil
 
@@ -237,19 +238,59 @@ local cashLabel = createTextLabel(dashboardPanel, {
 	TextXAlignment = Enum.TextXAlignment.Center,
 })
 
+-- Inventory stats
+local inventoryLabel = createTextLabel(dashboardPanel, {
+	Name = "InventoryLabel",
+	Size = UDim2.new(1, -20, 0.4, -150),
+	Position = UDim2.new(0, 10, 0, 140),
+	Text = "Inventory:\nAtoms: 0\nMolecules: 0\nFacilities: 0",
+	Font = Enum.Font.Gotham,
+	TextColor3 = COLORS.textSecondary,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextYAlignment = Enum.TextYAlignment.Top,
+})
+
 -- Update dashboard when data changes
 local updateDashboard
 function updateDashboard()
 	if playerData then
 		dayLabel.Text = "Day " .. (playerData.day or 1)
-		local cash = playerData.cash or 0
-		cashLabel.Text = string.format("Cash: $%d", cash)
+		local cash = playerData.molCoins or 0
+		cashLabel.Text = string.format("MolCoins: %d", cash)
+
+		-- Calculate totals
+		local atomCount = 0
+		if playerData.atoms then
+			for _, count in pairs(playerData.atoms) do
+				atomCount = atomCount + count
+			end
+		end
+
+		local moleculeCount = 0
+		if playerData.molecules then
+			for _, count in pairs(playerData.molecules) do
+				moleculeCount = moleculeCount + count
+			end
+		end
+
+		local facilityCount = 0
+		if playerData.facilities then
+			facilityCount = (playerData.facilities.mines or 0) +
+						  (playerData.facilities.factories or 0) +
+						  (playerData.facilities.researchLabs or 0) +
+						  (playerData.facilities.offices or 0)
+		end
+
+		inventoryLabel.Text = string.format(
+			"Inventory:\nAtoms: %d\nMolecules: %d\nFacilities: %d",
+			atomCount, moleculeCount, facilityCount
+		)
 	end
 end
 
 PlayerDataLoaded.OnClientEvent:Connect(updateDashboard)
 
--- Update every frame to catch Attribute changes
+-- Update every frame to catch changes
 RunService.Heartbeat:Connect(function()
 	if playerData then
 		-- Check if day or cash changed
@@ -258,8 +299,8 @@ RunService.Heartbeat:Connect(function()
 			dayLabel.Text = newDayText
 		end
 
-		local newCash = playerData.cash or 0
-		local newCashText = string.format("Cash: $%d", newCash)
+		local newCash = playerData.molCoins or 0
+		local newCashText = string.format("MolCoins: %d", newCash)
 		if cashLabel.Text ~= newCashText then
 			cashLabel.Text = newCashText
 		end
@@ -486,18 +527,95 @@ createTextLabel(researchPanel, {
 	Name = "Title",
 	Size = UDim2.new(1, -20, 0, 40),
 	Position = UDim2.new(0, 10, 0, 10),
-	Text = "Research & Upgrades",
+	Text = "Research & Loans (ANK Cooperative)",
 	Font = Enum.Font.GothamBold,
 	TextColor3 = COLORS.accent,
 })
 
-createTextLabel(researchPanel, {
-	Name = "ComingSoon",
-	Size = UDim2.new(1, -20, 0.5, 0),
-	Position = UDim2.new(0, 10, 0.25, 0),
-	Text = "Coming soon: Unlock new features",
-	TextColor3 = COLORS.textSecondary,
-})
+-- Loan presets from ANKLending
+local loanPresets = ANKLending.GetPresets()
+local loanScroll = Instance.new("ScrollingFrame")
+loanScroll.Name = "LoanScroll"
+loanScroll.Size = UDim2.new(1, -20, 1, -70)
+loanScroll.Position = UDim2.new(0, 10, 0, 50)
+loanScroll.BackgroundTransparency = 1
+loanScroll.ScrollBarThickness = 8
+loanScroll.Parent = researchPanel
+
+local loanLayout = Instance.new("UIListLayout")
+loanLayout.FillDirection = Enum.FillDirection.Vertical
+loanLayout.Padding = UDim.new(0, 8)
+loanLayout.Parent = loanScroll
+
+for _, preset in ipairs(loanPresets) do
+	local loanFrame = Instance.new("Frame")
+	loanFrame.Name = preset.name
+	loanFrame.Size = UDim2.new(1, 0, 0, 70)
+	loanFrame.BackgroundColor3 = COLORS.panelLight
+	loanFrame.Parent = loanScroll
+	createCorner(loanFrame, 8)
+
+	-- Loan details
+	createTextLabel(loanFrame, {
+		Name = "NameLabel",
+		Size = UDim2.new(0.5, 0, 0.5, 0),
+		Position = UDim2.new(0, 10, 0, 5),
+		Text = preset.name .. " Loan",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Font = Enum.Font.GothamBold,
+	})
+
+	createTextLabel(loanFrame, {
+		Name = "TermsLabel",
+		Size = UDim2.new(0.5, 0, 0.5, 0),
+		Position = UDim2.new(0, 10, 0.5, 0),
+		Text = string.format("Principal: %d | 5%% interest | %d days", preset.amount, preset.duration),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextColor3 = COLORS.textSecondary,
+		Font = Enum.Font.Gotham,
+	})
+
+	-- Calculate collateral & interest
+	local interest = math.floor(preset.amount * 0.05)
+	createTextLabel(loanFrame, {
+		Name = "CostLabel",
+		Size = UDim2.new(0.3, 0, 1, 0),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		Text = "Total: " .. (preset.amount + interest),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextColor3 = Color3.fromRGB(255, 150, 0),
+		Font = Enum.Font.GothamBold,
+	})
+
+	local borrowBtn = Instance.new("TextButton")
+	borrowBtn.Name = "BorrowBtn"
+	borrowBtn.Size = UDim2.new(0.15, -5, 1, -8)
+	borrowBtn.Position = UDim2.new(0.8, 0, 0, 4)
+	borrowBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+	borrowBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	borrowBtn.Text = "Borrow"
+	borrowBtn.Font = Enum.Font.GothamBold
+	borrowBtn.TextScaled = true
+	borrowBtn.Parent = loanFrame
+	createCorner(borrowBtn, 6)
+
+	borrowBtn.MouseButton1Click:Connect(function()
+		print("[DashboardGui] Borrow clicked:", preset.name, "Amount:", preset.amount)
+		if playerData then
+			local canBorrow, shortfall = ANKLending.CanBorrow(playerData, preset.amount)
+			if canBorrow then
+				print("[DashboardGui] Borrow approved")
+				-- Send to server
+				RequestMarketTrade:FireServer("loan", preset.name, preset.amount, preset.duration)
+			else
+				print("[DashboardGui] Insufficient collateral (need", shortfall, "more MolCoins)")
+				borrowBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+				task.wait(1)
+				borrowBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+			end
+		end
+	end)
+end
 
 -- ════════════════════════════════════════════════
 -- TAB CONTENT: MAHJONG

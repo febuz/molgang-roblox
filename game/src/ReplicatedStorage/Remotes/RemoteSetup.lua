@@ -32,6 +32,9 @@ local serverToClientEvents = {
 	"DayAdvanced",         -- {newDay, timestamp} game day incremented
 	"FacilityBuilt",       -- {facilityName, cost, newBalance} facility construction confirmed
 	"MarketTrade",         -- {action, item, quantity, totalCost/totalRevenue, newBalance} trade confirmed
+	"ProductionCycleComplete", -- {atomsProduced, moleculesProduced, bonusMolCoins} production finished
+	"ProductionReady",     -- {facilities} production ready to process
+	"NPCDialogue",         -- {npcName, greeting, reward} NPC dialogue event
 }
 
 -- ══════════════════════════════════════════════
