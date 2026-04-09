@@ -9,7 +9,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import logger from '../utils/logger';
 
 export interface DecodedToken {
@@ -31,9 +31,9 @@ export interface AuthRequest extends Request {
   token?: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-key';
-const TOKEN_EXPIRY = process.env.TOKEN_EXPIRY || '24h';
-const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || '7d';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'development-secret-key';
+const TOKEN_EXPIRY: string = process.env.TOKEN_EXPIRY || '24h';
+const REFRESH_TOKEN_EXPIRY: string = process.env.REFRESH_TOKEN_EXPIRY || '7d';
 
 // Revoked tokens (in production, use Redis)
 const revokedTokens = new Set<string>();
@@ -41,29 +41,25 @@ const revokedTokens = new Set<string>();
 /**
  * Generate JWT token
  */
-export function generateToken(agentId: string, agentName: string, role: string = 'user'): {
-  token: string;
-  refreshToken: string;
-  expiresIn: string;
-} {
+export function generateToken(agentId: string, agentName: string, role: string = 'user'): any {
   const token = jwt.sign(
     {
       sub: agentId,
       agent_name: agentName,
       role,
       permissions: getPermissionsByRole(role),
-    },
-    JWT_SECRET,
-    { expiresIn: TOKEN_EXPIRY }
+    } as any,
+    JWT_SECRET as any,
+    { expiresIn: TOKEN_EXPIRY } as any
   );
 
   const refreshToken = jwt.sign(
     {
       sub: agentId,
       type: 'refresh',
-    },
-    JWT_SECRET,
-    { expiresIn: REFRESH_TOKEN_EXPIRY }
+    } as any,
+    JWT_SECRET as any,
+    { expiresIn: REFRESH_TOKEN_EXPIRY } as any
   );
 
   return {
@@ -112,9 +108,9 @@ export function refreshToken(refreshToken: string): { token: string; expiresIn: 
         sub: decoded.sub,
         role: decoded.role || 'user',
         permissions: decoded.permissions || [],
-      },
-      JWT_SECRET,
-      { expiresIn: TOKEN_EXPIRY }
+      } as any,
+      JWT_SECRET as any,
+      { expiresIn: TOKEN_EXPIRY } as any
     );
 
     return {
