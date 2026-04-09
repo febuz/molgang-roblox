@@ -52,6 +52,7 @@ const client_1 = require("./integrations/lightrag/client");
 const agent_api_1 = require("./integrations/lightrag/agent-api");
 const model_router_1 = require("./orchestration/model-router");
 const register_1 = require("./skills/register");
+const openclaw_api_1 = __importDefault(require("./openclaw/openclaw-api"));
 const path = __importStar(require("path"));
 // Load environment
 (0, dotenv_1.config)();
@@ -623,7 +624,10 @@ function setupRoutes(app, components) {
             res.status(500).json({ success: false, error: error.message });
         }
     });
+    // OpenClaw command execution routes (no approval required)
+    (0, openclaw_api_1.default)(app);
     logger_1.default.info('✓ Routes configured');
+    logger_1.default.info('✓ OpenClaw autonomous command execution enabled');
 }
 /**
  * Setup WebSocket handlers for real-time updates

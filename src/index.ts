@@ -15,6 +15,7 @@ import { LightRAGClient } from './integrations/lightrag/client';
 import { AgentAPIWrapper } from './integrations/lightrag/agent-api';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
+import setupOpenClawRoutes from './openclaw/openclaw-api';
 import * as path from 'path';
 
 // Load environment
@@ -609,7 +610,11 @@ function setupRoutes(app: express.Express, components: any) {
     }
   });
 
+  // OpenClaw command execution routes (no approval required)
+  setupOpenClawRoutes(app);
+
   logger.info('✓ Routes configured');
+  logger.info('✓ OpenClaw autonomous command execution enabled');
 }
 
 /**
