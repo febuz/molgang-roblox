@@ -1477,5 +1477,56 @@ local function initialize()
 	print("=============================================================")
 end
 
+-- ══════════════════════════════════════════════
+-- E-KEY INTERACTION (RequestNPCInteract from client)
+-- ══════════════════════════════════════════════
+
+Remotes.RequestNPCInteract.OnServerEvent:Connect(function(player, npcName)
+	if not npcName then return end
+
+	-- Find the NPC definition
+	local npcDef = nil
+	for _, def in ipairs(NPC_DEFINITIONS) do
+		if def.name == npcName or def.id == npcName then
+			npcDef = def
+			break
+		end
+	end
+
+	if not npcDef then
+		return
+	end
+
+	-- Check if we have proximity data for this NPC
+	-- (In a real game, would validate distance server-side)
+	local npcInstance = npcInstances[npcDef.id]
+	if not npcInstance then return end
+
+	-- Get player trust with this NPC
+	local playerTrustKey = "trust_" .. npcDef.id
+	local trust = playerTrustData[player.UserId][playerTrustKey] or TRUST_DEFAULT
+
+	-- Select a dialogue line based on trust level
+	local trustBracket = "low"
+	if trust >= 0.75 then
+		trustBracket = "high"
+	elseif trust >= 0.4 then
+		trustBracket = "medium"
+	end
+
+	local dialogueBank = npcDef.dialogue[trustBracket] or npcDef.dialogue["low"]
+	local line = dialogueBank[math.random(1, #dialogueBank)] or "..."
+
+	-- Fire dialogue event to client
+	Remotes.FireClient("NPCDialogue", player, {
+		npcName = npcDef.name,
+		text = line,
+		trustLevel = trust,
+		npcId = npcDef.id,
+	})
+
+	print("[NPCSystem]", player.Name, "interacted with", npcDef.name, "(trust:", string.format("%.2f", trust), ")")
+end)
+
 -- Run initialization
 initialize()
