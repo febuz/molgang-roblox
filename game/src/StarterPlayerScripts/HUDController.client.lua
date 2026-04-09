@@ -222,11 +222,13 @@ local inventorySlots = {}
 
 -- Create 20 slots (5 columns x 4 rows)
 for i = 1, 20 do
-	local slot = Instance.new("Frame")
+	local slot = Instance.new("TextButton")
 	slot.Name = "Slot_" .. i
 	slot.BackgroundColor3 = COLORS.panelLight
 	slot.BackgroundTransparency = 0.3
 	slot.LayoutOrder = i
+	slot.Text = ""
+	slot.BorderSizePixel = 0
 	slot.Parent = gridContainer
 	createCorner(slot, 6)
 	createStroke(slot, Color3.fromRGB(60, 60, 80), 1)
@@ -261,6 +263,17 @@ for i = 1, 20 do
 		TextColor3 = COLORS.background,
 		TextXAlignment = Enum.TextXAlignment.Center,
 	})
+
+	-- Wire click handler to add atom to builder
+	slot.MouseButton1Click:Connect(function()
+		if slot:GetAttribute("atomicNumber") then
+			local z = slot:GetAttribute("atomicNumber")
+			local Elements = require(ReplicatedStorage.Data.Elements)
+			local elemData = Elements[z]
+			local symbol = elemData and elemData.sym or tostring(z)
+			addAtomToBuilder(z, symbol)
+		end
+	end)
 
 	inventorySlots[i] = {
 		frame = slot,
@@ -1087,6 +1100,9 @@ local function refreshInventoryGrid()
 	inventoryPage = math.clamp(inventoryPage, 1, totalPages)
 	pageIndicator.Text = "Pagina " .. inventoryPage .. "/" .. totalPages
 
+	-- Get elements for lookup
+	local Elements = require(ReplicatedStorage.Data.Elements)
+
 	-- Fill slots
 	local startIdx = (inventoryPage - 1) * inventoryMaxPerPage + 1
 	for i = 1, 20 do
@@ -1095,18 +1111,22 @@ local function refreshInventoryGrid()
 		local elem = sortedElements[elemIdx]
 
 		if elem then
-			slot.symbol.Text = tostring(elem.z)
+			local elemData = Elements[elem.z]
+			local symbol = elemData and elemData.sym or tostring(elem.z)
+			slot.symbol.Text = symbol
 			slot.badge.Visible = true
 			slot.countLabel.Text = tostring(elem.count)
 			slot.frame.BackgroundColor3 = COLORS.accent
 			slot.frame.BackgroundTransparency = 0.4
 			slot.atomicNumber = elem.z
+			slot.frame:SetAttribute("atomicNumber", elem.z)
 		else
 			slot.symbol.Text = ""
 			slot.badge.Visible = false
 			slot.frame.BackgroundColor3 = COLORS.panelLight
 			slot.frame.BackgroundTransparency = 0.3
 			slot.atomicNumber = nil
+			slot.frame:SetAttribute("atomicNumber", nil)
 		end
 	end
 end

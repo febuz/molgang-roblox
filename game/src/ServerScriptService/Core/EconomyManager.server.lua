@@ -308,6 +308,13 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 		})
 	end
 
+	-- Fire client confirmation event
+	Remotes.FireClient("MoleculeBuilt", player, {
+		name = molName,
+		points = recipe.points,
+		molCoins = recipe.points,
+	})
+
 	-- ChainRegistry handles the chain entry
 	-- (the ChainRegistry script also listens to this event)
 end)
