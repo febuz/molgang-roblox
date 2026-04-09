@@ -35,6 +35,7 @@ local serverToClientEvents = {
 	"ProductionCycleComplete", -- {atomsProduced, moleculesProduced, bonusMolCoins} production finished
 	"ProductionReady",     -- {facilities} production ready to process
 	"NPCDialogue",         -- {npcName, greeting, reward} NPC dialogue event
+	"MarketPricesUpdated", -- {commodity: price} market prices changed
 }
 
 -- ══════════════════════════════════════════════
