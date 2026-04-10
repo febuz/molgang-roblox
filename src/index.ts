@@ -17,6 +17,14 @@ import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
 import * as path from 'path';
+import { MetricsDashboard } from './api/metrics-dashboard';
+import { TaskScheduler } from './agent/task-scheduler';
+import { SeasonalEventsManager } from './game/seasonal-events';
+import { DeploymentManager } from './automation/deployment-manager';
+import { CollaborationManager } from './features/collaboration';
+import { AdvancedAnalytics } from './analytics/advanced-analytics';
+import { BackupManager } from './automation/backup-manager';
+import { AuditLogger } from './security/audit-logger';
 
 // Load environment
 config();
@@ -283,8 +291,20 @@ async function initialize() {
     registerSkills(lightrag);
     logger.info('✓ Skills registered');
 
-    // 5. Setup API routes
-    setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter });
+    // 5. Initialize system managers
+    logger.info('📈 Initializing system managers...');
+    const metrics = new MetricsDashboard();
+    const taskScheduler = new TaskScheduler();
+    const seasonalEvents = new SeasonalEventsManager();
+    const deploymentManager = new DeploymentManager();
+    const collaborationManager = new CollaborationManager();
+    const analytics = new AdvancedAnalytics();
+    const backupManager = new BackupManager();
+    const auditLogger = new AuditLogger();
+    logger.info('✓ System managers initialized');
+
+    // 5b. Setup API routes
+    setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger });
 
     // 5b. Register SPA routes (must be after all API routes!)
     app.get('/', serveSPAFile);
@@ -325,7 +345,7 @@ async function initialize() {
  * Setup API routes
  */
 function setupRoutes(app: express.Express, components: any) {
-  const { lightrag, agentAPI, kafka, modelRouter } = components;
+  const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger } = components;
 
   // ========== Agent Memory API (with caching + rate limiting) ==========
 
@@ -605,6 +625,397 @@ function setupRoutes(app: express.Express, components: any) {
           ]
         }
       });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== METRICS & MONITORING ==========
+  app.get('/api/metrics/system', (req, res) => {
+    try {
+      const systemMetrics = metrics.getSystemMetrics();
+      res.json({ success: true, ...systemMetrics });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/metrics/agents', (req, res) => {
+    try {
+      const agentMetrics = metrics.getAgentMetrics();
+      res.json({ success: true, agents: agentMetrics });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/metrics/infrastructure', (req, res) => {
+    try {
+      const infraMetrics = metrics.getInfrastructureMetrics();
+      res.json({ success: true, ...infraMetrics });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/metrics/performance', (req, res) => {
+    try {
+      const perfMetrics = metrics.getPerformanceMetrics();
+      res.json({ success: true, ...perfMetrics });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== TASK SCHEDULING ==========
+  app.post('/api/tasks/schedule', (req, res) => {
+    try {
+      const { title, description, skills_required, priority, estimated_hours, assigned_to } = req.body;
+      const task = taskScheduler.scheduleTask({
+        title,
+        description,
+        priority: priority || 'medium',
+        assignedTo: assigned_to || '',
+        dependencies: [],
+        estimatedTime: (estimated_hours || 8) * 60,
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        createdAt: new Date()
+      } as any);
+      res.json({ success: true, task });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/tasks/schedule', (req, res) => {
+    try {
+      const schedule = taskScheduler.getTeamSchedule();
+      res.json({ success: true, ...schedule });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/tasks/agent/:agent', (req, res) => {
+    try {
+      const agentSchedule = taskScheduler.getAgentSchedule(req.params.agent);
+      res.json({ success: true, ...agentSchedule });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/tasks/:taskId/complete', (req, res) => {
+    try {
+      const { quality_score, notes } = req.body;
+      const result = taskScheduler.completeTask(req.params.taskId, quality_score, notes);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== SEASONAL EVENTS ==========
+  app.get('/api/events/active', (req, res) => {
+    try {
+      const activeEvents = seasonalEvents.getActiveEvents();
+      res.json({ success: true, events: activeEvents });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/events/challenges', (req, res) => {
+    try {
+      const challenges = seasonalEvents.getActiveChallenges();
+      res.json({ success: true, challenges });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/events/progress/:eventId', (req, res) => {
+    try {
+      const { player_id, progress_data } = req.body;
+      const result = seasonalEvents.updateEventProgress(req.params.eventId, player_id, progress_data);
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/events/leaderboard', (req, res) => {
+    try {
+      const leaderboard = seasonalEvents.getLeaderboard();
+      res.json({ success: true, leaderboard });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== DEPLOYMENT MANAGEMENT ==========
+  app.post('/api/deployments/start', (req, res) => {
+    try {
+      const { version, environment, services } = req.body;
+      const deployment = deploymentManager.startDeployment(version, environment, services);
+      res.json({ success: true, deployment });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/deployments/:deploymentId', (req, res) => {
+    try {
+      const deployment = deploymentManager.getDeploymentStatus(req.params.deploymentId);
+      if (!deployment) {
+        return res.status(404).json({ success: false, error: 'Deployment not found' });
+      }
+      return res.json({ success: true, deployment });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/deployments/:deploymentId/rollback', (req, res) => {
+    try {
+      const rollback = deploymentManager.rollback(req.params.deploymentId);
+      if (!rollback) {
+        return res.status(404).json({ success: false, error: 'Cannot rollback deployment' });
+      }
+      return res.json({ success: true, rollback });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/deployments/history/:environment', (req, res) => {
+    try {
+      const history = deploymentManager.getDeploymentHistory(req.params.environment, parseInt(req.query.limit as string) || 50);
+      res.json({ success: true, history });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/deployments/readiness/:environment', (req, res) => {
+    try {
+      const readiness = deploymentManager.getDeploymentReadiness(req.params.environment);
+      res.json({ success: true, ...readiness });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== COLLABORATION ==========
+  app.post('/api/collaboration/start', (req, res) => {
+    try {
+      const { type, participants, priority } = req.body;
+      const collab = collaborationManager.startCollaboration(type, participants, priority);
+      res.json({ success: true, collab });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/collaboration/:collabId/message', (req, res) => {
+    try {
+      const { author, content, attachments } = req.body;
+      const message = collaborationManager.addMessage(req.params.collabId, author, content, attachments);
+      if (!message) {
+        return res.status(404).json({ success: false, error: 'Collaboration not found' });
+      }
+      return res.json({ success: true, message });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/workspaces/create', (req, res) => {
+    try {
+      const { name, owner, members } = req.body;
+      const workspace = collaborationManager.createWorkspace(name, owner, members);
+      res.json({ success: true, workspace });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/collaboration/team-summary', (req, res) => {
+    try {
+      const summary = collaborationManager.getTeamSummary();
+      res.json({ success: true, ...summary });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== ANALYTICS ==========
+  app.post('/api/analytics/track', (req, res) => {
+    try {
+      const { type, agent, duration, status, metadata } = req.body;
+      const event = analytics.trackEvent(type, agent, duration, status, metadata);
+      res.json({ success: true, event });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/analytics/performance', (req, res) => {
+    try {
+      const agentName = req.query.agent as string;
+      const hoursBack = parseInt(req.query.hours as string) || 24;
+      const report = analytics.getPerformanceReport(agentName, hoursBack);
+      res.json({ success: true, ...report });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/analytics/trends', (req, res) => {
+    try {
+      const hoursBack = parseInt(req.query.hours as string) || 24;
+      const trends = analytics.getTrends(hoursBack);
+      res.json({ success: true, ...trends });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/analytics/insights', (req, res) => {
+    try {
+      const priority = req.query.priority as string;
+      const insights = analytics.getInsights(priority);
+      res.json({ success: true, insights });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/analytics/health', (req, res) => {
+    try {
+      const health = analytics.getHealthScore();
+      res.json({ success: true, ...health });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== BACKUP & DISASTER RECOVERY ==========
+  app.post('/api/backups/create', (req, res) => {
+    try {
+      const { database, type } = req.body;
+      const backup = backupManager.createBackup(database, type);
+      res.json({ success: true, backup });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Statistics route must come BEFORE parametrized /:backupId route
+  app.get('/api/backups/statistics', (req, res) => {
+    try {
+      const stats = backupManager.getBackupStatistics();
+      return res.json({ success: true, ...stats });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/backups/:backupId', (req, res) => {
+    try {
+      const backup = backupManager.getBackupStatus(req.params.backupId);
+      if (!backup) {
+        return res.status(404).json({ success: false, error: 'Backup not found' });
+      }
+      return res.json({ success: true, backup });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/backups/:backupId/restore', (req, res) => {
+    try {
+      const result = backupManager.restore(req.params.backupId);
+      res.json({ success: result.success, ...result });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/backups/history/:database', (req, res) => {
+    try {
+      const history = backupManager.getBackupHistory(req.params.database, parseInt(req.query.limit as string) || 50);
+      res.json({ success: true, history });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/recovery/status', (req, res) => {
+    try {
+      const status = backupManager.getDisasterRecoveryStatus();
+      res.json({ success: true, ...status });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== SECURITY & AUDIT LOGGING ==========
+  app.post('/api/audit/log', (req, res) => {
+    try {
+      const { user_id, action, resource, status, details } = req.body;
+      const event = auditLogger.logEvent(user_id, action, resource, status, details);
+      res.json({ success: true, event });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/audit/user/:userId', (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const log = auditLogger.getUserAuditLog(req.params.userId, limit);
+      res.json({ success: true, log });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/audit/resource/:resource', (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const log = auditLogger.getResourceAuditLog(req.params.resource, limit);
+      res.json({ success: true, log });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/security/alerts', (req, res) => {
+    try {
+      const level = req.query.level as string;
+      const limit = parseInt(req.query.limit as string) || 100;
+      const alerts = auditLogger.getSecurityAlerts(level, limit);
+      res.json({ success: true, alerts });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/compliance/report', (req, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const report = auditLogger.getComplianceReport(days);
+      res.json({ success: true, ...report });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/security/health', (req, res) => {
+    try {
+      const health = auditLogger.getSecurityHealthScore();
+      res.json({ success: true, ...health });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
     }
