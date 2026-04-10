@@ -1,0 +1,74 @@
+{
+  "sessionDefaults": {
+    "sessionDuration": 480,
+    "phaseLength": 20,
+    "commitMinFrequency": 10,
+    "outputFrequency": 5,
+    "contextLimitTokens": 150000,
+    "compactThreshold": 140000,
+    "staleCheckInterval": 10000,
+    "maxSilenceDuration": 300000
+  },
+  "enforcements": {
+    "requireCommitPerPhase": true,
+    "requireOutputEvery5Min": true,
+    "requireTaskUpdatePerPhase": true,
+    "requireProgressReport": true,
+    "autoCompactAt150k": true,
+    "alertOnSilence": true,
+    "maxSilenceSeconds": 300,
+    "blockOnStall": false
+  },
+  "phases": {
+    "typical8Hour": {
+      "count": 32,
+      "duration": 15,
+      "description": "8 hours = 32 phases × 15 min"
+    },
+    "overnight8Hour": {
+      "count": 24,
+      "duration": 20,
+      "description": "8 hours = 24 phases × 20 min (longer, deeper focus)"
+    },
+    "fullDay16Hour": {
+      "count": 64,
+      "duration": 15,
+      "description": "16 hours = 64 phases × 15 min"
+    }
+  },
+  "monitoring": {
+    "checkStallEverySeconds": 10,
+    "reportProgressEveryMinutes": 5,
+    "commitEveryMinutes": 10,
+    "compactEveryCommits": 3,
+    "logLevel": "info"
+  },
+  "alerts": {
+    "noCommitFor15Min": {
+      "severity": "warning",
+      "action": "Prompt for commit"
+    },
+    "noOutputFor8Min": {
+      "severity": "warning",
+      "action": "Remind of /output command"
+    },
+    "silence5Min": {
+      "severity": "critical",
+      "action": "Alert operator - check for stall"
+    },
+    "contextAt140k": {
+      "severity": "warning",
+      "action": "Suggest /compact"
+    },
+    "contextAt150k": {
+      "severity": "critical",
+      "action": "Force /compact (or continue will stall)"
+    }
+  },
+  "metrics": {
+    "expectedLinesPerMinute": 40,
+    "expectedCommitsPerHour": 6,
+    "expectedTaskUpdatesPerPhase": 1,
+    "expectedProgressReportsPerHour": 12
+  }
+}

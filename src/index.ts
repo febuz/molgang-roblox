@@ -29,6 +29,7 @@ import { EntityModel } from './integrations/numerai/entity-model';
 import NumeraiDataFetcher from './integrations/numerai/data-fetcher';
 import OpenClawEDBBridge from './integrations/numerai/openclaw-edb-bridge';
 import TaskFacilitator from './agent/task-facilitator';
+import AutonomousSessionManager from './automation/autonomous-session-manager';
 
 // Load environment
 config();
@@ -330,8 +331,13 @@ async function initialize() {
     let openclawEDBBridge: OpenClawEDBBridge;
     logger.info('✓ Numerai components initialized');
 
-    // 5b. Setup API routes
-    setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig });
+    // 5b. Initialize Autonomous Session Manager (prevents stalls)
+    logger.info('📋 Initializing Autonomous Session Manager...');
+    const sessionManager = new AutonomousSessionManager();
+    logger.info('✓ Autonomous Session Manager ready');
+
+    // 5c. Setup API routes
+    setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig });
 
     // 5b. Register SPA routes (must be after all API routes!)
     app.get('/', serveSPAFile);
@@ -372,7 +378,7 @@ async function initialize() {
  * Setup API routes
  */
 function setupRoutes(app: express.Express, components: any) {
-  const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig } = components;
+  const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig } = components;
 
   // ========== Agent Memory API (with caching + rate limiting) ==========
 
@@ -825,6 +831,91 @@ function setupRoutes(app: express.Express, components: any) {
     try {
       taskFacilitator.unblockTask(req.params.taskId);
       return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== AUTONOMOUS SESSION MANAGEMENT ==========
+
+  app.post('/api/sessions/start', (req, res) => {
+    try {
+      const { duration, config } = req.body;
+      const session = sessionManager.startSession(duration || 480, config);
+      return res.json({ success: true, session });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/sessions/record-commit', (req, res) => {
+    try {
+      const { message, hash, filesChanged, linesAdded } = req.body;
+      sessionManager.recordCommit(message, hash, filesChanged || 0, linesAdded || 0);
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/sessions/record-task-update', (req, res) => {
+    try {
+      const { taskId, status, activeForm } = req.body;
+      sessionManager.recordTaskUpdate(taskId, status, activeForm || '');
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/sessions/record-progress', (req, res) => {
+    try {
+      const { phase, title, whatBuilt, nextActions } = req.body;
+      sessionManager.recordProgressReport(phase, title, whatBuilt || [], nextActions || []);
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.put('/api/sessions/context-tokens', (req, res) => {
+    try {
+      const { tokens } = req.body;
+      sessionManager.updateContextTokens(tokens || 0);
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/sessions/stats', (req, res) => {
+    try {
+      const stats = sessionManager.getStats();
+      return res.json({ success: true, stats });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/sessions/warnings', (req, res) => {
+    try {
+      const warnings = sessionManager.getWarnings();
+      const critical = warnings.filter((w: any) => w.severity === 'critical');
+      return res.json({
+        success: true,
+        total: warnings.length,
+        critical: critical.length,
+        warnings
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/sessions/stop', (req, res) => {
+    try {
+      sessionManager.stop();
+      return res.json({ success: true, message: 'Session paused' });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
     }
