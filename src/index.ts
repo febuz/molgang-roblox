@@ -30,6 +30,13 @@ import NumeraiDataFetcher from './integrations/numerai/data-fetcher';
 import OpenClawEDBBridge from './integrations/numerai/openclaw-edb-bridge';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
+import AuthSystem from './auth/auth-system';
+import AuthMiddleware from './auth/auth-middleware';
+import CEOAuditLogger from './auth/audit-logger';
+import SpecialistDashboards from './auth/specialist-dashboards';
+import setupAuthRoutes from './auth/auth-routes';
+import setupAuditRoutes from './auth/audit-routes';
+import setupSpecialistRoutes from './auth/specialist-routes';
 
 // Load environment
 config();
@@ -336,8 +343,21 @@ async function initialize() {
     const sessionManager = new AutonomousSessionManager();
     logger.info('✓ Autonomous Session Manager ready');
 
-    // 5c. Setup API routes
-    setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig });
+    // 5c. Initialize Authentication System (employee auth + roles)
+    logger.info('🔐 Initializing Authentication System...');
+    const authSystem = new AuthSystem();
+    const authMiddleware = new AuthMiddleware(authSystem);
+    const ceoAuditLogger = new CEOAuditLogger();
+    const specialistDashboards = new SpecialistDashboards();
+    logger.info('✓ Auth system, middleware, CEO audit logger, and specialist dashboards ready');
+
+    // 5d. Setup API routes
+    setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, authSystem, ceoAuditLogger, specialistDashboards, entityModel, dataFetcher, edbConfig });
+
+    // 5e. Setup authentication routes
+    setupAuthRoutes(app, authSystem, authMiddleware);
+    setupAuditRoutes(app, ceoAuditLogger, authMiddleware);
+    setupSpecialistRoutes(app, specialistDashboards, authMiddleware);
 
     // 5b. Register SPA routes (must be after all API routes!)
     app.get('/', serveSPAFile);
@@ -378,7 +398,7 @@ async function initialize() {
  * Setup API routes
  */
 function setupRoutes(app: express.Express, components: any) {
-  const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig } = components;
+  const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, authSystem, ceoAuditLogger, specialistDashboards, entityModel, dataFetcher, edbConfig } = components;
 
   // ========== Agent Memory API (with caching + rate limiting) ==========
 
@@ -1167,65 +1187,8 @@ function setupRoutes(app: express.Express, components: any) {
   });
 
   // ========== SECURITY & AUDIT LOGGING ==========
-  app.post('/api/audit/log', (req, res) => {
-    try {
-      const { user_id, action, resource, status, details } = req.body;
-      const event = auditLogger.logEvent(user_id, action, resource, status, details);
-      res.json({ success: true, event });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/audit/user/:userId', (req, res) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 100;
-      const log = auditLogger.getUserAuditLog(req.params.userId, limit);
-      res.json({ success: true, log });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/audit/resource/:resource', (req, res) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 100;
-      const log = auditLogger.getResourceAuditLog(req.params.resource, limit);
-      res.json({ success: true, log });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/security/alerts', (req, res) => {
-    try {
-      const level = req.query.level as string;
-      const limit = parseInt(req.query.limit as string) || 100;
-      const alerts = auditLogger.getSecurityAlerts(level, limit);
-      res.json({ success: true, alerts });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/compliance/report', (req, res) => {
-    try {
-      const days = parseInt(req.query.days as string) || 30;
-      const report = auditLogger.getComplianceReport(days);
-      res.json({ success: true, ...report });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
-
-  app.get('/api/security/health', (req, res) => {
-    try {
-      const health = auditLogger.getSecurityHealthScore();
-      res.json({ success: true, ...health });
-    } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
-    }
-  });
+  // Note: CEO audit logging routes are set up in setupAuditRoutes
+  // These provide CEO-only access to: /api/audit/stats, /api/audit/events, /api/audit/export/*
 
   // ========== LOCAL MODEL INFERENCE (OLLAMA) ==========
   app.get('/api/models/ollama/status', async (req, res) => {
