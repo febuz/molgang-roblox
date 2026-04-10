@@ -690,7 +690,15 @@ function setupRoutes(app: express.Express, components: any) {
   app.get('/api/tasks/schedule', (req, res) => {
     try {
       const schedule = taskScheduler.getTeamSchedule();
-      res.json({ success: true, ...schedule });
+      const stats = taskScheduler.getStatistics();
+      res.json({
+        success: true,
+        schedule: schedule,
+        totalTasks: stats.totalTasks || 0,
+        completedTasks: stats.completedTasks || 0,
+        agentWorkload: stats.agentWorkload || {},
+        efficiency: stats.efficiency || {}
+      });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
     }
