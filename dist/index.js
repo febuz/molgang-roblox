@@ -64,6 +64,7 @@ const backup_manager_1 = require("./automation/backup-manager");
 const audit_logger_1 = require("./security/audit-logger");
 const entity_model_1 = require("./integrations/numerai/entity-model");
 const data_fetcher_1 = __importDefault(require("./integrations/numerai/data-fetcher"));
+const task_facilitator_1 = __importDefault(require("./agent/task-facilitator"));
 // Load environment
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
@@ -321,13 +322,20 @@ async function initialize() {
         logger_1.default.info('📈 Initializing system managers...');
         const metrics = new metrics_dashboard_1.MetricsDashboard();
         const taskScheduler = new task_scheduler_1.TaskScheduler();
+        const taskFacilitator = new task_facilitator_1.default({
+            maxTasksPerAgent: 5,
+            taskTimeoutMs: 60000,
+            blockageCheckIntervalMs: 10000,
+            rebalanceIntervalMs: 30000,
+            escalationThresholdMs: 120000
+        });
         const seasonalEvents = new seasonal_events_1.SeasonalEventsManager();
         const deploymentManager = new deployment_manager_1.DeploymentManager();
         const collaborationManager = new collaboration_1.CollaborationManager();
         const analytics = new advanced_analytics_1.AdvancedAnalytics();
         const backupManager = new backup_manager_1.BackupManager();
         const auditLogger = new audit_logger_1.AuditLogger();
-        logger_1.default.info('✓ System managers initialized');
+        logger_1.default.info('✓ System managers initialized (including Task Facilitator)');
         // 5a. Initialize Numerai + OpenClaw + EDB integration
         logger_1.default.info('📊 Initializing Numerai + EDB integration...');
         const entityModel = new entity_model_1.EntityModel();
@@ -344,7 +352,7 @@ async function initialize() {
         let openclawEDBBridge;
         logger_1.default.info('✓ Numerai components initialized');
         // 5b. Setup API routes
-        setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig });
+        setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig });
         // 5b. Register SPA routes (must be after all API routes!)
         app.get('/', serveSPAFile);
         app.all('*', (req, res, next) => {
@@ -381,7 +389,7 @@ async function initialize() {
  * Setup API routes
  */
 function setupRoutes(app, components) {
-    const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig } = components;
+    const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig } = components;
     // ========== Agent Memory API (with caching + rate limiting) ==========
     app.post('/api/memory/query', async (req, res) => {
         try {
@@ -751,6 +759,84 @@ function setupRoutes(app, components) {
         }
         catch (error) {
             res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    // ========== TASK FACILITATION (Prevents Hanging Tasks) ==========
+    app.post('/api/tasks/facilitate/register', (req, res) => {
+        try {
+            const { taskId, agent, priority } = req.body;
+            const facilitation = taskFacilitator.registerTask(taskId, agent, priority || 0);
+            return res.json({ success: true, facilitation });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.post('/api/tasks/facilitate/:taskId/assign', (req, res) => {
+        try {
+            const { agent } = req.body;
+            const success = taskFacilitator.assignTask(req.params.taskId, agent);
+            return res.json({ success });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.post('/api/tasks/facilitate/:taskId/start', (req, res) => {
+        try {
+            const success = taskFacilitator.startTask(req.params.taskId);
+            return res.json({ success });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.post('/api/tasks/facilitate/:taskId/activity', (req, res) => {
+        try {
+            taskFacilitator.updateActivity(req.params.taskId);
+            return res.json({ success: true });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.get('/api/tasks/facilitate/status', (req, res) => {
+        try {
+            const stats = taskFacilitator.getStats();
+            const workload = taskFacilitator.getAgentWorkload();
+            const pending = taskFacilitator.getPendingTasks();
+            const blocked = taskFacilitator.getBlockedTasks();
+            const escalated = taskFacilitator.getEscalatedTasks();
+            return res.json({
+                success: true,
+                stats,
+                workload,
+                pending_count: pending.length,
+                blocked_count: blocked.length,
+                escalated_count: escalated.length
+            });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.post('/api/tasks/facilitate/:taskId/block', (req, res) => {
+        try {
+            const { blockedBy } = req.body;
+            taskFacilitator.blockTask(req.params.taskId, blockedBy || []);
+            return res.json({ success: true });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.post('/api/tasks/facilitate/:taskId/unblock', (req, res) => {
+        try {
+            taskFacilitator.unblockTask(req.params.taskId);
+            return res.json({ success: true });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
         }
     });
     // ========== SEASONAL EVENTS ==========
