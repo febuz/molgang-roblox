@@ -207,6 +207,7 @@
                     <button class="menu-item" onclick="loadTasks()">📑 Tasks</button>
                     <button class="menu-item" onclick="loadBacklog()">📋 Backlog</button>
                     <button class="menu-item" onclick="loadIssues()">⚠️ Issues</button>
+                    <button class="menu-item" onclick="loadNumerai()">🔢 Numerai</button>
                     <button class="menu-item" onclick="loadMemory()">🧠 Memory</button>
                     <button class="menu-item" onclick="loadSettings()">⚙️ Settings</button>
                 </div>
@@ -709,6 +710,155 @@
                 .catch(err => {
                     content.innerHTML = `<h1>⚠️ Issues & Blockers</h1><p style="color: #ef4444;">Error loading issues: ${err.message}</p>`;
                 });
+        }
+
+        function loadNumerai() {
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <h1>🔢 Numerai Signals Competition</h1>
+                <div id="numerai-loading" style="text-align: center; padding: 40px;">
+                    <div class="spinner" style="display: inline-block;"></div>
+                    <p style="color: #a0a0a0; margin-top: 16px;">Loading Numerai data...</p>
+                </div>
+            `;
+
+            Promise.all([
+                fetch('/api/numerai/entities').then(r => r.json()),
+                fetch('/api/numerai/eligible-shares').then(r => r.json()),
+                fetch('/api/numerai/competitions').then(r => r.json()),
+                fetch('/api/numerai/data-quality').then(r => r.json())
+            ])
+            .then(([entities, shares, comps, quality]) => {
+                content.innerHTML = `
+                    <h1>🔢 Numerai Signals Competition</h1>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                        <div class="card">
+                            <h3>Tracked Securities</h3>
+                            <div class="card-value">${entities.securities_count || 0}</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 8px;">Cryptos & Stocks</div>
+                        </div>
+                        <div class="card">
+                            <h3>Active Signals</h3>
+                            <div class="card-value">${entities.signals_count || 0}</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 8px;">Prediction indicators</div>
+                        </div>
+                        <div class="card">
+                            <h3>Active Competitions</h3>
+                            <div class="card-value">${comps.active_count || 0}</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 8px;">Running contests</div>
+                        </div>
+                        <div class="card">
+                            <h3>Data Quality</h3>
+                            <div class="card-value">${Math.round(quality.current.completeness || 95)}%</div>
+                            <div style="font-size: 12px; color: #888; margin-top: 8px;">Completeness score</div>
+                        </div>
+                    </div>
+
+                    <h2 style="margin-top: 32px; margin-bottom: 16px;">📊 Data Quality Metrics</h2>
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                            <div>
+                                <div style="color: #a0a0a0; font-size: 12px; margin-bottom: 4px;">Completeness</div>
+                                <div style="font-size: 24px; font-weight: 600; color: #3b82f6;">${Math.round(quality.current.completeness || 95)}%</div>
+                            </div>
+                            <div>
+                                <div style="color: #a0a0a0; font-size: 12px; margin-bottom: 4px;">Timeliness</div>
+                                <div style="font-size: 24px; font-weight: 600; color: #22c55e;">${Math.round(quality.current.timeliness || 95)}%</div>
+                            </div>
+                            <div>
+                                <div style="color: #a0a0a0; font-size: 12px; margin-bottom: 4px;">Accuracy</div>
+                                <div style="font-size: 24px; font-weight: 600; color: #f59e0b;">${Math.round(quality.current.accuracy || 92)}%</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border-left: 3px solid #3b82f6;">
+                            <div style="color: #a0a0a0; font-size: 12px;">Last Successful Fetch</div>
+                            <div style="color: #3b82f6; font-size: 13px; margin-top: 4px;">${new Date(quality.last_successful_fetch).toLocaleString()}</div>
+                        </div>
+                    </div>
+
+                    <h2 style="margin-top: 32px; margin-bottom: 16px;">🎯 Eligible Shares</h2>
+                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 16px;">
+                            ${shares.securities.slice(0, 20).map((s, i) => \`
+                                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid #404040; border-radius: 6px; padding: 12px; text-align: center;">
+                                    <div style="font-size: 14px; font-weight: 600; color: #3b82f6;">\${s.ticker}</div>
+                                    <div style="font-size: 11px; color: #888; margin-top: 4px;">\${s.asset_class}</div>
+                                </div>
+                            \`).join('')}
+                        </div>
+                        <div style="padding: 12px; border-top: 1px solid #2a2a2a; text-align: center; color: #a0a0a0; font-size: 12px;">
+                            Showing 20 of ${shares.count} tracked shares
+                        </div>
+                    </div>
+
+                    <h2 style="margin-top: 32px; margin-bottom: 16px;">⚡ Quick Actions</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                        <button onclick="triggerNumeraiFetch()" style="padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                            🔄 Fetch Daily Data
+                        </button>
+                        <button onclick="viewNumeraiCompetitions()" style="padding: 12px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                            🏆 View Competitions
+                        </button>
+                        <button onclick="analyzeSignals()" style="padding: 12px; background: #ec4899; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                            📈 Analyze Signals
+                        </button>
+                    </div>
+                `;
+            })
+            .catch(err => {
+                content.innerHTML = \`<h1>🔢 Numerai Signals</h1><p style="color: #ef4444;">Error loading Numerai data: \${err.message}</p>\`;
+            });
+        }
+
+        function triggerNumeraiFetch() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '🔄 Fetching...';
+
+            fetch('/api/numerai/fetch-daily', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(\`✅ Fetch complete: \${data.securities_updated} securities, \${data.signals_updated} signals\`);
+                    } else {
+                        alert(\`❌ Fetch failed: \${data.error}\`);
+                    }
+                    btn.disabled = false;
+                    btn.textContent = '🔄 Fetch Daily Data';
+                })
+                .catch(err => {
+                    alert(\`Error: \${err.message}\`);
+                    btn.disabled = false;
+                    btn.textContent = '🔄 Fetch Daily Data';
+                });
+        }
+
+        function viewNumeraiCompetitions() {
+            fetch('/api/numerai/competitions')
+                .then(r => r.json())
+                .then(data => {
+                    let html = '<h2>Active Competitions</h2>';
+                    data.competitions.forEach(comp => {
+                        html += \`
+                            <div class="card" style="margin-bottom: 12px;">
+                                <div style="font-weight: 600; color: #3b82f6; margin-bottom: 8px;">\${comp.name}</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+                                    <div><span style="color: #888;">Status:</span> <span style="color: #22c55e;">\${comp.status}</span></div>
+                                    <div><span style="color: #888;">Participants:</span> <span style="color: #3b82f6;">\${comp.participants}</span></div>
+                                    <div><span style="color: #888;">Prize Pool:</span> <span style="color: #f59e0b;">$\${comp.prize_pool.toLocaleString()}</span></div>
+                                </div>
+                            </div>
+                        \`;
+                    });
+                    document.getElementById('content').innerHTML = html;
+                })
+                .catch(err => alert(\`Error: \${err.message}\`));
+        }
+
+        function analyzeSignals() {
+            alert('Signal analysis via Zip (Developer) - Qwen 14B model');
+            executeOpenClawCommand('zip', 'analyze-signals');
         }
 
         function loadMemory() {
