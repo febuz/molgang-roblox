@@ -25,6 +25,9 @@ import { CollaborationManager } from './features/collaboration';
 import { AdvancedAnalytics } from './analytics/advanced-analytics';
 import { BackupManager } from './automation/backup-manager';
 import { AuditLogger } from './security/audit-logger';
+import { EntityModel } from './integrations/numerai/entity-model';
+import NumeraiDataFetcher from './integrations/numerai/data-fetcher';
+import OpenClawEDBBridge from './integrations/numerai/openclaw-edb-bridge';
 
 // Load environment
 config();
@@ -303,8 +306,24 @@ async function initialize() {
     const auditLogger = new AuditLogger();
     logger.info('✓ System managers initialized');
 
+    // 5a. Initialize Numerai + OpenClaw + EDB integration
+    logger.info('📊 Initializing Numerai + EDB integration...');
+    const entityModel = new EntityModel();
+    const dataFetcher = new NumeraiDataFetcher(entityModel);
+    const edbConfig = {
+      host: process.env.EDB_HOST || 'localhost',
+      port: parseInt(process.env.EDB_PORT || '5432'),
+      database: process.env.EDB_DATABASE || 'numerai_data',
+      username: process.env.EDB_USER,
+      password: process.env.EDB_PASSWORD,
+      timeout: 30000
+    };
+    // Note: Will be initialized with openclaw after OpenClaw handler is available
+    let openclawEDBBridge: OpenClawEDBBridge;
+    logger.info('✓ Numerai components initialized');
+
     // 5b. Setup API routes
-    setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger });
+    setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig });
 
     // 5b. Register SPA routes (must be after all API routes!)
     app.get('/', serveSPAFile);
@@ -345,7 +364,7 @@ async function initialize() {
  * Setup API routes
  */
 function setupRoutes(app: express.Express, components: any) {
-  const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger } = components;
+  const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig } = components;
 
   // ========== Agent Memory API (with caching + rate limiting) ==========
 
@@ -1127,6 +1146,99 @@ function setupRoutes(app: express.Express, components: any) {
         }
       };
       return res.json(config);
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // ========== Numerai + EDB Integration Routes ==========
+
+  app.get('/api/numerai/entities', (req, res) => {
+    try {
+      const stats = entityModel.getStats();
+      const feeds = entityModel.exportEntityFeed();
+      return res.json({
+        success: true,
+        stats,
+        securities_count: (feeds.securities || []).length,
+        signals_count: (feeds.signals || []).length,
+        competitions_count: (feeds.competitions || []).length,
+        relationships_count: (feeds.relationships || []).length,
+        data_quality: feeds.data_quality,
+        last_update: feeds.date
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.post('/api/numerai/fetch-daily', async (req, res) => {
+    try {
+      const result = await dataFetcher.fetchDailyData();
+      return res.json({
+        success: result.success,
+        timestamp: result.timestamp,
+        securities_updated: result.securities_updated,
+        signals_updated: result.signals_updated,
+        competitions_updated: result.competitions_updated,
+        data_quality: result.data_quality,
+        errors: (result.errors as string[])
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/numerai/eligible-shares', (req, res) => {
+    try {
+      const securities = entityModel.getEntitiesByType('security') as any[];
+      return res.json({
+        success: true,
+        count: securities.length,
+        securities: securities.map(s => ({
+          id: s.id,
+          ticker: s.ticker,
+          name: s.name,
+          asset_class: s.asset_class,
+          status: s.status
+        }))
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/numerai/competitions', (req, res) => {
+    try {
+      const competitions = entityModel.getEntitiesByType('competition') as any[];
+      return res.json({
+        success: true,
+        active_count: competitions.filter(c => c.status === 'active').length,
+        total: competitions.length,
+        competitions: competitions.map(c => ({
+          id: c.id,
+          name: c.competition_name,
+          status: c.status,
+          participants: c.participants,
+          prize_pool: c.prize_pool
+        }))
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  app.get('/api/numerai/data-quality', (req, res) => {
+    try {
+      const quality = dataFetcher.getDataQuality();
+      const history = dataFetcher.getFetchHistory(30);
+      return res.json({
+        success: true,
+        current: quality,
+        recent_fetches: history.length,
+        errors_last_30_days: history.filter((h: any) => !h.success).length,
+        last_successful_fetch: dataFetcher.getLastFetch().toISOString()
+      });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
     }

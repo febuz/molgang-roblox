@@ -62,6 +62,8 @@ const collaboration_1 = require("./features/collaboration");
 const advanced_analytics_1 = require("./analytics/advanced-analytics");
 const backup_manager_1 = require("./automation/backup-manager");
 const audit_logger_1 = require("./security/audit-logger");
+const entity_model_1 = require("./integrations/numerai/entity-model");
+const data_fetcher_1 = __importDefault(require("./integrations/numerai/data-fetcher"));
 // Load environment
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
@@ -326,8 +328,23 @@ async function initialize() {
         const backupManager = new backup_manager_1.BackupManager();
         const auditLogger = new audit_logger_1.AuditLogger();
         logger_1.default.info('✓ System managers initialized');
+        // 5a. Initialize Numerai + OpenClaw + EDB integration
+        logger_1.default.info('📊 Initializing Numerai + EDB integration...');
+        const entityModel = new entity_model_1.EntityModel();
+        const dataFetcher = new data_fetcher_1.default(entityModel);
+        const edbConfig = {
+            host: process.env.EDB_HOST || 'localhost',
+            port: parseInt(process.env.EDB_PORT || '5432'),
+            database: process.env.EDB_DATABASE || 'numerai_data',
+            username: process.env.EDB_USER,
+            password: process.env.EDB_PASSWORD,
+            timeout: 30000
+        };
+        // Note: Will be initialized with openclaw after OpenClaw handler is available
+        let openclawEDBBridge;
+        logger_1.default.info('✓ Numerai components initialized');
         // 5b. Setup API routes
-        setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger });
+        setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig });
         // 5b. Register SPA routes (must be after all API routes!)
         app.get('/', serveSPAFile);
         app.all('*', (req, res, next) => {
@@ -364,7 +381,7 @@ async function initialize() {
  * Setup API routes
  */
 function setupRoutes(app, components) {
-    const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger } = components;
+    const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, auditLogger, entityModel, dataFetcher, edbConfig } = components;
     // ========== Agent Memory API (with caching + rate limiting) ==========
     app.post('/api/memory/query', async (req, res) => {
         try {
@@ -1137,6 +1154,98 @@ function setupRoutes(app, components) {
                 }
             };
             return res.json(config);
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    // ========== Numerai + EDB Integration Routes ==========
+    app.get('/api/numerai/entities', (req, res) => {
+        try {
+            const stats = entityModel.getStats();
+            const feeds = entityModel.exportEntityFeed();
+            return res.json({
+                success: true,
+                stats,
+                securities_count: (feeds.securities || []).length,
+                signals_count: (feeds.signals || []).length,
+                competitions_count: (feeds.competitions || []).length,
+                relationships_count: (feeds.relationships || []).length,
+                data_quality: feeds.data_quality,
+                last_update: feeds.date
+            });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.post('/api/numerai/fetch-daily', async (req, res) => {
+        try {
+            const result = await dataFetcher.fetchDailyData();
+            return res.json({
+                success: result.success,
+                timestamp: result.timestamp,
+                securities_updated: result.securities_updated,
+                signals_updated: result.signals_updated,
+                competitions_updated: result.competitions_updated,
+                data_quality: result.data_quality,
+                errors: result.errors
+            });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.get('/api/numerai/eligible-shares', (req, res) => {
+        try {
+            const securities = entityModel.getEntitiesByType('security');
+            return res.json({
+                success: true,
+                count: securities.length,
+                securities: securities.map(s => ({
+                    id: s.id,
+                    ticker: s.ticker,
+                    name: s.name,
+                    asset_class: s.asset_class,
+                    status: s.status
+                }))
+            });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.get('/api/numerai/competitions', (req, res) => {
+        try {
+            const competitions = entityModel.getEntitiesByType('competition');
+            return res.json({
+                success: true,
+                active_count: competitions.filter(c => c.status === 'active').length,
+                total: competitions.length,
+                competitions: competitions.map(c => ({
+                    id: c.id,
+                    name: c.competition_name,
+                    status: c.status,
+                    participants: c.participants,
+                    prize_pool: c.prize_pool
+                }))
+            });
+        }
+        catch (error) {
+            return res.status(500).json({ success: false, error: error.message });
+        }
+    });
+    app.get('/api/numerai/data-quality', (req, res) => {
+        try {
+            const quality = dataFetcher.getDataQuality();
+            const history = dataFetcher.getFetchHistory(30);
+            return res.json({
+                success: true,
+                current: quality,
+                recent_fetches: history.length,
+                errors_last_30_days: history.filter((h) => !h.success).length,
+                last_successful_fetch: dataFetcher.getLastFetch().toISOString()
+            });
         }
         catch (error) {
             return res.status(500).json({ success: false, error: error.message });

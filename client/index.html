@@ -124,7 +124,7 @@
 
         .table-header {
             display: grid;
-            grid-template-columns: 1fr 1fr 120px 1fr 100px 100px;
+            grid-template-columns: 1fr 1fr 120px 1fr 100px;
             gap: 16px;
             padding: 16px;
             background: rgba(59, 130, 246, 0.1);
@@ -136,7 +136,7 @@
 
         .table-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 120px 1fr 100px 100px;
+            grid-template-columns: 1fr 1fr 120px 1fr 100px;
             gap: 16px;
             padding: 16px;
             border-bottom: 1px solid #2a2a2a;
@@ -300,34 +300,29 @@
                                 <h3>In Progress</h3>
                                 <div class="card-value">${data.overview?.in_progress || 0}</div>
                             </div>
-                            <div class="card">
-                                <h3>Cost Savings</h3>
-                                <div class="card-value">${data.cost_optimization?.reduction_percent || 87}%</div>
-                            </div>
                         </div>
 
                         <h2 style="margin-top: 32px; margin-bottom: 16px;">👥 Agent Status</h2>
                         <div class="agents-table">
-                            <div class="table-header">
+                            <div class="table-header" style="grid-template-columns: 1fr 1fr 120px 1fr 100px;">
                                 <div>Name</div>
                                 <div>Role</div>
                                 <div>Status</div>
                                 <div>Current Task</div>
                                 <div>Completed</div>
-                                <div>Cost</div>
                             </div>
                             ${Object.entries(data.agents || {}).map(([name, agent]) => {
-                                // Map agent names to model configurations
+                                // Map agent names to model configurations (local models)
                                 const modelMap = {
-                                    'fill': 'Claude Opus (Reasoning)',
-                                    'kai': 'Claude Sonnet (Fast)',
-                                    'zip': 'Claude Haiku (Lightweight)',
-                                    'mira': 'Claude Opus (Creative)',
-                                    'luna': 'Claude Sonnet (Balanced)'
+                                    'fill': 'Qwen 27B',
+                                    'kai': 'Qwen 27B',
+                                    'zip': 'Qwen 14B',
+                                    'mira': 'Phi 4 15B',
+                                    'luna': 'DeepSeek R1 8B'
                                 };
-                                const model = modelMap[name] || 'Claude (Auto)';
+                                const model = modelMap[name] || 'Qwen 27B';
                                 return `
-                                <div class="table-row">
+                                <div class="table-row" style="grid-template-columns: 1fr 1fr 120px 1fr 100px;">
                                     <div style="font-weight: 500; text-transform: capitalize;">
                                         ${name}
                                         <div style="font-size: 11px; color: #888; margin-top: 3px;">🧠 ${model}</div>
@@ -338,7 +333,6 @@
                                     <div><span class="status-badge status-${agent.status}">${agent.status}</span></div>
                                     <div style="color: #a0a0a0; font-size: 12px;">${agent.current_task || '-'}</div>
                                     <div>${agent.tasks_completed || 0}</div>
-                                    <div>$${(Math.random() * 5).toFixed(2)}</div>
                                 </div>
                             `;
                             }).join('')}
