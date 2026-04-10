@@ -1029,6 +1029,109 @@ function setupRoutes(app: express.Express, components: any) {
     }
   });
 
+  // ========== LOCAL MODEL INFERENCE (OLLAMA) ==========
+  app.get('/api/models/ollama/status', async (req, res) => {
+    try {
+      // Check if Ollama is running
+      const response = await fetch('http://localhost:11434/api/tags', {
+        timeout: 5000
+      } as any);
+
+      if (response.ok) {
+        const data: any = await response.json();
+        return res.json({
+          success: true,
+          health: 'operational',
+          models_available: data?.models?.map((m: any) => m.name) || [],
+          models_configured: ['qwen-27b', 'qwen-14b', 'qwen-7b', 'deepseek-r1-8b', 'phi-4-15b', 'mistral-7b'],
+          inference: 'enabled'
+        });
+      } else {
+        return res.json({
+          success: false,
+          health: 'offline',
+          error: 'Ollama service not responding'
+        });
+      }
+    } catch (error: any) {
+      return res.json({
+        success: false,
+        health: 'offline',
+        error: 'Ollama not available - start with: ollama serve'
+      });
+    }
+  });
+
+  app.post('/api/models/inference', async (req, res) => {
+    try {
+      const { model, prompt, max_tokens } = req.body;
+
+      const response = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          prompt,
+          stream: false,
+          options: {
+            num_predict: max_tokens || 2048,
+            temperature: 0.7
+          }
+        }),
+        timeout: 120000
+      } as any);
+
+      if (!response.ok) {
+        return res.status(503).json({
+          success: false,
+          error: 'Local inference failed - ensure Ollama is running'
+        });
+      }
+
+      const data: any = await response.json();
+      return res.json({
+        success: true,
+        response: data?.response || '',
+        model,
+        provider: 'ollama',
+        tokens: {
+          prompt: data?.prompt_eval_count || 0,
+          completion: data?.eval_count || 0
+        }
+      });
+    } catch (error: any) {
+      return res.status(503).json({
+        success: false,
+        error: 'Ollama service unavailable'
+      });
+    }
+  });
+
+  app.get('/api/models/config', (req, res) => {
+    try {
+      const config = {
+        success: true,
+        agents: {
+          fill: { primary: 'qwen-27b', fallback: 'claude-opus' },
+          kai: { primary: 'qwen-27b', fallback: 'claude-opus' },
+          zip: { primary: 'qwen-14b', fallback: 'claude-sonnet' },
+          mira: { primary: 'phi-4-15b', fallback: 'claude-opus' },
+          luna: { primary: 'deepseek-r1-8b', fallback: 'claude-sonnet' }
+        },
+        tier1_models: ['qwen-27b', 'qwen-14b', 'qwen-7b', 'deepseek-r1-8b', 'phi-4-15b', 'mistral-7b'],
+        tier3_models: ['claude-opus', 'claude-sonnet', 'claude-haiku'],
+        cost_optimization: {
+          local_inference_cost: 0,
+          claude_opus_cost: 0.000015,
+          claude_sonnet_cost: 0.000003
+        }
+      };
+      return res.json(config);
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // OpenClaw command execution routes (no approval required)
   setupOpenClawRoutes(app);
 

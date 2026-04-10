@@ -1,0 +1,61 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+.DS_Store
+
+# Dependencies
+node_modules/
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+lerna-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Sensitive Data - DO NOT COMMIT
+/data/backlog/*.json
+/data/tasks/*.json
+/data/issues/*.json
+/backlog/
+/backlog-data/
+mock-data/
+test-data/
+
+# Agent-specific files
+/agent-configs/
+/agent-state/
+
+# Cache
+.cache/
+.eslintcache
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Database
+*.db
+*.sqlite
+
+# Build outputs
+dist/
+build/
+
+# Keep safe files
+!.gitkeep
