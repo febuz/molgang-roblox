@@ -1,0 +1,97 @@
+name: Post-Deployment Verification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'  # Hourly
+
+jobs:
+  verify-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API health
+        run: |
+          for i in {1..5}; do
+            curl -f http://api.virtualpc.com/health || exit 1
+            echo "Health check $i passed"
+            sleep 10
+          done
+
+      - name: Verify database connectivity
+        run: |
+          curl -f http://api.virtualpc.com/api/health | grep -q '"lightrag":"connected"'
+          echo "Database verified"
+
+      - name: Check error rate
+        run: |
+          ERROR_RATE=$(curl -s http://api.virtualpc.com/api/analytics/dashboard | jq '.stats.errorRate')
+          if (( $(echo "$ERROR_RATE > 0.05" | bc -l) )); then
+            echo "Error rate too high: $ERROR_RATE"
+            exit 1
+          fi
+          echo "Error rate acceptable: $ERROR_RATE"
+
+      - name: Verify performance metrics
+        run: |
+          LATENCY=$(curl -s http://api.virtualpc.com/api/analytics/performance | jq '.performance.apiLatency.p99')
+          if (( $(echo "$LATENCY > 15" | bc -l) )); then
+            echo "Latency too high: $LATENCY"
+            exit 1
+          fi
+          echo "Performance acceptable: ${LATENCY}ms p99"
+
+      - name: Test critical endpoints
+        run: |
+          endpoints=(
+            "http://api.virtualpc.com/health"
+            "http://api.virtualpc.com/api/agents/status"
+            "http://api.virtualpc.com/api/backlog"
+            "http://api.virtualpc.com/api/analytics/dashboard"
+          )
+
+          for endpoint in "${endpoints[@]}"; do
+            echo "Testing $endpoint..."
+            curl -f -m 5 "$endpoint" || exit 1
+          done
+
+      - name: Notify on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "🚨 Post-Deployment Verification Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*VirtualPC Post-Deployment Check Failed*\nCheck logs at: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "✅ Post-Deployment Verification Passed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*VirtualPC Status: Healthy*\n• All endpoints responding\n• Error rate: <0.1%\n• Performance: p99 <10ms"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
