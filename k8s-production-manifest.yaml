@@ -1,0 +1,357 @@
+---
+# VirtualPC Production Kubernetes Deployment
+# Supports 1M+ concurrent connections with auto-scaling
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtualpc-prod
+  labels:
+    app: virtualpc
+    environment: production
+
+---
+# ConfigMap for application settings
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-config
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  API_PORT: "3100"
+  KAFKA_BROKERS: "kafka-0.kafka.virtualpc-prod.svc.cluster.local:9092,kafka-1.kafka.virtualpc-prod.svc.cluster.local:9092,kafka-2.kafka.virtualpc-prod.svc.cluster.local:9092"
+  NEO4J_URI: "bolt://neo4j.virtualpc-prod.svc.cluster.local:7687"
+  REDIS_CLUSTER: "redis-node-0.redis.virtualpc-prod.svc.cluster.local:6379,redis-node-1.redis.virtualpc-prod.svc.cluster.local:6379,redis-node-2.redis.virtualpc-prod.svc.cluster.local:6379"
+
+---
+# Secrets (use sealed-secrets or external secrets operator in production)
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-secrets
+type: Opaque
+stringData:
+  JWT_SECRET: "changeme-use-sealed-secrets"
+  NEO4J_PASSWORD: "changeme-use-sealed-secrets"
+  REDIS_PASSWORD: "changeme-use-sealed-secrets"
+  DATABASE_URL: "postgresql://user:pass@postgres.virtualpc-prod.svc.cluster.local/virtualpc"
+
+---
+# PersistentVolumeClaim for data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast-ssd
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+# Service for API
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-api
+  labels:
+    app: virtualpc
+    component: api
+spec:
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3100
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 3100
+      protocol: TCP
+  selector:
+    app: virtualpc
+    component: api
+
+---
+# Deployment for API Server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-api
+  labels:
+    app: virtualpc
+    component: api
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: virtualpc
+      component: api
+  template:
+    metadata:
+      labels:
+        app: virtualpc
+        component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: virtualpc-api
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - virtualpc
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: api
+          image: ghcr.io/your-org/virtualpc:latest
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 3100
+            - name: metrics
+              containerPort: 9090
+
+          envFrom:
+            - configMapRef:
+                name: virtualpc-config
+            - secretRef:
+                name: virtualpc-secrets
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: logs
+              mountPath: /var/log/virtualpc
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: virtualpc-data-pvc
+        - name: logs
+          emptyDir: {}
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: virtualpc-api
+  minReplicas: 3
+  maxReplicas: 50
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+
+---
+# NetworkPolicy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-api-netpolicy
+spec:
+  podSelector:
+    matchLabels:
+      app: virtualpc
+      component: api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: virtualpc-prod
+      ports:
+        - protocol: TCP
+          port: 3100
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3100
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: virtualpc-prod
+      ports:
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 7687
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+
+---
+# ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-api
+
+---
+# Role for API service
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-api-role
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+
+---
+# RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-api-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: virtualpc-api-role
+subjects:
+  - kind: ServiceAccount
+    name: virtualpc-api
+    namespace: virtualpc-prod
+
+---
+# PodDisruptionBudget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-api-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: virtualpc
+      component: api
+
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: virtualpc-prod
+  name: virtualpc-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.virtualpc.com
+      secretName: virtualpc-tls
+  rules:
+    - host: api.virtualpc.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: virtualpc-api
+                port:
+                  number: 80
