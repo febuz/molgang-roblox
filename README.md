@@ -1,5 +1,10 @@
 # Custom Paperclip - Distributed Agent Organization
 
+[![Build & Test](https://github.com/your-org/virtualpc/workflows/Build%20&%20Test/badge.svg)](https://github.com/your-org/virtualpc/actions/workflows/build-test.yml)
+[![Deploy to Production](https://github.com/your-org/virtualpc/workflows/Deploy%20to%20Production/badge.svg)](https://github.com/your-org/virtualpc/actions/workflows/deploy-production.yml)
+[![Security Audit](https://github.com/your-org/virtualpc/workflows/Security%20Audit/badge.svg)](https://github.com/your-org/virtualpc/actions/workflows/security-audit.yml)
+[![GitHub Pages](https://github.com/your-org/virtualpc/workflows/Deploy%20Status%20Dashboard%20to%20GitHub%20Pages/badge.svg)](https://github.com/your-org/virtualpc/actions/workflows/deploy-pages.yml)
+
 A sophisticated distributed agent execution system built on **Paperclip OSS** with:
 - **LightRAG**: Neo4j-based shared memory for agents
 - **Kafka 3**: Message queue for decoupled API call orchestration
