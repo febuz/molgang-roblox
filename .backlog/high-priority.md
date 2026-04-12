@@ -50,6 +50,24 @@
 
 ---
 
+### Task 1.4: VirtualPC UI/Dashboard Design & Implementation
+- **Assignee**: Mira (Artist)
+- **Status**: ⏳ READY TO START
+- **Description**: Create beautiful, intuitive dashboard for VirtualPC with visual design
+- **Subtasks**:
+  - [ ] Design agent status cards (visual mockups)
+  - [ ] Create SVG icons for each agent (Fill, Kai, Zip, Mira, Luna)
+  - [ ] Improve task status display (colors, animations)
+  - [ ] Design leaderboard visualization
+  - [ ] Create responsive layout for mobile
+  - [ ] Add Fossa/Madagascar branding elements
+  - [ ] Implement smooth animations & transitions
+  - [ ] Create achievement badge designs
+
+**Effort**: 6-8 hours | **Priority**: CRITICAL
+
+---
+
 ## Phase 2: MOLGANG Web Game Enhancement (Terminal B - Secondary)
 
 ### Task 2.1: GitHub Sync & Repository Update
