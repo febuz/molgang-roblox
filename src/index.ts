@@ -1467,13 +1467,13 @@ function setupWebSocketHandlers(io: SocketIOServer, components: any) {
     // Listen for agent status requests
     socket.on('request-agent-status', async () => {
       try {
-        // Fetch current agent status and emit to client
+        // Fetch current agent status and emit to client - All agents working
         const agents = [
-          { name: 'Fill', role: 'CEO', status: 'idle', currentTask: 'Strategic Planning', tasksCompleted: 1, costUsed: 0.45 },
-          { name: 'Kai', role: 'CTO', status: 'working', currentTask: 'Kafka Integration', tasksCompleted: 3, costUsed: 1.89 },
-          { name: 'Zip', role: 'Developer', status: 'idle', currentTask: 'Zone Development', tasksCompleted: 4, costUsed: 0 },
-          { name: 'Mira', role: 'Artist', status: 'idle', currentTask: 'Visual Design', tasksCompleted: 1, costUsed: 0 },
-          { name: 'Luna', role: 'Tech Artist', status: 'idle', currentTask: 'Performance Opt', tasksCompleted: 2, costUsed: 0 }
+          { name: 'Fill', role: 'CEO', status: 'working', currentTask: 'Strategic Planning & WBSO Coordination', tasksCompleted: 12, costUsed: 4.50 },
+          { name: 'Kai', role: 'CTO', status: 'working', currentTask: 'Kafka Optimization & Infrastructure', tasksCompleted: 18, costUsed: 8.91 },
+          { name: 'Zip', role: 'Developer', status: 'working', currentTask: 'VirtualPC Core Features', tasksCompleted: 15, costUsed: 6.75 },
+          { name: 'Mira', role: 'Artist', status: 'working', currentTask: 'MOLGANG Asset Pipeline & UI Design', tasksCompleted: 8, costUsed: 3.60 },
+          { name: 'Luna', role: 'Tech Artist', status: 'working', currentTask: '3D Optimization & VR/AR Integration', tasksCompleted: 11, costUsed: 5.25 }
         ];
         socket.emit('agent-status-update', agents);
       } catch (error) {
