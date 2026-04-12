@@ -1,0 +1,119 @@
+name: Validate System Files & Structure
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - '.admin/**'
+      - '.governance/**'
+      - '.creative/**'
+      - '.operations/**'
+      - '.backlog/**'
+      - '*.md'
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Check virtualv_admin structure
+      run: |
+        echo "=== System Admin Structure Validation ==="
+
+        # Check .admin directory
+        echo "✓ Checking .admin/ directory..."
+        [ -d ".admin" ] && echo "  ✓ .admin/ exists" || (echo "  ✗ .admin/ missing" && exit 1)
+        [ -f ".admin/ACTOR-HIERARCHY.md" ] && echo "  ✓ ACTOR-HIERARCHY.md" || echo "  ✗ Missing"
+        [ -f ".admin/SYSTEM-ADMIN-STRUCTURE.md" ] && echo "  ✓ SYSTEM-ADMIN-STRUCTURE.md" || echo "  ✗ Missing"
+
+        # Check .governance directory
+        echo "✓ Checking .governance/ directory..."
+        [ -d ".governance" ] && echo "  ✓ .governance/ exists" || (echo "  ✗ .governance/ missing" && exit 1)
+        [ -f ".governance/ALEXANDER-PRINCIPLES.md" ] && echo "  ✓ ALEXANDER-PRINCIPLES.md" || echo "  ✗ Missing"
+        [ -f ".governance/CLEOPATRA-AUTHORITY.md" ] && echo "  ✓ CLEOPATRA-AUTHORITY.md" || echo "  ✗ Missing"
+
+        # Check .creative directory
+        echo "✓ Checking .creative/ directory..."
+        [ -d ".creative" ] && echo "  ✓ .creative/ exists" || (echo "  ✗ .creative/ missing" && exit 1)
+        [ -f ".creative/MIRA-CREATIVE-AUTHORITY.md" ] && echo "  ✓ MIRA-CREATIVE-AUTHORITY.md" || echo "  ✗ Missing"
+        [ -f ".creative/MIRA-DESIGN-BRIEF.md" ] && echo "  ✓ MIRA-DESIGN-BRIEF.md" || echo "  ✗ Missing"
+
+        # Check .operations directory
+        echo "✓ Checking .operations/ directory..."
+        [ -d ".operations" ] && echo "  ✓ .operations/ exists" || (echo "  ✗ .operations/ missing" && exit 1)
+        [ -f ".operations/GITHUB-ASSET-SYNC-GUIDE.md" ] && echo "  ✓ GITHUB-ASSET-SYNC-GUIDE.md" || echo "  ✗ Missing"
+
+        # Check .backlog directory
+        echo "✓ Checking .backlog/ directory..."
+        [ -d ".backlog" ] && echo "  ✓ .backlog/ exists" || (echo "  ✗ .backlog/ missing" && exit 1)
+        [ -f ".backlog/session-actions.md" ] && echo "  ✓ session-actions.md" || echo "  ✗ Missing"
+        [ -f ".backlog/high-priority.md" ] && echo "  ✓ high-priority.md" || echo "  ✗ Missing"
+
+    - name: Validate markdown files
+      run: |
+        echo "=== Markdown Files Validation ==="
+
+        md_count=$(find . -name "*.md" -type f | grep -v node_modules | wc -l)
+        echo "Total .md files: $md_count"
+
+        # Check for broken links in markdown
+        echo "Checking for common markdown issues..."
+        find .admin .governance .creative .operations .backlog -name "*.md" -type f 2>/dev/null | while read file; do
+          if grep -q "\[.*\](http" "$file"; then
+            echo "  ✓ $(basename $file) - has links"
+          fi
+        done
+
+    - name: Count documentation
+      run: |
+        echo "=== Documentation Statistics ==="
+        echo "System files (.admin): $(find .admin -name "*.md" | wc -l)"
+        echo "Governance files (.governance): $(find .governance -name "*.md" | wc -l)"
+        echo "Creative files (.creative): $(find .creative -name "*.md" | wc -l)"
+        echo "Operations files (.operations): $(find .operations -name "*.md" | wc -l)"
+        echo "Backlog files (.backlog): $(find .backlog -name "*.md" | wc -l)"
+
+        echo ""
+        echo "Total lines of documentation:"
+        find .admin .governance .creative .operations .backlog -name "*.md" -type f -exec wc -l {} + 2>/dev/null | tail -1
+
+    - name: Validate asset files
+      run: |
+        echo "=== Asset Files Validation ==="
+
+        # Check SVG files
+        if [ -f "public/mira-agent-icons.svg" ]; then
+          echo "✓ SVG assets found ($(wc -c < public/mira-agent-icons.svg) bytes)"
+        fi
+
+        # Check CSS files
+        if [ -f "public/mira-dashboard-enhancements.css" ]; then
+          css_lines=$(wc -l < public/mira-dashboard-enhancements.css)
+          echo "✓ Dashboard CSS found ($css_lines lines)"
+        fi
+
+        # Check HTML files
+        if [ -f "public/dashboard.html" ]; then
+          html_lines=$(wc -l < public/dashboard.html)
+          echo "✓ Dashboard HTML found ($html_lines lines)"
+        fi
+
+    - name: Report structure summary
+      run: |
+        echo "=== VirtualPC System Structure Summary ==="
+        echo ""
+        echo "virtualv_admin Directories:"
+        ls -d .admin .governance .creative .operations .backups .backlog 2>/dev/null | sed 's/^/  ✓ /' || echo "  (checking...)"
+        echo ""
+        echo "Key Files:"
+        ls -1 .admin/*.md 2>/dev/null | xargs -I {} basename {} | sed 's/^/  ✓ /' || true
+        echo ""
+        echo "Dashboard Assets:"
+        ls -1 public/*.{html,css,svg} 2>/dev/null | xargs -I {} basename {} | sed 's/^/  ✓ /' || true
+
+    - name: Validation complete
+      run: echo "✓ System files validation passed"

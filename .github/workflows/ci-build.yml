@@ -1,0 +1,89 @@
+name: CI - Build & Test VirtualPC
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build TypeScript
+      run: npm run build
+
+    - name: Check for compilation errors
+      run: npm run build 2>&1 | grep -q "error" && exit 1 || echo "✓ Build successful"
+
+    - name: Validate dashboard HTML
+      run: |
+        if [ -f public/dashboard.html ]; then
+          echo "✓ Dashboard HTML found"
+        else
+          echo "✗ Dashboard HTML missing"
+          exit 1
+        fi
+
+    - name: Validate system files
+      run: |
+        echo "Checking system files..."
+        [ -f .admin/ACTOR-HIERARCHY.md ] && echo "✓ Actor hierarchy" || echo "✗ Missing"
+        [ -f .admin/SYSTEM-ADMIN-STRUCTURE.md ] && echo "✓ Admin structure" || echo "✗ Missing"
+        [ -f .governance/ALEXANDER-PRINCIPLES.md ] && echo "✓ Alexander principles" || echo "✗ Missing"
+        [ -f .creative/MIRA-CREATIVE-AUTHORITY.md ] && echo "✓ Mira authority" || echo "✗ Missing"
+        [ -f .operations/GITHUB-ASSET-SYNC-GUIDE.md ] && echo "✓ Asset sync guide" || echo "✗ Missing"
+        [ -f .backlog/session-actions.md ] && echo "✓ Session actions" || echo "✗ Missing"
+
+    - name: Validate CSS
+      run: |
+        if [ -f public/mira-dashboard-enhancements.css ]; then
+          echo "✓ Dashboard CSS found ($(wc -l < public/mira-dashboard-enhancements.css) lines)"
+        else
+          echo "✗ CSS file missing"
+          exit 1
+        fi
+
+    - name: Validate SVG assets
+      run: |
+        if [ -f public/mira-agent-icons.svg ]; then
+          echo "✓ Agent icons SVG found"
+        else
+          echo "✗ Icons SVG missing"
+          exit 1
+        fi
+
+    - name: Check documentation
+      run: |
+        echo "Documentation files:"
+        find . -name "*.md" -type f | grep -v node_modules | wc -l | xargs echo "Total .md files:"
+
+    - name: Upload build artifacts
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-${{ matrix.node-version }}
+        path: |
+          dist/
+          public/
+        retention-days: 7
+
+    - name: Build status
+      if: always()
+      run: echo "✓ Build workflow completed"

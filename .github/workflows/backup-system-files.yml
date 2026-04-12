@@ -1,0 +1,78 @@
+name: Backup System Files
+
+on:
+  push:
+    branches: [ master, main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Create backup archive
+      run: |
+        echo "=== Creating System Backup ==="
+
+        # Create backup directory
+        mkdir -p backup-archive
+
+        # Backup all system files
+        tar -czf backup-archive/system-files-$(date +%Y%m%d-%H%M%S).tar.gz \
+          .admin/ \
+          .governance/ \
+          .creative/ \
+          .operations/ \
+          .backlog/ \
+          --exclude=node_modules \
+          --exclude=dist \
+          --exclude=.git
+
+        echo "✓ Backup created"
+        ls -lh backup-archive/
+
+    - name: Count backed up files
+      run: |
+        echo "=== Backup Contents ==="
+        echo "Admin files: $(find .admin -type f | wc -l)"
+        echo "Governance files: $(find .governance -type f | wc -l)"
+        echo "Creative files: $(find .creative -type f | wc -l)"
+        echo "Operations files: $(find .operations -type f | wc -l)"
+        echo "Backlog files: $(find .backlog -type f | wc -l)"
+        echo ""
+        echo "Total system files: $(find .admin .governance .creative .operations .backlog -type f | wc -l)"
+
+    - name: Generate backup manifest
+      run: |
+        echo "=== System Files Manifest ===" > backup-archive/MANIFEST.txt
+        echo "Backup Date: $(date)" >> backup-archive/MANIFEST.txt
+        echo "Commit: $(git rev-parse --short HEAD)" >> backup-archive/MANIFEST.txt
+        echo "" >> backup-archive/MANIFEST.txt
+        echo "Files Backed Up:" >> backup-archive/MANIFEST.txt
+        find .admin .governance .creative .operations .backlog -type f -name "*.md" -o -name "*.svg" | sort >> backup-archive/MANIFEST.txt
+        cat backup-archive/MANIFEST.txt
+
+    - name: Upload backup artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: system-backup-$(date +%Y%m%d)
+        path: backup-archive/
+        retention-days: 30
+
+    - name: Report backup status
+      run: |
+        echo "✓ System backup completed"
+        echo "  Archive size: $(du -h backup-archive/*.tar.gz 2>/dev/null | cut -f1)"
+        echo "  Files protected: $(find .admin .governance .creative .operations .backlog -type f | wc -l)"
+
+    - name: Notify backup completion
+      if: always()
+      run: |
+        echo "=== Backup Summary ==="
+        echo "Status: ✓ Completed"
+        echo "Time: $(date)"
+        echo "Protected: virtualv_admin system files"

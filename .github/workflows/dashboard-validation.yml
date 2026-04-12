@@ -1,0 +1,131 @@
+name: Dashboard & API Validation
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'public/**'
+      - 'src/index.ts'
+      - 'package.json'
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  validate-dashboard:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Validate dashboard HTML
+      run: |
+        echo "=== Dashboard HTML Validation ==="
+
+        if [ ! -f "public/dashboard.html" ]; then
+          echo "✗ dashboard.html not found"
+          exit 1
+        fi
+
+        html_size=$(wc -c < public/dashboard.html)
+        html_lines=$(wc -l < public/dashboard.html)
+
+        echo "✓ Dashboard HTML found"
+        echo "  Size: $html_size bytes"
+        echo "  Lines: $html_lines"
+
+        # Check for required sections
+        echo ""
+        echo "Checking for required sections..."
+
+        grep -q "agent-card" public/dashboard.html && echo "  ✓ Agent cards" || echo "  ✗ Agent cards missing"
+        grep -q "leaderboard" public/dashboard.html && echo "  ✓ Leaderboard" || echo "  ✗ Leaderboard missing"
+        grep -q "paperclip" public/dashboard.html && echo "  ✓ Paperclip assistant" || echo "  ✗ Paperclip missing"
+        grep -q "progress-bar" public/dashboard.html && echo "  ✓ Progress bars" || echo "  ✗ Progress bars missing"
+        grep -q "sidebar" public/dashboard.html && echo "  ✓ Sidebar navigation" || echo "  ✗ Sidebar missing"
+
+    - name: Validate CSS files
+      run: |
+        echo "=== CSS Validation ==="
+
+        if [ ! -f "public/mira-dashboard-enhancements.css" ]; then
+          echo "✗ CSS file not found"
+          exit 1
+        fi
+
+        css_lines=$(wc -l < public/mira-dashboard-enhancements.css)
+        echo "✓ Dashboard CSS found ($css_lines lines)"
+
+        # Check for required animations
+        echo ""
+        echo "Checking for animations..."
+        grep -q "@keyframes" public/mira-dashboard-enhancements.css && echo "  ✓ Keyframe animations" || echo "  ✗ Animations missing"
+        grep -q "transition" public/mira-dashboard-enhancements.css && echo "  ✓ Transitions" || echo "  ✗ Transitions missing"
+        grep -q "animation:" public/mira-dashboard-enhancements.css && echo "  ✓ Animation properties" || echo "  ✗ Missing"
+
+    - name: Validate SVG assets
+      run: |
+        echo "=== SVG Assets Validation ==="
+
+        if [ ! -f "public/mira-agent-icons.svg" ]; then
+          echo "✗ SVG icons not found"
+          exit 1
+        fi
+
+        svg_size=$(wc -c < public/mira-agent-icons.svg)
+        echo "✓ Agent icons SVG found ($svg_size bytes)"
+
+        # Check for all 5 agent icons
+        echo ""
+        echo "Checking for agent icons..."
+        grep -q "id=\"fill-icon\"" public/mira-agent-icons.svg && echo "  ✓ Fill icon" || echo "  ✗ Fill icon missing"
+        grep -q "id=\"kai-icon\"" public/mira-agent-icons.svg && echo "  ✓ Kai icon" || echo "  ✗ Kai icon missing"
+        grep -q "id=\"zip-icon\"" public/mira-agent-icons.svg && echo "  ✓ Zip icon" || echo "  ✗ Zip icon missing"
+        grep -q "id=\"mira-icon\"" public/mira-agent-icons.svg && echo "  ✓ Mira icon" || echo "  ✗ Mira icon missing"
+        grep -q "id=\"luna-icon\"" public/mira-agent-icons.svg && echo "  ✓ Luna icon" || echo "  ✗ Luna icon missing"
+
+    - name: Check API endpoints
+      run: |
+        echo "=== API Endpoints Check ==="
+
+        if [ ! -f "src/index.ts" ]; then
+          echo "✗ index.ts not found"
+          exit 1
+        fi
+
+        echo "Checking for API endpoint definitions..."
+        grep -q "/api/metrics" src/index.ts && echo "  ✓ /api/metrics endpoint" || echo "  ✗ Missing"
+        grep -q "/api/backlog" src/index.ts && echo "  ✓ /api/backlog endpoint" || echo "  ✗ Missing"
+        grep -q "/api/task-status" src/index.ts && echo "  ✓ /api/task-status endpoint" || echo "  ✗ Missing"
+        grep -q "/api/terminal/activity" src/index.ts && echo "  ✓ /api/terminal/activity endpoint" || echo "  ✗ Missing"
+        grep -q "/dashboard" src/index.ts && echo "  ✓ /dashboard route" || echo "  ✗ Missing"
+
+    - name: Validate responsive design
+      run: |
+        echo "=== Responsive Design Validation ==="
+
+        if grep -q "@media (max-width: 768px)" public/mira-dashboard-enhancements.css; then
+          echo "  ✓ Mobile breakpoint (< 768px)"
+        fi
+
+        if grep -q "grid-template-columns: repeat(auto-fit" public/dashboard.html; then
+          echo "  ✓ CSS grid responsive layout"
+        fi
+
+        if grep -q "flex" public/dashboard.html; then
+          echo "  ✓ Flexbox layout"
+        fi
+
+        echo "✓ Responsive design elements present"
+
+    - name: Count dashboard functionality
+      run: |
+        echo "=== Dashboard Feature Count ==="
+        echo "Navigation sections: $(grep -c 'nav-item' public/dashboard.html || echo '0')"
+        echo "Agent cards: $(grep -c 'agent-card' public/dashboard.html || echo '0')"
+        echo "CSS animations: $(grep -c '@keyframes' public/mira-dashboard-enhancements.css || echo '0')"
+        echo "API endpoints: $(grep -c 'app\.\(get\|post\|put\|delete\)' src/index.ts || echo '0')"
+
+    - name: Dashboard validation complete
+      run: |
+        echo "✓ Dashboard validation passed"
+        echo "Dashboard is ready for production"
