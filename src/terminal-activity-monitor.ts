@@ -4,6 +4,8 @@
  * Integrates: Kafka messages, Selenium actions, approval prompts
  */
 
+import logger from './utils/logger';
+
 interface TerminalActivity {
   timestamp: string;
   terminal: 'A' | 'B';
@@ -225,5 +227,3 @@ export class TerminalActivityMonitor {
 
 // Export singleton instance
 export const activityMonitor = new TerminalActivityMonitor();
-
-import logger from './utils/logger';
