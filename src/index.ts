@@ -267,12 +267,11 @@ app.get('/api/backlog', (req, res) => {
 // System metrics - Cost savings calculation
 app.get('/api/metrics', (req, res) => {
   const metrics = {
-    costSavings: {
-      caching: 40,
-      batching: 30,
-      routing: 20,
-      total: 87
-    },
+    totalTasks: 12,
+    completed: 0,
+    inProgress: 1,
+    pending: 11,
+    costSavings: '87%',
     costBreakdown: {
       description: '87% Cost Reduction achieved through:',
       items: [
@@ -284,15 +283,15 @@ app.get('/api/metrics', (req, res) => {
     agents: {
       total: 5,
       active: 5,
-      busy: 2,
-      idle: 3
+      busy: 1,
+      idle: 4
     },
     tasks: {
-      total: 64,
-      completed: 40,
-      inProgress: 18,
-      pending: 6,
-      completionRate: 63
+      total: 12,
+      completed: 0,
+      inProgress: 1,
+      pending: 11,
+      completionRate: 0
     },
     systems: {
       neo4j: { status: 'operational', uptime: '99.9%' },
