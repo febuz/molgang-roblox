@@ -600,116 +600,8 @@
 
                 <div class="card">
                     <div class="card-title">👥 Team Overview</div>
-                    <div class="agent-grid">
-                        <div class="agent-card" data-agent="fill">
-                            <div class="agent-header">
-                                <div class="agent-avatar">👑</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">Fill</div>
-                                    <div class="agent-role">CEO</div>
-                                </div>
-                            </div>
-                            <div class="agent-status">
-                                <div class="status-indicator online"></div>
-                                <span>Strategic Planning</span>
-                            </div>
-                            <div class="task-list">
-                                <div class="task-item">
-                                    <span class="task-badge">2</span> Active Tasks
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">8</span> Completed
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="agent-card" data-agent="kai">
-                            <div class="agent-header">
-                                <div class="agent-avatar">⚡</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">Kai</div>
-                                    <div class="agent-role">CTO</div>
-                                </div>
-                            </div>
-                            <div class="agent-status">
-                                <div class="status-indicator online"></div>
-                                <span>Infrastructure</span>
-                            </div>
-                            <div class="task-list">
-                                <div class="task-item">
-                                    <span class="task-badge">4</span> Active Tasks
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">18</span> Completed
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="agent-card" data-agent="zip">
-                            <div class="agent-header">
-                                <div class="agent-avatar">💻</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">Zip</div>
-                                    <div class="agent-role">Developer</div>
-                                </div>
-                            </div>
-                            <div class="agent-status">
-                                <div class="status-indicator online"></div>
-                                <span>Core Features</span>
-                            </div>
-                            <div class="task-list">
-                                <div class="task-item">
-                                    <span class="task-badge">3</span> Active Tasks
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">15</span> Completed
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="agent-card" data-agent="mira">
-                            <div class="agent-header">
-                                <div class="agent-avatar">🎨</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">Mira</div>
-                                    <div class="agent-role">Artist</div>
-                                </div>
-                            </div>
-                            <div class="agent-status">
-                                <div class="status-indicator online"></div>
-                                <span>Dashboard Design</span>
-                            </div>
-                            <div class="task-list">
-                                <div class="task-item">
-                                    <span class="task-badge">1</span> Active Task
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">6</span> Completed
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="agent-card" data-agent="luna">
-                            <div class="agent-header">
-                                <div class="agent-avatar">✨</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">Luna</div>
-                                    <div class="agent-role">Tech Artist</div>
-                                </div>
-                            </div>
-                            <div class="agent-status">
-                                <div class="status-indicator busy"></div>
-                                <span>Performance</span>
-                            </div>
-                            <div class="task-list">
-                                <div class="task-item">
-                                    <span class="task-badge">2</span> Active Tasks
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">11</span> Completed
-                                </div>
-                            </div>
-                        </div>
+                    <div class="agent-grid" id="team-overview">
+                        <!-- Dynamically populated with per-agent metrics -->
                     </div>
                 </div>
             </div>
@@ -1271,6 +1163,58 @@
 
         populateBacklog();
 
+        // Load per-agent metrics
+        async function loadTeamOverview() {
+            try {
+                const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna'];
+                const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨' };
+                const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Artist', Luna: 'Tech Artist' };
+                const status = { Fill: 'online', Kai: 'online', Zip: 'online', Mira: 'online', Luna: 'busy' };
+
+                const container = document.getElementById('team-overview');
+                container.innerHTML = '';
+
+                for (const agent of agents) {
+                    try {
+                        const response = await fetch(`/api/progress/${agent}`);
+                        const data = await response.json();
+
+                        const card = document.createElement('div');
+                        card.className = 'agent-card';
+                        card.innerHTML = `
+                            <div class="agent-header">
+                                <div class="agent-avatar">${avatars[agent]}</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">${agent}</div>
+                                    <div class="agent-role">${roles[agent]}</div>
+                                </div>
+                            </div>
+                            <div class="agent-status">
+                                <div class="status-indicator ${status[agent]}"></div>
+                                <span>${data.focus}</span>
+                            </div>
+                            <div class="task-list">
+                                <div class="task-item">
+                                    <span class="task-badge">${data.inProgress || 0}</span> In Progress
+                                </div>
+                                <div class="task-item">
+                                    <span class="task-badge">${data.completed || 0}</span> Completed
+                                </div>
+                                <div class="task-item">
+                                    <span class="task-badge">${data.total || 0}</span> Total
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    } catch (error) {
+                        console.log(`Error loading ${agent} metrics:`, error.message);
+                    }
+                }
+            } catch (error) {
+                console.log('Team overview error:', error.message);
+            }
+        }
+
         // Update metrics from backend
         async function updateMetrics() {
             try {
@@ -1309,8 +1253,12 @@
         }
 
         // Update metrics immediately and every 5 seconds
+        loadTeamOverview();
         updateMetrics();
-        setInterval(updateMetrics, 5000);
+        setInterval(() => {
+            updateMetrics();
+            loadTeamOverview();
+        }, 5000);
     </script>
 </body>
 </html>
