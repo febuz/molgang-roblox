@@ -97,16 +97,7 @@ function serveSPAFile(req, res) {
         }
     });
 }
-// NEW Advanced Interactive Dashboard
-app.get('/dashboard', (req, res) => {
-    const dashboardPath = path.resolve(__dirname, '..', 'public', 'dashboard.html');
-    res.type('html').sendFile(dashboardPath, (err) => {
-        if (err) {
-            logger_1.default.error('Error serving dashboard.html:', err);
-            res.status(500).send('Error loading dashboard');
-        }
-    });
-});
+// Dashboard is now served at root (localhost:3100) - no separate /dashboard route needed
 // Terminal Activity Monitor - Track what's happening in both terminals
 app.get('/api/terminal/activity', (req, res) => {
     const terminal = req.query.terminal;
