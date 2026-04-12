@@ -28,6 +28,7 @@ import { AuditLogger } from './security/audit-logger';
 import { EntityModel } from './integrations/numerai/entity-model';
 import NumeraiDataFetcher from './integrations/numerai/data-fetcher';
 import OpenClawEDBBridge from './integrations/numerai/openclaw-edb-bridge';
+import { killSwitch } from './openclaw-kill-switch';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
 import AuthSystem from './auth/auth-system';
@@ -313,6 +314,10 @@ app.get('/health', (req, res) => {
  */
 async function initialize() {
   logger.info('🚀 Custom Paperclip starting...');
+
+  // Initialize emergency kill switch (Ctrl-Q-Q to stop all automation)
+  logger.info('🔴 OpenClaw Emergency Kill Switch active (Ctrl+Q+Q to stop)');
+  killSwitch.initialize();
 
   try {
     // 1. Initialize LightRAG (shared memory)

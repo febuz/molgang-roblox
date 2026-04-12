@@ -2,6 +2,8 @@
  * VirtualPC Interactive Demo with Selenium
  * Demonstrates browser control: mouse movements, clicks, navigation
  * Shows both VirtualPC and MOLGANG web game
+ *
+ * Emergency Kill Switch: Press Ctrl+Q twice to stop all automation
  */
 
 import { Builder, WebDriver, By, until, WebElement, Actions } from 'selenium-webdriver';

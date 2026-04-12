@@ -7,6 +7,98 @@
 
 ---
 
+## ⚠️ EMERGENCY KILL SWITCH
+
+### Ctrl-Q-Q: Instant Automation Stop
+
+**CRITICAL SAFETY FEATURE**
+
+When user presses **Ctrl+Q** twice rapidly (within 1 second):
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ ⚠️  CTRL-Q-Q DETECTED - EMERGENCY STOP INITIATED       │
+├─────────────────────────────────────────────────────────┤
+│ ACTION: Kill all automated processes immediately        │
+│ • Terminate all Selenium WebDriver instances            │
+│ • Stop all mouse movement / GUI automation              │
+│ • Kill all running OpenClaw tasks                       │
+│ • Release keyboard/mouse control to user                │
+│ • Abort current demo/automation                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Implementation:**
+
+```bash
+# Global key listener (runs continuously)
+listen_for_kill_switch() {
+  while true; do
+    if detect_ctrl_q_q_press; then
+      echo "⚠️  CTRL-Q-Q DETECTED - EMERGENCY STOP"
+      
+      # Kill all automation processes
+      pkill -f selenium-launcher
+      pkill -f molgang-game-demo
+      pkill -f interactive-demo
+      pkill -f chrome.*webdriver
+      pkill -f firefox.*webdriver
+      
+      # Stop mouse control
+      disable_openclaw_mouse_control
+      
+      # Release automation
+      stop_all_automation_threads
+      
+      # Return control to user
+      echo "✅ Control returned to user"
+      echo "📝 All automation stopped"
+      
+      # Wait for next command
+      break
+    fi
+    sleep 0.1
+  done
+}
+```
+
+**Behavior After Ctrl-Q-Q:**
+- ✅ All Selenium instances closed
+- ✅ All mouse automation stopped
+- ✅ All GUI interaction halted
+- ✅ All running tasks killed
+- ✅ Keyboard/mouse control returned to user
+- ✅ Terminals remain active for user input
+- ✅ No cleanup required (processes killed, not paused)
+
+**Recovery:**
+After pressing Ctrl-Q-Q, user can:
+```bash
+# Check what stopped
+ps aux | grep -E 'selenium|webdriver|demo'
+
+# Manually restart specific component
+npm run demo:molgang
+
+# Or resume normal workflow
+npm run dev
+```
+
+**Usage Scenarios:**
+- 🚨 Demo goes haywire (infinite loop, unresponsive)
+- 🎮 User needs immediate mouse control
+- 🔧 Need to stop all automation for manual testing
+- ⚡ Emergency debugging (pause to inspect state)
+- ❌ Unexpected behavior (stop before damage)
+
+**DO NOT USE unless:**
+- Automation is unresponsive
+- GUI is stuck in infinite loop
+- Need immediate user control
+- Emergency situation
+
+---
+
 ## 📋 Core Rules
 
 ### 1. Context Management (Token Budget: 200k max)
