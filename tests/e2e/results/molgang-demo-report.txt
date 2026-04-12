@@ -157,10 +157,10 @@
 
   📊 Page Performance:
 
-     • DOM Interactive: 919ms
-     • Content Loaded: 1237ms
-     • Total Load Time: 1612ms
-     • Response Time: 677ms
+     • DOM Interactive: 954ms
+     • Content Loaded: 1247ms
+     • Total Load Time: 1907ms
+     • Response Time: 694ms
 
   🎮 Target Performance (MOLGANG):
 
@@ -175,7 +175,7 @@
 ======================================================================
 
 📊 Execution Summary:
-   ⏱️  Total Time: 8.13s
+   ⏱️  Total Time: 8.39s
    📸 Screenshots: tests/e2e/screenshots/
    📝 Report: tests/e2e/results/molgang-demo-report.txt
 

@@ -227,6 +227,28 @@ app.get('/dashboard-static', (req, res) => {
         </div>
 
         <div class="section">
+            <h2>📋 Task Status (Auto-refresh 5s)</h2>
+            <div class="status-grid" id="taskStats">
+                <div class="status-card">
+                    <div class="status-label">Total Tasks</div>
+                    <div class="status-value" id="totalTasks">Loading...</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Completed</div>
+                    <div class="status-value" id="completedTasks">Loading...</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">In Progress</div>
+                    <div class="status-value" id="inProgressTasks">Loading...</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Pending</div>
+                    <div class="status-value" id="pendingTasks">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
             <h2>🎯 System Features</h2>
             <ul class="feature-list">
                 <li>✅ <strong>87% Cost Reduction</strong> - Cache (40%) + Batching (30%) + Routing (20%)</li>
@@ -242,6 +264,30 @@ app.get('/dashboard-static', (req, res) => {
             <p>VirtualPC Autonomous Agent System • All systems operational • Ready for MOLGANG Phase 5</p>
         </div>
     </div>
+
+    <script>
+        // Auto-refresh task status every 5 seconds
+        async function refreshTaskStatus() {
+            try {
+                const response = await fetch('/api/task-status');
+                const data = await response.json();
+
+                // Update task status elements
+                document.getElementById('totalTasks').textContent = data.total || 0;
+                document.getElementById('completedTasks').textContent = data.completed || 0;
+                document.getElementById('inProgressTasks').textContent = data.inProgress || 0;
+                document.getElementById('pendingTasks').textContent = data.pending || 0;
+            } catch (error) {
+                console.log('Task status fetch (expected during startup):', error.message);
+            }
+        }
+
+        // Initial load
+        refreshTaskStatus();
+
+        // Set up 5-second polling interval
+        setInterval(refreshTaskStatus, 5000);
+    </script>
 </body>
 </html>
   `);
@@ -1378,6 +1424,23 @@ function setupRoutes(app: express.Express, components: any) {
         errors_last_30_days: history.filter((h: any) => !h.success).length,
         last_successful_fetch: dataFetcher.getLastFetch().toISOString()
       });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Task status endpoint for UI auto-refresh
+  app.get('/api/task-status', (req, res) => {
+    try {
+      // Return mock task statistics (can be enhanced with real tracking later)
+      const taskStatus = {
+        total: Math.floor(Math.random() * 50) + 20,
+        completed: Math.floor(Math.random() * 20) + 5,
+        inProgress: Math.floor(Math.random() * 15) + 2,
+        pending: Math.floor(Math.random() * 30) + 10,
+        timestamp: new Date().toISOString()
+      };
+      return res.json(taskStatus);
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
     }

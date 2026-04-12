@@ -28,7 +28,7 @@ export class VirtualPCInteractiveDemo {
       browser: config.browser || 'chrome',
       headless: config.headless !== false,
       windowSize: config.windowSize || { width: 1920, height: 1080 },
-      baseUrl: config.baseUrl || 'http://localhost:3000',
+      baseUrl: config.baseUrl || 'http://localhost:3100',
       slowMotion: config.slowMotion || 500, // 500ms between actions for visibility
     };
   }
@@ -438,7 +438,7 @@ async function main(): Promise<void> {
     browser: 'chrome',
     headless: false, // Set to true for headless mode
     windowSize: { width: 1920, height: 1080 },
-    baseUrl: 'http://localhost:3000',
+    baseUrl: 'http://localhost:3100',
     slowMotion: 500, // 500ms delay between actions for visibility
   });
 
