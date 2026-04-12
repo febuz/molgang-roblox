@@ -557,24 +557,34 @@
 
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Total Tasks</div>
-                        <div class="stat-value" id="stat-total">12</div>
-                        <div class="stat-change">+5 this week</div>
+                        <div class="stat-label">Version</div>
+                        <div class="stat-value" id="stat-version">3.2</div>
+                        <div class="stat-change">Enterprise Edition</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Completed</div>
-                        <div class="stat-value" id="stat-completed">0</div>
-                        <div class="stat-change">0% completion</div>
+                        <div class="stat-label">Daily Updates</div>
+                        <div class="stat-value" id="stat-daily-updates">147</div>
+                        <div class="stat-change">System events/day</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">In Progress</div>
-                        <div class="stat-value" id="stat-inprogress">1</div>
-                        <div class="stat-change">Mira: Dashboard Design</div>
+                        <div class="stat-label">QWEN Tokens Used</div>
+                        <div class="stat-value" id="stat-qwen">847K</div>
+                        <div class="stat-change">of 1M daily budget</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Cost Savings</div>
-                        <div class="stat-value" id="stat-savings">87%</div>
-                        <div class="stat-change">Operational efficiency</div>
+                        <div class="stat-label">System Uptime</div>
+                        <div class="stat-value" id="stat-uptime">99.87%</div>
+                        <div class="stat-change">✓ Operational</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Cache Hit Rate</div>
+                        <div class="stat-value" id="stat-cache">87%</div>
+                        <div class="stat-change">Optimization level</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Student Capacity</div>
+                        <div class="stat-value" id="stat-capacity">1M+</div>
+                        <div class="stat-change">Global scale ready</div>
                     </div>
                 </div>
 
@@ -1267,21 +1277,31 @@
                 const response = await fetch('/api/metrics');
                 const data = await response.json();
 
-                // Update stat cards
-                if (data.totalTasks !== undefined) {
-                    document.getElementById('stat-total').textContent = data.totalTasks;
+                // Version
+                if (data.version) {
+                    document.getElementById('stat-version').textContent = data.version;
                 }
-                if (data.completed !== undefined) {
-                    document.getElementById('stat-completed').textContent = data.completed;
-                    const completionPercent = data.totalTasks > 0 ? Math.round((data.completed / data.totalTasks) * 100) : 0;
-                    document.getElementById('progress-percent').textContent = completionPercent;
-                    document.getElementById('progress-overall').style.width = completionPercent + '%';
+                // Daily Updates
+                if (data.dailyUpdates !== undefined) {
+                    document.getElementById('stat-daily-updates').textContent = data.dailyUpdates;
                 }
-                if (data.inProgress !== undefined) {
-                    document.getElementById('stat-inprogress').textContent = data.inProgress;
+                // QWEN Tokens
+                if (data.qwenTokens?.consumed !== undefined) {
+                    const consumed = Math.round(data.qwenTokens.consumed / 1000);
+                    document.getElementById('stat-qwen').textContent = consumed + 'K';
                 }
-                if (data.costSavings !== undefined) {
-                    document.getElementById('stat-savings').textContent = data.costSavings;
+                // Uptime
+                if (data.uptime !== undefined) {
+                    document.getElementById('stat-uptime').textContent = data.uptime.toFixed(2) + '%';
+                }
+                // Cache Hit Rate
+                if (data.cacheHitRate !== undefined) {
+                    document.getElementById('stat-cache').textContent = data.cacheHitRate + '%';
+                }
+                // Student Capacity
+                if (data.studentCapacity !== undefined) {
+                    const cap = data.studentCapacity >= 1000000 ? '1M+' : data.studentCapacity;
+                    document.getElementById('stat-capacity').textContent = cap;
                 }
             } catch (error) {
                 console.log('Metrics fetch error:', error.message);
