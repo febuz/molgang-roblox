@@ -29,6 +29,7 @@ import { EntityModel } from './integrations/numerai/entity-model';
 import NumeraiDataFetcher from './integrations/numerai/data-fetcher';
 import OpenClawEDBBridge from './integrations/numerai/openclaw-edb-bridge';
 import { killSwitch } from './openclaw-kill-switch';
+import { molGangIntegration } from './integrations/molgang-web-integration';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
 import AuthSystem from './auth/auth-system';
@@ -1454,8 +1455,14 @@ function setupRoutes(app: express.Express, components: any) {
   // OpenClaw command execution routes (no approval required)
   setupOpenClawRoutes(app);
 
+  // MOLGANG Web Version Integration (Educational Game Support)
+  logger.info('📚 Registering MOLGANG web integration...');
+  molGangIntegration.registerEndpoints(app);
+  logger.info('✓ MOLGANG web version integrated (12 endpoints)');
+
   logger.info('✓ Routes configured');
   logger.info('✓ OpenClaw autonomous command execution enabled');
+  logger.info('✓ MOLGANG web version ready for 1M+ students');
 }
 
 /**
