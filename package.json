@@ -14,6 +14,8 @@
     "test:e2e:headless": "HEADLESS=true ts-node tests/e2e/selenium-launcher.ts",
     "test:e2e:chrome": "ts-node tests/e2e/selenium-launcher.ts -- --browser chrome",
     "test:e2e:firefox": "ts-node tests/e2e/selenium-launcher.ts -- --browser firefox",
+    "demo:interactive": "ts-node tests/e2e/interactive-demo.ts",
+    "demo:run": "bash run-interactive-demo.sh",
     "setup:selenium": "bash setup-selenium-ubuntu.sh",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts",
