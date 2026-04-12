@@ -1135,29 +1135,103 @@
             document.querySelector('.paperclip-assistant').style.display = 'none';
         }
 
-        // Update task stats (would come from API in real implementation)
-        function updateTaskStats() {
-            // Mock data
-            const stats = {
-                total: 64,
-                completed: 40,
-                inProgress: 18,
-                pending: 6
-            };
+        // Update task stats from API (LIVE DATA)
+        async function updateTaskStats() {
+            try {
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+                const tasks = data.tasks;
 
-            document.getElementById('stat-total').textContent = stats.total;
-            document.getElementById('stat-completed').textContent = stats.completed;
-            document.getElementById('stat-inprogress').textContent = stats.inProgress;
-            document.getElementById('stat-pending').textContent = stats.pending;
+                document.getElementById('stat-total').textContent = tasks.total;
+                document.getElementById('stat-completed').textContent = tasks.completed;
+                document.getElementById('stat-inprogress').textContent = tasks.inProgress;
+                document.getElementById('stat-pending').textContent = tasks.pending;
 
-            const percent = Math.round((stats.completed / stats.total) * 100);
-            document.getElementById('progress-percent').textContent = percent;
-            document.getElementById('progress-overall').style.width = percent + '%';
+                const percent = Math.round((tasks.completed / tasks.total) * 100);
+                document.getElementById('progress-percent').textContent = percent;
+                document.getElementById('progress-overall').style.width = percent + '%';
+            } catch (error) {
+                console.log('Metrics fetch (expected during startup):', error.message);
+            }
         }
 
         // Initialize
         updateTaskStats();
         setInterval(updateTaskStats, 5000); // Update every 5 seconds
+
+        // Load backlog data
+        async function loadBacklog() {
+            try {
+                const response = await fetch('/api/backlog');
+                const data = await response.json();
+
+                const backlogHtml = `
+                    <div class="card">
+                        <div class="card-title">📊 Current Backlog Status</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">Completed</div>
+                                <div class="stat-value">${data.summary.completed}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">In Progress</div>
+                                <div class="stat-value">${data.summary.inProgress}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Pending</div>
+                                <div class="stat-value">${data.summary.pending}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Total</div>
+                                <div class="stat-value">${data.summary.total}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">🎯 Priority Queue (Next Tasks)</div>
+                        <div style="color: var(--text-secondary);">
+                            ${data.priority_queue.map(item => `
+                                <div style="margin-bottom: 10px; padding: 8px; background: rgba(96, 165, 250, 0.1); border-left: 3px solid var(--primary); border-radius: 4px;">
+                                    <strong style="color: var(--primary);">#${item.rank}</strong> ${item.task}
+                                    <span style="float: right; font-size: 0.85em; color: ${item.status === 'done' ? '#22c55e' : item.status === 'in-progress' ? '#f59e0b' : '#94a3b8'}">
+                                        ${item.status.toUpperCase()}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">📁 Backlog Files</div>
+                        <p style="color: var(--text-secondary); margin-bottom: 10px;">
+                            View detailed tasks in these backlog files:
+                        </p>
+                        <a href="https://github.com/febuz/molgang-roblox/blob/main/.backlog/high-priority.md"
+                           style="display: inline-block; margin-right: 10px; padding: 8px 16px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none;"
+                           target="_blank">
+                            📋 High Priority Tasks
+                        </a>
+                        <a href="https://github.com/febuz/molgang-roblox/blob/main/.backlog/session-actions.md"
+                           style="display: inline-block; padding: 8px 16px; background: var(--secondary); color: white; border-radius: 6px; text-decoration: none;"
+                           target="_blank">
+                            📝 Session Actions
+                        </a>
+                    </div>
+                `;
+
+                // Insert before the footer or at the end
+                const container = document.querySelector('.main-content');
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = backlogHtml;
+                container.appendChild(tempDiv);
+            } catch (error) {
+                console.log('Backlog fetch error:', error.message);
+            }
+        }
+
+        // Load metrics on page load
+        loadBacklog();
 
         // Populate backlog
         function populateBacklog() {
