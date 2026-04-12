@@ -162,7 +162,8 @@ export class TerminalActivityMonitor {
    */
   getTerminalStatus(terminal?: 'A' | 'B'): TerminalStatus | Map<string, TerminalStatus> {
     if (terminal) {
-      return this.terminalStatus.get(terminal) || {};
+      const status = this.terminalStatus.get(terminal);
+      return status || { terminal, agent: '', isActive: false, lastActivity: '', compactionNeeded: false, contextTokens: 0, messageCount: 0 };
     }
     return this.terminalStatus;
   }

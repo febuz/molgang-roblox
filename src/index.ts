@@ -170,7 +170,7 @@ app.get('/api/backlog/per-person', (req, res) => {
 });
 
 // Context Token Tracking (for monitoring /compact necessity)
-app.post('/api/terminal/context-update', (req, res) => {
+app.post('/api/terminal/context-update', (req, res): any => {
   const { terminal, tokenCount } = req.body;
   if (!terminal || tokenCount === undefined) {
     return res.status(400).json({ error: 'Missing terminal or tokenCount' });
@@ -178,7 +178,7 @@ app.post('/api/terminal/context-update', (req, res) => {
 
   activityMonitor.updateContextTokens(terminal as 'A' | 'B', tokenCount);
 
-  res.json({
+  return res.json({
     terminal,
     tokenCount,
     compactionNeeded: activityMonitor.isCompactionNeeded(terminal as 'A' | 'B'),
