@@ -62,7 +62,7 @@ export const corsHeaders = (req: Request, res: Response, next: NextFunction) => 
     return res.sendStatus(200);
   }
 
-  next();
+  return next();
 };
 
 export default { securityHeaders, corsHeaders };

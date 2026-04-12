@@ -47,7 +47,7 @@ export class AdvancedRateLimiter {
    */
   public perIp(config: RateLimitConfig) {
     return (req: Request, res: Response, next: NextFunction) => {
-      const key = config.keyGenerator ? config.keyGenerator(req) : req.ip;
+      const key = (config.keyGenerator ? config.keyGenerator(req) : req.ip) || 'unknown';
       const now = Date.now();
 
       if (!this.store[key]) {
@@ -58,7 +58,7 @@ export class AdvancedRateLimiter {
         return next();
       }
 
-      const entry = this.store[key];
+      const entry = this.store[key]!;
 
       // Reset window if expired
       if (now > entry.resetTime) {

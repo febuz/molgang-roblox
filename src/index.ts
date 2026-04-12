@@ -284,14 +284,11 @@ async function initialize() {
     const agentAPI = new AgentAPIWrapper(lightrag);
     logger.info('✓ Agent API Wrapper ready (caching + rate limiting)');
 
-    // 2. Initialize Kafka (message orchestration)
-    logger.info('🔄 Initializing Kafka...');
-    const kafka = new KafkaOrchestrator({
-      brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
-      clientId: 'custom-paperclip'
-    });
-    await kafka.connect();
-    logger.info('✓ Kafka connected');
+    // 2. Initialize Kafka (message orchestration) - DISABLED for now
+    logger.info('🔄 Kafka disabled (development mode) - running single-node');
+    let kafka = null;
+    // Kafka initialization commented out for development
+    // await new KafkaOrchestrator({...}).connect();
 
     // 3. Initialize Model Router (intelligent multi-tier routing)
     logger.info('🤖 Initializing Model Router...');

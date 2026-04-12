@@ -310,14 +310,21 @@ async function initialize() {
         logger_1.default.info('📦 Initializing Agent API Wrapper...');
         const agentAPI = new agent_api_1.AgentAPIWrapper(lightrag);
         logger_1.default.info('✓ Agent API Wrapper ready (caching + rate limiting)');
-        // 2. Initialize Kafka (message orchestration)
+        // 2. Initialize Kafka (message orchestration) - Optional with fallback
         logger_1.default.info('🔄 Initializing Kafka...');
-        const kafka = new orchestrator_1.KafkaOrchestrator({
-            brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
-            clientId: 'custom-paperclip'
-        });
-        await kafka.connect();
-        logger_1.default.info('✓ Kafka connected');
+        let kafka = null;
+        try {
+            kafka = new orchestrator_1.KafkaOrchestrator({
+                brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
+                clientId: 'custom-paperclip'
+            });
+            await kafka.connect();
+            logger_1.default.info('✓ Kafka connected');
+        }
+        catch (kafkaError) {
+            logger_1.default.warn('⚠️  Kafka connection failed, running in non-distributed mode', kafkaError);
+            // Continue without Kafka - system will work in single-node mode
+        }
         // 3. Initialize Model Router (intelligent multi-tier routing)
         logger_1.default.info('🤖 Initializing Model Router...');
         const modelRouter = new model_router_1.ModelRouter();
