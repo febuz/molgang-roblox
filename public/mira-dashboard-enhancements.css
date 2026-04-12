@@ -1,0 +1,426 @@
+/**
+ * Mira's VirtualPC Dashboard Enhancements
+ * 🎨 Professional Design
+ * 🎭 Creative Direction: Precision + Elegance + Stability
+ */
+
+:root {
+  /* Agent Colors */
+  --color-fill: linear-gradient(135deg, #fbbf24, #f59e0b);
+  --color-kai: linear-gradient(135deg, #fbbf24, #a78bfa);
+  --color-zip: linear-gradient(135deg, #22c55e, #06b6d4);
+  --color-mira: linear-gradient(135deg, #ec4899, #a78bfa);
+  --color-luna: linear-gradient(135deg, #e5e7eb, #f3f4f6);
+}
+
+/* AGENT CARD ENHANCEMENTS */
+.agent-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-left-width: 6px !important;
+}
+
+.agent-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Agent-specific styling */
+.agent-card[data-agent="fill"] {
+  border-left-color: #fbbf24;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.05), rgba(245, 158, 11, 0.05));
+}
+
+.agent-card[data-agent="kai"] {
+  border-left-color: #a78bfa;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.05), rgba(167, 139, 250, 0.05));
+}
+
+.agent-card[data-agent="zip"] {
+  border-left-color: #06b6d4;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.05), rgba(6, 182, 212, 0.05));
+}
+
+.agent-card[data-agent="mira"] {
+  border-left-color: #ec4899;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.05), rgba(167, 139, 250, 0.05));
+}
+
+.agent-card[data-agent="luna"] {
+  border-left-color: #e5e7eb;
+  background: linear-gradient(135deg, rgba(229, 231, 235, 0.05), rgba(243, 244, 246, 0.05));
+}
+
+/* AGENT AVATAR - Icon Enhancement */
+.agent-avatar {
+  position: relative;
+  font-size: 1.8em;
+  transition: all 0.3s ease;
+  animation: avatar-glow 3s ease-in-out infinite;
+}
+
+.agent-card:hover .agent-avatar {
+  transform: scale(1.15);
+  animation: avatar-pulse 0.6s ease-out;
+}
+
+@keyframes avatar-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.1));
+  }
+  50% {
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.2));
+  }
+}
+
+@keyframes avatar-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1.15);
+  }
+}
+
+/* STATUS INDICATOR ANIMATIONS */
+.status-indicator {
+  position: relative;
+}
+
+.status-indicator.online {
+  animation: status-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.status-indicator.busy {
+  animation: status-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.1);
+    opacity: 0.8;
+  }
+}
+
+/* PROGRESS BAR - Animated */
+.progress-fill {
+  position: relative;
+  overflow: hidden;
+  animation: progress-glow 2s ease-in-out infinite;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: progress-shine 2s infinite;
+}
+
+@keyframes progress-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(96, 165, 250, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.6));
+  }
+}
+
+@keyframes progress-shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* TASK BADGE - Enhanced */
+.task-badge {
+  position: relative;
+  display: inline-block;
+  animation: badge-float 2s ease-in-out infinite;
+}
+
+@keyframes badge-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* CARD ANIMATIONS - Entrance */
+.card {
+  animation: card-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes card-entrance {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* LEADERBOARD - Enhanced */
+.leaderboard-row {
+  animation: leaderboard-entrance 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.leaderboard-row:nth-child(1) { animation-delay: 0.1s; }
+.leaderboard-row:nth-child(2) { animation-delay: 0.2s; }
+.leaderboard-row:nth-child(3) { animation-delay: 0.3s; }
+.leaderboard-row:nth-child(4) { animation-delay: 0.4s; }
+.leaderboard-row:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes leaderboard-entrance {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.leaderboard-rank.first {
+  animation: medal-bounce 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+
+.leaderboard-rank.second {
+  animation: medal-shimmer 1.5s ease-in-out infinite;
+}
+
+.leaderboard-rank.third {
+  animation: medal-shimmer 1.5s ease-in-out infinite 0.5s;
+}
+
+@keyframes medal-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes medal-shimmer {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* NAV ITEMS - Smooth Transitions */
+.nav-item {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background: var(--primary);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+
+.nav-item:hover::before,
+.nav-item.active::before {
+  transform: scaleY(1);
+}
+
+/* STAT CARDS - Number Counter Animation */
+.stat-value {
+  position: relative;
+  font-weight: 700;
+}
+
+.stat-value::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: stat-underline 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes stat-underline {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+/* PAPERCLIP ASSISTANT - Bounce Animation */
+.paperclip-icon {
+  animation: paperclip-bounce 1s cubic-bezier(0.34, 1.56, 0.64, 1) infinite !important;
+}
+
+@keyframes paperclip-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* SUBTLE BACKGROUND GRADIENT */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(96, 165, 250, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(6, 182, 212, 0.02) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* RESPONSIVE ENHANCEMENTS */
+@media (max-width: 768px) {
+  .agent-card {
+    animation: mobile-entrance 0.4s ease-out;
+  }
+
+  @keyframes mobile-entrance {
+    0% {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .agent-avatar {
+    font-size: 1.5em;
+  }
+
+  .card {
+    margin-bottom: 15px;
+  }
+}
+
+/* ACCESSIBILITY - Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* DARK MODE ADJUSTMENTS */
+@media (prefers-color-scheme: dark) {
+  .agent-card[data-agent="fill"] {
+    border-left-color: #fbbf24;
+  }
+
+  .agent-card[data-agent="kai"] {
+    border-left-color: #c4b5fd;
+  }
+
+  .agent-card[data-agent="zip"] {
+    border-left-color: #06b6d4;
+  }
+
+  .agent-card[data-agent="mira"] {
+    border-left-color: #f472b6;
+  }
+
+  .agent-card[data-agent="luna"] {
+    border-left-color: #d1d5db;
+  }
+}
+
+/* SMOOTH SCROLL BEHAVIOR */
+html {
+  scroll-behavior: smooth;
+}
+
+/* FOCUS STATES - Keyboard Navigation */
+.nav-item:focus,
+.link-btn:focus,
+.paperclip-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.5);
+  border-radius: 6px;
+}
+
+/* HOVER STATE ENHANCEMENTS */
+.link-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.link-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.link-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* CUSTOM SCROLLBAR */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(96, 165, 250, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--primary), var(--secondary));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, var(--secondary), var(--primary));
+}
