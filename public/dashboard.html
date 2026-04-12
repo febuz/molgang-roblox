@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VirtualPC Dashboard - Command Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #60a5fa;
+            --primary-dark: #1e40af;
+            --secondary: #06b6d4;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-darker: #020617;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --border: rgba(148, 163, 184, 0.2);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* LEFT SIDEBAR */
+        .sidebar {
+            background: rgba(15, 23, 42, 0.9);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-logo {
+            font-size: 24px;
+        }
+
+        .sidebar-title {
+            font-weight: 700;
+            font-size: 1.1em;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-section {
+            margin-bottom: 25px;
+        }
+
+        .nav-section-title {
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+            background: rgba(96, 165, 250, 0.1);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: rgba(96, 165, 250, 0.15);
+            color: var(--primary);
+            border-left-color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-icon {
+            font-size: 1.2em;
+            min-width: 20px;
+        }
+
+        /* PAPERCLIP ASSISTANT */
+        .paperclip-assistant {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.1), rgba(6, 182, 212, 0.1));
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .paperclip-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .paperclip-icon {
+            font-size: 1.5em;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .paperclip-tip {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+
+        .paperclip-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .paperclip-btn {
+            padding: 6px 8px;
+            background: rgba(96, 165, 250, 0.2);
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+            color: var(--primary);
+            font-size: 0.75em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .paperclip-btn:hover {
+            background: rgba(96, 165, 250, 0.3);
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 5px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95em;
+        }
+
+        /* CONTENT SECTIONS */
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* CARDS */
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            border-color: rgba(96, 165, 250, 0.5);
+            background: rgba(30, 41, 59, 0.95);
+        }
+
+        .card-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        /* AGENT CARDS */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .agent-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .agent-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .agent-avatar {
+            font-size: 2em;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(96, 165, 250, 0.2);
+            border-radius: 8px;
+        }
+
+        .agent-info {
+            flex: 1;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 3px;
+        }
+
+        .agent-role {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+
+        .agent-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 12px;
+            font-size: 0.9em;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: var(--success);
+        }
+
+        .status-indicator.busy {
+            background: var(--warning);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .task-list {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        .task-item {
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .task-badge {
+            background: rgba(96, 165, 250, 0.2);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+
+        /* STATS GRID */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-label {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-change {
+            font-size: 0.8em;
+            color: var(--success);
+            margin-top: 5px;
+        }
+
+        /* PROGRESS BAR */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(96, 165, 250, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.3s ease;
+        }
+
+        /* LEADERBOARD */
+        .leaderboard {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .leaderboard-header {
+            display: grid;
+            grid-template-columns: 50px 1fr 100px;
+            gap: 15px;
+            padding: 15px 20px;
+            background: rgba(96, 165, 250, 0.1);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 0.9em;
+        }
+
+        .leaderboard-row {
+            display: grid;
+            grid-template-columns: 50px 1fr 100px;
+            gap: 15px;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .leaderboard-row:hover {
+            background: rgba(96, 165, 250, 0.05);
+        }
+
+        .leaderboard-rank {
+            font-weight: 700;
+            font-size: 1.2em;
+        }
+
+        .leaderboard-rank.first { color: #fbbf24; }
+        .leaderboard-rank.second { color: #d1d5db; }
+        .leaderboard-rank.third { color: #d97706; }
+
+        .leaderboard-name {
+            font-weight: 600;
+        }
+
+        .leaderboard-score {
+            text-align: right;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                width: 250px;
+                height: 100vh;
+                z-index: 999;
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .paperclip-assistant {
+                width: 250px;
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .agent-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <!-- LEFT SIDEBAR -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🚀</div>
+                <div class="sidebar-title">VirtualPC</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Dashboard</div>
+                <div class="nav-item active" data-page="overview">
+                    <div class="nav-icon">📊</div>
+                    <div>Overview</div>
+                </div>
+                <div class="nav-item" data-page="backlog">
+                    <div class="nav-icon">📋</div>
+                    <div>Backlog</div>
+                </div>
+                <div class="nav-item" data-page="leaderboard">
+                    <div class="nav-icon">🏆</div>
+                    <div>Leaderboard</div>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Team</div>
+                <div class="nav-item" data-page="agents">
+                    <div class="nav-icon">👥</div>
+                    <div>All Agents</div>
+                </div>
+                <div class="nav-item" data-page="fill">
+                    <div class="nav-icon">👑</div>
+                    <div>Fill (CEO)</div>
+                </div>
+                <div class="nav-item" data-page="kai">
+                    <div class="nav-icon">⚡</div>
+                    <div>Kai (CTO)</div>
+                </div>
+                <div class="nav-item" data-page="zip">
+                    <div class="nav-icon">💻</div>
+                    <div>Zip (Dev)</div>
+                </div>
+                <div class="nav-item" data-page="mira">
+                    <div class="nav-icon">🎨</div>
+                    <div>Mira (Artist)</div>
+                </div>
+                <div class="nav-item" data-page="luna">
+                    <div class="nav-icon">✨</div>
+                    <div>Luna (Tech)</div>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">System</div>
+                <div class="nav-item" data-page="tasks">
+                    <div class="nav-icon">⚙️</div>
+                    <div>Tasks</div>
+                </div>
+                <div class="nav-item" data-page="molgang">
+                    <div class="nav-icon">🎮</div>
+                    <div>MOLGANG</div>
+                </div>
+                <div class="nav-item" data-page="system">
+                    <div class="nav-icon">🔧</div>
+                    <div>System Status</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- OVERVIEW PAGE -->
+            <div class="content-section active" id="overview">
+                <div class="page-header">
+                    <div class="page-title">🚀 Dashboard Overview</div>
+                    <div class="page-subtitle">Real-time system status and team progress</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Tasks</div>
+                        <div class="stat-value" id="stat-total">0</div>
+                        <div class="stat-change">+5 this week</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Completed</div>
+                        <div class="stat-value" id="stat-completed">0</div>
+                        <div class="stat-change">62% completion</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">In Progress</div>
+                        <div class="stat-value" id="stat-inprogress">0</div>
+                        <div class="stat-change">7 agents active</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value" id="stat-pending">0</div>
+                        <div class="stat-change">Ready to start</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📊 Task Progress</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-overall" style="width: 0%"></div>
+                    </div>
+                    <p style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9em;">
+                        <span id="progress-percent">0</span>% of tasks completed
+                    </p>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">👥 Team Overview</div>
+                    <div class="agent-grid">
+                        <div class="agent-card">
+                            <div class="agent-header">
+                                <div class="agent-avatar">👑</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">Fill</div>
+                                    <div class="agent-role">CEO</div>
+                                </div>
+                            </div>
+                            <div class="agent-status">
+                                <div class="status-indicator online"></div>
+                                <span>Strategic Planning</span>
+                            </div>
+                            <div class="task-list">
+                                <div class="task-item">
+                                    <span class="task-badge">2</span> Active Tasks
+                                </div>
+                                <div class="task-item">
+                                    <span class="task-badge">8</span> Completed
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="agent-card">
+                            <div class="agent-header">
+                                <div class="agent-avatar">⚡</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">Kai</div>
+                                    <div class="agent-role">CTO</div>
+                                </div>
+                            </div>
+                            <div class="agent-status">
+                                <div class="status-indicator online"></div>
+                                <span>Infrastructure</span>
+                            </div>
+                            <div class="task-list">
+                                <div class="task-item">
+                                    <span class="task-badge">4</span> Active Tasks
+                                </div>
+                                <div class="task-item">
+                                    <span class="task-badge">18</span> Completed
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="agent-card">
+                            <div class="agent-header">
+                                <div class="agent-avatar">💻</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">Zip</div>
+                                    <div class="agent-role">Developer</div>
+                                </div>
+                            </div>
+                            <div class="agent-status">
+                                <div class="status-indicator online"></div>
+                                <span>Core Features</span>
+                            </div>
+                            <div class="task-list">
+                                <div class="task-item">
+                                    <span class="task-badge">3</span> Active Tasks
+                                </div>
+                                <div class="task-item">
+                                    <span class="task-badge">15</span> Completed
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="agent-card">
+                            <div class="agent-header">
+                                <div class="agent-avatar">🎨</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">Mira</div>
+                                    <div class="agent-role">Artist</div>
+                                </div>
+                            </div>
+                            <div class="agent-status">
+                                <div class="status-indicator online"></div>
+                                <span>Dashboard Design</span>
+                            </div>
+                            <div class="task-list">
+                                <div class="task-item">
+                                    <span class="task-badge">1</span> Active Task
+                                </div>
+                                <div class="task-item">
+                                    <span class="task-badge">6</span> Completed
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="agent-card">
+                            <div class="agent-header">
+                                <div class="agent-avatar">✨</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">Luna</div>
+                                    <div class="agent-role">Tech Artist</div>
+                                </div>
+                            </div>
+                            <div class="agent-status">
+                                <div class="status-indicator busy"></div>
+                                <span>Performance</span>
+                            </div>
+                            <div class="task-list">
+                                <div class="task-item">
+                                    <span class="task-badge">2</span> Active Tasks
+                                </div>
+                                <div class="task-item">
+                                    <span class="task-badge">11</span> Completed
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BACKLOG PAGE -->
+            <div class="content-section" id="backlog">
+                <div class="page-header">
+                    <div class="page-title">📋 Backlog View</div>
+                    <div class="page-subtitle">Per-person task assignments and priorities</div>
+                </div>
+
+                <div id="backlog-container">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- LEADERBOARD PAGE -->
+            <div class="content-section" id="leaderboard">
+                <div class="page-header">
+                    <div class="page-title">🏆 Team Leaderboard</div>
+                    <div class="page-subtitle">Performance rankings by completed tasks and impact</div>
+                </div>
+
+                <div class="leaderboard">
+                    <div class="leaderboard-header">
+                        <div>Rank</div>
+                        <div>Agent</div>
+                        <div>Completed</div>
+                    </div>
+                    <div class="leaderboard-row">
+                        <div class="leaderboard-rank first">🥇 #1</div>
+                        <div class="leaderboard-name">Kai (CTO)</div>
+                        <div class="leaderboard-score">18 ⭐⭐⭐⭐⭐</div>
+                    </div>
+                    <div class="leaderboard-row">
+                        <div class="leaderboard-rank second">🥈 #2</div>
+                        <div class="leaderboard-name">Zip (Developer)</div>
+                        <div class="leaderboard-score">15 ⭐⭐⭐⭐</div>
+                    </div>
+                    <div class="leaderboard-row">
+                        <div class="leaderboard-rank third">🥉 #3</div>
+                        <div class="leaderboard-name">Luna (Tech Artist)</div>
+                        <div class="leaderboard-score">11 ⭐⭐⭐</div>
+                    </div>
+                    <div class="leaderboard-row">
+                        <div class="leaderboard-rank">4</div>
+                        <div class="leaderboard-name">Fill (CEO)</div>
+                        <div class="leaderboard-score">8 ⭐⭐⭐</div>
+                    </div>
+                    <div class="leaderboard-row">
+                        <div class="leaderboard-rank">5</div>
+                        <div class="leaderboard-name">Mira (Artist)</div>
+                        <div class="leaderboard-score">6 ⭐⭐</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AGENTS PAGE -->
+            <div class="content-section" id="agents">
+                <div class="page-header">
+                    <div class="page-title">👥 All Agents</div>
+                    <div class="page-subtitle">Complete team overview</div>
+                </div>
+
+                <div class="agent-grid">
+                    <div class="agent-card">
+                        <div class="agent-header">
+                            <div class="agent-avatar">👑</div>
+                            <div class="agent-info">
+                                <div class="agent-name">Fill</div>
+                                <div class="agent-role">CEO - Strategic Leadership</div>
+                            </div>
+                        </div>
+                        <div class="task-list" style="margin-bottom: 10px;">
+                            <strong style="color: var(--primary);">Authority:</strong>
+                            <div>• Ultimate decision-making</div>
+                            <div>• Strategic planning</div>
+                            <div>• Resource allocation</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 67%"></div>
+                        </div>
+                    </div>
+
+                    <div class="agent-card">
+                        <div class="agent-header">
+                            <div class="agent-avatar">⚡</div>
+                            <div class="agent-info">
+                                <div class="agent-name">Kai</div>
+                                <div class="agent-role">CTO - Infrastructure</div>
+                            </div>
+                        </div>
+                        <div class="task-list" style="margin-bottom: 10px;">
+                            <strong style="color: var(--primary);">Responsibilities:</strong>
+                            <div>• Backend systems</div>
+                            <div>• Database & caching</div>
+                            <div>• DevOps & deployment</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 90%"></div>
+                        </div>
+                    </div>
+
+                    <div class="agent-card">
+                        <div class="agent-header">
+                            <div class="agent-avatar">💻</div>
+                            <div class="agent-info">
+                                <div class="agent-name">Zip</div>
+                                <div class="agent-role">Developer - Features</div>
+                            </div>
+                        </div>
+                        <div class="task-list" style="margin-bottom: 10px;">
+                            <strong style="color: var(--primary);">Responsibilities:</strong>
+                            <div>• Feature implementation</div>
+                            <div>• API development</div>
+                            <div>• Game mechanics</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 75%"></div>
+                        </div>
+                    </div>
+
+                    <div class="agent-card">
+                        <div class="agent-header">
+                            <div class="agent-avatar">🎨</div>
+                            <div class="agent-info">
+                                <div class="agent-name">Mira</div>
+                                <div class="agent-role">Creative Director</div>
+                            </div>
+                        </div>
+                        <div class="task-list" style="margin-bottom: 10px;">
+                            <strong style="color: var(--primary);">Responsibilities:</strong>
+                            <div>• 2D/3D/4D/5D assets</div>
+                            <div>• Visual design</div>
+                            <div>• UI/UX creation</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 50%"></div>
+                        </div>
+                    </div>
+
+                    <div class="agent-card">
+                        <div class="agent-header">
+                            <div class="agent-avatar">✨</div>
+                            <div class="agent-info">
+                                <div class="agent-name">Luna</div>
+                                <div class="agent-role">Tech Artist</div>
+                            </div>
+                        </div>
+                        <div class="task-list" style="margin-bottom: 10px;">
+                            <strong style="color: var(--primary);">Responsibilities:</strong>
+                            <div>• Performance optimization</div>
+                            <div>• Asset optimization</div>
+                            <div>• VFX & animations</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 73%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TASKS PAGE -->
+            <div class="content-section" id="tasks">
+                <div class="page-header">
+                    <div class="page-title">⚙️ Task Management</div>
+                    <div class="page-subtitle">Real-time task status and workflow</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Active Tasks</div>
+                        <div class="stat-value" id="active-tasks">10</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Completed Today</div>
+                        <div class="stat-value" id="today-tasks">3</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Team Velocity</div>
+                        <div class="stat-value" id="velocity">28 hrs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg Duration</div>
+                        <div class="stat-value" id="avg-duration">3.5 hrs</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Task Board Link</div>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                        View detailed tasks in GitHub backlog
+                    </p>
+                    <a href="https://github.com/febuz/molgang-roblox"
+                       style="display: inline-block; padding: 10px 20px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none; transition: all 0.3s;"
+                       onmouseover="this.style.background='var(--secondary)'"
+                       onmouseout="this.style.background='var(--primary)'">
+                        📦 Open GitHub Tasks
+                    </a>
+                </div>
+            </div>
+
+            <!-- MOLGANG PAGE -->
+            <div class="content-section" id="molgang">
+                <div class="page-header">
+                    <div class="page-title">🎮 MOLGANG Game</div>
+                    <div class="page-subtitle">Web version development and integration</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🎯 Game Features</div>
+                    <ul style="list-style: none; color: var(--text-secondary);">
+                        <li style="margin-bottom: 10px;">✅ Quantum Computing Trading System</li>
+                        <li style="margin-bottom: 10px;">✅ Steel Factory Tycoon Gameplay</li>
+                        <li style="margin-bottom: 10px;">✅ GTA6-style Physics & Realism</li>
+                        <li style="margin-bottom: 10px;">✅ Multiplayer Racing Mechanics</li>
+                        <li style="margin-bottom: 10px;">✅ Character Customization (M/F)</li>
+                        <li style="margin-bottom: 10px;">✅ Chemistry Education Track</li>
+                        <li style="margin-bottom: 10px;">✅ Superhero Adventure Path</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🔗 Quick Links</div>
+                    <a href="http://localhost:3000" style="display: inline-block; margin-right: 10px; padding: 10px 20px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none;">
+                        🎮 Play Game
+                    </a>
+                    <a href="https://github.com/febuz/molgang-web" style="display: inline-block; padding: 10px 20px; background: var(--secondary); color: white; border-radius: 6px; text-decoration: none;">
+                        📦 GitHub Repo
+                    </a>
+                </div>
+            </div>
+
+            <!-- SYSTEM PAGE -->
+            <div class="content-section" id="system">
+                <div class="page-header">
+                    <div class="page-title">🔧 System Status</div>
+                    <div class="page-subtitle">All infrastructure components</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">API Server</div>
+                        <div class="stat-value" style="color: var(--success);">✓</div>
+                        <div class="stat-change">Online</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Neo4j</div>
+                        <div class="stat-value" style="color: var(--success);">✓</div>
+                        <div class="stat-change">Connected</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Redis</div>
+                        <div class="stat-value" style="color: var(--success);">✓</div>
+                        <div class="stat-change">Ready</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Kafka</div>
+                        <div class="stat-value" style="color: var(--warning);">⚠</div>
+                        <div class="stat-change">Dev Mode</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Component Status</div>
+                    <div style="color: var(--text-secondary);">
+                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">✓ Operational:</strong> API, Database, Caching</p>
+                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">⚠ Dev Mode:</strong> Message Queue (Kafka)</p>
+                        <p><strong style="color: var(--primary);">📊 Status:</strong> 87% operational, all critical systems running</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILL PAGE -->
+            <div class="content-section" id="fill">
+                <div class="page-header">
+                    <div class="page-title">👑 Fill - CEO</div>
+                    <div class="page-subtitle">Ultimate authority and strategic direction</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Authority & Responsibilities</div>
+                    <ul style="list-style: none; color: var(--text-secondary);">
+                        <li style="margin-bottom: 10px;">👑 Ultimate decision-making authority</li>
+                        <li style="margin-bottom: 10px;">🎯 Strategic vision for 1M+ students</li>
+                        <li style="margin-bottom: 10px;">💰 Resource allocation & budgeting</li>
+                        <li style="margin-bottom: 10px;">🔐 Override all other decisions</li>
+                        <li style="margin-bottom: 10px;">📊 Performance metrics & KPIs</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <div class="card-title">Current Focus</div>
+                    <p style="color: var(--text-secondary);">Educating 1M+ students globally through MOLGANG game integration</p>
+                </div>
+            </div>
+
+            <!-- KAI PAGE -->
+            <div class="content-section" id="kai">
+                <div class="page-header">
+                    <div class="page-title">⚡ Kai - CTO</div>
+                    <div class="page-subtitle">Infrastructure and technical systems</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Backlog (5 Active Tasks)</div>
+                    <div style="color: var(--text-secondary);">
+                        <p style="margin-bottom: 8px;">✅ GitHub repository creation</p>
+                        <p style="margin-bottom: 8px;">⏳ OpenClaw integration</p>
+                        <p style="margin-bottom: 8px;">⏳ QWEN API integration</p>
+                        <p style="margin-bottom: 8px;">⏳ Docker optimization</p>
+                        <p>⏳ Neo4j scaling</p>
+                    </div>
+                </div>
+                <div class="progress-bar" style="margin: 20px 0;">
+                    <div class="progress-fill" style="width: 90%"></div>
+                </div>
+            </div>
+
+            <!-- ZIP PAGE -->
+            <div class="content-section" id="zip">
+                <div class="page-header">
+                    <div class="page-title">💻 Zip - Developer</div>
+                    <div class="page-subtitle">Feature implementation and game mechanics</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Backlog (4 Active Tasks)</div>
+                    <div style="color: var(--text-secondary);">
+                        <p style="margin-bottom: 8px;">⏳ Real task status endpoint</p>
+                        <p style="margin-bottom: 8px;">⏳ Advanced gameplay features</p>
+                        <p style="margin-bottom: 8px;">⏳ Real-time dashboard</p>
+                        <p>⏳ Performance monitoring</p>
+                    </div>
+                </div>
+                <div class="progress-bar" style="margin: 20px 0;">
+                    <div class="progress-fill" style="width: 75%"></div>
+                </div>
+            </div>
+
+            <!-- MIRA PAGE -->
+            <div class="content-section" id="mira">
+                <div class="page-header">
+                    <div class="page-title">🎨 Mira - Creative Director</div>
+                    <div class="page-subtitle">All visual, audio, and motion assets (2D-5D)</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Creative Domains</div>
+                    <div style="color: var(--text-secondary);">
+                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">2D:</strong> UI graphics, buttons, icons, dashboards</p>
+                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">3D:</strong> Character models, environments, props</p>
+                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">4D:</strong> Music, SFX, voice acting, audio mixing</p>
+                        <p><strong style="color: var(--primary);">5D:</strong> Animations, motion graphics, VFX</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Current Focus</div>
+                    <p style="color: var(--text-secondary);">🎯 VirtualPC Dashboard Design (6-8 hours)</p>
+                </div>
+                <div class="progress-bar" style="margin: 20px 0;">
+                    <div class="progress-fill" style="width: 50%"></div>
+                </div>
+            </div>
+
+            <!-- LUNA PAGE -->
+            <div class="content-section" id="luna">
+                <div class="page-header">
+                    <div class="page-title">✨ Luna - Tech Artist</div>
+                    <div class="page-subtitle">Performance optimization and visual effects</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Backlog (3 Active Tasks)</div>
+                    <div style="color: var(--text-secondary);">
+                        <p style="margin-bottom: 8px;">⏳ MOLGANG sync & optimization</p>
+                        <p style="margin-bottom: 8px;">⏳ Advanced gameplay features</p>
+                        <p>⏳ Performance optimization</p>
+                    </div>
+                </div>
+                <div class="progress-bar" style="margin: 20px 0;">
+                    <div class="progress-fill" style="width: 73%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAPERCLIP ASSISTANT -->
+    <div class="paperclip-assistant">
+        <div class="paperclip-header">
+            <div class="paperclip-icon">📎</div>
+            <div>Paperclip Assistant</div>
+        </div>
+        <div class="paperclip-tip" id="paperclip-tip">
+            💡 <strong>Tip:</strong> Use the left sidebar to navigate between different views and team members.
+        </div>
+        <div class="paperclip-actions">
+            <button class="paperclip-btn" onclick="nextPaperclipTip()">Next Tip</button>
+            <button class="paperclip-btn" onclick="hidePaperclip()">Dismiss</button>
+        </div>
+    </div>
+
+    <script>
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                // Remove active from all items
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                // Add active to clicked item
+                item.classList.add('active');
+
+                // Hide all sections
+                document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                // Show selected section
+                const pageId = item.getAttribute('data-page');
+                document.getElementById(pageId).classList.add('active');
+            });
+        });
+
+        // Paperclip Tips
+        const tips = [
+            "💡 <strong>Tip:</strong> Use the left sidebar to navigate between different views and team members.",
+            "🎯 <strong>Tip:</strong> Each agent has their own page showing their specific backlog and progress.",
+            "📊 <strong>Tip:</strong> The Overview page shows real-time status of all agents and tasks.",
+            "🏆 <strong>Tip:</strong> Check the Leaderboard to see top performers and team rankings.",
+            "🔗 <strong>Tip:</strong> Click 'Open GitHub Tasks' to manage detailed tasks on GitHub.",
+            "🎮 <strong>Tip:</strong> Visit the MOLGANG page to start the game and track development.",
+            "⚙️ <strong>Tip:</strong> System Status shows all infrastructure components and their health.",
+        ];
+
+        let tipIndex = 0;
+
+        function nextPaperclipTip() {
+            tipIndex = (tipIndex + 1) % tips.length;
+            document.getElementById('paperclip-tip').innerHTML = tips[tipIndex];
+        }
+
+        function hidePaperclip() {
+            document.querySelector('.paperclip-assistant').style.display = 'none';
+        }
+
+        // Update task stats (would come from API in real implementation)
+        function updateTaskStats() {
+            // Mock data
+            const stats = {
+                total: 64,
+                completed: 40,
+                inProgress: 18,
+                pending: 6
+            };
+
+            document.getElementById('stat-total').textContent = stats.total;
+            document.getElementById('stat-completed').textContent = stats.completed;
+            document.getElementById('stat-inprogress').textContent = stats.inProgress;
+            document.getElementById('stat-pending').textContent = stats.pending;
+
+            const percent = Math.round((stats.completed / stats.total) * 100);
+            document.getElementById('progress-percent').textContent = percent;
+            document.getElementById('progress-overall').style.width = percent + '%';
+        }
+
+        // Initialize
+        updateTaskStats();
+        setInterval(updateTaskStats, 5000); // Update every 5 seconds
+
+        // Populate backlog
+        function populateBacklog() {
+            const backlog = {
+                'Fill (CEO)': ['Strategic planning (2 tasks)', 'Resource allocation (1 task)'],
+                'Kai (CTO)': ['GitHub repo creation', 'OpenClaw integration', 'QWEN API setup', 'Docker optimization'],
+                'Zip (Developer)': ['Real task status endpoint', 'Advanced gameplay', 'Real-time dashboard', 'Monitoring'],
+                'Mira (Artist)': ['VirtualPC Dashboard Design (6-8h in progress)'],
+                'Luna (Tech Artist)': ['MOLGANG sync', 'Advanced gameplay support', 'Performance optimization']
+            };
+
+            const container = document.getElementById('backlog-container');
+            container.innerHTML = '';
+
+            for (const [person, tasks] of Object.entries(backlog)) {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-title">${person}</div>
+                    <ul style="list-style: none; color: var(--text-secondary);">
+                        ${tasks.map(task => `<li style="margin-bottom: 8px;">⏳ ${task}</li>`).join('')}
+                    </ul>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        populateBacklog();
+    </script>
+</body>
+</html>

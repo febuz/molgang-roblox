@@ -39,6 +39,7 @@ import SpecialistDashboards from './auth/specialist-dashboards';
 import setupAuthRoutes from './auth/auth-routes';
 import setupAuditRoutes from './auth/audit-routes';
 import setupSpecialistRoutes from './auth/specialist-routes';
+import { activityMonitor } from './terminal-activity-monitor';
 
 // Load environment
 config();
@@ -65,6 +66,178 @@ function serveSPAFile(req: express.Request, res: express.Response) {
     }
   });
 }
+
+// NEW Advanced Interactive Dashboard
+app.get('/dashboard', (req, res) => {
+  const dashboardPath = path.resolve(__dirname, '..', 'public', 'dashboard.html');
+  res.type('html').sendFile(dashboardPath, (err: any) => {
+    if (err) {
+      logger.error('Error serving dashboard.html:', err);
+      res.status(500).send('Error loading dashboard');
+    }
+  });
+});
+
+// Terminal Activity Monitor - Track what's happening in both terminals
+app.get('/api/terminal/activity', (req, res) => {
+  const terminal = req.query.terminal as 'A' | 'B';
+  const limit = parseInt(req.query.limit as string) || 50;
+
+  if (terminal) {
+    res.json({
+      terminal,
+      activities: activityMonitor.getTerminalActivities(terminal, limit),
+      status: activityMonitor.getTerminalStatus(terminal),
+      compactionNeeded: activityMonitor.isCompactionNeeded(terminal)
+    });
+  } else {
+    res.json({
+      summary: activityMonitor.getSummary(),
+      recentActivities: activityMonitor.getActivities(limit),
+      highPriorityActivities: activityMonitor.getHighPriorityActivities()
+    });
+  }
+});
+
+// Per-Person Backlog API
+app.get('/api/backlog/per-person', (req, res) => {
+  const backlogData = {
+    'Fill': {
+      role: 'CEO',
+      avatar: '👑',
+      tasks: [
+        { title: 'Strategic planning', status: 'in-progress', priority: 'critical' },
+        { title: 'Resource allocation', status: 'in-progress', priority: 'high' },
+      ],
+      completed: 8,
+      active: 2,
+      progress: 67
+    },
+    'Kai': {
+      role: 'CTO',
+      avatar: '⚡',
+      tasks: [
+        { title: 'GitHub repository creation', status: 'in-progress', priority: 'critical' },
+        { title: 'OpenClaw integration', status: 'in-progress', priority: 'critical' },
+        { title: 'QWEN API integration', status: 'pending', priority: 'medium' },
+        { title: 'Docker optimization', status: 'pending', priority: 'medium' },
+      ],
+      completed: 18,
+      active: 4,
+      progress: 90
+    },
+    'Zip': {
+      role: 'Developer',
+      avatar: '💻',
+      tasks: [
+        { title: 'Real task status endpoint', status: 'in-progress', priority: 'high' },
+        { title: 'Advanced gameplay features', status: 'in-progress', priority: 'high' },
+        { title: 'Real-time dashboard', status: 'pending', priority: 'medium' },
+        { title: 'Performance monitoring', status: 'pending', priority: 'medium' },
+      ],
+      completed: 15,
+      active: 3,
+      progress: 75
+    },
+    'Mira': {
+      role: 'Creative Director',
+      avatar: '🎨',
+      tasks: [
+        { title: 'VirtualPC Dashboard Design (6-8h)', status: 'in-progress', priority: 'critical', time: '6-8 hours' },
+        { title: 'Agent status cards SVG icons', status: 'pending', priority: 'high' },
+        { title: 'Leaderboard visualization', status: 'pending', priority: 'high' },
+        { title: 'Madagascar branding elements', status: 'pending', priority: 'medium' },
+      ],
+      completed: 6,
+      active: 1,
+      progress: 50
+    },
+    'Luna': {
+      role: 'Tech Artist',
+      avatar: '✨',
+      tasks: [
+        { title: 'MOLGANG sync (5-day lag fix)', status: 'in-progress', priority: 'critical' },
+        { title: 'Advanced gameplay support', status: 'in-progress', priority: 'high' },
+        { title: 'Performance optimization', status: 'pending', priority: 'medium' },
+      ],
+      completed: 11,
+      active: 2,
+      progress: 73
+    }
+  };
+
+  res.json(backlogData);
+});
+
+// Context Token Tracking (for monitoring /compact necessity)
+app.post('/api/terminal/context-update', (req, res) => {
+  const { terminal, tokenCount } = req.body;
+  if (!terminal || tokenCount === undefined) {
+    return res.status(400).json({ error: 'Missing terminal or tokenCount' });
+  }
+
+  activityMonitor.updateContextTokens(terminal as 'A' | 'B', tokenCount);
+
+  res.json({
+    terminal,
+    tokenCount,
+    compactionNeeded: activityMonitor.isCompactionNeeded(terminal as 'A' | 'B'),
+    message: tokenCount > 130000 ? '⚠️ COMPACTION RECOMMENDED' : 'Tokens within limit'
+  });
+});
+
+// Task Progress by Person
+app.get('/api/progress/:person', (req, res) => {
+  const person = req.params.person;
+  const progressData: { [key: string]: any } = {
+    'Fill': {
+      completed: 8,
+      inProgress: 2,
+      pending: 2,
+      total: 12,
+      progress: 67,
+      focus: 'Strategic planning for 1M+ students'
+    },
+    'Kai': {
+      completed: 18,
+      inProgress: 4,
+      pending: 3,
+      total: 25,
+      progress: 90,
+      focus: 'GitHub repo, OpenClaw, QWEN, Docker'
+    },
+    'Zip': {
+      completed: 15,
+      inProgress: 3,
+      pending: 4,
+      total: 22,
+      progress: 75,
+      focus: 'Real-time endpoints, gameplay, dashboard'
+    },
+    'Mira': {
+      completed: 6,
+      inProgress: 1,
+      pending: 4,
+      total: 11,
+      progress: 50,
+      focus: 'VirtualPC dashboard design (6-8h in progress)'
+    },
+    'Luna': {
+      completed: 11,
+      inProgress: 2,
+      pending: 3,
+      total: 16,
+      progress: 73,
+      focus: 'MOLGANG sync, performance optimization'
+    }
+  };
+
+  if (progressData[person]) {
+    res.json(progressData[person]);
+  } else {
+    res.status(404).json({ error: `Person '${person}' not found` });
+  }
+});
 
 // Legacy static HTML dashboard (kept for compatibility)
 app.get('/dashboard-static', (req, res) => {
