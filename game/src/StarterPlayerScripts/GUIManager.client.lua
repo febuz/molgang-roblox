@@ -33,6 +33,7 @@ local guiStates = {
 	QuestTrackerGui = false,
 	RecipeBookGui = false,
 	SettingsGui = false,
+	SlagProcessingGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -126,6 +127,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 				minimap.Visible = not minimap.Visible
 			end
 		end
+	end
+
+	-- S = Toggle Slag Processing
+	if input.KeyCode == Enum.KeyCode.S then
+		toggleGui("SlagProcessingGui")
 	end
 
 	-- / or Slash = Toggle Settings

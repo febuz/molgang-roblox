@@ -35,6 +35,17 @@ return {
 	unlockedAchievements = {},
 	mahjongWins = 0,
 
+	-- Steel Slag Processing
+	slagInventory = {
+		chunk = 0,       -- raw 5cm+ pieces (kg)
+		crushed = 0,     -- hammer-crushed ~1cm (kg)
+		ground = 0,      -- machine-ground ~1mm (kg)
+		powder = 0,      -- ball-milled <0.1mm (kg)
+	},
+	activeLeaches = {},  -- { {id, reagent, size, startTime, duration, yield}, ... }
+	completedLeaches = 0,
+	totalSlagProcessed = 0,
+
 	-- ANK Lending
 	ankLoans = {},      -- { {id, borrower, lender, amount, collateral, due, interest}, ... }
 	stakedCollateral = 0,

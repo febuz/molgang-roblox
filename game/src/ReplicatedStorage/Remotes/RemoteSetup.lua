@@ -36,6 +36,13 @@ local serverToClientEvents = {
 	"ProductionReady",     -- {facilities} production ready to process
 	"NPCDialogue",         -- {npcName, greeting, reward} NPC dialogue event
 	"MarketPricesUpdated", -- {commodity: price} market prices changed
+	-- Slag Processing
+	"SlagCrushProgress",   -- {hits, totalHits, size} crushing progress update
+	"SlagLeachStarted",    -- {leachId, reagent, size, duration} leaching begun
+	"SlagLeachProgress",   -- {leachId, progress, timeRemaining} periodic update
+	"SlagLeachComplete",   -- {leachId, yield} leaching finished, products ready
+	"SlagExtracted",       -- {atoms, molCoins} products added to inventory
+	"SlagInventoryUpdate", -- {slagInventory} updated slag quantities
 }
 
 -- ══════════════════════════════════════════════
@@ -57,6 +64,12 @@ local clientToServerEvents = {
 	"RequestNPCInteract",    -- {npcName} interact with NPC
 	"RequestBuildFacility",  -- {facilityName} purchase and build a facility
 	"RequestMarketTrade",    -- {action='sell'|'buy', itemName, quantity} trade on market
+	-- Slag Processing
+	"RequestBuySlag",        -- {} purchase raw slag chunks
+	"RequestCrushSlag",      -- {targetSize} crush slag (hammer hit or machine)
+	"RequestStartLeach",     -- {reagentId, particleSize} begin leaching process
+	"RequestExtractProducts",-- {leachId} collect finished leach products
+	"RequestSlagInfo",       -- {} get current slag processing state
 }
 
 -- ══════════════════════════════════════════════

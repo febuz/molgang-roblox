@@ -1666,6 +1666,209 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		end
 	end
 
+	-- ================================================================
+	-- Building 5: Slag Crushing Station (interactive)
+	-- Anvil + hammer area where players manually crush raw slag
+	-- ================================================================
+	local crushStation = createModel(zone, "Building5_CrushStation")
+
+	-- Platform
+	local crushBase = createPart(crushStation, {
+		Name = "CrushPlatform",
+		Size = Vector3.new(30, 2, 25),
+		Position = Vector3.new(-1850, 10, -40),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(crushBase, "SlagCrushStation")
+	tagZone(crushBase, "West")
+
+	-- Anvil (dark metal block)
+	local anvil = createPart(crushStation, {
+		Name = "Anvil",
+		Size = Vector3.new(6, 4, 4),
+		Position = Vector3.new(-1850, 14, -40),
+		Color = Color3.fromRGB(40, 40, 45),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(anvil, "SlagCrushStation")
+
+	-- Anvil horn (trapezoid shape approx)
+	createPart(crushStation, {
+		Name = "AnvilHorn",
+		Size = Vector3.new(3, 3, 2),
+		Position = Vector3.new(-1846, 14.5, -40),
+		Color = Color3.fromRGB(50, 50, 55),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	-- Hammer (leaning against anvil)
+	local hammer = createPart(crushStation, {
+		Name = "Hammer",
+		Size = Vector3.new(2, 8, 2),
+		Position = Vector3.new(-1854, 16, -40),
+		Color = Color3.fromRGB(100, 70, 40),
+		Material = Enum.Material.Wood,
+	})
+
+	-- Hammer head
+	createPart(crushStation, {
+		Name = "HammerHead",
+		Size = Vector3.new(3, 3, 3),
+		Position = Vector3.new(-1854, 21, -40),
+		Color = Color3.fromRGB(60, 60, 65),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	-- Raw slag pile next to anvil
+	for i = 1, 5 do
+		local slagX = -1842 + math.random(-3, 3)
+		local slagZ = -40 + math.random(-3, 3)
+		createPart(crushStation, {
+			Name = "SlagChunk_" .. i,
+			Size = Vector3.new(2 + math.random(), 1.5 + math.random(), 2 + math.random()),
+			Position = Vector3.new(slagX, 12 + (i-1)*0.5, slagZ),
+			Color = Color3.fromRGB(70 + math.random(20), 60 + math.random(15), 50 + math.random(10)),
+			Material = Enum.Material.Slate,
+		})
+	end
+
+	addBillboard(anvil, {
+		Text = "Crushing Station — Hammer Raw Slag",
+		Size = UDim2.new(12, 0, 2.5, 0),
+		StudsOffset = Vector3.new(0, 10, 0),
+		TextColor = Color3.fromRGB(255, 180, 80),
+		BackgroundColor = Color3.fromRGB(40, 25, 10),
+		MaxDistance = 120,
+	})
+
+	-- Glow under crush station
+	addPointLight(anvil, {
+		Color = Color3.fromRGB(255, 150, 50),
+		Brightness = 1.5,
+		Range = 15,
+	})
+
+	-- ================================================================
+	-- Building 6: Leaching Vat Array (interactive)
+	-- 3 large vats with colored liquid for acid/base leaching
+	-- ================================================================
+	local leachStation = createModel(zone, "Building6_LeachVats")
+
+	local leachBase = createPart(leachStation, {
+		Name = "LeachPlatform",
+		Size = Vector3.new(50, 2, 30),
+		Position = Vector3.new(-1850, 10, 40),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(leachBase, "SlagLeachStation")
+	tagZone(leachBase, "West")
+
+	-- 3 leaching vats
+	local vatColors = {
+		Color3.fromRGB(255, 200, 0),    -- H2SO4 yellow
+		Color3.fromRGB(180, 255, 100),  -- HCl green
+		Color3.fromRGB(200, 200, 255),  -- NaOH blue
+	}
+	local vatNames = {"Vat A — Acid", "Vat B — Acid", "Vat C — Base"}
+
+	for v = 1, 3 do
+		local vatX = -1865 + (v-1) * 16
+
+		-- Outer shell (cylinder)
+		local vatShell = createCylinder(leachStation, {
+			Name = "VatShell_" .. v,
+			Size = Vector3.new(14, 10, 10),
+			Position = Vector3.new(vatX, 20, 40),
+			Color = CONFIG.INDUSTRIAL_GREY,
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+		tagInteractable(vatShell, "SlagLeachStation")
+
+		-- Inner liquid (smaller, colored, neon)
+		local liquid = createCylinder(leachStation, {
+			Name = "VatLiquid_" .. v,
+			Size = Vector3.new(10, 8, 8),
+			Position = Vector3.new(vatX, 19, 40),
+			Color = vatColors[v],
+			Material = Enum.Material.Neon,
+			Transparency = 0.4,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+
+		-- Bubble particles
+		addParticleEmitter(liquid, {
+			Color = ColorSequence.new(vatColors[v]),
+			Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.3),
+				NumberSequenceKeypoint.new(1, 0.8),
+			}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.2),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Lifetime = NumberRange.new(1, 3),
+			Rate = 8,
+			Speed = NumberRange.new(1, 3),
+			SpreadAngle = Vector2.new(30, 30),
+			LightEmission = 0.6,
+		})
+
+		addPointLight(liquid, {
+			Color = vatColors[v],
+			Brightness = 1.5,
+			Range = 12,
+		})
+
+		addBillboard(vatShell, {
+			Text = vatNames[v],
+			Size = UDim2.new(6, 0, 2, 0),
+			StudsOffset = Vector3.new(0, 10, 0),
+			TextColor = vatColors[v],
+			BackgroundColor = Color3.fromRGB(20, 20, 25),
+			BackgroundTransparency = 0.3,
+			MaxDistance = 80,
+		})
+	end
+
+	addBillboard(leachBase, {
+		Text = "Leaching Vats — Acid & Base Processing",
+		Size = UDim2.new(14, 0, 2.5, 0),
+		StudsOffset = Vector3.new(0, 22, 0),
+		TextColor = Color3.fromRGB(200, 255, 150),
+		BackgroundColor = Color3.fromRGB(20, 35, 15),
+		MaxDistance = 150,
+	})
+
+	-- ================================================================
+	-- Slag Supplier Sign (where to buy raw slag)
+	-- ================================================================
+	local supplierSign = createPart(zone, {
+		Name = "SupplierSign",
+		Size = Vector3.new(20, 8, 1),
+		Position = Vector3.new(-2050, 20, 30),
+		Color = Color3.fromRGB(30, 25, 20),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(supplierSign, "SlagSupplier")
+
+	addBillboard(supplierSign, {
+		Text = "BOF Slag Supplier — 5cm+ Chunks — 50 MC/kg",
+		Size = UDim2.new(14, 0, 3, 0),
+		StudsOffset = Vector3.new(0, 6, 0),
+		TextColor = Color3.fromRGB(255, 200, 100),
+		BackgroundColor = Color3.fromRGB(40, 30, 15),
+		BackgroundTransparency = 0.2,
+		MaxDistance = 120,
+	})
+	addPointLight(supplierSign, {
+		Color = Color3.fromRGB(255, 180, 80),
+		Brightness = 2,
+		Range = 20,
+	})
+
 	print("[WorldBuilder] Zone 4: Slakkenspoor Fabriek built")
 	return zone
 end
