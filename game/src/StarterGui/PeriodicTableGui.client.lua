@@ -324,7 +324,7 @@ local progressText = createTextLabel(header, {
 	Name = "ProgressText",
 	Size = UDim2.new(0, 200, 0, 18),
 	Position = UDim2.new(0, 0, 0, 34),
-	Text = "0/118 elementen gevonden",
+	Text = "0/118 elements discovered",
 	Font = Enum.Font.GothamMedium,
 	TextColor3 = COLORS.textSecondary,
 	TextXAlignment = Enum.TextXAlignment.Left,
@@ -656,7 +656,7 @@ local function showElementDetail(elemData)
 		end)
 		if success and info then
 			detailMass.Text = (info.mass or "?") .. " u"
-			detailGameInfo.Text = info.gameInfo or "Verzamel dit element in de wereld!"
+			detailGameInfo.Text = info.gameInfo or "Collect this element in the world!"
 			detailFact.Text = info.fact or ""
 			detailMolgang.Text = info.molgangLink or ("MOLGANG Element #" .. z)
 		else
@@ -831,7 +831,7 @@ local function updateElementStates()
 	end
 
 	-- Update progress
-	progressText.Text = foundCount .. "/118 elementen gevonden"
+	progressText.Text = foundCount .. "/118 elements discovered"
 	local fillFraction = foundCount / 118
 	tweenProperty(progressBarFill, {Size = UDim2.new(fillFraction, 0, 1, 0)}, 0.5)
 

@@ -66,11 +66,16 @@
 		"Lighting": {
 			"$className": "Lighting",
 			"$properties": {
-				"Ambient": [0.118, 0.196, 0.157],
-				"Brightness": 0.3,
-				"ClockTime": 14,
+				"Ambient": [0.098, 0.157, 0.137],
+				"OutdoorAmbient": [0.059, 0.098, 0.086],
+				"Brightness": 0.15,
+				"ClockTime": 0,
+				"GlobalShadows": true,
 				"GeographicLatitude": 52.37,
-				"Technology": "Future"
+				"Technology": "Future",
+				"ExposureCompensation": 0.3,
+				"EnvironmentDiffuseScale": 0.3,
+				"EnvironmentSpecularScale": 0.2
 			},
 			"$path": "src/Lighting"
 		}

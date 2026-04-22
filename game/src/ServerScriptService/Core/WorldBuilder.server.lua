@@ -367,48 +367,60 @@ end
 --------------------------------------------------------------------------------
 
 local function setupLighting()
-	-- Base lighting
-	Lighting.Ambient = Color3.fromRGB(30, 50, 40)
-	Lighting.OutdoorAmbient = Color3.fromRGB(20, 35, 30)
-	Lighting.Brightness = 0.3
-	Lighting.ClockTime = 0 -- Midnight sky for space look
+	-- Base lighting — deep space with bioluminescent glow
+	Lighting.Ambient = Color3.fromRGB(25, 40, 35)
+	Lighting.OutdoorAmbient = Color3.fromRGB(15, 25, 22)
+	Lighting.Brightness = 0.15
+	Lighting.ClockTime = 0           -- midnight for space look
 	Lighting.GlobalShadows = true
 	Lighting.Technology = Enum.Technology.Future
+	Lighting.EnvironmentDiffuseScale = 0.3
+	Lighting.EnvironmentSpecularScale = 0.2
+	Lighting.ExposureCompensation = 0.3  -- slightly brighter neons
 
-	-- Remove existing post-processing if any to prevent duplicates
+	-- Remove existing post-processing to prevent duplicates
 	for _, child in Lighting:GetChildren() do
 		if child:IsA("BloomEffect") or child:IsA("ColorCorrectionEffect")
-			or child:IsA("Atmosphere") or child:IsA("Sky") then
+			or child:IsA("Atmosphere") or child:IsA("Sky")
+			or child:IsA("DepthOfFieldEffect") or child:IsA("SunRaysEffect") then
 			child:Destroy()
 		end
 	end
 
-	-- Atmosphere
+	-- Atmosphere — subtle space haze, not too dense (lets stars through)
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.2
-	atmosphere.Color = Color3.fromRGB(180, 220, 255)
-	atmosphere.Decay = Color3.fromRGB(30, 50, 40)
-	atmosphere.Glare = 0.1
-	atmosphere.Haze = 1
-	atmosphere.Offset = 0.5
+	atmosphere.Density = 0.15        -- lighter than before
+	atmosphere.Color = Color3.fromRGB(120, 180, 220)
+	atmosphere.Decay = Color3.fromRGB(20, 40, 35)
+	atmosphere.Glare = 0.05
+	atmosphere.Haze = 0.5            -- much less haze so stars are visible
+	atmosphere.Offset = 0.25
 	atmosphere.Parent = Lighting
 
-	-- Bloom
+	-- Bloom — neon materials glow beautifully
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 1.5
-	bloom.Size = 24
-	bloom.Threshold = 0.8
+	bloom.Intensity = 1.8            -- stronger for sci-fi feel
+	bloom.Size = 30                  -- wider bloom radius
+	bloom.Threshold = 0.75           -- catch more neon
 	bloom.Parent = Lighting
 
-	-- Color Correction
+	-- Color Correction — vibrant sci-fi color grading
 	local colorCorrection = Instance.new("ColorCorrectionEffect")
-	colorCorrection.Contrast = 0.15
-	colorCorrection.Saturation = 0.3
-	colorCorrection.Brightness = 0.02
-	colorCorrection.TintColor = Color3.fromRGB(240, 245, 255)
+	colorCorrection.Contrast = 0.2
+	colorCorrection.Saturation = 0.35
+	colorCorrection.Brightness = 0.03
+	colorCorrection.TintColor = Color3.fromRGB(235, 242, 255)  -- cool blue-white
 	colorCorrection.Parent = Lighting
 
-	-- Sky (deep space with stars, no celestial bodies)
+	-- Depth of Field — subtle background blur for depth
+	local dof = Instance.new("DepthOfFieldEffect")
+	dof.FarIntensity = 0.1
+	dof.FocusDistance = 100
+	dof.InFocusRadius = 200
+	dof.NearIntensity = 0
+	dof.Parent = Lighting
+
+	-- Sky — deep starfield
 	local sky = Instance.new("Sky")
 	sky.SkyboxBk = ""
 	sky.SkyboxDn = ""
@@ -422,7 +434,7 @@ local function setupLighting()
 	sky.SunAngularSize = 0
 	sky.Parent = Lighting
 
-	print("[WorldBuilder] Lighting configured: Moleculia night-space ambiance")
+	print("[WorldBuilder] Lighting configured: Moleculia deep-space ambiance")
 end
 
 --------------------------------------------------------------------------------

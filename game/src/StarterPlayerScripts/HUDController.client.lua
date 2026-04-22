@@ -194,7 +194,7 @@ local invTitle = createTextLabel(inventoryFrame, {
 	Name = "Title",
 	Size = UDim2.new(1, -12, 0, 24),
 	Position = UDim2.new(0, 6, 0, 4),
-	Text = "ATOMEN",
+	Text = "ATOMS",
 	Font = Enum.Font.GothamBold,
 	TextColor3 = COLORS.accent,
 	TextXAlignment = Enum.TextXAlignment.Left,
@@ -277,7 +277,7 @@ local pageIndicator = createTextLabel(inventoryFrame, {
 	Size = UDim2.new(1, -12, 0, 16),
 	Position = UDim2.new(0, 6, 1, -18),
 	AnchorPoint = Vector2.new(0, 0),
-	Text = "Pagina 1/6",
+	Text = "Page 1/6",
 	Font = Enum.Font.Gotham,
 	TextColor3 = COLORS.textSecondary,
 	TextXAlignment = Enum.TextXAlignment.Center,
@@ -302,7 +302,7 @@ local builderTitle = createTextLabel(builderFrame, {
 	Name = "Title",
 	Size = UDim2.new(1, -12, 0, 20),
 	Position = UDim2.new(0, 6, 0, 4),
-	Text = "MOLECULEBOUWER",
+	Text = "MOLECULE BUILDER",
 	Font = Enum.Font.GothamBold,
 	TextColor3 = COLORS.chainBlue,
 	TextXAlignment = Enum.TextXAlignment.Left,
@@ -322,7 +322,7 @@ createStroke(dropZone, Color3.fromRGB(80, 80, 100), 1)
 local dropLabel = createTextLabel(dropZone, {
 	Name = "DropLabel",
 	Size = UDim2.new(1, 0, 1, 0),
-	Text = "Sleep atomen hierheen...",
+	Text = "Drop atoms here...",
 	Font = Enum.Font.GothamMedium,
 	TextColor3 = COLORS.textSecondary,
 	TextXAlignment = Enum.TextXAlignment.Center,
@@ -578,7 +578,7 @@ local mapTitle = createTextLabel(minimapFrame, {
 	Name = "Title",
 	Size = UDim2.new(1, -8, 0, 18),
 	Position = UDim2.new(0, 4, 0, 3),
-	Text = "KAART",
+	Text = "MAP",
 	Font = Enum.Font.GothamBold,
 	TextColor3 = COLORS.accent,
 	TextXAlignment = Enum.TextXAlignment.Center,
@@ -643,14 +643,14 @@ local tickerLabel = createTextLabel(tickerFrame, {
 	Name = "TickerText",
 	Size = UDim2.new(2, 0, 1, 0),
 	Position = UDim2.new(1, 0, 0, 0),
-	Text = "Welkom bij MOLGANG! Verzamel atomen en bouw moleculen!",
+	Text = "Welcome to MOLGANG! Collect atoms and build molecules!",
 	Font = Enum.Font.GothamMedium,
 	TextColor3 = COLORS.coinGold,
 	TextXAlignment = Enum.TextXAlignment.Left,
 })
 
 -- Ticker scroll animation
-local tickerMessages = {"Welkom bij MOLGANG! Verzamel atomen en bouw moleculen!"}
+local tickerMessages = {"Welcome to MOLGANG! Collect atoms and build molecules!"}
 local currentTickerIndex = 1
 
 local function scrollTicker()
@@ -695,7 +695,7 @@ local popupTitle = createTextLabel(newElementPopup, {
 	Name = "Title",
 	Size = UDim2.new(1, -20, 0, 36),
 	Position = UDim2.new(0, 10, 0, 10),
-	Text = "NIEUW ELEMENT!",
+	Text = "NEW ELEMENT!",
 	Font = Enum.Font.GothamBlack,
 	TextColor3 = COLORS.textPrimary,
 	TextXAlignment = Enum.TextXAlignment.Center,
@@ -765,7 +765,7 @@ local molPopupTitle = createTextLabel(moleculePopup, {
 	Name = "Title",
 	Size = UDim2.new(1, -20, 0, 30),
 	Position = UDim2.new(0, 10, 0, 8),
-	Text = "MOLECUUL GEBOUWD!",
+	Text = "MOLECULE BUILT!",
 	Font = Enum.Font.GothamBlack,
 	TextColor3 = COLORS.textPrimary,
 	TextXAlignment = Enum.TextXAlignment.Center,
@@ -787,7 +787,7 @@ local molPopupChain = createTextLabel(moleculePopup, {
 	Name = "Chain",
 	Size = UDim2.new(1, -20, 0, 18),
 	Position = UDim2.new(0, 10, 0, 66),
-	Text = "Geregistreerd op de MolChain!",
+	Text = "Registered on the MolChain!",
 	Font = Enum.Font.GothamMedium,
 	TextColor3 = COLORS.chainBlue,
 	TextXAlignment = Enum.TextXAlignment.Center,
@@ -853,7 +853,7 @@ local achieveTitle = createTextLabel(achievementBanner, {
 	Name = "Title",
 	Size = UDim2.new(0, 260, 0, 24),
 	Position = UDim2.new(0, 65, 0, 8),
-	Text = "PRESTATIE ONTGRENDELD!",
+	Text = "ACHIEVEMENT UNLOCKED!",
 	Font = Enum.Font.GothamBlack,
 	TextColor3 = COLORS.background,
 	TextXAlignment = Enum.TextXAlignment.Left,
@@ -978,7 +978,7 @@ local function refreshInventoryGrid()
 	-- Calculate pages
 	local totalPages = math.max(1, math.ceil(#sortedElements / inventoryMaxPerPage))
 	inventoryPage = math.clamp(inventoryPage, 1, totalPages)
-	pageIndicator.Text = "Pagina " .. inventoryPage .. "/" .. totalPages
+	pageIndicator.Text = "Page " .. inventoryPage .. "/" .. totalPages
 
 	-- Fill slots
 	local startIdx = (inventoryPage - 1) * inventoryMaxPerPage + 1
@@ -1010,7 +1010,7 @@ AtomCollected.OnClientEvent:Connect(function(data)
 
 	local z = data.atomicNumber or 1
 	local symbol = data.symbol or "?"
-	local name = data.name or "Onbekend"
+	local name = data.name or "Unknown"
 	local group = data.group or "Unknown"
 	local mass = data.mass or 0
 	local fact = data.fact or ""
@@ -1071,11 +1071,11 @@ MoleculeBuilt.OnClientEvent:Connect(function(data)
 	end
 
 	-- Ticker message
-	addTickerMessage(player.Name .. " heeft " .. moleculeName .. " (" .. formula .. ") gebouwd!")
+	addTickerMessage(player.Name .. " built " .. moleculeName .. " (" .. formula .. ")!")
 
 	-- Green flash on builder
 	flashColor(dropZone, COLORS.success, 0.8)
-	buildStatus.Text = moleculeName .. " gebouwd!"
+	buildStatus.Text = moleculeName .. " built!"
 	buildStatus.TextColor3 = COLORS.success
 	delay(3, function()
 		buildStatus.Text = ""
@@ -1085,7 +1085,7 @@ end)
 ChainEntryAdded.OnClientEvent:Connect(function(data)
 	-- data = {playerName, moleculeName, blockHash}
 	if not data then return end
-	local msg = data.playerName .. " registreerde " .. (data.moleculeName or "?") .. " op de chain!"
+	local msg = data.playerName .. " registered " .. (data.moleculeName or "?") .. " on the MolChain!"
 	addTickerMessage(msg)
 
 	-- Brief chain icon pulse
@@ -1098,8 +1098,8 @@ end)
 AchievementUnlocked.OnClientEvent:Connect(function(data)
 	-- data = {title, description}
 	if not data then return end
-	showAchievementBanner(data.title or "Prestatie", data.description or "")
-	addTickerMessage(player.Name .. " heeft prestatie '" .. (data.title or "") .. "' ontgrendeld!")
+	showAchievementBanner(data.title or "Achievement", data.description or "")
+	addTickerMessage(player.Name .. " unlocked achievement '" .. (data.title or "") .. "'!")
 end)
 
 ServerAnnounce.OnClientEvent:Connect(function(data)
@@ -1136,7 +1136,7 @@ local function checkAtomProximity()
 
 	if nearestAtom then
 		local symbol = nearestAtom:GetAttribute("Symbol") or "?"
-		local name = nearestAtom:GetAttribute("ElementName") or "Onbekend"
+		local name = nearestAtom:GetAttribute("ElementName") or "Unknown"
 		local mass = nearestAtom:GetAttribute("Mass") or 0
 		local fact = nearestAtom:GetAttribute("Fact") or ""
 		local group = nearestAtom:GetAttribute("Group") or "Unknown"
@@ -1193,29 +1193,7 @@ RunService.Heartbeat:Connect(function()
 	playerDot.Position = UDim2.new(relX, -4, relZ, -4)
 end)
 
---------------------------------------------------------------------------------
--- KEYBOARD SHORTCUTS
---------------------------------------------------------------------------------
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-
-	-- P = Toggle Periodic Table
-	if input.KeyCode == Enum.KeyCode.P then
-		local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
-		if ptGui then
-			ptGui.Enabled = not ptGui.Enabled
-		end
-	end
-
-	-- W = Toggle Wallet
-	if input.KeyCode == Enum.KeyCode.W then
-		local wGui = playerGui:FindFirstChild("WalletGui")
-		if wGui then
-			wGui.Enabled = not wGui.Enabled
-		end
-	end
-end)
+-- Keyboard shortcuts handled by GUIManager.client.lua
 
 --------------------------------------------------------------------------------
 -- WALLET BUTTON HANDLER
