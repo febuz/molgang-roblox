@@ -1,7 +1,7 @@
 -- StarterPlayerScripts/GUIManager.client.lua
 -- Central GUI manager for MOLGANG
--- Handles keyboard shortcuts, audio feedback, zone-based ambience
--- Creates and manages all ScreenGui elements coordination
+-- Handles all keyboard shortcuts, audio feedback, zone-based ambience
+-- Manages GUI toggle states and coordination
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -19,10 +19,21 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- STATE
 -- ══════════════════════════════════════════════
 
-local periodicTableOpen = false
-local walletOpen = false
 local playerData = nil
 local currentZone = "hub"
+
+-- Track which GUI panels are open (for ESC close-all)
+local guiStates = {
+	PeriodicTableGui = false,
+	WalletGui = false,
+	DashboardGui = false,
+	InventoryGui = false,
+	AchievementsGui = false,
+	LeaderboardGui = false,
+	QuestTrackerGui = false,
+	RecipeBookGui = false,
+	SettingsGui = false,
+}
 
 -- ══════════════════════════════════════════════
 -- WAIT FOR INITIAL DATA
@@ -34,6 +45,32 @@ Remotes.PlayerDataLoaded.OnClientEvent:Connect(function(data)
 end)
 
 -- ══════════════════════════════════════════════
+-- GUI TOGGLE HELPER
+-- ══════════════════════════════════════════════
+
+local function toggleGui(guiName)
+	local gui = playerGui:FindFirstChild(guiName)
+	if gui then
+		gui.Enabled = not gui.Enabled
+		guiStates[guiName] = gui.Enabled
+		playSound(gui.Enabled and "ui_open" or "ui_close")
+		return gui.Enabled
+	end
+	return false
+end
+
+local function closeAllOverlays()
+	for guiName, _ in pairs(guiStates) do
+		local gui = playerGui:FindFirstChild(guiName)
+		if gui and gui.Enabled then
+			gui.Enabled = false
+			guiStates[guiName] = false
+		end
+	end
+	playSound("ui_close")
+end
+
+-- ══════════════════════════════════════════════
 -- KEYBOARD SHORTCUTS
 -- ══════════════════════════════════════════════
 
@@ -42,25 +79,45 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 	-- P = Toggle Periodic Table
 	if input.KeyCode == Enum.KeyCode.P then
-		periodicTableOpen = not periodicTableOpen
-		local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
-		if ptGui then
-			ptGui.Enabled = periodicTableOpen
-		end
-		playSound(periodicTableOpen and "ui_open" or "ui_close")
+		toggleGui("PeriodicTableGui")
 	end
 
-	-- W = Toggle Wallet (only when not walking)
+	-- Tab = Toggle Wallet
 	if input.KeyCode == Enum.KeyCode.Tab then
-		walletOpen = not walletOpen
-		local wGui = playerGui:FindFirstChild("WalletGui")
-		if wGui then
-			wGui.Enabled = walletOpen
-		end
-		playSound(walletOpen and "ui_open" or "ui_close")
+		toggleGui("WalletGui")
 	end
 
-	-- M = Toggle Minimap
+	-- D = Toggle Dashboard
+	if input.KeyCode == Enum.KeyCode.D then
+		toggleGui("DashboardGui")
+	end
+
+	-- I = Toggle Inventory
+	if input.KeyCode == Enum.KeyCode.I then
+		toggleGui("InventoryGui")
+	end
+
+	-- A = Toggle Achievements
+	if input.KeyCode == Enum.KeyCode.A then
+		toggleGui("AchievementsGui")
+	end
+
+	-- L = Toggle Leaderboards
+	if input.KeyCode == Enum.KeyCode.L then
+		toggleGui("LeaderboardGui")
+	end
+
+	-- Q = Toggle Quest Tracker
+	if input.KeyCode == Enum.KeyCode.Q then
+		toggleGui("QuestTrackerGui")
+	end
+
+	-- R = Toggle Recipe Book
+	if input.KeyCode == Enum.KeyCode.R then
+		toggleGui("RecipeBookGui")
+	end
+
+	-- M = Toggle Minimap (HUD element)
 	if input.KeyCode == Enum.KeyCode.M then
 		local hudGui = playerGui:FindFirstChild("HUDGui")
 		if hudGui then
@@ -71,14 +128,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 	end
 
+	-- / or Slash = Toggle Settings
+	if input.KeyCode == Enum.KeyCode.Slash then
+		toggleGui("SettingsGui")
+	end
+
 	-- ESC = Close all overlays
 	if input.KeyCode == Enum.KeyCode.Escape then
-		periodicTableOpen = false
-		walletOpen = false
-		local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
-		if ptGui then ptGui.Enabled = false end
-		local wGui = playerGui:FindFirstChild("WalletGui")
-		if wGui then wGui.Enabled = false end
+		closeAllOverlays()
 	end
 end)
 
@@ -157,7 +214,6 @@ end)
 
 Remotes.AchievementUnlocked.OnClientEvent:Connect(function(data)
 	playSound("achievement")
-	-- Show achievement banner
 	showAchievementBanner(data)
 end)
 
@@ -181,7 +237,7 @@ function showAchievementBanner(data)
 
 	local banner = Instance.new("Frame")
 	banner.Size = UDim2.fromOffset(350, 80)
-	banner.Position = UDim2.new(-0.3, 0, 0.15, 0) -- off-screen left
+	banner.Position = UDim2.new(-0.3, 0, 0.15, 0)
 	banner.BackgroundColor3 = Color3.fromRGB(10, 25, 15)
 	banner.BackgroundTransparency = 0.1
 	banner.BorderSizePixel = 0
@@ -196,25 +252,27 @@ function showAchievementBanner(data)
 	stroke.Thickness = 2
 	stroke.Parent = banner
 
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
+	local uiGradient = Instance.new("UIGradient")
+	uiGradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)),
 		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(34, 197, 94)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 25, 15)),
 	})
-	gradient.Transparency = NumberSequence.new({
+	uiGradient.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.7),
 		NumberSequenceKeypoint.new(1, 0.95),
 	})
-	gradient.Parent = banner
+	uiGradient.Parent = banner
 
 	-- Trophy icon
 	local icon = Instance.new("TextLabel")
 	icon.Size = UDim2.fromOffset(50, 50)
 	icon.Position = UDim2.fromOffset(15, 15)
 	icon.BackgroundTransparency = 1
-	icon.Text = "🏆"
+	icon.Text = "T"  -- Trophy symbol placeholder
+	icon.TextColor3 = Color3.fromRGB(255, 215, 0)
 	icon.TextScaled = true
+	icon.Font = Enum.Font.GothamBold
 	icon.Parent = banner
 
 	-- Achievement name
@@ -259,7 +317,6 @@ end
 
 -- ══════════════════════════════════════════════
 -- SERVER ANNOUNCE TICKER
--- Shows server-wide messages as scrolling text at top
 -- ══════════════════════════════════════════════
 
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
@@ -304,4 +361,4 @@ task.delay(2, function()
 	updateAmbientMusic()
 end)
 
-print("[MOLGANG] GUIManager client initialized")
+print("[MOLGANG] GUIManager client initialized — all shortcuts active")

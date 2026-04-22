@@ -251,7 +251,7 @@ Remotes.AtomCollected.OnClientEvent:Connect(function(data)
 		local title = Instance.new("TextLabel")
 		title.Size = UDim2.fromScale(1, 0.35)
 		title.BackgroundTransparency = 1
-		title.Text = "NIEUW ELEMENT!"
+		title.Text = "NEW ELEMENT!"
 		title.TextColor3 = Color3.fromRGB(34, 197, 94)
 		title.TextScaled = true
 		title.Font = Enum.Font.GothamBold
@@ -284,7 +284,7 @@ Remotes.AtomCollected.OnClientEvent:Connect(function(data)
 		count.BackgroundTransparency = 1
 		local totalFound = 0
 		for _ in pairs(elementsFound) do totalFound = totalFound + 1 end
-		count.Text = totalFound .. "/118 elementen gevonden"
+		count.Text = totalFound .. "/118 elements discovered"
 		count.TextColor3 = Color3.fromRGB(150, 180, 160)
 		count.TextScaled = true
 		count.Font = Enum.Font.Gotham

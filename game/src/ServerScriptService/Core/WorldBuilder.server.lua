@@ -408,16 +408,18 @@ local function setupLighting()
 	colorCorrection.TintColor = Color3.fromRGB(240, 245, 255)
 	colorCorrection.Parent = Lighting
 
-	-- Sky
+	-- Sky (deep space with stars, no celestial bodies)
 	local sky = Instance.new("Sky")
-	sky.SkyboxBk = "rbxassetid://1012890" -- Milky Way placeholder
-	sky.SkyboxDn = "rbxassetid://1012890"
-	sky.SkyboxFt = "rbxassetid://1012890"
-	sky.SkyboxLf = "rbxassetid://1012890"
-	sky.SkyboxRt = "rbxassetid://1012890"
-	sky.SkyboxUp = "rbxassetid://1012890"
+	sky.SkyboxBk = ""
+	sky.SkyboxDn = ""
+	sky.SkyboxFt = ""
+	sky.SkyboxLf = ""
+	sky.SkyboxRt = ""
+	sky.SkyboxUp = ""
 	sky.StarCount = 5000
 	sky.CelestialBodiesShown = false
+	sky.MoonAngularSize = 0
+	sky.SunAngularSize = 0
 	sky.Parent = Lighting
 
 	print("[WorldBuilder] Lighting configured: Moleculia night-space ambiance")

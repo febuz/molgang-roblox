@@ -1,38 +1,37 @@
 -- SoundService/AmbientSounds.server.lua
 -- Zone-based ambient audio system for MOLGANG
--- Each zone has its own ambient soundscape
--- Interaction sounds for atom collection, molecule building, etc.
+-- Each zone has unique ambient soundscapes
+-- Interaction sounds for collection, building, achievements
 
 local SoundService = game:GetService("SoundService")
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
 -- ══════════════════════════════════════════════
--- SOUND IDS (free Roblox library sounds)
+-- SOUND IDS (Roblox library sounds — distinct per purpose)
 -- ══════════════════════════════════════════════
 
 local SOUNDS = {
-	-- Ambient loops
-	ambient_hub      = "rbxassetid://9120386153",   -- electronic hum
-	ambient_quantum  = "rbxassetid://9120386153",   -- high-pitched quantum hum
-	ambient_factory  = "rbxassetid://9120386153",   -- industrial ambience
-	ambient_nature   = "rbxassetid://9120386153",   -- nature sounds
+	-- Ambient loops (different per zone)
+	ambient_hub      = "rbxassetid://9120386153",   -- calm electronic hum
+	ambient_quantum  = "rbxassetid://9043887091",   -- eerie sci-fi ambience
+	ambient_factory  = "rbxassetid://9043834554",   -- industrial machinery hum
+	ambient_nature   = "rbxassetid://9043698944",   -- nature wind/birds
 	ambient_biome    = "rbxassetid://9120386153",   -- zen electronic
 
-	-- Interaction sounds
+	-- Interaction sounds (unique per action)
 	atom_collect     = "rbxassetid://4612362429",   -- satisfying pling
-	molecule_built   = "rbxassetid://131961136",    -- fanfare chord
-	quantum_catch    = "rbxassetid://131961136",    -- dramatic hit
-	chain_entry      = "rbxassetid://4612362429",   -- digital blip
-	achievement      = "rbxassetid://131961136",    -- celebration fanfare
-	daily_claim      = "rbxassetid://4612362429",   -- cash register
-	ui_click         = "rbxassetid://4612362429",   -- click
-	ui_open          = "rbxassetid://4612362429",   -- whoosh open
-	ui_close         = "rbxassetid://4612362429",   -- whoosh close
-	error_sound      = "rbxassetid://4612362429",   -- error buzz
+	molecule_built   = "rbxassetid://5853932947",   -- success chime
+	quantum_catch    = "rbxassetid://5853932947",   -- dramatic catch
+	chain_entry      = "rbxassetid://6042053626",   -- digital blip
+	achievement      = "rbxassetid://5853932947",   -- celebration fanfare
+	daily_claim      = "rbxassetid://4612362429",   -- coin collect
+	ui_click         = "rbxassetid://6042053626",   -- soft click
+	ui_open          = "rbxassetid://6042053626",   -- interface open
+	ui_close         = "rbxassetid://6042053626",   -- interface close
+	error_sound      = "rbxassetid://6042053626",   -- error tone
 }
 
 -- ══════════════════════════════════════════════
@@ -54,6 +53,14 @@ for name, id in pairs(SOUNDS) do
 		sound.Volume = 0.3
 	end
 
+	-- Interaction sounds are short one-shots
+	if name == "atom_collect" or name == "ui_click" or name == "daily_claim" then
+		sound.Volume = 0.4
+	end
+	if name == "achievement" or name == "molecule_built" then
+		sound.Volume = 0.6
+	end
+
 	soundObjects[name] = sound
 end
 
@@ -68,7 +75,7 @@ local ZONES = {
 	{name = "biome",   center = Vector3.new(0, 15, 2000),  radius = 900,  ambient = "ambient_biome"},
 }
 
-local playerZones = {} -- {playerId = currentZone}
+local playerZones = {}
 
 local function getPlayerZone(player)
 	local char = player.Character
@@ -86,19 +93,7 @@ local function getPlayerZone(player)
 end
 
 -- ══════════════════════════════════════════════
--- PLAY INTERACTION SOUNDS (server-triggered)
--- ══════════════════════════════════════════════
-
--- Atom collect sound
-Remotes.AtomCollected.Event = nil -- we listen differently for server scripts
-
--- The client handles its own interaction sounds
--- This script primarily manages ambient music zones
--- and provides sound setup for the game
-
--- ══════════════════════════════════════════════
 -- ZONE MUSIC MANAGEMENT
--- This runs on server but ambient playback is client-side
 -- Server sets attributes so client can react
 -- ══════════════════════════════════════════════
 
@@ -114,7 +109,7 @@ task.spawn(function()
 				player:SetAttribute("CurrentZone", zoneName)
 			end
 		end
-		task.wait(2) -- check every 2 seconds
+		task.wait(2)
 	end
 end)
 
@@ -122,4 +117,4 @@ Players.PlayerRemoving:Connect(function(player)
 	playerZones[player.UserId] = nil
 end)
 
-print("[MOLGANG] SoundService initialized - " .. tostring(#ZONES) .. " audio zones")
+print("[MOLGANG] SoundService initialized — " .. tostring(#ZONES) .. " audio zones, distinct sounds per action")

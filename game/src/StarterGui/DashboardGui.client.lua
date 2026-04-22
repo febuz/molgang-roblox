@@ -99,6 +99,7 @@ screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 10
+screenGui.Enabled = false
 screenGui.Parent = playerGui
 
 -- Main panel
