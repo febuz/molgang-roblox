@@ -4,13 +4,13 @@
 
 | Veld | Waarde |
 |------|--------|
-| **Projectnaam** | MOLGANG — Educatief Chemie Spel (Immersive VR/AR) |
+| **Projectnaam** | MOLGANG — Chemical Engineering Simulator (Immersive VR/AR) |
 | **S&O-referentienummer** | *In te vullen na aanvraag* |
 | **Aanvrager** | VirtualV Holding B.V. / Slakkenspoor VOF |
 | **Uitvoerder** | Edwin Hauwert |
 | **BSN / Referentie** | 219252713 |
 | **Periode** | April 2026 |
-| **Technisch inhoudelijk** | Ontwikkeling innovatief educatief VR/AR-platform voor chemie-onderwijs middels gamification, realistische staalslak-verwerkingschemie, en meststofchemie-simulatie |
+| **Technisch inhoudelijk** | Ontwikkeling innovatieve Chemical Engineering Simulator in VR/AR: realistische BOF-staalslak verwerkingsprocessen (breken, logen, magnetische scheiding, roostoven), meststofchemie met NPK-balansmodellering, en industriële procesbesturing — gamified voor breed educatief en professioneel gebruik |
 
 ---
 
@@ -18,13 +18,13 @@
 
 ### Technische nieuwheid / innovatie
 
-Het MOLGANG-project ontwikkelt een **technisch nieuw educatief platform** dat de volgende innovatieve elementen combineert:
+Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simulator** — een interactieve simulatie van industriële chemische processen in een immersieve VR/AR-omgeving. De innovatie combineert:
 
-1. **Realistische chemische simulatie in een game-engine** — BOF-staalslak verwerkingschemie met echte reactiekinetiek, pH-afhankelijke metaaloplossing, en deeltjesgrootte-afhankelijke loogsnelheden
-2. **VR/AR-integratie voor chemie-educatie** — Immersieve laboratoriumervaring met hand-tracking, ruimtelijke UI-panelen, en teleport-locomotie
-3. **Procedurele 3D-modelgeneratie** — Geautomatiseerde Blender Python pipeline voor industriele apparatuur (maalmolens, reactorvaten, magneetscheiders)
-4. **Meststofchemie-simulatie** — NPK-balansberekening volgens Liebig's Wet van het Minimum met grondanalyse en gewasgroeimodellering
-5. **Server-autoritatieve anti-cheat architectuur** — PlayerDataBridge beveiligingsmodel voor educatieve game-economie
+1. **Realistische proceschemie-simulatie** — BOF-staalslak verwerkingsketen (12 stations) met echte reactiekinetiek, pH-afhankelijke metaalextractie, deeltjesgrootte-afhankelijke loogsnelheden, roostoven-oxidatie (V3+→V5+ bij 900°C), en meerstaps selectief logen. Gebaseerd op wetenschappelijke publicaties (ACS, Taylor & Francis).
+2. **Meststofchemie-simulatie als Chemical Engineering tool** — NPK-balansberekening volgens Liebig's Wet van het Minimum, grondanalyse (pH, nutriënten, contaminanten), gewasgroeimodellering, fytosanering van verontreinigde grond met slak-biostimulanten.
+3. **Immersieve VR/AR procesbediening** — Virtual Reality laboratorium met hand-tracking interactie voor procesapparatuur (kaakbrekers, kogelsmolens, loogtanks), ruimtelijke UI-panelen voor procesmonitoring, teleport-locomotie door fabriekscomplexen.
+4. **Procedurele 3D-procesapparatuur generatie** — Geautomatiseerde Blender 5.1 Python pipeline die parametrische low-poly modellen genereert van industriële apparatuur (14 typen), geoptimaliseerd voor real-time rendering (<5000 driehoeken per model).
+5. **Multiplayer procesbesturing met anti-fraude architectuur** — Server-autoritatief model (PlayerDataBridge) voor gelijktijdige procesvoering door meerdere operators, met economische validatie en rate-limiting.
 
 ### Technische knelpunten opgelost
 

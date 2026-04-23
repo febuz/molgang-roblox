@@ -166,7 +166,7 @@ tagline.Name = "Tagline"
 tagline.Size = UDim2.new(0.7, 0, 0, 28)
 tagline.Position = UDim2.new(0.15, 0, 0, 262)
 tagline.BackgroundTransparency = 1
-tagline.Text = "The Molecular Chain Game"
+tagline.Text = "Chemical Engineering Simulator"
 tagline.TextColor3 = COLORS.textSecondary
 tagline.TextScaled = true
 tagline.Font = Enum.Font.Gotham
@@ -215,7 +215,7 @@ cpStroke.Transparency = 1
 cpStroke.Parent = contentPanel
 
 -- Description text
-local descText = [[Explore a floating archipelago in space, collect all 118 elements from the periodic table, craft molecules, and trade on a dynamic market. Build mines and factories, compete on leaderboards, and register your discoveries on the MolChain blockchain.]]
+local descText = [[A Chemical Engineering Simulator in space. Process BOF steel slag through realistic crushing, leaching, and extraction. Synthesize fertilizers with real NPK chemistry. Manage an industrial factory, trade on global markets, and master the periodic table — all in immersive VR/AR.]]
 
 local description = Instance.new("TextLabel")
 description.Name = "Description"
@@ -374,7 +374,7 @@ local footer = Instance.new("TextLabel")
 footer.Size = UDim2.new(0.6, 0, 0, 18)
 footer.Position = UDim2.new(0.2, 0, 1, -30)
 footer.BackgroundTransparency = 1
-footer.Text = "VirtualV Holding B.V. + Slakkenspoor VOF | v0.1 Teaser"
+footer.Text = "VirtualV Holding B.V. + Slakkenspoor VOF | Chemical Engineering Simulator v0.2"
 footer.TextColor3 = Color3.fromRGB(80, 85, 100)
 footer.TextScaled = true
 footer.Font = Enum.Font.Gotham
