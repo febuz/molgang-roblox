@@ -43,6 +43,9 @@ local serverToClientEvents = {
 	"SlagLeachComplete",   -- {leachId, yield} leaching finished, products ready
 	"SlagExtracted",       -- {atoms, molCoins} products added to inventory
 	"SlagInventoryUpdate", -- {slagInventory} updated slag quantities
+	-- Bubble Tea Bar
+	"DrinkPurchased",      -- {drinkId, name, buffType, duration} drink bought
+	"DrinkListResponse",   -- {drinks, activeBuffs} available drinks and active buffs
 }
 
 -- ══════════════════════════════════════════════
@@ -70,6 +73,9 @@ local clientToServerEvents = {
 	"RequestStartLeach",     -- {reagentId, particleSize} begin leaching process
 	"RequestExtractProducts",-- {leachId} collect finished leach products
 	"RequestSlagInfo",       -- {} get current slag processing state
+	-- Bubble Tea Bar
+	"RequestBuyDrink",       -- {drinkId} purchase a bubble tea
+	"RequestDrinkList",      -- {} get drink menu and active buffs
 }
 
 -- ══════════════════════════════════════════════

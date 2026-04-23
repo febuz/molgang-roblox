@@ -715,7 +715,130 @@ local function buildNexusHub(zonesFolder: Folder)
 		MaxDistance = 150,
 	})
 
-	print("[WorldBuilder] Zone 1: Nexus Hub built")
+	-- ================================================================
+	-- Bubble Tea Bar (near Market Plaza)
+	-- 6 clickable cups with colored drinks + neon bar counter
+	-- ================================================================
+	local teaBarModel = createModel(zone, "BubbleTeaBar")
+
+	-- Bar counter
+	local barCounter = createPart(teaBarModel, {
+		Name = "BarCounter",
+		Size = Vector3.new(20, 4, 4),
+		Position = Vector3.new(50, 16, 60),
+		Color = Color3.fromRGB(50, 30, 40),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(barCounter, "BubbleTeaBar")
+	tagZone(barCounter, "Centrum")
+
+	-- Counter top (polished)
+	createPart(teaBarModel, {
+		Name = "CounterTop",
+		Size = Vector3.new(22, 0.5, 5),
+		Position = Vector3.new(50, 18.2, 60),
+		Color = Color3.fromRGB(180, 120, 160),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	-- Back wall / menu board
+	local menuBoard = createPart(teaBarModel, {
+		Name = "MenuBoard",
+		Size = Vector3.new(22, 10, 1),
+		Position = Vector3.new(50, 23, 63),
+		Color = Color3.fromRGB(25, 18, 28),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	addBillboard(menuBoard, {
+		Text = "BUBBLE TEA BAR\nMatcha | Taro | Boba | Mango | Brown Sugar | Lychee\nPress B to order",
+		Size = UDim2.new(16, 0, 6, 0),
+		StudsOffset = Vector3.new(0, 2, -2),
+		TextColor = Color3.fromRGB(220, 140, 180),
+		BackgroundColor = Color3.fromRGB(25, 15, 25),
+		BackgroundTransparency = 0.2,
+		MaxDistance = 120,
+	})
+
+	-- 6 cup displays on counter
+	local cupData = {
+		{name = "Matcha", color = Color3.fromRGB(100, 180, 80)},
+		{name = "Taro", color = Color3.fromRGB(160, 100, 200)},
+		{name = "Boba", color = Color3.fromRGB(140, 100, 60)},
+		{name = "Mango", color = Color3.fromRGB(255, 180, 40)},
+		{name = "Brown Sugar", color = Color3.fromRGB(120, 70, 30)},
+		{name = "Lychee", color = Color3.fromRGB(255, 200, 200)},
+	}
+
+	for i, cup in ipairs(cupData) do
+		local cupX = 50 - 10 + (i - 1) * 4
+		-- Cup body
+		local cupPart = createCylinder(teaBarModel, {
+			Name = "Cup_" .. cup.name,
+			Size = Vector3.new(2.5, 1.2, 1.2),
+			Position = Vector3.new(cupX, 19.5, 59),
+			Color = cup.color,
+			Material = Enum.Material.Neon,
+			Transparency = 0.2,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+		tagInteractable(cupPart, "BubbleTeaBar")
+
+		addPointLight(cupPart, {
+			Color = cup.color,
+			Brightness = 1,
+			Range = 5,
+		})
+
+		-- Cup label
+		addBillboard(cupPart, {
+			Text = cup.name,
+			Size = UDim2.new(3, 0, 1.5, 0),
+			StudsOffset = Vector3.new(0, 2, 0),
+			TextColor = cup.color,
+			BackgroundTransparency = 0.6,
+			MaxDistance = 30,
+		})
+	end
+
+	-- Neon sign above bar
+	local neonSign = createPart(teaBarModel, {
+		Name = "NeonSign",
+		Size = Vector3.new(16, 2, 0.5),
+		Position = Vector3.new(50, 30, 63),
+		Color = Color3.fromRGB(220, 140, 180),
+		Material = Enum.Material.Neon,
+	})
+	addPointLight(neonSign, {
+		Color = Color3.fromRGB(220, 140, 180),
+		Brightness = 2,
+		Range = 20,
+	})
+
+	-- Bar stools
+	for i = 1, 5 do
+		local stoolX = 50 - 8 + (i - 1) * 4
+		-- Stool seat
+		createCylinder(teaBarModel, {
+			Name = "Stool_" .. i,
+			Size = Vector3.new(1, 2, 2),
+			Position = Vector3.new(stoolX, 16, 56),
+			Color = Color3.fromRGB(60, 40, 50),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+		-- Stool leg
+		createCylinder(teaBarModel, {
+			Name = "StoolLeg_" .. i,
+			Size = Vector3.new(3, 0.5, 0.5),
+			Position = Vector3.new(stoolX, 14, 56),
+			Color = Color3.fromRGB(80, 80, 85),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+	end
+
+	print("[WorldBuilder] Zone 1: Nexus Hub built (with Bubble Tea Bar)")
 	return zone
 end
 
