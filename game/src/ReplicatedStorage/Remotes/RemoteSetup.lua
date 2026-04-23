@@ -46,6 +46,12 @@ local serverToClientEvents = {
 	-- Bubble Tea Bar
 	"DrinkPurchased",      -- {drinkId, name, buffType, duration} drink bought
 	"DrinkListResponse",   -- {drinks, activeBuffs} available drinks and active buffs
+	-- Fertilizer System
+	"FertilizerUpdate",    -- {plots, soilData, questProgress} full state update
+	"CropGrowthTick",     -- {plotId, progress, daysLeft} periodic growth update
+	"CropHarvested",      -- {plotId, cropName, yield, coins} harvest result
+	"SoilTestResult",     -- {soilType, pH, nutrients, contaminants} soil analysis
+	"FertilizerCrafted",  -- {fertilizerId, name, npk} fertilizer synthesized
 }
 
 -- ══════════════════════════════════════════════
@@ -76,6 +82,13 @@ local clientToServerEvents = {
 	-- Bubble Tea Bar
 	"RequestBuyDrink",       -- {drinkId} purchase a bubble tea
 	"RequestDrinkList",      -- {} get drink menu and active buffs
+	-- Fertilizer System
+	"RequestTestSoil",       -- {plotId} analyze soil at a plot
+	"RequestPlantCrop",      -- {plotId, cropId} plant a crop in a plot
+	"RequestApplyFertilizer",-- {plotId, fertilizerId} apply fertilizer to soil
+	"RequestHarvestCrop",    -- {plotId} harvest a ready crop
+	"RequestCraftFertilizer",-- {fertilizerId} synthesize a fertilizer
+	"RequestFertilizerInfo", -- {} get all plots, quests, state
 }
 
 -- ══════════════════════════════════════════════

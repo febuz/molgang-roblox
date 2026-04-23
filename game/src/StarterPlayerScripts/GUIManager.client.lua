@@ -34,6 +34,8 @@ local guiStates = {
 	RecipeBookGui = false,
 	SettingsGui = false,
 	SlagProcessingGui = false,
+	BubbleTeaGui = false,
+	FertilizerGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -132,6 +134,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- S = Toggle Slag Processing
 	if input.KeyCode == Enum.KeyCode.S then
 		toggleGui("SlagProcessingGui")
+	end
+
+	-- B = Toggle Bubble Tea Bar
+	if input.KeyCode == Enum.KeyCode.B then
+		toggleGui("BubbleTeaGui")
+	end
+
+	-- F = Toggle Fertilizer Lab
+	if input.KeyCode == Enum.KeyCode.F then
+		toggleGui("FertilizerGui")
 	end
 
 	-- / or Slash = Toggle Settings
