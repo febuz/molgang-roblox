@@ -32,6 +32,19 @@ local SOUNDS = {
 	ui_open          = "rbxassetid://6042053626",   -- interface open
 	ui_close         = "rbxassetid://6042053626",   -- interface close
 	error_sound      = "rbxassetid://6042053626",   -- error tone
+
+	-- Factory / processing sounds
+	crusher_impact   = "rbxassetid://4612362429",   -- heavy impact (crushing)
+	grinder_loop     = "rbxassetid://9043834554",   -- grinding machinery
+	bubbling         = "rbxassetid://9120386153",   -- leaching tank bubbles
+	quest_complete   = "rbxassetid://5853932947",   -- quest done fanfare
+	purchase         = "rbxassetid://4612362429",   -- buy/sell cha-ching
+	equipment_place  = "rbxassetid://6042053626",   -- equipment placed on grid
+
+	-- Weather sounds
+	rain_loop        = "rbxassetid://9043698944",   -- rain ambience
+	thunder          = "rbxassetid://5853932947",   -- thunder crack
+	wind_loop        = "rbxassetid://9043887091",   -- wind howling
 }
 
 -- ══════════════════════════════════════════════
