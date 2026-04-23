@@ -36,6 +36,7 @@ local guiStates = {
 	SlagProcessingGui = false,
 	BubbleTeaGui = false,
 	FertilizerGui = false,
+	FactoryBuilderGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -144,6 +145,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- F = Toggle Fertilizer Lab
 	if input.KeyCode == Enum.KeyCode.F then
 		toggleGui("FertilizerGui")
+	end
+
+	-- G = Toggle Factory Builder (Entrepreneur)
+	if input.KeyCode == Enum.KeyCode.G then
+		toggleGui("FactoryBuilderGui")
 	end
 
 	-- / or Slash = Toggle Settings

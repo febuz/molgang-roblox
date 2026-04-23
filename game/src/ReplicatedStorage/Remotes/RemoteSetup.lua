@@ -52,6 +52,13 @@ local serverToClientEvents = {
 	"CropHarvested",      -- {plotId, cropName, yield, coins} harvest result
 	"SoilTestResult",     -- {soilType, pH, nutrients, contaminants} soil analysis
 	"FertilizerCrafted",  -- {fertilizerId, name, npk} fertilizer synthesized
+	-- Weather System
+	"WeatherChanged",     -- {id, name, rainIntensity, windSpeed, duration} weather update
+	"WeatherLightning",   -- {intensity} lightning strike flash
+	-- Entrepreneur / Factory Builder
+	"FactoryUpdate",      -- {placements, power, costs, bonuses} factory state
+	"EquipmentPlaced",    -- {itemId, gridX, gridY} placement confirmed
+	"EquipmentRemoved",   -- {gridX, gridY} removal confirmed
 }
 
 -- ══════════════════════════════════════════════
@@ -89,6 +96,12 @@ local clientToServerEvents = {
 	"RequestHarvestCrop",    -- {plotId} harvest a ready crop
 	"RequestCraftFertilizer",-- {fertilizerId} synthesize a fertilizer
 	"RequestFertilizerInfo", -- {} get all plots, quests, state
+	-- Entrepreneur / Factory Builder
+	"RequestRentFactory",    -- {} rent the 1000m² factory
+	"RequestPlaceEquipment", -- {itemId, gridX, gridY, rotation} place equipment
+	"RequestRemoveEquipment",-- {gridX, gridY} remove equipment at position
+	"RequestBuyEquipment",   -- {itemId} purchase equipment for inventory
+	"RequestFactoryInfo",    -- {} get current factory state
 }
 
 -- ══════════════════════════════════════════════

@@ -110,7 +110,11 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 | 23-04-2026 | 1 | 30 | Meststofchemie-spoortrack data | **S&O kernactiviteit**: FertilizerTrack.lua (400+ regels): 10 meststofverbindingen met echte NPK-ratio's (Ureum 46-0-0, DAP 18-46-0, NPK 15-15-15, Slak Bio-Enhancer). 5 grondtypen (zandig/klei/leem/veen/vervuild). 5 gewassen met ideale NPK/pH-vereisten. Opbrengstberekening volgens Liebig's Wet van het Minimum. Over-bemesting straf (>130% verbrandt planten). 12 verhalende quests over 3 bedrijven (Ontdekking → Beheersing → Crisis). |
 | 23-04-2026 | 1 | 30 | Meststofsysteem server + GUI | FertilizerSystem.server.lua (380+ regels): 4 landbouwpercelen per speler, grondanalyse (pH/NPK/contaminanten), meststof-synthese, bemesting-toepassing, gewasplanting, tijdsgebaseerde groei (1 speldag = 2 min), oogst met opbrengstberekening, quest-voortgang. FertilizerGui.client.lua (400+ regels): 3-tab interface (Percelen/Lab/Quests) met 2×2 percelenraster, voortgangsbalken, NPK-weergave. GUIManager bijgewerkt met B/F toetsen. |
 
-**Subtotaal 23-04: 16 uur 30 minuten**
+| 23-04-2026 | 2 | 00 | Weer-systeem met gevaren + entrepreneur modus | **S&O kernactiviteit**: WeatherSystem.server.lua: dynamisch weercyclus (helder→bewolkt→regen→storm→hagel) met gameplay-effecten: regenvertraging 20%, stormschade, hagelgewasvernietiging. Client-side: regendeeltjes, bliksemflitsen met cameraschudding, weer-HUD indicator. Indoor/outdoor detectie. |
+| 23-04-2026 | 2 | 30 | Ondernemer fabriekshal + apparatuurcatalogus | EntrepreneurSystem.server.lua: 1000m² huurbare fabriekshal (40×25 raster), 22 apparatuuritems met prijzen/vermogen/productie. FactoryEquipment.lua: kaakbreker, kegelbreker, kogelmolen, magneetscheider, loogtank, roosteroven, silos, transportband, XRF-analyzer, ICP-OES, pH-meter. Aangrenzendheidsbonus-systeem. Energiebalans (100kW basis + generatoren). Maandelijkse huur+onderhoud. |
+| 23-04-2026 | 2 | 00 | Interactief fabrieksplanner GUI | FactoryBuilderGui.client.lua (500+ regels): top-down rasterweergave van 40×25 fabrieksplattegrond. Apparatuurcatalogus zijpaneel met categorieën. Klik-om-te-plaatsen met groen/rood geldigheidspreview. Rotatie (R), verwijderen (X), rechtermuisknop. Real-time vermogen/kosten/items statistieken. Weer-indicator. Apparatuurinfo-paneel met adjacency-bonussen. |
+
+**Subtotaal 23-04: 23 uur 00 minuten**
 
 ---
 
@@ -122,10 +126,10 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 | Week 15 | 09-04-2026 | 6 | 00 | 6:00 |
 | Week 15 | 12-04-2026 | 4 | 30 | 4:30 |
 | Week 17 | 22-04-2026 | 4 | 45 | 4:45 |
-| Week 17 | 23-04-2026 | 16 | 30 | 16:30 |
-| | | | | **39:45** |
+| Week 17 | 23-04-2026 | 23 | 00 | 23:00 |
+| | | | | **46:15** |
 
-**Totaal geregistreerde S&O-uren april 2026: 39 uur en 45 minuten**
+**Totaal geregistreerde S&O-uren april 2026: 46 uur en 15 minuten**
 
 ---
 

@@ -1978,6 +1978,150 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 	})
 
 	-- ================================================================
+	-- RENTABLE FACTORY HALL (1000m² indoor space for entrepreneurs)
+	-- 40m × 25m floor plan, glass walls, industrial door
+	-- Weather-protected! Players rent this to place equipment.
+	-- ================================================================
+	local factoryHall = createModel(zone, "RentableFactoryHall")
+
+	local hallFloor = createPart(factoryHall, {
+		Name = "FactoryFloor",
+		Size = Vector3.new(400, 1, 250),  -- 40×25 studs = 40×25 meters
+		Position = Vector3.new(-1750, 9, -150),
+		Color = Color3.fromRGB(65, 65, 70),
+		Material = Enum.Material.Concrete,
+	})
+	tagInteractable(hallFloor, "FactoryHall")
+	tagZone(hallFloor, "West")
+
+	-- Walls (steel frame + glass panels)
+	local wallHeight = 25
+	local wallThick = 1
+	local hallCenter = Vector3.new(-1750, 9, -150)
+	local hallW, hallD = 400, 250
+
+	-- Back wall (solid steel)
+	createPart(factoryHall, {
+		Name = "WallBack",
+		Size = Vector3.new(hallW, wallHeight, wallThick),
+		Position = hallCenter + Vector3.new(0, wallHeight/2 + 0.5, -hallD/2),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	-- Side walls (glass panels with steel frame)
+	for side = -1, 1, 2 do
+		-- Steel frame
+		createPart(factoryHall, {
+			Name = "WallSide_" .. side,
+			Size = Vector3.new(wallThick, wallHeight, hallD),
+			Position = hallCenter + Vector3.new(side * hallW/2, wallHeight/2 + 0.5, 0),
+			Color = CONFIG.INDUSTRIAL_GREY,
+			Material = Enum.Material.SmoothPlastic,
+		})
+		-- Glass panels
+		createPart(factoryHall, {
+			Name = "Glass_" .. side,
+			Size = Vector3.new(0.5, wallHeight - 4, hallD - 10),
+			Position = hallCenter + Vector3.new(side * (hallW/2 - 0.5), wallHeight/2 + 2, 0),
+			Color = CONFIG.GLASS_TINT,
+			Material = Enum.Material.Glass,
+			Transparency = 0.6,
+		})
+	end
+
+	-- Front wall with large industrial door opening
+	local doorWidth = 30
+	-- Left section
+	createPart(factoryHall, {
+		Name = "WallFrontL",
+		Size = Vector3.new((hallW - doorWidth) / 2, wallHeight, wallThick),
+		Position = hallCenter + Vector3.new(-(hallW/4 + doorWidth/4), wallHeight/2 + 0.5, hallD/2),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	-- Right section
+	createPart(factoryHall, {
+		Name = "WallFrontR",
+		Size = Vector3.new((hallW - doorWidth) / 2, wallHeight, wallThick),
+		Position = hallCenter + Vector3.new(hallW/4 + doorWidth/4, wallHeight/2 + 0.5, hallD/2),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	-- Door frame (neon accent)
+	createPart(factoryHall, {
+		Name = "DoorFrame",
+		Size = Vector3.new(doorWidth + 2, wallHeight, 1.5),
+		Position = hallCenter + Vector3.new(0, wallHeight/2 + 0.5, hallD/2),
+		Color = CONFIG.NEON_GREEN,
+		Material = Enum.Material.Neon,
+		Transparency = 0.7,
+		CanCollide = false,
+	})
+
+	-- Roof (translucent skylights)
+	createPart(factoryHall, {
+		Name = "Roof",
+		Size = Vector3.new(hallW, 1, hallD),
+		Position = hallCenter + Vector3.new(0, wallHeight + 1, 0),
+		Color = Color3.fromRGB(50, 55, 60),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	-- Skylight strips
+	for i = 1, 4 do
+		createPart(factoryHall, {
+			Name = "Skylight_" .. i,
+			Size = Vector3.new(hallW - 20, 0.5, 15),
+			Position = hallCenter + Vector3.new(0, wallHeight + 0.5, -hallD/2 + i * (hallD/5)),
+			Color = CONFIG.GLASS_TINT,
+			Material = Enum.Material.Glass,
+			Transparency = 0.5,
+		})
+	end
+
+	-- Interior lighting (fluorescent strips)
+	for i = 1, 6 do
+		local lightX = -hallW/2 + 30 + (i - 1) * (hallW / 6)
+		local lightPart = createPart(factoryHall, {
+			Name = "CeilingLight_" .. i,
+			Size = Vector3.new(3, 0.5, hallD - 20),
+			Position = hallCenter + Vector3.new(lightX, wallHeight - 0.5, 0),
+			Color = Color3.fromRGB(255, 255, 240),
+			Material = Enum.Material.Neon,
+			Transparency = 0.4,
+			CanCollide = false,
+		})
+		addPointLight(lightPart, {
+			Color = Color3.fromRGB(255, 255, 240),
+			Brightness = 1.5,
+			Range = 40,
+		})
+	end
+
+	-- "FOR RENT" / "FACTORY HALL" sign
+	local hallSign = createPart(factoryHall, {
+		Name = "FactorySign",
+		Size = Vector3.new(25, 8, 1),
+		Position = hallCenter + Vector3.new(0, wallHeight + 5, hallD/2 + 2),
+		Color = Color3.fromRGB(20, 25, 30),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	addBillboard(hallSign, {
+		Text = "ENTREPRENEUR FACTORY HALL\n1000m² Indoor — Weather Protected\nRent: 2000 MC/month | Press G to manage",
+		Size = UDim2.new(20, 0, 6, 0),
+		StudsOffset = Vector3.new(0, 2, 0),
+		TextColor = CONFIG.NEON_GREEN,
+		BackgroundColor = Color3.fromRGB(10, 15, 10),
+		BackgroundTransparency = 0.2,
+		MaxDistance = 300,
+	})
+	addPointLight(hallSign, {
+		Color = CONFIG.NEON_GREEN,
+		Brightness = 2,
+		Range = 25,
+	})
+
+	-- ================================================================
 	-- FULL PROCESSING PIPELINE WALKWAY
 	-- Connects all stations in order with lit path and safety rails
 	-- Layout: Cooling Pit → Jaw Crusher → Screen → Cone Crusher
