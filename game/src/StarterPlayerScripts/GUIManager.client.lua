@@ -38,6 +38,7 @@ local guiStates = {
 	FertilizerGui = false,
 	FactoryBuilderGui = false,
 	ProcessControlGui = false,
+	ResearchGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -156,6 +157,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- C = Toggle Process Control Panel
 	if input.KeyCode == Enum.KeyCode.C then
 		toggleGui("ProcessControlGui")
+	end
+
+	-- T = Toggle Research Tree
+	if input.KeyCode == Enum.KeyCode.T then
+		toggleGui("ResearchGui")
 	end
 
 	-- / or Slash = Toggle Settings
