@@ -37,6 +37,7 @@ local guiStates = {
 	BubbleTeaGui = false,
 	FertilizerGui = false,
 	FactoryBuilderGui = false,
+	ProcessControlGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -150,6 +151,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- G = Toggle Factory Builder (Entrepreneur)
 	if input.KeyCode == Enum.KeyCode.G then
 		toggleGui("FactoryBuilderGui")
+	end
+
+	-- C = Toggle Process Control Panel
+	if input.KeyCode == Enum.KeyCode.C then
+		toggleGui("ProcessControlGui")
 	end
 
 	-- / or Slash = Toggle Settings

@@ -107,14 +107,22 @@ shortcutsHeader.TextXAlignment = Enum.TextXAlignment.Left
 shortcutsHeader.Parent = scroll
 
 local shortcuts = {
-	{key = "D", action = "Toggle Dashboard"},
-	{key = "L", action = "Show Leaderboards"},
-	{key = "P", action = "Toggle Periodic Table"},
-	{key = "Tab", action = "Toggle Wallet"},
+	{key = "P", action = "Periodic Table (118 elements)"},
+	{key = "D", action = "Dashboard (build/trade/research)"},
+	{key = "I", action = "Inventory (atoms & molecules)"},
+	{key = "A", action = "Achievements & Badges"},
+	{key = "L", action = "Leaderboards (top 100)"},
+	{key = "Q", action = "Quest Tracker"},
+	{key = "R", action = "Recipe Book (molecule crafting)"},
+	{key = "S", action = "Slag Processing (ChemEng)"},
+	{key = "F", action = "Fertilizer Lab (NPK farming)"},
+	{key = "G", action = "Factory Builder (entrepreneur)"},
+	{key = "C", action = "Process Control Panel (gauges)"},
+	{key = "B", action = "Bubble Tea Bar (buffs)"},
+	{key = "Tab", action = "Wallet & MolChain Explorer"},
 	{key = "M", action = "Toggle Minimap"},
-	{key = "ESC", action = "Close all overlays"},
-	{key = "E", action = "Interact with NPC"},
-	{key = "F", action = "Quick Build (when placed)"},
+	{key = "/", action = "This Settings Panel"},
+	{key = "ESC", action = "Close All Overlays"},
 }
 
 for _, shortcut in ipairs(shortcuts) do
