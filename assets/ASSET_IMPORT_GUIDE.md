@@ -1,0 +1,105 @@
+# MOLGANG — 3D Asset Import Guide for Roblox Studio
+
+## Overview
+
+14 low-poly industrial 3D models for the Slakkenspoor Steel Slag Processing Factory zone.
+Generated with Blender 5.1 Python scripting, exported as FBX for Roblox Studio.
+
+## Models
+
+| # | File | Description | Use in Game |
+|---|------|-------------|-------------|
+| 1 | `jaw_crusher.fbx` | Primary crusher with steel jaws, flywheel, hopper | Station: Coarse crushing (5cm → 10cm) |
+| 2 | `cone_crusher.fbx` | Secondary crusher with mantle cone in bowl | Station: Fine crushing (10cm → 2cm) |
+| 3 | `ball_mill.fbx` | Rotating drum on cradles with motor | Station: Grinding (2cm → <1mm powder) |
+| 4 | `conveyor_belt.fbx` | Flat belt on rollers with side rails | Connecting equipment between stations |
+| 5 | `leaching_tank.fbx` | Cylindrical reactor with agitator, pipes, valves | Station: Acid/base leaching |
+| 6 | `magnetic_separator.fbx` | Drum with magnets, feed tray, collection bins | Station: HGMS iron removal |
+| 7 | `vibrating_screen.fbx` | Inclined screen deck on springs | Station: Size classification |
+| 8 | `cooling_pit.fbx` | Concrete pit with hot slag inside | Station: Slag cooling (first step) |
+| 9 | `roasting_kiln.fbx` | Rotary kiln with burner, riding rings | Station: Oxidative roasting (optional) |
+| 10 | `storage_silo.fbx` | Tall cylinder with cone hopper, ladder | Product storage (V2O5, Fe, TiO2) |
+| 11 | `slag_chunk.fbx` | Rough rocky pieces (raw BOF slag) | Decorative / pickup item |
+| 12 | `anvil_hammer.fbx` | Blacksmith anvil with hammer on stump | Manual crushing station |
+| 13 | `pipe_section.fbx` | Straight pipe with flanges + elbow | Connecting equipment |
+| 14 | `filtration_press.fbx` | Filter plates on rails with hydraulics | Station: Solid/liquid separation |
+
+## Importing into Roblox Studio
+
+### Method 1: Import 3D (Recommended)
+1. Open Roblox Studio
+2. Go to **Home** tab → **Import 3D**
+3. Select the `.fbx` file from `assets/models/`
+4. In the import dialog:
+   - Set **Scale**: leave at 1.0 (models are in stud scale)
+   - Enable **Import as Model** 
+   - Click **Import**
+5. The model appears as a `Model` in Workspace
+6. Move it to `ServerStorage` or the appropriate zone folder
+
+### Method 2: Mesh Import (Individual Parts)
+1. In Roblox Studio, insert a `MeshPart`
+2. Click the `MeshId` property
+3. Click **Browse** and select the `.fbx` file
+4. Set **Size** to match the original model dimensions
+
+### Method 3: Rojo Asset Pipeline
+For automated workflows, use `rbxcloud` or `remodel` to upload meshes:
+```bash
+# Upload mesh asset via Roblox Open Cloud API
+rbxcloud asset create --filepath assets/models/jaw_crusher.fbx --asset-type MeshPart
+```
+
+## Scale Reference
+
+All models use **1 Blender unit = 1 Roblox stud**.
+
+| Model | Approximate Size (studs) |
+|-------|--------------------------|
+| Jaw Crusher | 14 × 11 × 10 |
+| Cone Crusher | 10 × 10 × 10 |
+| Ball Mill | 20 × 10 × 8 |
+| Conveyor Belt | 16 × 5 × 4 |
+| Leaching Tank | 10 × 16 × 10 |
+| Magnetic Separator | 14 × 8 × 8 |
+| Vibrating Screen | 12 × 8 × 7 |
+| Cooling Pit | 20 × 3 × 16 |
+| Roasting Kiln | 20 × 10 × 8 |
+| Storage Silo | 6 × 18 × 6 |
+| Slag Chunk | 4 × 3 × 4 |
+| Anvil & Hammer | 8 × 6 × 3 |
+| Pipe Section | 10 × 2 × 2 |
+| Filtration Press | 16 × 7 × 6 |
+
+## Factory Layout
+
+Recommended placement order (following the real slag processing flow):
+
+```
+[Cooling Pit] → [Conveyor] → [Jaw Crusher] → [Conveyor] → [Vibrating Screen]
+                                                                    ↓
+[Storage Silos] ← [Filtration Press] ← [Leaching Tanks] ← [HGMS Separator]
+                                              ↑
+                                    [Ball Mill] ← [Cone Crusher]
+                                              ↑
+                                    [Roasting Kiln] (optional path)
+```
+
+## Regenerating Models
+
+To regenerate or modify models:
+
+```bash
+flatpak run --filesystem=/home/knight2/molgang-roblox org.blender.Blender \
+  --background --python assets/blender/generate_slag_models.py
+```
+
+Edit `generate_slag_models.py` to modify geometry, materials, or add new models.
+
+## Technical Notes
+
+- All models are low-poly (<5000 triangles each) for Roblox performance
+- Materials use Principled BSDF with simple colors (no textures)
+- Roblox will auto-generate collision meshes from the geometry
+- For complex models, consider using separate `CollisionFidelity` settings
+- FBX files use Y-up, -Z forward (matching Roblox conventions)

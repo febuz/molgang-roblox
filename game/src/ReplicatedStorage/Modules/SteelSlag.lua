@@ -86,6 +86,177 @@ SteelSlag.ParticleSizes = {
 SteelSlag.SizeOrder = {"chunk", "crushed", "ground", "powder"}
 
 -- ═══════════════════════════════════════════════
+-- COMPLETE INDUSTRIAL PROCESSING PIPELINE
+-- Based on real Harsco / Tata Steel / ArcelorMittal processes
+-- Each station transforms slag through one step
+-- ═══════════════════════════════════════════════
+
+SteelSlag.ProcessingStations = {
+	{
+		id = "slag_pit",
+		name = "Slag Cooling Pit",
+		description = "Molten BOF slag (~1600°C) is poured into cooling pits. Air-cooled for 24-48h to form solid chunks.",
+		inputItem = "molten_slag",
+		outputItem = "chunk",
+		duration = 2880,           -- 2 game days (represents 24-48h real)
+		cost = 0,
+		automatic = true,          -- happens passively
+		temperature = 1600,        -- starting temp °C
+		emoji = "🔥",
+	},
+	{
+		id = "vibrating_feeder",
+		name = "Vibrating Feeder",
+		description = "Feeds cooled slag chunks uniformly to the jaw crusher at controlled rate.",
+		inputItem = "chunk",
+		outputItem = "chunk_fed",   -- same size, just queued for crusher
+		duration = 5,
+		cost = 0,
+		automatic = true,
+	},
+	{
+		id = "jaw_crusher",
+		name = "Jaw Crusher",
+		description = "Primary crushing: breaks 5cm+ chunks to ~10cm pieces between steel jaws. Capacity 50-100 tons/hr.",
+		inputItem = "chunk",
+		outputItem = "coarse",
+		duration = 60,             -- 1 game hour
+		cost = 0,                  -- manual hammer alternative is free
+		crushHits = 8,             -- manual alternative: 8 hammer hits
+		outputSize = "10cm",
+	},
+	{
+		id = "vibrating_screen",
+		name = "Vibrating Screen",
+		description = "Sorts crushed material by size. Oversize returns to crusher, undersize (<2cm) passes through.",
+		inputItem = "coarse",
+		outputItem = "screened",
+		duration = 30,
+		cost = 50,
+		automatic = true,
+	},
+	{
+		id = "cone_crusher",
+		name = "Cone Crusher",
+		description = "Secondary crushing: reduces 10cm pieces to ~2cm. Hydraulic pressure between mantle and concave.",
+		inputItem = "screened",
+		outputItem = "crushed",     -- maps to existing "crushed" size
+		duration = 120,
+		cost = 200,
+		outputSize = "2cm",
+	},
+	{
+		id = "ball_mill",
+		name = "Ball Mill",
+		description = "Grinding: rotating cylinder with steel balls grinds slag to <1mm powder. 2-4h per batch.",
+		inputItem = "crushed",
+		outputItem = "ground",      -- maps to existing "ground" size
+		duration = 480,            -- half a game day
+		cost = 500,
+		outputSize = "1mm",
+	},
+	{
+		id = "magnetic_separator",
+		name = "HGMS Magnetic Separator",
+		description = "High Gradient Magnetic Separation: removes iron particles (Fe3O4) from slag. Recovers metallic iron for recycling.",
+		inputItem = "ground",
+		outputItem = "deironized",
+		duration = 60,
+		cost = 100,
+		byproduct = "Fe",          -- iron recovered as byproduct
+		byproductAmount = 5,       -- atoms of Fe per batch
+		automatic = true,
+	},
+	{
+		id = "roasting_kiln",
+		name = "Roasting Kiln (Optional)",
+		description = "Oxidative roasting at 900°C for 2h. Converts V3+ to V5+ (vanadium pentoxide), improving leach extraction from 68% to 85%.",
+		inputItem = "deironized",
+		outputItem = "roasted",
+		duration = 720,            -- half a game day
+		cost = 300,
+		optional = true,           -- skip for faster but less efficient leach
+		boostFactor = 1.25,        -- 25% better V2O5 extraction
+		temperature = 900,
+	},
+	{
+		id = "leaching_tank",
+		name = "Leaching Tank",
+		description = "Acid or base solution dissolves target metals from slag. Duration depends on particle size, reagent type, and concentration.",
+		inputItem = "roasted",      -- or "deironized" if roasting skipped
+		outputItem = "leachate",
+		duration = 1440,           -- variable, depends on reagent
+		cost = 0,                  -- reagent cost is separate
+	},
+	{
+		id = "filtration",
+		name = "Filtration Press",
+		description = "Separates dissolved metal solution (leachate) from solid residue. Residue can be used as construction aggregate.",
+		inputItem = "leachate",
+		outputItem = "solution",
+		duration = 120,
+		cost = 50,
+		byproduct = "aggregate",   -- construction material
+		automatic = true,
+	},
+	{
+		id = "precipitation",
+		name = "Precipitation Reactor",
+		description = "pH adjustment causes selective precipitation of dissolved metals. V2O5 precipitates at pH 2-3, Fe at pH 4-5.",
+		inputItem = "solution",
+		outputItem = "precipitate",
+		duration = 240,
+		cost = 100,
+	},
+	{
+		id = "drying",
+		name = "Drying Oven",
+		description = "Dries precipitated metal compounds at 110°C. Final product: V2O5 flakes (gold), Fe2O3 (red), TiO2 (white), etc.",
+		inputItem = "precipitate",
+		outputItem = "product",
+		duration = 180,
+		cost = 50,
+		temperature = 110,
+	},
+}
+
+-- Fast-track leaching option (H2SO4 + H2O2 system)
+-- Based on: 30% H2SO4 at 50°C with H2O2 → 80.5% V extraction in 15 minutes
+SteelSlag.FastLeach = {
+	name = "H2SO4 + H2O2 Fast Leach",
+	description = "Oxidative acid leach: 30% sulfuric acid + hydrogen peroxide at 50°C. Achieves 80% vanadium extraction in just 15 minutes!",
+	reagents = {"H2SO4", "H2O2"},
+	cost = 400,                   -- expensive reagent combo
+	duration = 30,                -- 30 game minutes (represents ~15 real minutes)
+	vExtractionRate = 0.80,       -- 80% of V2O5 dissolved
+	temperature = 50,
+	requirement = "powder",       -- only works with fine powder
+}
+
+-- Two-stage leaching (Ca removal first, then V recovery)
+-- Based on: ammonium nitrate for Ca, then ammonium carbonate for V
+SteelSlag.TwoStageLeach = {
+	name = "Two-Stage Selective Leach",
+	description = "Stage 1: NH4NO3 removes calcium. Stage 2: (NH4)2CO3 dissolves vanadium from V-rich residue. Higher V purity.",
+	stage1 = {
+		reagent = "NH4NO3",
+		name = "Ammonium Nitrate",
+		target = "CaO",
+		duration = 720,           -- half day per stage
+		cost = 150,
+		extractionRate = 0.90,    -- 90% Ca removal
+	},
+	stage2 = {
+		reagent = "(NH4)2CO3",
+		name = "Ammonium Carbonate",
+		target = "V2O5",
+		duration = 720,
+		cost = 250,
+		extractionRate = 0.75,    -- 75% V recovery (high purity)
+	},
+}
+
+-- ═══════════════════════════════════════════════
 -- REAGENTS (acids & bases for leaching)
 -- Each reagent has different selectivity for metals
 -- ═══════════════════════════════════════════════

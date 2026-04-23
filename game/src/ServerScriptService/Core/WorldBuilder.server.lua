@@ -1855,6 +1855,527 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 	})
 
 	-- ================================================================
+	-- FULL PROCESSING PIPELINE WALKWAY
+	-- Connects all stations in order with lit path and safety rails
+	-- Layout: Cooling Pit → Jaw Crusher → Screen → Cone Crusher
+	--         → Ball Mill → HGMS → Leaching Vats → Filtration → Silos
+	-- ================================================================
+	local pipelineModel = createModel(zone, "ProcessingPipeline")
+
+	-- Processing walkway (raised catwalk along the stations)
+	local walkwayPositions = {
+		-- From cooling pit to crushing stations
+		Vector3.new(-2150, 11, -60),
+		Vector3.new(-2120, 11, -60),
+		Vector3.new(-2090, 11, -60),
+		Vector3.new(-2060, 11, -60),
+		-- Turn towards leach area
+		Vector3.new(-2030, 11, -40),
+		Vector3.new(-2000, 11, -20),
+		Vector3.new(-1970, 11, 0),
+		Vector3.new(-1940, 11, 20),
+		-- Along leach vats to product storage
+		Vector3.new(-1910, 11, 40),
+		Vector3.new(-1880, 11, 50),
+		Vector3.new(-1850, 11, 50),
+	}
+
+	for idx, pos in ipairs(walkwayPositions) do
+		-- Walkway segment
+		local segment = createPart(pipelineModel, {
+			Name = "Walkway_" .. idx,
+			Size = Vector3.new(32, 0.5, 6),
+			Position = pos,
+			Color = Color3.fromRGB(55, 55, 60),
+			Material = Enum.Material.SmoothPlastic,
+		})
+
+		-- Safety railings (yellow neon strips)
+		for side = -1, 1, 2 do
+			createPart(pipelineModel, {
+				Name = "Railing_" .. idx .. "_" .. side,
+				Size = Vector3.new(32, 2, 0.3),
+				Position = pos + Vector3.new(0, 1.5, side * 3),
+				Color = Color3.fromRGB(220, 180, 40),
+				Material = Enum.Material.SmoothPlastic,
+			})
+		end
+
+		-- Floor lighting (neon strip)
+		if idx % 2 == 0 then
+			local floorLight = createPart(pipelineModel, {
+				Name = "FloorLight_" .. idx,
+				Size = Vector3.new(28, 0.2, 1),
+				Position = pos + Vector3.new(0, 0.4, 0),
+				Color = Color3.fromRGB(200, 120, 40),
+				Material = Enum.Material.Neon,
+				Transparency = 0.4,
+				CanCollide = false,
+			})
+			addPointLight(floorLight, {
+				Color = Color3.fromRGB(200, 120, 40),
+				Brightness = 0.6,
+				Range = 8,
+			})
+		end
+	end
+
+	-- ================================================================
+	-- Station 1: Cooling Pit (where molten slag solidifies)
+	-- ================================================================
+	local coolingPit = createModel(pipelineModel, "Station1_CoolingPit")
+
+	local pitFloor = createPart(coolingPit, {
+		Name = "PitFloor",
+		Size = Vector3.new(30, 1, 20),
+		Position = Vector3.new(-2170, 8, -80),
+		Color = Color3.fromRGB(80, 75, 70),
+		Material = Enum.Material.Concrete,
+	})
+	tagInteractable(pitFloor, "SlagCoolingPit")
+
+	-- Pit walls
+	for _, wallData in ipairs({
+		{pos = Vector3.new(-2170, 11, -90), size = Vector3.new(30, 6, 1)},
+		{pos = Vector3.new(-2170, 11, -70), size = Vector3.new(30, 6, 1)},
+		{pos = Vector3.new(-2185, 11, -80), size = Vector3.new(1, 6, 20)},
+		{pos = Vector3.new(-2155, 11, -80), size = Vector3.new(1, 6, 20)},
+	}) do
+		createPart(coolingPit, {
+			Name = "PitWall",
+			Size = wallData.size,
+			Position = wallData.pos,
+			Color = Color3.fromRGB(90, 85, 80),
+			Material = Enum.Material.Concrete,
+		})
+	end
+
+	-- Hot slag mass (glowing orange)
+	local hotSlag = createPart(coolingPit, {
+		Name = "HotSlagMass",
+		Size = Vector3.new(26, 3, 16),
+		Position = Vector3.new(-2170, 10, -80),
+		Color = Color3.fromRGB(180, 60, 15),
+		Material = Enum.Material.Neon,
+		Transparency = 0.2,
+	})
+	addPointLight(hotSlag, {
+		Color = Color3.fromRGB(255, 100, 20),
+		Brightness = 4,
+		Range = 25,
+	})
+
+	-- Heat shimmer particles
+	addParticleEmitter(hotSlag, {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 30)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 80, 20)),
+		}),
+		Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.5, 3),
+			NumberSequenceKeypoint.new(1, 5),
+		}),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.4),
+			NumberSequenceKeypoint.new(0.5, 0.7),
+			NumberSequenceKeypoint.new(1, 1),
+		}),
+		Lifetime = NumberRange.new(2, 5),
+		Rate = 15,
+		Speed = NumberRange.new(3, 8),
+		SpreadAngle = Vector2.new(20, 20),
+		LightEmission = 0.8,
+	})
+
+	addBillboard(hotSlag, {
+		Text = "STATION 1: Slag Cooling Pit\n1600°C → Solid (24-48h)",
+		Size = UDim2.new(14, 0, 4, 0),
+		StudsOffset = Vector3.new(0, 12, 0),
+		TextColor = Color3.fromRGB(255, 150, 50),
+		BackgroundColor = Color3.fromRGB(40, 15, 5),
+		BackgroundTransparency = 0.2,
+		MaxDistance = 120,
+	})
+
+	-- ================================================================
+	-- Station 2: Vibrating Screen (size classification)
+	-- ================================================================
+	local screenStation = createModel(pipelineModel, "Station2_VibratingScreen")
+
+	local screenBase = createPart(screenStation, {
+		Name = "ScreenBase",
+		Size = Vector3.new(20, 3, 14),
+		Position = Vector3.new(-2130, 10, -60),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(screenBase, "SlagVibratingScreen")
+
+	-- Inclined screen deck
+	local screenDeck = createPart(screenStation, {
+		Name = "ScreenDeck",
+		Size = Vector3.new(16, 0.5, 10),
+		Position = Vector3.new(-2130, 14, -60),
+		Color = Color3.fromRGB(120, 120, 130),
+		Material = Enum.Material.DiamondPlate,
+	})
+	screenDeck.Orientation = Vector3.new(-12, 0, 0)
+
+	-- Spring supports (visible)
+	for _, offset in ipairs({Vector3.new(-5, 0, -4), Vector3.new(5, 0, -4), Vector3.new(-5, 0, 4), Vector3.new(5, 0, 4)}) do
+		createCylinder(screenStation, {
+			Name = "Spring",
+			Size = Vector3.new(4, 1.5, 1.5),
+			Position = Vector3.new(-2130, 12, -60) + offset,
+			Color = Color3.fromRGB(200, 160, 40),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+	end
+
+	addBillboard(screenDeck, {
+		Text = "STATION 2: Vibrating Screen\nSorts by particle size",
+		Size = UDim2.new(12, 0, 3, 0),
+		StudsOffset = Vector3.new(0, 8, 0),
+		TextColor = Color3.fromRGB(200, 200, 220),
+		BackgroundColor = Color3.fromRGB(25, 25, 35),
+		MaxDistance = 100,
+	})
+
+	-- ================================================================
+	-- Station 3: Cone Crusher (secondary crushing)
+	-- ================================================================
+	local coneStation = createModel(pipelineModel, "Station3_ConeCrusher")
+
+	local coneCrusherBase = createPart(coneStation, {
+		Name = "ConeCrusherBase",
+		Size = Vector3.new(16, 3, 16),
+		Position = Vector3.new(-2090, 10, -55),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(coneCrusherBase, "SlagConeCrusher")
+
+	-- Crusher bowl (outer)
+	local coneBowl = createCylinder(coneStation, {
+		Name = "ConeBowl",
+		Size = Vector3.new(12, 10, 10),
+		Position = Vector3.new(-2090, 18, -55),
+		Color = Color3.fromRGB(70, 70, 75),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 0, 90),
+	})
+
+	-- Inner mantle (visible from top)
+	createSphere(coneStation, {
+		Name = "ConeMantle",
+		Size = Vector3.new(6, 8, 6),
+		Position = Vector3.new(-2090, 18, -55),
+		Color = Color3.fromRGB(50, 50, 55),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	addBillboard(coneBowl, {
+		Text = "STATION 3: Cone Crusher\n10cm → 2cm particles",
+		Size = UDim2.new(12, 0, 3, 0),
+		StudsOffset = Vector3.new(0, 10, 0),
+		TextColor = Color3.fromRGB(200, 180, 100),
+		BackgroundColor = Color3.fromRGB(30, 25, 10),
+		MaxDistance = 100,
+	})
+
+	-- ================================================================
+	-- Station 4: Ball Mill (grinding to powder)
+	-- ================================================================
+	local millStation = createModel(pipelineModel, "Station4_BallMill")
+
+	local millBase = createPart(millStation, {
+		Name = "MillBase",
+		Size = Vector3.new(30, 3, 14),
+		Position = Vector3.new(-2050, 10, -40),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(millBase, "SlagBallMill")
+
+	-- Rotating drum (large horizontal cylinder)
+	local millDrum = createCylinder(millStation, {
+		Name = "MillDrum",
+		Size = Vector3.new(20, 8, 8),
+		Position = Vector3.new(-2050, 16, -40),
+		Color = Color3.fromRGB(60, 60, 65),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 90, 0),
+	})
+
+	-- End caps with gear
+	for zOff = -10, 10, 20 do
+		createCylinder(millStation, {
+			Name = "MillEndCap_" .. zOff,
+			Size = Vector3.new(1, 9, 9),
+			Position = Vector3.new(-2050, 16, -40 + zOff),
+			Color = Color3.fromRGB(50, 50, 55),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 90, 0),
+		})
+	end
+
+	-- Motor (green housing)
+	createPart(millStation, {
+		Name = "MillMotor",
+		Size = Vector3.new(4, 4, 4),
+		Position = Vector3.new(-2050, 12, -52),
+		Color = Color3.fromRGB(40, 100, 40),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	addBillboard(millDrum, {
+		Text = "STATION 4: Ball Mill\n2cm → <1mm powder (2-4h)",
+		Size = UDim2.new(14, 0, 3, 0),
+		StudsOffset = Vector3.new(0, 10, 0),
+		TextColor = Color3.fromRGB(180, 200, 220),
+		BackgroundColor = Color3.fromRGB(20, 25, 35),
+		MaxDistance = 100,
+	})
+
+	-- ================================================================
+	-- Station 5: Roasting Kiln (optional, for V2O5 enhancement)
+	-- ================================================================
+	local kilnStation = createModel(pipelineModel, "Station5_RoastingKiln")
+
+	local kilnBase = createPart(kilnStation, {
+		Name = "KilnBase",
+		Size = Vector3.new(30, 2, 12),
+		Position = Vector3.new(-2010, 10, -20),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(kilnBase, "SlagRoastingKiln")
+
+	-- Rotary kiln drum (tilted cylinder)
+	local kilnDrum = createCylinder(kilnStation, {
+		Name = "KilnDrum",
+		Size = Vector3.new(24, 6, 6),
+		Position = Vector3.new(-2010, 16, -20),
+		Color = Color3.fromRGB(70, 55, 45),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(-5, 90, 0),
+	})
+
+	-- Glow from fire inside (visible at lower end)
+	local kilnFire = createSphere(kilnStation, {
+		Name = "KilnFireGlow",
+		Size = Vector3.new(5, 5, 5),
+		Position = Vector3.new(-2010, 16, -32),
+		Color = Color3.fromRGB(255, 120, 20),
+		Material = Enum.Material.Neon,
+		Transparency = 0.3,
+	})
+	addPointLight(kilnFire, {
+		Color = Color3.fromRGB(255, 120, 20),
+		Brightness = 3,
+		Range = 18,
+	})
+
+	-- Fire brick casing at burner end
+	createPart(kilnStation, {
+		Name = "BurnerCasing",
+		Size = Vector3.new(5, 8, 8),
+		Position = Vector3.new(-2010, 16, -33),
+		Color = Color3.fromRGB(160, 60, 20),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	addBillboard(kilnDrum, {
+		Text = "STATION 5: Roasting Kiln (Optional)\n900°C for 2h — Boosts V2O5 yield +25%",
+		Size = UDim2.new(16, 0, 4, 0),
+		StudsOffset = Vector3.new(0, 10, 0),
+		TextColor = Color3.fromRGB(255, 180, 80),
+		BackgroundColor = Color3.fromRGB(50, 20, 5),
+		BackgroundTransparency = 0.2,
+		MaxDistance = 120,
+	})
+
+	-- ================================================================
+	-- Station 6: Filtration Press (after leaching)
+	-- ================================================================
+	local filtrationStation = createModel(pipelineModel, "Station6_FiltrationPress")
+
+	local filtBase = createPart(filtrationStation, {
+		Name = "FiltrationBase",
+		Size = Vector3.new(25, 2, 10),
+		Position = Vector3.new(-1880, 10, 30),
+		Color = CONFIG.INDUSTRIAL_GREY,
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(filtBase, "SlagFiltration")
+
+	-- Filter plate stack
+	for p = -5, 5 do
+		createPart(filtrationStation, {
+			Name = "FilterPlate_" .. p,
+			Size = Vector3.new(0.5, 8, 8),
+			Position = Vector3.new(-1880 + p * 2, 16, 30),
+			Color = Color3.fromRGB(140, 140, 150),
+			Material = Enum.Material.SmoothPlastic,
+		})
+	end
+
+	-- Hydraulic ram (red)
+	createCylinder(filtrationStation, {
+		Name = "HydraulicRam",
+		Size = Vector3.new(8, 2, 2),
+		Position = Vector3.new(-1893, 16, 30),
+		Color = CONFIG.LAVA_RED,
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 0, 0),
+	})
+
+	-- Drip collection tray (below)
+	createPart(filtrationStation, {
+		Name = "DripTray",
+		Size = Vector3.new(22, 0.5, 9),
+		Position = Vector3.new(-1880, 11, 30),
+		Color = Color3.fromRGB(50, 50, 55),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	addBillboard(filtBase, {
+		Text = "STATION 6: Filtration Press\nSeparates dissolved metals from residue",
+		Size = UDim2.new(14, 0, 3, 0),
+		StudsOffset = Vector3.new(0, 16, 0),
+		TextColor = Color3.fromRGB(150, 200, 255),
+		BackgroundColor = Color3.fromRGB(15, 25, 40),
+		MaxDistance = 100,
+	})
+
+	-- ================================================================
+	-- Product Storage Silos (3 silos for V2O5, Fe, TiO2)
+	-- ================================================================
+	local siloStation = createModel(pipelineModel, "ProductSilos")
+
+	local siloProducts = {
+		{name = "V2O5", color = CONFIG.V2O5_YELLOW, pos = Vector3.new(-1830, 10, 50)},
+		{name = "Fe2O3", color = CONFIG.FE_GREY, pos = Vector3.new(-1815, 10, 50)},
+		{name = "TiO2", color = Color3.fromRGB(240, 240, 245), pos = Vector3.new(-1800, 10, 50)},
+	}
+
+	for _, silo in ipairs(siloProducts) do
+		-- Silo body
+		local siloBody = createCylinder(siloStation, {
+			Name = "Silo_" .. silo.name,
+			Size = Vector3.new(24, 6, 6),
+			Position = silo.pos + Vector3.new(0, 22, 0),
+			Color = Color3.fromRGB(180, 180, 185),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+
+		-- Silo cone top
+		createSphere(siloStation, {
+			Name = "SiloCap_" .. silo.name,
+			Size = Vector3.new(7, 4, 7),
+			Position = silo.pos + Vector3.new(0, 35, 0),
+			Color = silo.color,
+			Material = Enum.Material.SmoothPlastic,
+		})
+
+		-- Product color band
+		createCylinder(siloStation, {
+			Name = "SiloBand_" .. silo.name,
+			Size = Vector3.new(3, 6.5, 6.5),
+			Position = silo.pos + Vector3.new(0, 18, 0),
+			Color = silo.color,
+			Material = Enum.Material.Neon,
+			Transparency = 0.3,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+
+		addBillboard(siloBody, {
+			Text = silo.name,
+			Size = UDim2.new(5, 0, 2, 0),
+			StudsOffset = Vector3.new(0, 16, 0),
+			TextColor = silo.color,
+			BackgroundColor = Color3.fromRGB(15, 15, 20),
+			BackgroundTransparency = 0.3,
+			MaxDistance = 150,
+		})
+
+		addPointLight(siloBody, {
+			Color = silo.color,
+			Brightness = 1,
+			Range = 12,
+		})
+	end
+
+	addBillboard(siloStation:FindFirstChild("Silo_Fe2O3"), {
+		Text = "PRODUCT STORAGE\nV2O5 | Fe2O3 | TiO2",
+		Size = UDim2.new(14, 0, 3, 0),
+		StudsOffset = Vector3.new(0, 25, 0),
+		TextColor = CONFIG.GOLD,
+		BackgroundColor = Color3.fromRGB(30, 25, 10),
+		MaxDistance = 200,
+	})
+
+	-- ================================================================
+	-- Process flow arrows (neon path markers between stations)
+	-- ================================================================
+	local arrowPositions = {
+		{from = Vector3.new(-2155, 12, -80), to = Vector3.new(-2140, 12, -60), label = "1→2"},
+		{from = Vector3.new(-2120, 12, -60), to = Vector3.new(-2100, 12, -55), label = "2→3"},
+		{from = Vector3.new(-2080, 12, -55), to = Vector3.new(-2065, 12, -40), label = "3→4"},
+		{from = Vector3.new(-2035, 12, -40), to = Vector3.new(-2020, 12, -20), label = "4→5"},
+		{from = Vector3.new(-2000, 12, -20), to = Vector3.new(-2000, 12, 0), label = "5→HGMS"},
+		{from = Vector3.new(-1900, 12, 10), to = Vector3.new(-1880, 12, 30), label = "→Filt"},
+		{from = Vector3.new(-1870, 12, 30), to = Vector3.new(-1830, 12, 50), label = "→Silos"},
+	}
+
+	for idx, arrow in ipairs(arrowPositions) do
+		local mid = (arrow.from + arrow.to) / 2
+		local dir = (arrow.to - arrow.from)
+		local dist = dir.Magnitude
+
+		local arrowPart = createPart(pipelineModel, {
+			Name = "FlowArrow_" .. idx,
+			Size = Vector3.new(dist, 0.3, 1.5),
+			Position = mid,
+			Color = CONFIG.NEON_GREEN,
+			Material = Enum.Material.Neon,
+			Transparency = 0.4,
+			CanCollide = false,
+		})
+		-- Approximate rotation towards target
+		local angle = math.atan2(dir.X, dir.Z)
+		arrowPart.Orientation = Vector3.new(0, math.deg(angle), 0)
+	end
+
+	-- ================================================================
+	-- Factory Master Sign
+	-- ================================================================
+	local masterSign = createPart(zone, {
+		Name = "FactoryMasterSign",
+		Size = Vector3.new(40, 10, 1),
+		Position = Vector3.new(-2000, 35, -95),
+		Color = Color3.fromRGB(20, 20, 25),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	addBillboard(masterSign, {
+		Text = "SLAKKENSPOOR FABRIEK\nBOF Steel Slag Processing Plant\nFrom Slag to Valuable Metals",
+		Size = UDim2.new(22, 0, 6, 0),
+		StudsOffset = Vector3.new(0, 8, 0),
+		TextColor = Color3.fromRGB(255, 200, 100),
+		BackgroundColor = Color3.fromRGB(30, 20, 10),
+		BackgroundTransparency = 0.2,
+		MaxDistance = 400,
+	})
+	addPointLight(masterSign, {
+		Color = Color3.fromRGB(255, 180, 80),
+		Brightness = 3,
+		Range = 40,
+	})
+
+	-- ================================================================
 	-- Slag Supplier Sign (where to buy raw slag)
 	-- ================================================================
 	local supplierSign = createPart(zone, {
