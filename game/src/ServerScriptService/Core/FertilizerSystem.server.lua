@@ -423,6 +423,115 @@ task.spawn(function()
 end)
 
 -- ═══════════════════════════════════════════════
+-- QUEST PROGRESSION TRACKING
+-- Checks story quest completion after each player action
+-- ═══════════════════════════════════════════════
+
+local function checkQuestProgress(player, userId)
+	local farm = getPlayerFarm(userId)
+	local qp = farm.questProgress
+	if not qp.completedQuests then qp.completedQuests = {} end
+
+	for _, quest in ipairs(FertilizerTrack.StoryQuests) do
+		-- Skip already completed
+		if qp.completedQuests[quest.id] then continue end
+
+		-- Check prerequisite
+		if quest.requires and not qp.completedQuests[quest.requires] then continue end
+
+		-- Check completion condition
+		local completed = false
+
+		if quest.type == "soil_test" and (qp.soilTests or 0) >= (quest.target or 1) then
+			completed = true
+		elseif quest.type == "craft_fertilizer" and quest.targetFertilizer then
+			if qp.craftedTypes and qp.craftedTypes[quest.targetFertilizer] then
+				completed = true
+			end
+		elseif quest.type == "grow_crop" and quest.targetCrop then
+			if qp.cropsGrown and qp.cropsGrown[quest.targetCrop] then
+				completed = true
+			end
+		elseif quest.type == "grow_crops" and quest.target then
+			local cropCount = 0
+			if qp.cropsGrown then
+				for _ in pairs(qp.cropsGrown) do cropCount = cropCount + 1 end
+			end
+			if cropCount >= quest.target then completed = true end
+		elseif quest.type == "complete_all" then
+			-- Check if all non-final quests are done
+			local allDone = true
+			for _, q in ipairs(FertilizerTrack.StoryQuests) do
+				if not q.isFinal and not qp.completedQuests[q.id] then
+					allDone = false
+					break
+				end
+			end
+			if allDone then completed = true end
+		end
+
+		if completed then
+			qp.completedQuests[quest.id] = true
+
+			-- Award reward
+			if quest.reward.molCoins then
+				PlayerDataBridge.AddMolCoins(userId, quest.reward.molCoins)
+			end
+
+			-- Update act
+			if quest.act > farm.currentAct then
+				farm.currentAct = quest.act
+			end
+
+			-- Notify
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "QUEST COMPLETE: " .. quest.title .. " — +" .. (quest.reward.molCoins or 0) .. " MolCoins" .. (quest.reward.badge and (" + " .. quest.reward.badge .. " badge") or ""),
+				rarity = quest.isFinal and "legendary" or "epic",
+			})
+
+			if quest.reward.badge then
+				Remotes.FireClient("AchievementUnlocked", player, {
+					id = quest.reward.badge,
+					name = quest.reward.badge,
+					description = "Completed: " .. quest.title,
+				})
+			end
+
+			-- Global announce for act completions
+			if quest.id == "act1_q4" or quest.id == "act2_q3" or quest.isFinal then
+				Remotes.FireAllClients("ServerAnnounce", {
+					message = player.Name .. " completed " .. (quest.isFinal and "THE ENTIRE FERTILIZER TRACK!" or ("Act " .. quest.act .. " of the Fertilizer Track!")),
+					rarity = quest.isFinal and "legendary" or "epic",
+				})
+			end
+
+			print("[FertilizerSystem]", player.Name, "completed quest:", quest.id, quest.title)
+		end
+	end
+
+	sendFarmUpdate(player, userId)
+end
+
+-- Hook quest checks into existing handlers
+-- (Called from soil test, craft, harvest handlers — add to each)
+local origSoilTestHandler = Remotes.RequestTestSoil.OnServerEvent
+local origCraftHandler = Remotes.RequestCraftFertilizer.OnServerEvent
+local origHarvestHandler = Remotes.RequestHarvestCrop.OnServerEvent
+
+-- Wrap with quest check (we just call it periodically instead)
+task.spawn(function()
+	while true do
+		for _, player in ipairs(Players:GetPlayers()) do
+			local userId = player.UserId
+			if playerFarms[userId] then
+				checkQuestProgress(player, userId)
+			end
+		end
+		task.wait(5)  -- check every 5 seconds
+	end
+end)
+
+-- ═══════════════════════════════════════════════
 -- CLEANUP
 -- ═══════════════════════════════════════════════
 

@@ -272,7 +272,8 @@ function startGame()
 	task.wait(1)
 	displayPlayerHand()
 
-	statusLabel.Text = "Your turn! Click a tile to discard."
+	-- Player draws first tile
+	playerDrawAndPlay()
 end
 
 function displayPlayerHand()
@@ -283,9 +284,13 @@ function displayPlayerHand()
 		end
 	end
 
+	-- Sort hand
+	local hand = gameState.hands[1]
+	table.sort(hand)
+
 	-- Show tiles
-	local hand = gameState.hands.hand1
 	for i, tile in ipairs(hand) do
+		local displayName = MahjongGame.TILE_DISPLAY[tile] or tile
 		local tileBtn = Instance.new("TextButton")
 		tileBtn.Name = "Tile_" .. i
 		tileBtn.Size = UDim2.new(0, 60, 0, 80)
@@ -300,39 +305,161 @@ function displayPlayerHand()
 
 		-- Discard on click
 		tileBtn.MouseButton1Click:Connect(function()
+			if not gameActive then return end
 			discardTile(i, tile)
 		end)
 	end
+
+	-- Update tile count
+	local tilesLeft = #gameState.deck - gameState.drawIdx + 1
+	if tilesLeft < 0 then tilesLeft = 0 end
+	statusLabel.Text = statusLabel.Text .. "\nTiles: " .. #hand .. " | Wall: " .. tilesLeft
+end
+
+function playerDrawAndPlay()
+	if not gameActive then return end
+
+	-- Draw a tile from wall
+	local drawn = MahjongGame.DrawTile(gameState)
+	if not drawn then
+		-- Wall exhausted — draw game
+		statusLabel.Text = "Draw game! Wall exhausted. No winner."
+		gameActive = false
+		return
+	end
+
+	table.insert(gameState.hands[1], drawn)
+	gameState.turnCount = gameState.turnCount + 1
+
+	-- Check if drawn tile wins
+	if MahjongGame.IsWinningHand(gameState.hands[1]) then
+		local faan, details = MahjongGame.CalculateFaan(gameState.hands[1], {}, "E", "E")
+		local coins = MahjongGame.FaanToCoins(faan)
+		statusLabel.Text = "YOU WIN! Self-drawn! " .. faan .. " faan = " .. coins .. " MolCoins!"
+		if #details > 0 then
+			statusLabel.Text = statusLabel.Text .. "\n" .. table.concat(details, ", ")
+		end
+		gameActive = false
+		displayPlayerHand()
+		return
+	end
+
+	statusLabel.Text = "Drew: " .. (MahjongGame.TILE_DISPLAY[drawn] or drawn) .. " — Click a tile to discard."
+	displayPlayerHand()
 end
 
 function discardTile(index, tile)
 	if not gameActive then return end
 
-	table.remove(gameState.hands.hand1, index)
+	table.remove(gameState.hands[1], index)
 	table.insert(gameState.discardPile, tile)
+	gameState.lastDiscard = tile
+	gameState.lastDiscardPlayer = 1
 
-	statusLabel.Text = "You discarded: " .. tile .. "\n\nAI opponents playing..."
+	statusLabel.Text = "Discarded: " .. (MahjongGame.TILE_DISPLAY[tile] or tile) .. " — AI thinking..."
 
-	-- Simple AI turn: each AI discards a random tile
-	task.wait(1)
-	for aiIdx = 2, 4 do
-		local aiHand = gameState.hands["hand" .. aiIdx]
-		if #aiHand > 0 then
-			local discardIdx = math.random(#aiHand)
-			table.insert(gameState.discardPile, aiHand[discardIdx])
-			table.remove(aiHand, discardIdx)
+	-- AI turns (each draws and discards)
+	task.spawn(function()
+		task.wait(0.5)
+
+		for aiIdx = 2, 4 do
+			if not gameActive then break end
+			local aiHand = gameState.hands[aiIdx]
+			local aiName = MahjongGame.GetAINames()[aiIdx - 1] or ("AI" .. aiIdx)
+
+			-- AI checks if it can pong the player's discard
+			if MahjongGame.CanPong(aiHand, tile) then
+				local shouldPong = MahjongGame.AIDecideClaim(aiHand, tile, "pong", aiIdx - 1)
+				if shouldPong then
+					-- Execute pong: take discard, remove 2 from hand
+					table.insert(aiHand, tile)
+					statusLabel.Text = aiName .. " PONG! (" .. tile .. ")"
+					-- Remove the discarded tile from pile
+					for j = #gameState.discardPile, 1, -1 do
+						if gameState.discardPile[j] == tile then
+							table.remove(gameState.discardPile, j)
+							break
+						end
+					end
+					task.wait(0.5)
+				end
+			end
+
+			-- AI draws tile
+			local aiDrawn = MahjongGame.DrawTile(gameState)
+			if not aiDrawn then
+				statusLabel.Text = "Draw game! Wall exhausted."
+				gameActive = false
+				displayPlayerHand()
+				return
+			end
+			table.insert(aiHand, aiDrawn)
+
+			-- Check if AI wins
+			if MahjongGame.IsWinningHand(aiHand) then
+				local faan, details = MahjongGame.CalculateFaan(aiHand, {}, "E", "E")
+				statusLabel.Text = aiName .. " wins with " .. faan .. " faan!"
+				if #details > 0 then
+					statusLabel.Text = statusLabel.Text .. " (" .. table.concat(details, ", ") .. ")"
+				end
+				gameActive = false
+				displayPlayerHand()
+				return
+			end
+
+			-- AI smart discard
+			local aiDiscard = MahjongGame.AIChooseDiscard(aiHand, aiIdx - 1)
+			if aiDiscard then
+				for j, t in ipairs(aiHand) do
+					if t == aiDiscard then
+						table.remove(aiHand, j)
+						break
+					end
+				end
+				table.insert(gameState.discardPile, aiDiscard)
+				gameState.lastDiscard = aiDiscard
+				gameState.lastDiscardPlayer = aiIdx
+			end
+
+			-- Check if player can pong/chi the AI's discard
+			if aiDiscard and gameActive then
+				local canPong = MahjongGame.CanPong(gameState.hands[1], aiDiscard)
+				local canChi, chiOptions = MahjongGame.CanChi(gameState.hands[1], aiDiscard)
+				local canWin = MahjongGame.IsWinningTile(gameState.hands[1], aiDiscard)
+
+				if canWin then
+					statusLabel.Text = aiName .. " discarded " .. aiDiscard .. " — WIN available! Click Win button!"
+					-- Enable win button briefly
+					-- For simplicity: auto-win for player
+					table.insert(gameState.hands[1], aiDiscard)
+					local faan, details = MahjongGame.CalculateFaan(gameState.hands[1], {}, "E", "E")
+					local coins = MahjongGame.FaanToCoins(faan)
+					statusLabel.Text = "YOU WIN on " .. aiName .. "'s discard! " .. faan .. " faan = " .. coins .. " MolCoins!"
+					gameActive = false
+					displayPlayerHand()
+					return
+				elseif canPong then
+					statusLabel.Text = aiName .. " discarded " .. aiDiscard .. " — PONG available! (auto-claimed)"
+					table.insert(gameState.hands[1], aiDiscard)
+					-- Remove from discard pile
+					for j = #gameState.discardPile, 1, -1 do
+						if gameState.discardPile[j] == aiDiscard then
+							table.remove(gameState.discardPile, j)
+							break
+						end
+					end
+					task.wait(0.5)
+				end
+			end
+
+			task.wait(0.3)
 		end
-	end
 
-	-- Check for win conditions
-	local playerWon = MahjongGame.IsWinningHand(gameState.hands.hand1)
-	if playerWon then
-		statusLabel.Text = "🎉 You won! Congratulations!\n\nPress Close to return."
-		gameActive = false
-	else
-		displayPlayerHand()
-		statusLabel.Text = "Your turn! Click a tile to discard."
-	end
+		-- Back to player's turn
+		if gameActive then
+			playerDrawAndPlay()
+		end
+	end)
 end
 
 function closeGame()

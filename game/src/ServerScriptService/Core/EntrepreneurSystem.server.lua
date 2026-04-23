@@ -24,6 +24,167 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 -- ═══════════════════════════════════════════════
 
 local playerFactories = {}  -- {userId = factoryState}
+local factoryWorldModels = {}  -- {userId = Folder in workspace}
+
+-- Factory hall world origin (matches WorldBuilder position)
+local FACTORY_ORIGIN = Vector3.new(-1750, 10, -150)
+local FACTORY_FLOOR_Y = 10
+local CELL_SIZE_STUDS = 10  -- each grid cell = 10 studs (1m scaled up for game)
+
+-- ═══════════════════════════════════════════════
+-- 3D VISUALIZATION: Create real Parts in factory hall
+-- ═══════════════════════════════════════════════
+
+local function getFactoryFolder(userId)
+	if not factoryWorldModels[userId] then
+		local folder = Instance.new("Folder")
+		folder.Name = "Factory_" .. tostring(userId)
+		folder.Parent = workspace
+		factoryWorldModels[userId] = folder
+	end
+	return factoryWorldModels[userId]
+end
+
+-- Convert grid position to world position
+local function gridToWorld(gridX, gridY, itemWidth, itemHeight)
+	-- Grid origin is top-left of factory floor
+	local worldX = FACTORY_ORIGIN.X - 200 + (gridX - 1 + itemWidth / 2) * CELL_SIZE_STUDS
+	local worldZ = FACTORY_ORIGIN.Z - 125 + (gridY - 1 + itemHeight / 2) * CELL_SIZE_STUDS
+	return Vector3.new(worldX, FACTORY_FLOOR_Y, worldZ)
+end
+
+-- Create a 3D representation of equipment at grid position
+local function createEquipment3D(userId, placement)
+	local folder = getFactoryFolder(userId)
+	local item = FactoryEquipment.GetItem(placement.itemId)
+	if not item then return end
+
+	local w = item.gridSize[1]
+	local h = item.gridSize[2]
+	if placement.rotation and placement.rotation % 2 == 1 then w, h = h, w end
+
+	local worldPos = gridToWorld(placement.gridX, placement.gridY, w, h)
+	local partName = "Equip_" .. placement.itemId .. "_" .. placement.gridX .. "_" .. placement.gridY
+
+	-- Main body
+	local body = Instance.new("Part")
+	body.Name = partName
+	body.Size = Vector3.new(w * CELL_SIZE_STUDS - 2, item.tier * 4 + 6, h * CELL_SIZE_STUDS - 2)
+	body.Position = worldPos + Vector3.new(0, body.Size.Y / 2 + 0.5, 0)
+	body.Color = item.color
+	body.Material = Enum.Material.SmoothPlastic
+	body.Anchored = true
+	body.CanCollide = true
+	body.Parent = folder
+
+	-- Category-specific visual details
+	if item.category == "Chemical" or item.category == "Separation" then
+		-- Cylindrical top (reactor vessel look)
+		local topCyl = Instance.new("Part")
+		topCyl.Shape = Enum.PartType.Cylinder
+		topCyl.Size = Vector3.new(body.Size.Y * 0.6, math.min(w, h) * CELL_SIZE_STUDS * 0.7, math.min(w, h) * CELL_SIZE_STUDS * 0.7)
+		topCyl.Position = body.Position + Vector3.new(0, body.Size.Y * 0.3, 0)
+		topCyl.Orientation = Vector3.new(0, 0, 90)
+		topCyl.Color = Color3.new(item.color.R * 0.8, item.color.G * 0.8, item.color.B * 0.8)
+		topCyl.Material = Enum.Material.SmoothPlastic
+		topCyl.Anchored = true
+		topCyl.CanCollide = false
+		topCyl.Parent = folder
+	elseif item.category == "Crushing" then
+		-- Hopper on top (funnel shape)
+		local hopper = Instance.new("Part")
+		hopper.Size = Vector3.new(w * CELL_SIZE_STUDS * 0.6, 4, h * CELL_SIZE_STUDS * 0.6)
+		hopper.Position = body.Position + Vector3.new(0, body.Size.Y / 2 + 2, 0)
+		hopper.Color = Color3.fromRGB(80, 80, 85)
+		hopper.Material = Enum.Material.SmoothPlastic
+		hopper.Anchored = true
+		hopper.CanCollide = false
+		hopper.Parent = folder
+	end
+
+	-- Neon accent strip (category color)
+	local catColors = {
+		Crushing = Color3.fromRGB(200, 140, 60),
+		Separation = Color3.fromRGB(200, 60, 60),
+		Chemical = Color3.fromRGB(200, 200, 60),
+		Storage = Color3.fromRGB(100, 160, 200),
+		Utilities = Color3.fromRGB(80, 180, 80),
+		Lab = Color3.fromRGB(180, 140, 220),
+	}
+	local accentColor = catColors[item.category] or Color3.fromRGB(0, 200, 130)
+
+	local accent = Instance.new("Part")
+	accent.Size = Vector3.new(w * CELL_SIZE_STUDS - 4, 1, 1)
+	accent.Position = body.Position + Vector3.new(0, -body.Size.Y / 2 + 1, h * CELL_SIZE_STUDS / 2 - 1)
+	accent.Color = accentColor
+	accent.Material = Enum.Material.Neon
+	accent.Transparency = 0.3
+	accent.Anchored = true
+	accent.CanCollide = false
+	accent.Parent = folder
+
+	-- Point light for ambience
+	local light = Instance.new("PointLight")
+	light.Color = accentColor
+	light.Brightness = 0.8
+	light.Range = w * CELL_SIZE_STUDS
+	light.Parent = body
+
+	-- Billboard label
+	local bill = Instance.new("BillboardGui")
+	bill.Size = UDim2.fromOffset(120, 30)
+	bill.StudsOffset = Vector3.new(0, body.Size.Y / 2 + 4, 0)
+	bill.AlwaysOnTop = false
+	bill.MaxDistance = 60
+	bill.Parent = body
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
+	label.BackgroundTransparency = 0.3
+	label.Text = item.name
+	label.TextColor3 = accentColor
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.Parent = bill
+	local lCorner = Instance.new("UICorner")
+	lCorner.CornerRadius = UDim.new(0, 4)
+	lCorner.Parent = label
+
+	-- Tag as interactable
+	body:SetAttribute("Interactable", true)
+	body:SetAttribute("InteractionType", "FactoryEquipment")
+	body:SetAttribute("EquipmentId", placement.itemId)
+	body:SetAttribute("GridX", placement.gridX)
+	body:SetAttribute("GridY", placement.gridY)
+end
+
+-- Remove 3D equipment at a grid position
+local function removeEquipment3D(userId, gridX, gridY, itemId)
+	local folder = factoryWorldModels[userId]
+	if not folder then return end
+
+	local partName = "Equip_" .. itemId .. "_" .. gridX .. "_" .. gridY
+	-- Remove main body and all related parts
+	for _, child in folder:GetChildren() do
+		if child.Name == partName then
+			child:Destroy()
+		end
+	end
+	-- Also remove accent/cylinder parts (they don't have the exact name but are parented)
+	-- Clean approach: destroy all children near that position
+	local item = FactoryEquipment.GetItem(itemId)
+	if item then
+		local w = item.gridSize[1]
+		local h = item.gridSize[2]
+		local worldPos = gridToWorld(gridX, gridY, w, h)
+		for _, child in folder:GetChildren() do
+			if child:IsA("BasePart") and (child.Position - worldPos).Magnitude < w * CELL_SIZE_STUDS then
+				child:Destroy()
+			end
+		end
+	end
+end
 
 local function getFactory(userId)
 	if not playerFactories[userId] then
@@ -238,6 +399,10 @@ Remotes.RequestPlaceEquipment.OnServerEvent:Connect(function(player, itemId, gri
 		placedTime = tick(),
 	})
 
+	-- Create 3D model in factory hall
+	local placementData = factory.placements[#factory.placements]
+	createEquipment3D(userId, placementData)
+
 	Remotes.FireClient("EquipmentPlaced", player, {
 		itemId = itemId,
 		name = item.name,
@@ -297,6 +462,9 @@ Remotes.RequestRemoveEquipment.OnServerEvent:Connect(function(player, gridX, gri
 			end
 		end
 	end
+
+	-- Remove 3D model from factory hall
+	removeEquipment3D(userId, foundItem.gridX, foundItem.gridY, foundItem.itemId)
 
 	-- Return to inventory
 	factory.equipmentInventory[foundItem.itemId] = (factory.equipmentInventory[foundItem.itemId] or 0) + 1
