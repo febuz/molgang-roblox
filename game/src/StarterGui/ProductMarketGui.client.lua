@@ -14,11 +14,21 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local ProductMarket = require(ReplicatedStorage.Modules.ProductMarket)
+
+-- UI click sound helper (#55)
+local function playUIClick()
+	local s = SoundService:FindFirstChild("ui_click")
+	if s then
+		local c = s:Clone(); c.Parent = SoundService; c:Play()
+		c.Ended:Connect(function() c:Destroy() end)
+	end
+end
 
 local C = {
 	bg = Color3.fromRGB(8, 14, 10),
@@ -88,7 +98,7 @@ closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 
 closeBtn.BackgroundColor3 = C.red; closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- Hint for new players
 local hintLabel = Instance.new("TextLabel")
@@ -128,6 +138,7 @@ saCorner.CornerRadius = UDim.new(0, 6)
 saCorner.Parent = sellAllBtn
 
 sellAllBtn.MouseButton1Click:Connect(function()
+	playUIClick()
 	-- Sell 1 of each product that player has atoms for
 	for _, product in ipairs(ProductMarket.Products) do
 		local r = Remotes:FindFirstChild("RequestSellProduct")

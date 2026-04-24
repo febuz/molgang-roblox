@@ -13,11 +13,21 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local MiningSystem = require(ReplicatedStorage.Modules.MiningSystem)
+
+-- UI click sound helper (#55)
+local function playUIClick()
+	local s = SoundService:FindFirstChild("ui_click")
+	if s then
+		local c = s:Clone(); c.Parent = SoundService; c:Play()
+		c.Ended:Connect(function() c:Destroy() end)
+	end
+end
 
 local C = {
 	bg = Color3.fromRGB(14, 10, 8),
@@ -93,7 +103,7 @@ closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 
 closeBtn.BackgroundColor3 = C.red; closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- Tabs
 local tabFrame = Instance.new("Frame")
@@ -129,6 +139,7 @@ for _, tab in ipairs(tabs) do
 	panel.Visible = (tab.key == "explore"); panel.Parent = contentFrame
 	tabPanels[tab.key] = panel
 	btn.MouseButton1Click:Connect(function()
+		playUIClick()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do b.BackgroundColor3 = C.tabInactive; b.TextColor3 = C.textDim end
 		panel.Visible = true; btn.BackgroundColor3 = C.tabActive; btn.TextColor3 = C.text

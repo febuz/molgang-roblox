@@ -368,6 +368,11 @@ end
 -- ══════════════════════════════════════════════
 
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
+	-- Play quest_complete sound for quest announcements (#35)
+	if data.message and string.find(data.message, "QUEST COMPLETE") then
+		playSound("quest_complete")
+	end
+
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "AnnounceTicker"
 	gui.Parent = playerGui

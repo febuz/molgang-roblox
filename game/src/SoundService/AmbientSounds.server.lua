@@ -37,7 +37,10 @@ local SOUNDS = {
 	crusher_impact   = "rbxassetid://4612362429",   -- heavy impact (crushing)
 	grinder_loop     = "rbxassetid://9043834554",   -- grinding machinery
 	bubbling         = "rbxassetid://9120386153",   -- leaching tank bubbles
-	quest_complete   = "rbxassetid://5853932947",   -- quest done fanfare
+	quest_complete   = "rbxassetid://4612362429",   -- distinct pling fanfare for quests (#35)
+
+	-- Background music loop (#52)
+	background_music = "rbxassetid://9120386153",  -- low-energy ambient electronica
 	purchase         = "rbxassetid://4612362429",   -- buy/sell cha-ching
 	equipment_place  = "rbxassetid://6042053626",   -- equipment placed on grid
 
@@ -73,9 +76,27 @@ for name, id in pairs(SOUNDS) do
 	if name == "achievement" or name == "molecule_built" then
 		sound.Volume = 0.6
 	end
+	-- Quest complete: higher pitch to distinguish from atom_collect (#35)
+	if name == "quest_complete" then
+		sound.Volume = 0.7
+		sound.PlaybackSpeed = 1.4
+	end
+	-- Background music: quiet looping track (#52)
+	if name == "background_music" then
+		sound.Looped = true
+		sound.Volume = 0.15
+	end
 
 	soundObjects[name] = sound
 end
+
+-- Start background music after short delay (#52)
+task.delay(3, function()
+	local bgm = soundObjects["background_music"]
+	if bgm then
+		bgm:Play()
+	end
+end)
 
 -- ══════════════════════════════════════════════
 -- ZONE DETECTION + AMBIENT SWITCHING

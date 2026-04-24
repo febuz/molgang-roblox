@@ -17,11 +17,21 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local FactoryEquipment = require(ReplicatedStorage.Modules.FactoryEquipment)
+
+-- UI click sound helper (#55)
+local function playUIClick()
+	local s = SoundService:FindFirstChild("ui_click")
+	if s then
+		local c = s:Clone(); c.Parent = SoundService; c:Play()
+		c.Ended:Connect(function() c:Destroy() end)
+	end
+end
 
 local C = {
 	bg = Color3.fromRGB(10, 12, 18),
@@ -115,7 +125,7 @@ closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- LAYOUT: Left = Equipment Catalog, Center = Grid, Right = Info
@@ -159,6 +169,7 @@ rentBtn.Parent = catalogPanel
 corner(rentBtn, 6)
 
 rentBtn.MouseButton1Click:Connect(function()
+	playUIClick()
 	local r = Remotes:FindFirstChild("RequestRentFactory")
 	if r then r:FireServer() end
 end)

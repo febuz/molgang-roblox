@@ -16,11 +16,21 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
+
+-- UI click sound helper (#55)
+local function playUIClick()
+	local s = SoundService:FindFirstChild("ui_click")
+	if s then
+		local c = s:Clone(); c.Parent = SoundService; c:Play()
+		c.Ended:Connect(function() c:Destroy() end)
+	end
+end
 
 -- ═══════════════════════════════════════════════
 -- COLORS
@@ -135,7 +145,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = titleBar
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- TAB SYSTEM (3 tabs)
@@ -195,6 +205,7 @@ for _, tab in ipairs(tabs) do
 	tabPanels[tab.key] = tpanel
 
 	tbtn.MouseButton1Click:Connect(function()
+		playUIClick()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do
 			b.BackgroundColor3 = C.tabInactive; b.TextColor3 = C.textDim
@@ -277,6 +288,7 @@ local buyBtn = btn(slagPanel, {Name="BuyBtn", Size=UDim2.new(0.45,-10,0,36),
 	Position=UDim2.new(0,10,0,actionY), Text="Buy Raw Slag (50 MC)", BgColor=C.green})
 
 buyBtn.MouseButton1Click:Connect(function()
+	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestBuySlag")
 	if remote then remote:FireServer() end
 end)
@@ -519,6 +531,7 @@ local startLeachBtn = btn(leachPanel, {Name="StartLeach", Size=UDim2.new(0.94,0,
 	Position=UDim2.new(0.03,0,0,420), Text="START LEACHING", BgColor=C.green})
 
 startLeachBtn.MouseButton1Click:Connect(function()
+	playUIClick()
 	if not selectedReagent then
 		leachTimeLabel.Text = "Select a reagent first!"
 		leachTimeLabel.TextColor3 = C.red
@@ -734,6 +747,16 @@ end
 local extractEvent = Remotes:FindFirstChild("SlagExtracted")
 if extractEvent then
 	extractEvent.OnClientEvent:Connect(function(data)
+		-- Play leach completion fanfare (#53)
+		local SoundService = game:GetService("SoundService")
+		local fanfare = SoundService:FindFirstChild("molecule_built")
+		if fanfare then
+			local clone = fanfare:Clone()
+			clone.Volume = 0.6
+			clone.Parent = SoundService
+			clone:Play()
+			clone.Ended:Connect(function() clone:Destroy() end)
+		end
 		-- Refresh monitor
 		task.delay(0.5, refreshMonitor)
 	end)
