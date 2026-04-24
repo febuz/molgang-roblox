@@ -116,7 +116,10 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 
 | 23-04-2026 | 1 | 30 | Procesbesturingspaneel GUI + bugfixes | **S&O kernactiviteit**: ProcessControlGui.client.lua: real-time dashboard met 4 meetinstrumenten (temperatuur 0-1000°C met Arrhenius, druk 0-500kPa met Henry's Law, pH 0-14 met precipitatie-zones, debiet 1-50 L/min met verblijftijd). Live massabalans en energiekostenberekening. Gecombineerd reactiesnelheid-multiplicator. MahjongGui herschreven met echte chi/pong/kong spelstroom. FertilizerSystem quest-voortgangsvalidatie (12 quests). EntrepreneurSystem 3D visualisatie van geplaatste apparatuur. |
 
-**Subtotaal 23-04: 24 uur 30 minuten**
+| 23-04-2026 | 2 | 00 | GPU-pipeline en 3D-modelexpansie | **S&O kernactiviteit**: Image-to-3D pipeline (MiDaS DPT-Large diepteschatting op GPU → puntenwolk → mesh → FreeCAD dimensionering). GPU-werkplanner voor 24/7 rendering (systemd service + cron watchdog). Equipment-dimensiedatabase (18 types, Perry's Handbook). 7 nieuwe 3D-modellen: distillatiekolom, warmtewisselaar, centrifuge, drukvat, cycloonscheider, Erlenmeyer kolf, maatbeker. Blender dual-GPU CUDA/OptiX configuratie. Python venv met trimesh, opencv, torch+CUDA. |
+| 24-04-2026 | 1 | 30 | Apparatuurcatalogus + onderzoeksboom uitbreiding | 7 nieuwe items in FactoryEquipment (distillatiekolom, warmtewisselaar, centrifuge, drukvat 10bar, cycloonscheider, laboratoriumglazen). 5 nieuwe onderzoeksknooppunten in ResearchTree (cycloonclassificatie, centrifugale scheiding, solventdistillatie, drukloging, warmteterugwinning). Rojo build verificatie. LoadingScreen bijgewerkt. |
+
+**Subtotaal 23/24-04: 28 uur 00 minuten**
 
 ---
 
@@ -128,10 +131,10 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 | Week 15 | 09-04-2026 | 6 | 00 | 6:00 |
 | Week 15 | 12-04-2026 | 4 | 30 | 4:30 |
 | Week 17 | 22-04-2026 | 4 | 45 | 4:45 |
-| Week 17 | 23-04-2026 | 24 | 30 | 24:30 |
-| | | | | **47:45** |
+| Week 17 | 23/24-04-2026 | 28 | 00 | 28:00 |
+| | | | | **51:15** |
 
-**Totaal geregistreerde S&O-uren april 2026: 47 uur en 45 minuten**
+**Totaal geregistreerde S&O-uren april 2026: 51 uur en 15 minuten**
 
 ---
 
