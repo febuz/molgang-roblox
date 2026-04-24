@@ -1071,6 +1071,15 @@
                     <div class="card-title">👷 Top GPU Processes</div>
                     <div id="resources-gpu-procs" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.78em;"></div>
                 </div>
+
+                <!-- Testplay (Playwright) latest results -->
+                <div class="card" style="margin-top: 16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div class="card-title" style="margin:0;">🎮 Testplay — Playwright</div>
+                        <span style="font-size:0.72em;color:var(--text-secondary);">agent-driven game playthroughs</span>
+                    </div>
+                    <div id="testplay-results"><p style="color:var(--text-secondary);font-size:0.85em;padding:8px 0;">Loading...</p></div>
+                </div>
             </div>
 
             <!-- AGENT PROFILE PAGE (Dynamic - populated by JS) -->
@@ -2477,13 +2486,64 @@
         let resourcesTimer = null;
         async function loadResourcesPanel() {
             await fetchResources();
+            await fetchTestplay();
             if (!resourcesTimer) {
                 resourcesTimer = setInterval(() => {
                     if (document.getElementById('system').classList.contains('active')) {
                         fetchResources();
+                        fetchTestplay();
                     }
                 }, 5000);
             }
+        }
+
+        async function fetchTestplay() {
+            try {
+                const r = await fetch('/api/testplay/latest');
+                const d = await r.json();
+                const el = document.getElementById('testplay-results');
+                if (!el) return;
+                if (d._placeholder || d._empty) {
+                    el.innerHTML = `<p style="color:var(--text-secondary);font-size:0.85em;padding:8px 0;">${escapeHtml(d.reason || 'No run yet.')}</p>`;
+                    return;
+                }
+                const stats = d.stats || {};
+                const duration = ((stats.duration || 0) / 1000).toFixed(1);
+                const total = (stats.expected || 0) + (stats.unexpected || 0) + (stats.skipped || 0);
+                const pass = stats.expected || 0;
+                const fail = stats.unexpected || 0;
+                const passColor = fail === 0 ? '#22c55e' : '#ef4444';
+                const allSpecs = [];
+                const collect = (suite) => {
+                    (suite.specs || []).forEach(s => allSpecs.push(s));
+                    (suite.suites || []).forEach(collect);
+                };
+                (d.suites || []).forEach(collect);
+                el.innerHTML = `
+                    <div style="display:flex;gap:18px;margin-bottom:12px;padding:10px 12px;background:rgba(30,58,95,0.2);border-radius:6px;">
+                        <div><span style="font-size:1.4em;font-weight:700;color:${passColor}">${pass}</span><span style="font-size:0.8em;color:var(--text-secondary);margin-left:4px;">passed</span></div>
+                        ${fail > 0 ? `<div><span style="font-size:1.4em;font-weight:700;color:#ef4444">${fail}</span><span style="font-size:0.8em;color:var(--text-secondary);margin-left:4px;">failed</span></div>` : ''}
+                        <div><span style="font-size:1.4em;font-weight:700;color:var(--primary)">${total}</span><span style="font-size:0.8em;color:var(--text-secondary);margin-left:4px;">total</span></div>
+                        <div style="margin-left:auto;align-self:center;font-size:0.8em;color:var(--text-secondary);">${duration}s</div>
+                    </div>
+                    <div style="display:grid;gap:4px;">
+                        ${allSpecs.map(s => {
+                            const t = s.tests && s.tests[0];
+                            const res = t && t.results && t.results[0];
+                            const st = res ? res.status : (s.ok ? 'passed' : 'failed');
+                            const dur = res ? ((res.duration || 0) / 1000).toFixed(2) + 's' : '';
+                            const icon = st === 'passed' ? '✓' : st === 'failed' ? '✗' : '○';
+                            const iconColor = st === 'passed' ? '#22c55e' : st === 'failed' ? '#ef4444' : '#94a3b8';
+                            return `<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;background:rgba(30,58,95,0.15);border-radius:4px;font-size:0.85em;">
+                                <span style="color:${iconColor};font-weight:700;width:16px;">${icon}</span>
+                                <span style="flex:1;color:var(--text-primary);">${escapeHtml(s.title || '')}</span>
+                                <span style="color:var(--text-secondary);font-size:0.78em;">${dur}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                    <div style="font-size:0.7em;color:var(--text-secondary);margin-top:8px;">Run <code style="background:rgba(30,58,95,0.3);padding:1px 6px;border-radius:3px;">bash scripts/run-testplay.sh</code> to refresh</div>
+                `;
+            } catch (e) { console.log('testplay fetch:', e.message); }
         }
         async function fetchResources() {
             try {
