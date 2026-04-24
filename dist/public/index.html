@@ -1492,6 +1492,7 @@
             const pending = progressData.pending || 0;
             const total = progressData.total || (completed + inProg) || 0;
             const focus = progressData.focus || '';
+            console.log(`[agent-profile] ${profile.name}: loaded ${currentAgentTasks.length} tasks, completed=${completed} inProg=${inProg} pending=${pending}`);
 
             container.innerHTML = `
                 <div class="page-header">
@@ -1516,19 +1517,19 @@
 
                 <!-- Progress Stats (clickable filters) -->
                 <div class="stats-grid" id="agent-stat-filters">
-                    <div class="stat-card clickable active-filter" onclick="filterAgentTasks('${agentId}', 'all')">
+                    <div class="stat-card clickable active-filter" onclick="filterAgentTasks('${agentId}', 'all', event)">
                         <div class="stat-label">All Tasks</div>
                         <div class="stat-value">${total}</div>
                     </div>
-                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'completed')" style="border-bottom: 3px solid var(--success);">
+                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'completed', event)" style="border-bottom: 3px solid var(--success);">
                         <div class="stat-label">Completed</div>
                         <div class="stat-value" style="color: var(--success);">${completed}</div>
                     </div>
-                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'in-progress')" style="border-bottom: 3px solid var(--warning);">
+                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'in-progress', event)" style="border-bottom: 3px solid var(--warning);">
                         <div class="stat-label">In Progress</div>
                         <div class="stat-value" style="color: var(--warning);">${inProg}</div>
                     </div>
-                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'pending')" style="border-bottom: 3px solid var(--text-secondary);">
+                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'pending', event)" style="border-bottom: 3px solid var(--text-secondary);">
                         <div class="stat-label">Pending</div>
                         <div class="stat-value">${pending}</div>
                     </div>
@@ -1570,27 +1571,31 @@
                     <div id="agent-tasks-list"></div>
                 </div>
 
-                <!-- In-Progress Drilldown (only visible when filter = in-progress) -->
-                <div class="card" id="agent-inprogress-drilldown" style="display:none;">
+                <!-- In-Progress Drilldown (always visible) -->
+                <div class="card" id="agent-inprogress-drilldown">
                     <div class="card-title">🔍 In-Progress — Full Detail</div>
-                    <div id="agent-inprogress-detail"></div>
+                    <div id="agent-inprogress-detail"><p style="color:var(--text-secondary); padding:8px 0;">Loading...</p></div>
                 </div>
 
-                <!-- Live CLI Stream (only visible when filter = in-progress) -->
-                <div class="card" id="agent-cli-card" style="display:none;">
+                <!-- Live CLI Stream (always visible, polls every 2s) -->
+                <div class="card" id="agent-cli-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <div class="card-title" style="margin:0;">💻 Live CLI — ${profile.name}</div>
                         <div style="display:flex; gap:8px; align-items:center;">
-                            <span id="cli-live-dot" style="width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e;"></span>
+                            <span id="cli-live-dot" style="width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e; animation:pulse 1.5s infinite;"></span>
                             <span style="font-size:0.75em; color:var(--text-secondary);">tailing /api/agents/${profile.name}/cli-log</span>
                         </div>
                     </div>
-                    <pre id="agent-cli-stream" style="background:#0a0e1a; color:#e0e0e0; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:0.78em; padding:12px; border-radius:6px; max-height:300px; overflow-y:auto; border:1px solid var(--border); line-height:1.5; margin:0;"></pre>
+                    <pre id="agent-cli-stream" style="background:#0a0e1a; color:#e0e0e0; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:0.78em; padding:12px; border-radius:6px; max-height:300px; overflow-y:auto; border:1px solid var(--border); line-height:1.5; margin:0;">connecting...</pre>
                 </div>
             `;
 
             // Render all tasks initially
             renderAgentTasks(agentId, 'all');
+
+            // Start live polling for the In-Progress drilldown + CLI stream immediately
+            stopAgentLivePolling();
+            startAgentLivePolling(profile.name);
         }
 
         function renderAgentTasks(agentId, filter) {
@@ -1639,25 +1644,13 @@
             }).join('');
         }
 
-        function filterAgentTasks(agentId, filter) {
-            // Update active filter styling
+        function filterAgentTasks(agentId, filter, ev) {
+            // Update active filter styling (guard against missing event in strict mode)
             document.querySelectorAll('#agent-stat-filters .stat-card').forEach(c => c.classList.remove('active-filter'));
-            event.currentTarget.classList.add('active-filter');
+            const target = (ev && ev.currentTarget) || (typeof event !== 'undefined' && event.currentTarget);
+            if (target && target.classList) target.classList.add('active-filter');
             renderAgentTasks(agentId, filter);
-
-            // Toggle drilldown + CLI panels
-            const drill = document.getElementById('agent-inprogress-drilldown');
-            const cli = document.getElementById('agent-cli-card');
-            const show = (filter === 'in-progress');
-            if (drill) drill.style.display = show ? 'block' : 'none';
-            if (cli) cli.style.display = show ? 'block' : 'none';
-
-            // Start / stop live polling
-            stopAgentLivePolling();
-            if (show) {
-                const profile = agentProfiles[agentId];
-                if (profile) startAgentLivePolling(profile.name);
-            }
+            // Drilldown + CLI panels stay always-visible; live polling continues in the background.
         }
 
         // === AGENT LIVE STREAM (in-progress detail + CLI log) ===
