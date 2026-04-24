@@ -42,6 +42,7 @@ import setupSpecialistRoutes from './auth/specialist-routes';
 import { activityMonitor } from './terminal-activity-monitor';
 import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
+import * as commitsTracker from './commits-tracker';
 
 // Load environment
 config();
@@ -138,6 +139,21 @@ app.get('/api/agents/:name/cli-log', (req, res) => {
   const limit = parseInt(req.query.limit as string) || 50;
   const lines = taskEngine.getAgentCliLog(req.params.name, limit);
   res.json({ success: true, agent: req.params.name, lines });
+});
+
+// Commits overview - mirrors Token Usage page
+app.get('/api/commits/summary', (req, res) => {
+  res.json({ success: true, ...commitsTracker.getCommitSummary() });
+});
+
+app.get('/api/commits/hourly', (req, res) => {
+  const agent = req.query.agent as string | undefined;
+  res.json({ success: true, hours: commitsTracker.getCommitHourly(agent) });
+});
+
+app.get('/api/commits/recent', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 30;
+  res.json({ success: true, commits: commitsTracker.getRecentCommits(limit) });
 });
 
 // Agent Social Hub - Facebook/LinkedIn style

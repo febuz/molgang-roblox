@@ -613,6 +613,10 @@
                     <div class="nav-icon">📊</div>
                     <div>Token Usage</div>
                 </div>
+                <div class="nav-item" data-page="commits">
+                    <div class="nav-icon">📝</div>
+                    <div>Commits</div>
+                </div>
                 <div class="nav-item" data-page="social">
                     <div class="nav-icon">👥</div>
                     <div>Agent Profiles</div>
@@ -943,6 +947,18 @@
                 <div class="card" style="margin-top:16px"><div class="card-title">🕐 Recent Model Calls</div><div id="token-events" style="max-height:300px;overflow-y:auto"></div></div>
             </div>
 
+            <!-- COMMITS OVERVIEW PAGE -->
+            <div class="content-section" id="commits">
+                <div class="page-header">
+                    <div class="page-title">📝 Commits Overview</div>
+                    <div class="page-subtitle">Git activity attributed per agent — hourly, daily, monthly</div>
+                </div>
+                <div id="commits-combined" class="stats-grid" style="margin-bottom:20px"></div>
+                <div class="card"><div class="card-title">👥 Commits by Agent</div><div id="commits-agents"></div></div>
+                <div class="card" style="margin-top:16px"><div class="card-title">📈 Hourly Commits (24h)</div><div id="commits-hourly-chart" style="height:120px;display:flex;align-items:flex-end;gap:2px;padding-top:10px"></div></div>
+                <div class="card" style="margin-top:16px"><div class="card-title">🕐 Recent Commits</div><div id="commits-recent" style="max-height:400px;overflow-y:auto"></div></div>
+            </div>
+
             <!-- AGENT SOCIAL HUB (Facebook/LinkedIn-style) -->
             <div class="content-section" id="social">
                 <div class="page-header">
@@ -1175,6 +1191,10 @@
             // Load agent social hub
             if (pageId === 'social') {
                 loadSocialHub();
+            }
+            // Load commits overview
+            if (pageId === 'commits') {
+                loadCommitsPage();
             }
         }
 
@@ -1935,6 +1955,79 @@
             if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
             if (n >= 1000) return (n/1000).toFixed(1) + 'K';
             return Math.floor(n).toString();
+        }
+
+        // === COMMITS OVERVIEW ===
+        async function loadCommitsPage() {
+            try {
+                const [sumRes, hourRes, recentRes] = await Promise.all([
+                    fetch('/api/commits/summary'),
+                    fetch('/api/commits/hourly'),
+                    fetch('/api/commits/recent?limit=40'),
+                ]);
+                const sum = await sumRes.json();
+                const hour = await hourRes.json();
+                const recent = await recentRes.json();
+
+                const el = (id) => document.getElementById(id);
+                const c = sum.combined || {};
+                if (el('commits-combined')) el('commits-combined').innerHTML = `
+                    <div class="stat-card"><div class="stat-label">Total Commits</div><div class="stat-value">${formatNum(c.totalCommits)}</div></div>
+                    <div class="stat-card"><div class="stat-label">Today</div><div class="stat-value" style="color:var(--success)">${c.today}</div></div>
+                    <div class="stat-card"><div class="stat-label">This Week</div><div class="stat-value" style="color:var(--primary)">${c.thisWeek}</div></div>
+                    <div class="stat-card"><div class="stat-label">Net Lines</div><div class="stat-value" style="color:var(--warning)">+${formatNum(c.totalInsertions)}/-${formatNum(c.totalDeletions)}</div></div>
+                `;
+
+                // Per-agent table
+                const avatars = { Fill:'👑', Kai:'⚡', Zip:'💻', Mira:'🎨', Luna:'✨', Cleopatra:'👸', Alexander:'🗡️', MoneyGod:'💰', Claude:'🤖', System:'⚙️' };
+                const agentOrder = sum.agentOrder || Object.keys(sum.agents || {});
+                if (el('commits-agents')) el('commits-agents').innerHTML = `
+                    <div style="display:grid;grid-template-columns:40px 1fr 80px 80px 80px 140px;gap:8px;padding:8px 0;font-size:0.75em;color:var(--text-secondary);border-bottom:1px solid var(--border)">
+                        <div></div><div>Agent</div><div>This Hour</div><div>Today</div><div>Total</div><div>Lines</div>
+                    </div>
+                    ${agentOrder.map(name => {
+                        const a = sum.agents[name];
+                        return `
+                            <div style="display:grid;grid-template-columns:40px 1fr 80px 80px 80px 140px;gap:8px;padding:10px 0;align-items:center;border-bottom:1px solid rgba(148,163,184,0.1);font-size:0.85em">
+                                <div style="font-size:1.4em">${avatars[name] || '👤'}</div>
+                                <div>
+                                    <div style="font-weight:600">${name}</div>
+                                    <div style="font-size:0.75em;color:var(--text-secondary)">${a.lastCommit ? 'last ' + new Date(a.lastCommit).toLocaleDateString() : ''}</div>
+                                </div>
+                                <div>${a.thisHour}</div>
+                                <div>${a.today}</div>
+                                <div style="font-weight:600;color:var(--primary)">${a.commits}</div>
+                                <div><span style="color:#22c55e">+${formatNum(a.insertions)}</span> <span style="color:#ef4444">-${formatNum(a.deletions)}</span></div>
+                            </div>
+                        `;
+                    }).join('')}
+                `;
+
+                // Hourly chart
+                const hours = hour.hours || [];
+                const maxC = Math.max(...hours.map(h => h.commits), 1);
+                if (el('commits-hourly-chart')) el('commits-hourly-chart').innerHTML = hours.map(h => {
+                    const pct = h.commits === 0 ? 2 : Math.max(4, (h.commits / maxC) * 100);
+                    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px" title="${h.hour}: ${h.commits} commits, +${h.insertions}/-${h.deletions}">
+                        <div style="font-size:0.5em;color:var(--text-secondary)">${h.commits || ''}</div>
+                        <div style="width:100%;height:${pct}%;border-radius:2px 2px 0 0;background:${h.commits > 0 ? 'var(--primary)' : 'rgba(148,163,184,0.15)'}"></div>
+                        <div style="font-size:0.45em;color:var(--text-secondary)">${h.hour}</div>
+                    </div>`;
+                }).join('');
+
+                // Recent commits
+                const commits = recent.commits || [];
+                if (el('commits-recent')) el('commits-recent').innerHTML = commits.length === 0 ? '<p style="color:var(--text-secondary);padding:8px">No commits</p>' :
+                    `<div style="display:grid;grid-template-columns:70px 80px 1fr 90px;gap:8px;padding:6px 0;font-size:0.7em;color:var(--text-secondary);border-bottom:1px solid var(--border)">
+                        <div>SHA</div><div>Agent</div><div>Subject</div><div>Lines</div>
+                    </div>` +
+                    commits.map(c => `<div style="display:grid;grid-template-columns:70px 80px 1fr 90px;gap:8px;padding:6px 0;font-size:0.8em;border-bottom:1px solid rgba(148,163,184,0.05)">
+                        <div style="font-family:ui-monospace,monospace;color:var(--primary)">${c.sha}</div>
+                        <div>${avatars[c.agent] || ''} ${c.agent}</div>
+                        <div style="color:var(--text-primary)">${(c.subject || '').replace(/</g,'&lt;')}</div>
+                        <div><span style="color:#22c55e">+${c.insertions}</span> <span style="color:#ef4444">-${c.deletions}</span></div>
+                    </div>`).join('');
+            } catch (e) { console.log('commits page:', e.message); }
         }
 
         // === AGENT SOCIAL HUB ===

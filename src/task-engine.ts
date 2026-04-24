@@ -49,6 +49,8 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
     { title: 'Agent social profile strategy', priority: 'high', description: 'Facebook/LinkedIn-style profile system for every agent. Each agent (Fill, Kai, Zip, Mira, Luna, Cleopatra, MoneyGod) gets a creative outlet: posts, projects, achievements, followers.', estimated_hours: 5, subtasks: ['Profile schema design', 'Agent list + role descriptors', 'Privacy/visibility rules', 'Launch rollout plan'] },
     { title: 'Web version surpasses Roblox teaser', priority: 'critical', description: 'Executive plan: copy every Roblox MOLGANG element into the web version, align the entire codebase, surpass the teaser across zones, minigames, NPCs, production chains, and advanced labs.', estimated_hours: 10, subtasks: ['Element-parity audit', 'Gap analysis vs Roblox', 'Prioritized port plan', 'Validation against Roblox', 'Launch comparison page'] },
     { title: '3D ChemE equipment alignment + newest levels web-playable', priority: 'critical', description: 'Fill coordinates with VirtualPC to align all 3D chemical equipment models from the Roblox game developments (reactors, columns, heat exchangers, separators, pumps, tanks) into the web version, and ensure the newest levels are playable in the browser. Zip ports gameplay, Luna handles the 3D asset pipeline, Mira reviews visual parity.', estimated_hours: 12, subtasks: ['Inventory Roblox 3D equipment models', 'Export → glTF/Draco pipeline (Luna)', 'Port newest-level scripts to web (Zip)', 'Visual parity review (Mira)', 'Web-playable build verification', 'Sign-off checklist'] },
+    { title: 'Maintain important-files list + code review rotation', priority: 'high', description: 'Fill maintains a curated list of important files in the main codebase and performs the primary code review on changes to them. Weekly review pass, quarterly refresh of the list. Junior reviewers (Zip / Kai) co-sign.', estimated_hours: 5, subtasks: ['Seed important-files.md with current critical paths', 'Set up PR label requirement for important-files changes', 'Weekly review pass', 'Quarterly list refresh', 'Publish review rubric'] },
+    { title: 'Git versioning standards enforcement', priority: 'high', description: 'Ratify team-wide git standards: commit message format (conventional commits), branch naming, mandatory PR review, no force-push on main. Enforce via commitlint + husky + GitHub branch protection.', estimated_hours: 4, subtasks: ['Conventional-commits rule', 'Branch-naming convention', 'Husky pre-commit hooks', 'commitlint config', 'GitHub branch protection rules', 'Team announcement'] },
   ],
   Kai: [
     // Infrastructure for Roblox ↔ Web sync + mobile
@@ -67,6 +69,8 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
     { title: 'Timeseries ingestion + correlation backend', priority: 'high', description: 'User uploads CSV/Parquet timeseries; API returns correlated series from ChemE corpus and non-linear event-based anomaly explanations. Chemical engineering scope first (temp, pressure, NPK, yield, market).', estimated_hours: 12, subtasks: ['Streaming upload endpoint', 'Parser: CSV, Parquet, JSON', 'Correlation engine (Pearson, Spearman, DTW)', 'Non-linear event detector (change-point + isolation forest)', 'Anomaly explanation LLM wrapper', 'API docs + demo'] },
     { title: 'Complete token usage tracker', priority: 'high', description: 'Finish the half-built token tracking system. Verify server wiring, seed initial events, surface per-agent hourly/daily/monthly aggregates on dashboard.', estimated_hours: 4, subtasks: ['Verify token-tracker.ts integration', 'Seed events from task engine', 'Confirm /api/tokens/* endpoints', 'Validate dashboard rendering', 'Document tier routing'] },
     { title: 'VirtualPC enterprise architecture refresh', priority: 'high', description: 'Review and tighten enterprise architecture: service boundaries, event bus, persistence tier, observability, cost control, data governance for ChemE simulator at 1M-student scale.', estimated_hours: 8, subtasks: ['Current-state audit', 'Target-state diagram', 'Gap analysis', 'Migration plan', 'Decision log'] },
+    { title: 'Code review sweep (non-important-files)', priority: 'high', description: 'Kai takes the heavy-lifting review for everything NOT on Fill\'s important-files list — when he has time. Best-effort, batched, focus on correctness, tests, and security. Escalate architectural concerns to Alexander.', estimated_hours: 6, subtasks: ['Triage open PRs weekly', 'Batch review non-critical PRs', 'Security pass', 'Test-coverage pass', 'Escalate architecture-affecting PRs to Alexander', 'Approve or request changes'] },
+    { title: 'Commits-overview dashboard backend', priority: 'high', description: 'Mirror Token Usage: expose /api/commits/summary + /api/commits/hourly + /api/commits/by-agent + /api/commits/recent. Drive from git log of the virtualpc and molgang-roblox repos.', estimated_hours: 5, subtasks: ['git-log parser', 'Attribute commits by Co-Authored-By trailer to agent', 'Aggregations: hour/day/week/month', 'Recent-events endpoint', 'Wire to dashboard Commits page'] },
     { title: 'Load-test farm for mass-multiplayer sim', priority: 'high', description: 'Infra to spawn thousands of headless browser clients as simulated players, bootstrapping the first user base and stress-testing multiplayer capacity. Co-located with the testplay framework.', estimated_hours: 10, subtasks: ['Headless browser farm (Playwright/Chromium)', 'Orchestration via k8s Jobs', 'Scenario scripts (explore/trade/craft)', 'Concurrency targets (100→10k)', 'Observability: latency, error rate, server CPU/RAM', 'Cost-aware scheduling'] },
   ],
   Zip: [
@@ -128,13 +132,53 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
     { title: 'Agent profile page animations', priority: 'low', description: 'Motion design for agent social profiles: logo reveal, post entry transitions, achievement unlock animations, hover microinteractions.', estimated_hours: 4, subtasks: ['Logo reveal', 'Post transitions', 'Achievement unlock FX', 'Hover microinteractions'] },
     { title: 'Mass-multiplayer rendering stress test', priority: 'high', description: 'Profile and optimize client rendering with hundreds of simultaneous players visible: instanced avatars, culling, network interpolation. Partnered with Kai load-test farm + Zip simulated players.', estimated_hours: 8, subtasks: ['Instanced avatar rendering', 'Distance culling', 'Network interpolation tuning', 'GPU capture at 100/500/1000 players', 'Optimization report'] },
   ],
+  Cleopatra: [
+    // Executive authority: cross-cutting governance, audit, and decision oversight
+    { title: 'Cross-cutting governance review', priority: 'high', description: 'Quarterly review of decisions made across Fill / Kai / Zip / Mira / Luna pools. Flag items that should require dual sign-off.', estimated_hours: 5, subtasks: ['Pull decision log', 'Identify cross-cutting impact', 'Flag dual sign-off candidates', 'Publish governance memo', 'Update approval matrix'] },
+    { title: 'Strategic decision audit', priority: 'high', description: 'Audit the last sprint\'s critical-priority completions. Were they aligned with OKRs? Any scope creep? Deliver a dispassionate review.', estimated_hours: 4, subtasks: ['List critical completions', 'Map to OKRs', 'Detect scope creep', 'Publish audit', 'Recommend corrections'] },
+    { title: 'Ratify agent social charter', priority: 'medium', description: 'Approve the governance model for the agent social hub: moderation, content policy, data retention, portraying employees (agents) publicly.', estimated_hours: 3, subtasks: ['Draft charter', 'Solicit Fill + MoneyGod input', 'Moderation SLAs', 'Ratify', 'Publish'] },
+    { title: 'Escalation-path policy', priority: 'high', description: 'Define escalation paths when agents disagree (Fill vs MoneyGod on budget, Kai vs Luna on GPU allocation). Cleopatra arbitrates; document the protocol.', estimated_hours: 4, subtasks: ['Document common disputes', 'Arbitration protocol', 'Timeline SLAs', 'Publish to team', 'Archive template'] },
+    { title: 'Risk oversight: cross-platform migration', priority: 'critical', description: 'Executive-level risk sign-off on the Roblox → Web migration plan. Verify Fill\'s migration roadmap holds up under Cleopatra\'s adverse-scenario test.', estimated_hours: 6, subtasks: ['Adversarial review of roadmap', 'Data-loss scenarios', 'Account linking worst-case', 'Compliance intersection', 'Sign-off or return'] },
+    { title: 'Compliance intersection audit', priority: 'high', description: 'Where GDPR, COPPA, EU AI Act, and local data law intersect for the ChemE Simulator. Deliver a single matrix the team can follow.', estimated_hours: 6, subtasks: ['GDPR checklist', 'COPPA checklist', 'EU AI Act applicability', 'Local law deltas', 'Unified matrix'] },
+    { title: 'Executive review of Fill\'s OKRs', priority: 'medium', description: 'Review Fill\'s Q-OKRs and either ratify or send back. Verify targets are measurable, ambitious, and aligned with MOLGANG 1M-student goal.', estimated_hours: 3, subtasks: ['Measurability check', 'Ambition check', 'Strategic alignment', 'Ratify or return', 'Archive decision'] },
+    { title: 'Agent performance oversight', priority: 'medium', description: 'Cross-check Fill\'s team-performance reports against Cleopatra\'s independent metrics reading. Blind spots? Favoritism? Publish second opinion.', estimated_hours: 4, subtasks: ['Pull independent metrics', 'Blind-spot analysis', 'Compare to Fill\'s report', 'Write second opinion', 'Archive decision'] },
+    { title: 'Dual sign-off on critical infra', priority: 'high', description: 'Any infra change touching auth, payments, or user data requires Cleopatra + Kai joint approval. Implement the sign-off workflow.', estimated_hours: 5, subtasks: ['Define covered surfaces', 'Implement PR label requirement', 'CI gate for dual approval', 'Exception path', 'Document'] },
+    { title: 'Board-level status narrative', priority: 'medium', description: 'Independent board-ready narrative of the company status, written from Cleopatra\'s authority. Not a rollup of Fill\'s report — an independent view.', estimated_hours: 4, subtasks: ['Gather raw metrics', 'Write narrative', 'Highlight tensions / tradeoffs', 'Review with Fill', 'Publish'] },
+  ],
+  Alexander: [
+    // Decision maker: technical approach choices. Always picks the most technically-interesting option.
+    // Not a worker — arbitrates, sets standards, signs off.
+    { title: 'Tech-stack arbitration: RTS engine', priority: 'critical', description: 'Choose between building the RTS factory mode on a custom canvas engine vs Phaser vs PixiJS vs Three.js 2D. Alexander picks the most technically-interesting defensible option and writes the ADR.', estimated_hours: 3, subtasks: ['Survey options', 'Benchmarks / prototypes review', 'Pick winner (bias: geekiest defensible)', 'Write ADR', 'Socialize decision'] },
+    { title: 'Testplay stack decision: Playwright vs pyautogui', priority: 'high', description: 'Decide whether the agent testplay framework is Playwright-only (browser) or layered with pyautogui for native. Sign the ADR.', estimated_hours: 2, subtasks: ['Constraints review', 'Playwright cons for game canvas', 'pyautogui OS dependency', 'Sign ADR', 'Delegate implementation to Zip'] },
+    { title: 'GPU scheduling approach sign-off', priority: 'critical', description: 'Kai proposes the MPS-based GPU sharing design. Alexander reviews the technical approach and signs off, vetoes, or returns with required changes.', estimated_hours: 2, subtasks: ['Read Kai\'s proposal', 'Check MPS edge cases', 'Review fallback for non-MPS workloads', 'Sign off or return', 'Archive decision'] },
+    { title: 'Standardize on a single ORM', priority: 'medium', description: 'Decide on one ORM across services (Prisma vs Drizzle vs raw SQL+Kysely). Alexander arbitrates and freezes the choice for 12 months.', estimated_hours: 3, subtasks: ['Options summary', 'Type-safety comparison', 'Migration-tooling comparison', 'Freeze decision', 'Deprecation plan for others'] },
+    { title: 'LLM routing policy: Gemma vs Sonnet vs Opus', priority: 'high', description: 'Ratify the tier routing policy: which tasks go to local Gemma, which to Sonnet, which to Opus. Alexander has final say.', estimated_hours: 3, subtasks: ['Read Kai + Fill proposals', 'Cost vs quality tradeoffs', 'Set tier thresholds', 'Write policy', 'Publish'] },
+    { title: 'Approve/veto: dual-monorepo split', priority: 'medium', description: 'Someone will propose splitting VirtualPC + MOLGANG into separate repos. Alexander reviews, argues the technical case either way, and decides.', estimated_hours: 3, subtasks: ['Read proposal', 'Dependency-graph review', 'CI impact', 'Decide', 'Archive'] },
+    { title: 'Testing pyramid ratification', priority: 'medium', description: 'What\'s the required unit / integration / e2e / testplay ratio for new code? Alexander freezes it so PR reviewers have an objective standard.', estimated_hours: 2, subtasks: ['Current-state measurement', 'Target ratio', 'Per-module exceptions', 'Freeze', 'Publish to CONTRIBUTING'] },
+    { title: 'Architecture decision record review', priority: 'high', description: 'Quarterly review of all ADRs. Confirm still-valid, sunset outdated, mark contested ones for Cleopatra escalation.', estimated_hours: 4, subtasks: ['Inventory ADRs', 'Mark stale', 'Sunset outdated', 'Escalate contested', 'Publish ADR health report'] },
+    { title: 'Override: Fill picked the boring option', priority: 'medium', description: 'When Fill defaults to the safe-boring tech option, Alexander reviews and overrides toward the most technically-interesting path that is still defensible.', estimated_hours: 2, subtasks: ['Identify recent Fill tech decisions', 'Flag boring-by-default choices', 'Propose geekier alternative', 'Negotiate', 'Decision'] },
+    { title: 'Approve CI/CD pipeline refactor', priority: 'high', description: 'Kai\'s Roblox+Web unified CI proposal. Alexander technical-reviews, approves, or sends back with required deltas.', estimated_hours: 3, subtasks: ['Read proposal', 'Bus-factor review', 'Rollback story', 'Approve or return', 'Archive'] },
+  ],
+  MoneyGod: [
+    // Economy authority: MolCoin, Web3, anti-farm, market fairness, carbon credits
+    { title: 'MolCoin economy health report', priority: 'high', description: 'Weekly economy health: circulating supply, daily claims, market velocity, top hoarders, inflation curve. Flag trouble.', estimated_hours: 4, subtasks: ['Supply metrics', 'Velocity metrics', 'Hoarder detection', 'Inflation curve', 'Trouble flags', 'Publish report'] },
+    { title: 'Anti-farm enforcement pass', priority: 'critical', description: 'Audit anti-farm signals (repeat-login patterns, mouse-jitter absence, identical craft sequences). Ban candidates get flagged to Cleopatra for sign-off.', estimated_hours: 6, subtasks: ['Pull signal data', 'Candidate list', 'False-positive review', 'Escalate to Cleopatra', 'Execute bans'] },
+    { title: 'Market manipulation detection', priority: 'high', description: 'Detect wash trading, pump-and-dump, and circular self-trades on the molecule market. Alert-grade not just report-grade.', estimated_hours: 6, subtasks: ['Wash-trade detector', 'Pump-and-dump pattern', 'Circular-trade graph algo', 'Alert pipeline', 'Quarantine accounts'] },
+    { title: 'MOLCO2 carbon-credit ledger', priority: 'high', description: 'Ledger and audit trail for the MOLCO2 carbon credit. Reconciliation against real-world carbon proofs we can cite. Board-defensible.', estimated_hours: 8, subtasks: ['Ledger schema', 'Append-only write API', 'Real-world proof linkage', 'Monthly reconciliation', 'Board brief'] },
+    { title: 'Web3 token policy', priority: 'high', description: 'Policy document: what MolCoin can and cannot do, bridge policy, KYC thresholds, jurisdictions to avoid until counsel signs off.', estimated_hours: 6, subtasks: ['Scope statement', 'Bridge policy', 'KYC thresholds', 'Restricted jurisdictions', 'Counsel review'] },
+    { title: 'Daily-claim tuning', priority: 'medium', description: 'Tune the 50-MolCoin daily claim for retention without runaway inflation. A/B test three curves; pick the one that optimizes D7 retention while keeping CPI bounded.', estimated_hours: 5, subtasks: ['Define curves', 'A/B deploy', 'D7 retention metric', 'CPI metric', 'Pick winner', 'Roll out'] },
+    { title: 'Market price-engine review', priority: 'medium', description: 'Review and adjust the 30-second market price updater. Supply/demand sensitivity, price floors/ceilings, volatility cap.', estimated_hours: 4, subtasks: ['Sensitivity analysis', 'Floor/ceiling config', 'Volatility cap', 'Backtest', 'Deploy'] },
+    { title: 'Budget challenge to Fill', priority: 'high', description: 'Independent counterweight: review Fill\'s Q3 budget forecast, challenge overruns, negotiate cost-optimizations before sign-off.', estimated_hours: 4, subtasks: ['Read Fill\'s forecast', 'Challenge categories', 'Negotiate cuts', 'Sign-off or escalate', 'Archive decision'] },
+    { title: 'Player-to-player trading escrow rules', priority: 'medium', description: 'Rules for the P2P trading escrow: required hold times, scam-detection heuristics, dispute resolution, listing fees.', estimated_hours: 5, subtasks: ['Hold times by item type', 'Scam heuristics', 'Dispute workflow', 'Fee schedule', 'Publish ToS'] },
+    { title: 'Battle Pass pricing strategy', priority: 'medium', description: 'Pricing and tier design for the 100-tier Battle Pass. Ensure free track is genuinely rewarding; premium is fair; no pay-to-win leak into chemistry progression.', estimated_hours: 5, subtasks: ['Free-track reward review', 'Premium-track value audit', 'No-P2W gate', 'Price point A/B', 'Publish pricing'] },
+  ],
 };
 
 // Track which pool index each agent is at
 // Start at index 10 so the newly-added tasks (from the 2026-04-23 chat backlog:
 // Cleopatra/MoneyGod, GPU symbiosis, RTS factory, agent social profiles, testplay,
 // Gemma chat, 3D equipment alignment, timeseries analysis, etc.) seed first.
-const poolIndex: { [agent: string]: number } = { Fill: 10, Kai: 10, Zip: 10, Mira: 10, Luna: 10 };
+const poolIndex: { [agent: string]: number } = { Fill: 10, Kai: 10, Zip: 10, Mira: 10, Luna: 10, Cleopatra: 0, Alexander: 0, MoneyGod: 0 };
 let taskIdCounter = 100;
 let sprintCounter = 1;
 
@@ -187,7 +231,7 @@ function generateTask(agent: string): Task {
 const tasks: Task[] = [];
 
 function seedInitialTasks() {
-  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna'];
+  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod'];
   for (const agent of agents) {
     // 2 in-progress + 2 pending per agent
     for (let i = 0; i < 4; i++) {
@@ -275,7 +319,7 @@ function updateMilestones() {
 // === TICK ENGINE ===
 export function tickEngine() {
   const now = Date.now();
-  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna'];
+  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod'];
 
   for (const agent of agents) {
     const agentTasks = tasks.filter(t => t.assigned_to === agent);
@@ -346,6 +390,9 @@ export function getPerPersonBacklog() {
     Zip: { role: 'Developer', avatar: '💻' },
     Mira: { role: 'Creative Director', avatar: '🎨' },
     Luna: { role: 'Tech Artist', avatar: '✨' },
+    Cleopatra: { role: 'Executive Authority', avatar: '👸' },
+    Alexander: { role: 'Technical Arbiter', avatar: '🗡️' },
+    MoneyGod: { role: 'Economy Authority', avatar: '💰' },
   };
 
   const result: { [key: string]: any } = {};
@@ -414,7 +461,7 @@ export function getBacklogItems() {
   const pending = tasks.filter(t => t.status === 'pending');
   const visible = [...active, ...pending, ...completed];
 
-  const roleMap: { [k: string]: string } = { Kai: 'CTO', Zip: 'Dev', Mira: 'Artist', Luna: 'Tech Artist', Fill: 'CEO' };
+  const roleMap: { [k: string]: string } = { Kai: 'CTO', Zip: 'Dev', Mira: 'Artist', Luna: 'Tech Artist', Fill: 'CEO', Cleopatra: 'Exec', Alexander: 'Arbiter', MoneyGod: 'Economy' };
   return visible.map(t => ({
     id: t.id,
     title: t.title,
@@ -493,7 +540,7 @@ interface WorkLogEntry {
 const workLog: WorkLogEntry[] = [];
 const PROJECT_NAME = 'MOLGANG Chemical Engineering Simulator';
 const REGISTERED_FOR = 'Edwin Hauwert 219252713';
-const roleMap: { [k: string]: string } = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist' };
+const roleMap: { [k: string]: string } = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority' };
 
 export function logWork(agent: string, taskId: string, taskTitle: string, subtask: string, action: WorkLogEntry['action'], minutesSpent: number) {
   workLog.push({
@@ -609,10 +656,43 @@ const agentCommands: { [agent: string]: string[] } = {
     '$ npm run test:shaders -- --gpu rtx3090',
     '$ python scripts/asset-optimize.py --format webp --quality 85',
   ],
+  // Decision makers: they review, ratify, escalate. Commands reflect that.
+  Cleopatra: [
+    '$ adr review --since 7d --status proposed',
+    '$ governance audit --sprint current --format memo',
+    '$ risk-matrix --domain migration --adversarial',
+    '$ ratify --doc agent-social-charter.md',
+    '$ dual-signoff --pr 1482 --second-approver @kai',
+    '$ escalation-log --open --owner @cleopatra',
+    '$ compliance-matrix --regulations gdpr,coppa,eu-ai-act',
+    '$ decision-log --publish q3-board-narrative.md',
+  ],
+  Alexander: [
+    '$ adr write --number 0042 --title rts-engine-choice',
+    '$ veto --pr 1501 --reason "boring default"',
+    '$ arbitrate --disputes open --owner @alexander',
+    '$ approve --tier-routing gemma-for-chat.md',
+    '$ override --fill-decision q3-stack-choice',
+    '$ sign-off --ci-refactor unified-rojo-webpack',
+    '$ adr freeze --number 0038 --duration 12m',
+    '$ testing-pyramid --policy ratify',
+    '$ standards publish --topic orm-choice',
+  ],
+  MoneyGod: [
+    '$ economy report --window 7d --format board',
+    '$ antifarm scan --signals all --candidates list',
+    '$ market-integrity wash-trade --since 24h',
+    '$ molco2 ledger reconcile --month current',
+    '$ web3 policy --jurisdiction-audit',
+    '$ budget challenge --fill-forecast q3',
+    '$ cpi --curve A,B,C --retention d7',
+    '$ escrow rules publish --tos v2.md',
+    '$ battlepass pricing ab --test premium-tier-price',
+  ],
 };
 
 const cliSessionLog: { [agent: string]: Array<{ t: number; line: string; level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' }> } = {
-  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [],
+  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [], Cleopatra: [], Alexander: [], MoneyGod: [],
 };
 
 function pushCli(agent: string, line: string, level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' = 'out') {
