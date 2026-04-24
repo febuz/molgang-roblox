@@ -119,6 +119,8 @@ local shortcuts = {
 	{key = "G", action = "Factory Builder (entrepreneur)"},
 	{key = "C", action = "Process Control Panel (gauges)"},
 	{key = "B", action = "Bubble Tea Bar (buffs)"},
+	{key = "T", action = "Research & Technology Tree"},
+	{key = "V", action = "Vanadium Mining (explore/mine/trade)"},
 	{key = "Tab", action = "Wallet & MolChain Explorer"},
 	{key = "M", action = "Toggle Minimap"},
 	{key = "/", action = "This Settings Panel"},

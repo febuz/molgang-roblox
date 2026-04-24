@@ -119,7 +119,9 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 | 23-04-2026 | 2 | 00 | GPU-pipeline en 3D-modelexpansie | **S&O kernactiviteit**: Image-to-3D pipeline (MiDaS DPT-Large diepteschatting op GPU → puntenwolk → mesh → FreeCAD dimensionering). GPU-werkplanner voor 24/7 rendering (systemd service + cron watchdog). Equipment-dimensiedatabase (18 types, Perry's Handbook). 7 nieuwe 3D-modellen: distillatiekolom, warmtewisselaar, centrifuge, drukvat, cycloonscheider, Erlenmeyer kolf, maatbeker. Blender dual-GPU CUDA/OptiX configuratie. Python venv met trimesh, opencv, torch+CUDA. |
 | 24-04-2026 | 1 | 30 | Apparatuurcatalogus + onderzoeksboom uitbreiding | 7 nieuwe items in FactoryEquipment (distillatiekolom, warmtewisselaar, centrifuge, drukvat 10bar, cycloonscheider, laboratoriumglazen). 5 nieuwe onderzoeksknooppunten in ResearchTree (cycloonclassificatie, centrifugale scheiding, solventdistillatie, drukloging, warmteterugwinning). Rojo build verificatie. LoadingScreen bijgewerkt. |
 
-**Subtotaal 23/24-04: 28 uur 00 minuten**
+| 24-04-2026 | 2 | 00 | Vanadium mijnbouwsysteem + Velzen fabriek | **S&O kernactiviteit**: MiningSystem.lua: 4 geologische plottypen (vanadiferous magnetiet 0.5-3% V2O5, chroomiet-vanadium), 6 mijnbouwapparatuurtypen, 24 plots over 4 regio's. Exploratievergunning-mechanisme (compositie onbekend tot booronderzoek!). Velzen miniature Tata Steel IJmuiden BOF fabriek (0.85% V2O5 in slak). MiningServer.server.lua: server-autoritatief eigendom, exploratie, automatisch ertsproductie, plothandel tussen spelers. MiningGui.client.lua: 3-tab interface (verkennen/mijnen/markt). WorldBuilder: Velzen fabriek 3D (BOF koepel, schoorstenen met stoom, slakstort). |
+
+**Subtotaal 23/24-04: 30 uur 00 minuten**
 
 ---
 
@@ -131,10 +133,10 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 | Week 15 | 09-04-2026 | 6 | 00 | 6:00 |
 | Week 15 | 12-04-2026 | 4 | 30 | 4:30 |
 | Week 17 | 22-04-2026 | 4 | 45 | 4:45 |
-| Week 17 | 23/24-04-2026 | 28 | 00 | 28:00 |
-| | | | | **51:15** |
+| Week 17 | 23/24-04-2026 | 30 | 00 | 30:00 |
+| | | | | **53:15** |
 
-**Totaal geregistreerde S&O-uren april 2026: 51 uur en 15 minuten**
+**Totaal geregistreerde S&O-uren april 2026: 53 uur en 15 minuten**
 
 ---
 

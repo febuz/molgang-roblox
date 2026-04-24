@@ -49,7 +49,9 @@
 | 5 | SW-005 | GPU Pipeline Scripts (Python) | 2,000 | 4 | 2026-04-24 | Custom development | €1,400 | 5yr linear | Active |
 | 6 | SW-006 | Blender Model Generator (Python) | 1,500 | 3 | 2026-04-23 | Custom development | €1,050 | 5yr linear | Active |
 
-**Subtotaal Software: 35,600 LOC | 69 scripts | €24,920 totale waarde**
+| 7 | SW-007 | Mining System (Luau) | 1,400 | 3 | 2026-04-24 | Custom development | €980 | 5yr linear | Active |
+
+**Subtotaal Software: 37,000+ LOC | 72 scripts | €25,900 totale waarde**
 
 *Waardering: €0.70/LOC (marktconform voor game development, basis WBSO S&O-loonkosten)*
 
@@ -86,7 +88,28 @@
 | 9 | DATA-009 | NPC Dialogue Trees | 6 NPCs | NPCDialogues.lua | €150 | Active |
 | 10 | DATA-010 | Story Quests (3 Acts) | 23+ quests | Quests.lua + FertilizerTrack.lua | €200 | Active |
 
-**Subtotaal Data Assets: €2,750 totale waarde**
+| 11 | DATA-011 | Mining Plots Database | 24 plots | MiningSystem.lua | €300 | Active |
+| 12 | DATA-012 | Mining Equipment Specs | 6 items | MiningSystem.lua | €150 | Active |
+| 13 | DATA-013 | Velzen Tata Steel Slag Composition | 10 oxides | MiningSystem.lua | €200 | Active |
+
+**Subtotaal Data Assets: €3,400 totale waarde**
+
+### Source Credits & Attribution
+
+| Asset | Source / Basis | License | Credit |
+|-------|---------------|---------|--------|
+| Periodic Table (118 elements) | IUPAC / PubChem real atomic data | Public domain (scientific facts) | IUPAC 2016 |
+| BOF Slag Composition | Tata Steel IJmuiden process data | Published research | Tata Steel / ArcelorMittal public reports |
+| Leaching Kinetics (H2SO4+H2O2) | ACS Omega 2022 "Rapid Vanadium Extraction" | Academic reference | Hauwert research compilation |
+| Two-stage Leaching | Taylor & Francis 2024 MPEM journal | Academic reference | Hauwert research compilation |
+| Arrhenius Equation Constants | Perry's Chemical Engineers' Handbook 9th ed. | Reference textbook | McGraw-Hill |
+| Equipment Dimensions | Perry's Handbook + manufacturer catalogs | Reference data | Various (Metso, FLSmidth, Outotec) |
+| Geology (Bushveld Complex) | South African geological survey data | Public domain | Council for Geoscience SA |
+| Velzen Factory Reference | Tata Steel IJmuiden public information | Public domain | Tata Steel Netherlands |
+| Mahjong Rules (Cantonese) | Hong Kong Mahjong Association standards | Public domain | Traditional game rules |
+| NPK Fertilizer Chemistry | FAO fertilizer manual + EU Regulation 2019/1009 | Public domain | FAO / European Commission |
+| 3D Models (21 FBX) | Procedurally generated via Blender 5.1 Python | Original work | Edwin Hauwert / VirtualV |
+| Game Engine Code (Luau) | Original development | Proprietary | Edwin Hauwert / VirtualV |
 
 ---
 
@@ -113,7 +136,7 @@
 | Documentatie | 7 docs | €1,200 | 5 jaar lineair |
 | Data Assets | 10 datasets | €2,750 | 5 jaar lineair |
 | Infrastructure | 5 tools | €1,150 | 3 jaar lineair |
-| **TOTAAL** | **112 assets** | **€32,670** | |
+| **TOTAAL** | **118 assets** | **€34,600** | |
 
 ### Jaarlijkse Afschrijving
 - 3D Modellen: €2,650 / 3 = **€883/jaar**
