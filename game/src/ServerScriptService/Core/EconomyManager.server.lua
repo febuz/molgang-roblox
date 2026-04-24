@@ -18,7 +18,7 @@ local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 -- CONFIGURATION
 -- ══════════════════════════════════════════════
 
-local DAILY_CLAIM_AMOUNT = 50           -- MolCoins per daily claim
+local DAILY_CLAIM_AMOUNT = 200          -- MolCoins per daily claim (enough to buy resources)
 local DAILY_CLAIM_COOLDOWN = 86400      -- 24 hours in seconds
 local MAX_MOLCOINS_PER_DAY = 2000       -- anti-farm cap
 local SAVE_INTERVAL = 60               -- auto-save every 60 seconds

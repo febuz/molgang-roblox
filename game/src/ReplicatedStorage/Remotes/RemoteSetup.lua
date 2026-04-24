@@ -67,6 +67,9 @@ local serverToClientEvents = {
 	-- Product Market
 	"ProductPricesUpdate", -- {prices} current market prices for all products
 	"ProductSold",         -- {productId, quantity, revenue} sale confirmation
+	-- Feedback System
+	"FeedbackSubmitted",   -- {success, count, max} feedback confirmation
+	"RequestRating",       -- {systems} periodic rating request
 }
 
 -- ══════════════════════════════════════════════
@@ -123,6 +126,8 @@ local clientToServerEvents = {
 	-- Product Market
 	"RequestSellProduct",    -- {productId, quantity} sell refined product
 	"RequestProductPrices",  -- {} get current market prices
+	-- Feedback System
+	"RequestSubmitFeedback", -- {type, system, rating, message} submit feedback
 }
 
 -- ══════════════════════════════════════════════

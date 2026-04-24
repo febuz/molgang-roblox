@@ -12,7 +12,7 @@ local Facilities = {}
 local FACILITY_TYPES = {
 	Mine = {
 		name = "Mine",
-		cost = 5000,
+		cost = 800,
 		description = "Collect atoms from the ground",
 		productionRate = 10,  -- atoms per cycle
 		productionTime = 60,  -- seconds
@@ -20,7 +20,7 @@ local FACILITY_TYPES = {
 	},
 	Factory = {
 		name = "Factory",
-		cost = 10000,
+		cost = 2000,
 		description = "Build molecules from atoms",
 		productionRate = 5,   -- molecules per cycle
 		productionTime = 120,

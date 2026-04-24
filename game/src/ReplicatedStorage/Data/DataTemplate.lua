@@ -10,7 +10,7 @@ return {
 	molecules = {},
 
 	-- Currency
-	molCoins = 100,     -- Start bonus (100 MolCoins welkomstbonus)
+	molCoins = 500,     -- Start bonus (500 MolCoins — enough to buy slag + test features)
 	chainTokens = 0,
 	quantumDots = {},   -- { {sym='Og', count=1}, ... }
 
