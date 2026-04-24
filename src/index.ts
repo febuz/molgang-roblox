@@ -60,6 +60,16 @@ const PORT = process.env.PORT || 3100;
 
 // Middleware
 app.use(express.json());
+// Force fresh HTML on every load so updates (new agents, panels, fixes)
+// show up immediately instead of serving stale cached markup.
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path.endsWith('.html')) {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
 app.use(express.static('dist/public'));
 app.use(express.static('public'));
 
@@ -914,7 +924,7 @@ async function initialize() {
     const inferenceAudit = new InferenceAudit();
     const selfRepair = new SelfRepair(inferenceAudit);
     if (vitals.isGpuEnabled() && (process.env.SELF_REPAIR_ENABLED ?? 'true').toLowerCase() !== 'false') {
-      selfRepair.start(60_000);
+      selfRepair.start();
     }
     setupVitalsRoutes(app, vitals, inferenceAudit, selfRepair);
 
@@ -1828,6 +1838,9 @@ function setupRoutes(app: express.Express, components: any) {
     const startTs = Date.now();
     const { model, prompt, max_tokens } = req.body;
     const caller = String(req.header('x-agent-id') || req.header('x-caller') || req.ip || 'anonymous');
+    // Record in-memory activity before we fetch — otherwise the self-repair
+    // idle rule can race a long inference and unload its model mid-flight.
+    inferenceAudit.markActivity(model);
     // Snapshot loaded models BEFORE the request to detect a "triggered_load".
     const loadedBefore = await InferenceAudit.loadedModels();
 

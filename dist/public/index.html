@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>VirtualPC Dashboard - Command Center</title>
     <link rel="stylesheet" href="/mira-dashboard-enhancements.css">
     <style>
@@ -1050,6 +1053,24 @@
                         <p style="font-size: 0.85em; margin-top: 6px;">Enable with <code style="background:rgba(30,58,95,0.3);padding:1px 6px;border-radius:3px">docker-compose up kafka</code></p>
                     </div>
                 </div>
+
+                <!-- Live resource utilization (CPU / RAM / dual-3090 GPUs) -->
+                <div class="card" style="margin-top: 16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div class="card-title" style="margin:0;">🖥️ Resource Utilization</div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;animation:pulse 1.5s infinite;"></span>
+                            <span style="font-size:0.75em;color:var(--text-secondary);">live · /api/vitals/gpu · 5s</span>
+                        </div>
+                    </div>
+                    <div id="resources-host" class="stats-grid" style="margin-bottom:14px;"></div>
+                    <div id="resources-gpus"></div>
+                </div>
+
+                <div class="card" style="margin-top: 16px;">
+                    <div class="card-title">👷 Top GPU Processes</div>
+                    <div id="resources-gpu-procs" style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.78em;"></div>
+                </div>
             </div>
 
             <!-- AGENT PROFILE PAGE (Dynamic - populated by JS) -->
@@ -1370,6 +1391,10 @@
             // Load commits overview
             if (pageId === 'commits') {
                 loadCommitsPage();
+            }
+            // Load live resources panel on System Status
+            if (pageId === 'system') {
+                loadResourcesPanel();
             }
         }
 
@@ -1797,10 +1822,10 @@
             const container = document.getElementById('team-overview');
             if (!container) return;
 
-            const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna'];
-            const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨' };
-            const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist' };
-            const colors = { Fill: '#fbbf24', Kai: '#a78bfa', Zip: '#22c55e', Mira: '#ec4899', Luna: '#06b6d4' };
+            const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
+            const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽' };
+            const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism' };
+            const colors = { Fill: '#fbbf24', Kai: '#a78bfa', Zip: '#22c55e', Mira: '#ec4899', Luna: '#06b6d4', Cleopatra: '#f97316', Alexander: '#ef4444', MoneyGod: '#10b981', Analyst: '#8b5cf6', VideoProducer: '#d946ef', Vice: '#e11d48', Atlas: '#0ea5e9' };
 
             // Build DOM structure once
             if (!teamBuilt) {
@@ -2311,6 +2336,130 @@
                     </div>
                 `;
             } catch (e) { console.log('social feed:', e.message); }
+        }
+
+        // === LIVE RESOURCES PANEL (CPU / RAM / dual-3090 GPU) ===
+        let resourcesTimer = null;
+        async function loadResourcesPanel() {
+            await fetchResources();
+            if (!resourcesTimer) {
+                resourcesTimer = setInterval(() => {
+                    if (document.getElementById('system').classList.contains('active')) {
+                        fetchResources();
+                    }
+                }, 5000);
+            }
+        }
+        async function fetchResources() {
+            try {
+                const [vRes, gRes] = await Promise.all([
+                    fetch('/api/vitals'),
+                    fetch('/api/vitals/gpu'),
+                ]);
+                const v = await vRes.json();
+                const g = await gRes.json();
+                const snap = v.snapshot || {};
+
+                const host = document.getElementById('resources-host');
+                if (host) {
+                    const cpu = snap.cpu_pct || 0;
+                    const mem = snap.mem_mb || {};
+                    const memPct = mem.total ? Math.round(((mem.used || 0) / mem.total) * 100) : 0;
+                    const load = snap.load || {};
+                    const disk = snap.disk || {};
+                    const barColor = (p) => p > 85 ? '#ef4444' : p > 60 ? '#f59e0b' : '#22c55e';
+                    host.innerHTML = `
+                        <div class="stat-card">
+                            <div class="stat-label">CPU</div>
+                            <div class="stat-value" style="color:${barColor(cpu)}">${cpu.toFixed(1)}%</div>
+                            <div class="stat-change">load ${(load['1']||0).toFixed(1)} / ${(load['5']||0).toFixed(1)} / ${(load['15']||0).toFixed(1)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">RAM</div>
+                            <div class="stat-value" style="color:${barColor(memPct)}">${memPct}%</div>
+                            <div class="stat-change">${((mem.used||0)/1024).toFixed(1)} / ${((mem.total||0)/1024).toFixed(1)} GB</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">EDS2 Storage</div>
+                            <div class="stat-value" style="color:${barColor(disk.eds2_used_pct||0)}">${(disk.eds2_used_pct||0)}%</div>
+                            <div class="stat-change">${(disk.eds2_free_gb||0).toFixed(0)} GB free</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Root /</div>
+                            <div class="stat-value" style="color:${barColor(disk.root_used_pct||0)}">${(disk.root_used_pct||0)}%</div>
+                            <div class="stat-change">${(disk.root_free_gb||0).toFixed(0)} GB free</div>
+                        </div>
+                    `;
+                }
+
+                const gpusEl = document.getElementById('resources-gpus');
+                if (gpusEl) {
+                    const gpus = g.gpus || [];
+                    if (gpus.length === 0) {
+                        gpusEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85em;padding:8px 0">No GPU data. Check <code>/api/vitals/gpu</code>.</p>';
+                    } else {
+                        const gpuBarColor = (p) => p > 85 ? '#ef4444' : p > 50 ? '#f59e0b' : '#22c55e';
+                        gpusEl.innerHTML = gpus.map(gpu => {
+                            const memPct = gpu.mem_total ? Math.round((gpu.mem_used / gpu.mem_total) * 100) : 0;
+                            const util = gpu.util || 0;
+                            return `
+                                <div style="margin-bottom:14px;padding:14px;background:rgba(30,58,95,0.25);border-radius:8px;border-left:3px solid ${gpuBarColor(util)};">
+                                    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">
+                                        <div>
+                                            <strong style="color:var(--primary);">GPU ${gpu.i}</strong>
+                                            <span style="font-size:0.85em;color:var(--text-secondary);margin-left:10px;">RTX 3090</span>
+                                        </div>
+                                        <div style="font-size:0.85em;color:var(--text-secondary);">${gpu.temp}°C · ${gpu.power?.toFixed(0) || 0} W</div>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                        <div>
+                                            <div style="display:flex;justify-content:space-between;font-size:0.8em;margin-bottom:4px;">
+                                                <span style="color:var(--text-secondary);">Utilization</span>
+                                                <span style="font-weight:700;color:${gpuBarColor(util)}">${util}%</span>
+                                            </div>
+                                            <div style="height:8px;background:rgba(30,58,95,0.4);border-radius:4px;overflow:hidden;">
+                                                <div style="height:100%;width:${util}%;background:${gpuBarColor(util)};transition:width 0.5s;"></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style="display:flex;justify-content:space-between;font-size:0.8em;margin-bottom:4px;">
+                                                <span style="color:var(--text-secondary);">VRAM</span>
+                                                <span style="font-weight:700;color:${gpuBarColor(memPct)}">${(gpu.mem_used/1024).toFixed(1)} / ${(gpu.mem_total/1024).toFixed(0)} GB</span>
+                                            </div>
+                                            <div style="height:8px;background:rgba(30,58,95,0.4);border-radius:4px;overflow:hidden;">
+                                                <div style="height:100%;width:${memPct}%;background:${gpuBarColor(memPct)};transition:width 0.5s;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+
+                const procsEl = document.getElementById('resources-gpu-procs');
+                if (procsEl) {
+                    const procs = g.gpu_procs || snap.gpu_procs || [];
+                    if (procs.length === 0) {
+                        procsEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85em;padding:8px 0">No GPU processes.</p>';
+                    } else {
+                        procsEl.innerHTML = `
+                            <div style="display:grid;grid-template-columns:60px 60px 90px 1fr 120px;gap:6px;padding:6px 0;font-size:0.7em;color:var(--text-secondary);border-bottom:1px solid var(--border)">
+                                <div>PID</div><div>GPU</div><div>Agent</div><div>Command</div><div>VRAM</div>
+                            </div>
+                            ${procs.map(p => `
+                                <div style="display:grid;grid-template-columns:60px 60px 90px 1fr 120px;gap:6px;padding:5px 0;border-bottom:1px solid rgba(148,163,184,0.05);align-items:center;">
+                                    <div>${p.pid}</div>
+                                    <div><span style="padding:1px 6px;border-radius:3px;background:rgba(96,165,250,0.15);color:var(--primary);">GPU ${p.gpu}</span></div>
+                                    <div style="font-weight:600;">${p.agent || '-'}</div>
+                                    <div style="color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(p.cmd||'').replace(/"/g,'&quot;')}">${p.name || (p.cmd || '').slice(0, 60)}</div>
+                                    <div style="text-align:right;color:${p.mem_mb > 5000 ? '#f59e0b' : 'var(--text-secondary)'};">${p.mem_mb} MB</div>
+                                </div>
+                            `).join('')}
+                        `;
+                    }
+                }
+            } catch (e) { console.log('resources fetch:', e.message); }
         }
 
         // === INITIALIZE ===
