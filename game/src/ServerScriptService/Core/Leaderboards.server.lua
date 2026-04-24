@@ -14,10 +14,11 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 -- ══════════════════════════════════════════════
 
 local boards = {
-	MolCoins    = DataStoreService:GetOrderedDataStore("LB_MolCoins_v1"),
-	Elements    = DataStoreService:GetOrderedDataStore("LB_Elements_v1"),
-	Molecules   = DataStoreService:GetOrderedDataStore("LB_Molecules_v1"),
-	ChainTokens = DataStoreService:GetOrderedDataStore("LB_Chain_v1"),
+	MolCoins     = DataStoreService:GetOrderedDataStore("LB_MolCoins_v1"),
+	Elements     = DataStoreService:GetOrderedDataStore("LB_Elements_v1"),
+	Molecules    = DataStoreService:GetOrderedDataStore("LB_Molecules_v1"),
+	ChainTokens  = DataStoreService:GetOrderedDataStore("LB_Chain_v1"),
+	ProductSales = DataStoreService:GetOrderedDataStore("LB_ProductSales_v1"), -- #67
 }
 
 -- ══════════════════════════════════════════════
@@ -153,10 +154,13 @@ task.spawn(function()
 			local molecules = player:GetAttribute("MoleculeCount") or 0
 			local chainTokens = player:GetAttribute("ChainTokens") or 0
 
+			local productSales = player:GetAttribute("ProductSales") or 0  -- #67
+
 			if molCoins > 0 then UpdateLeaderboard(player, "MolCoins", molCoins) end
 			if elements > 0 then UpdateLeaderboard(player, "Elements", elements) end
 			if molecules > 0 then UpdateLeaderboard(player, "Molecules", molecules) end
 			if chainTokens > 0 then UpdateLeaderboard(player, "ChainTokens", chainTokens) end
+			if productSales > 0 then UpdateLeaderboard(player, "ProductSales", productSales) end
 		end
 	end
 end)
@@ -264,4 +268,4 @@ task.spawn(function()
 	end
 end)
 
-print("[MOLGANG] Leaderboards initialized - 4 categories")
+print("[MOLGANG] Leaderboards initialized - 5 categories (+ ProductSales)")

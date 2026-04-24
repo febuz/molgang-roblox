@@ -255,13 +255,41 @@ createQuickBtn("P Table", COLORS.accent, "PeriodicTableGui")
 createQuickBtn("Dash", Color3.fromRGB(80, 150, 255), "DashboardGui")
 createQuickBtn("Quests", Color3.fromRGB(200, 140, 50), "QuestTrackerGui")
 
+-- ── Save indicator (#76) ──
+
+local saveLabel = Instance.new("TextLabel")
+saveLabel.Size = UDim2.new(1, -16, 0, 14)
+saveLabel.Position = UDim2.new(0, 8, 1, -34)
+saveLabel.BackgroundTransparency = 1
+saveLabel.Text = "Saved"
+saveLabel.TextColor3 = Color3.fromRGB(60, 120, 60)
+saveLabel.TextScaled = true
+saveLabel.Font = Enum.Font.Gotham
+saveLabel.TextXAlignment = Enum.TextXAlignment.Center
+saveLabel.TextTransparency = 0.5
+saveLabel.Parent = widget
+
+-- Flash "Saving..." periodically
+task.spawn(function()
+	while true do
+		task.wait(30)
+		saveLabel.Text = "Saving..."
+		saveLabel.TextColor3 = Color3.fromRGB(200, 200, 100)
+		saveLabel.TextTransparency = 0
+		task.wait(1.5)
+		saveLabel.Text = "Saved"
+		saveLabel.TextColor3 = Color3.fromRGB(60, 120, 60)
+		saveLabel.TextTransparency = 0.5
+	end
+end)
+
 -- ── Teaser version badge ──
 
 local versionLabel = Instance.new("TextLabel")
 versionLabel.Size = UDim2.new(1, -16, 0, 16)
 versionLabel.Position = UDim2.new(0, 8, 1, -18)
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "MOLGANG ChemEng Sim v0.2"
+versionLabel.Text = "MOLGANG ChemEng Sim Beta"
 versionLabel.TextColor3 = Color3.fromRGB(70, 75, 90)
 versionLabel.TextScaled = true
 versionLabel.Font = Enum.Font.Gotham

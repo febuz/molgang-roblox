@@ -289,6 +289,23 @@ function updateDashboard()
 	end
 end
 
+-- Quick Quiz button (#84)
+local quizBtn = Instance.new("TextButton")
+quizBtn.Size = UDim2.new(0.45, -10, 0, 36)
+quizBtn.Position = UDim2.new(0, 10, 1, -50)
+quizBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 200)
+quizBtn.Text = "Start Chemistry Quiz"
+quizBtn.TextColor3 = Color3.new(1,1,1)
+quizBtn.TextScaled = true
+quizBtn.Font = Enum.Font.GothamBold
+quizBtn.Parent = dashboardPanel
+createCorner(quizBtn, 6)
+
+quizBtn.MouseButton1Click:Connect(function()
+	local r = Remotes:FindFirstChild("RequestQuizQuestion")
+	if r then r:FireServer() end
+end)
+
 PlayerDataLoaded.OnClientEvent:Connect(updateDashboard)
 
 -- Update every frame to catch changes

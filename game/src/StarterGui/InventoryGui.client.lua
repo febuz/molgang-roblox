@@ -97,6 +97,58 @@ closeBtn.TextScaled = true
 closeBtn.Parent = header
 createCorner(closeBtn, 6)
 
+-- Sort buttons (#70)
+local currentSort = "name" -- "name", "quantity", "rarity"
+local sortFrame = Instance.new("Frame")
+sortFrame.Size = UDim2.new(0.5, 0, 0, 28)
+sortFrame.Position = UDim2.new(0.48, 0, 0, 60)
+sortFrame.BackgroundTransparency = 1
+sortFrame.Parent = mainPanel
+
+local sortLabel = Instance.new("TextLabel")
+sortLabel.Size = UDim2.new(0.25, 0, 1, 0)
+sortLabel.BackgroundTransparency = 1
+sortLabel.Text = "Sort:"
+sortLabel.TextColor3 = COLORS.textSecondary
+sortLabel.TextScaled = true
+sortLabel.Font = Enum.Font.Gotham
+sortLabel.Parent = sortFrame
+
+for si, sortMode in ipairs({"name", "quantity", "rarity"}) do
+	local sb = Instance.new("TextButton")
+	sb.Size = UDim2.new(0.24, -2, 1, 0)
+	sb.Position = UDim2.new(0.25 + (si - 1) * 0.25, 0, 0, 0)
+	sb.BackgroundColor3 = sortMode == "name" and COLORS.accent or Color3.fromRGB(40, 40, 55)
+	sb.Text = sortMode:sub(1,1):upper() .. sortMode:sub(2)
+	sb.TextColor3 = Color3.new(1,1,1)
+	sb.TextScaled = true
+	sb.Font = Enum.Font.GothamBold
+	sb.Parent = sortFrame
+	createCorner(sb, 4)
+	sb.MouseButton1Click:Connect(function()
+		currentSort = sortMode
+		-- Update button colors
+		for _, child in sortFrame:GetChildren() do
+			if child:IsA("TextButton") then
+				child.BackgroundColor3 = child.Text:lower() == sortMode and COLORS.accent or Color3.fromRGB(40, 40, 55)
+			end
+		end
+		-- Re-sort by updating LayoutOrder on grid children
+		for _, child in gridContainer:GetChildren() do
+			if child:IsA("Frame") and child:GetAttribute("AtomSymbol") then
+				if sortMode == "quantity" then
+					child.LayoutOrder = -(child:GetAttribute("Count") or 0)
+				elseif sortMode == "rarity" then
+					local rarities = {common=5, uncommon=4, rare=3, epic=2, legendary=1}
+					child.LayoutOrder = rarities[child:GetAttribute("Rarity") or "common"] or 5
+				else
+					child.LayoutOrder = 0 -- default name sort
+				end
+			end
+		end
+	end)
+end
+
 -- Atom grid container
 local gridContainer = Instance.new("ScrollingFrame")
 gridContainer.Name = "GridContainer"
@@ -145,6 +197,11 @@ local function displayAtomSlot(symbol, count)
 	slot.BackgroundTransparency = 0.3
 	slot.Parent = gridContainer
 	createCorner(slot, 8)
+
+	-- Sort attributes (#70)
+	slot:SetAttribute("AtomSymbol", symbol)
+	slot:SetAttribute("Count", count)
+	slot:SetAttribute("Rarity", elemData.rarity or "common")
 
 	-- Atom symbol
 	local symbolLabel = Instance.new("TextLabel")
