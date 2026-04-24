@@ -26,6 +26,8 @@ import { AdvancedAnalytics } from './analytics/advanced-analytics';
 import { BackupManager } from './automation/backup-manager';
 import { AuditLogger } from './security/audit-logger';
 import VitalsService from './vitals/vitals-service';
+import InferenceAudit from './vitals/inference-audit';
+import SelfRepair from './vitals/self-repair';
 import { EntityModel } from './integrations/numerai/entity-model';
 import NumeraiDataFetcher from './integrations/numerai/data-fetcher';
 import OpenClawEDBBridge from './integrations/numerai/openclaw-edb-bridge';
@@ -909,7 +911,12 @@ async function initialize() {
     //     as a child so the JSONL keeps updating. Routes wired below.
     const vitals = new VitalsService();
     if (vitals.isGpuEnabled()) vitals.startMonitor(30);
-    setupVitalsRoutes(app, vitals);
+    const inferenceAudit = new InferenceAudit();
+    const selfRepair = new SelfRepair(inferenceAudit);
+    if (vitals.isGpuEnabled() && (process.env.SELF_REPAIR_ENABLED ?? 'true').toLowerCase() !== 'false') {
+      selfRepair.start(60_000);
+    }
+    setupVitalsRoutes(app, vitals, inferenceAudit, selfRepair);
 
     // 7. Start server
     server.listen(PORT, () => {
@@ -937,6 +944,9 @@ async function initialize() {
  */
 function setupRoutes(app: express.Express, components: any) {
   const { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, authSystem, ceoAuditLogger, specialistDashboards, entityModel, dataFetcher, edbConfig } = components;
+
+  // Local inference audit instance for this routes module
+  const inferenceAudit = new InferenceAudit();
 
   // ========== Agent Memory API (with caching + rate limiting) ==========
 
@@ -1815,9 +1825,32 @@ function setupRoutes(app: express.Express, components: any) {
   });
 
   app.post('/api/models/inference', async (req, res) => {
-    try {
-      const { model, prompt, max_tokens } = req.body;
+    const startTs = Date.now();
+    const { model, prompt, max_tokens } = req.body;
+    const caller = String(req.header('x-agent-id') || req.header('x-caller') || req.ip || 'anonymous');
+    // Snapshot loaded models BEFORE the request to detect a "triggered_load".
+    const loadedBefore = await InferenceAudit.loadedModels();
 
+    const writeAudit = async (ok: boolean, tokensP: number, tokensC: number, err?: string) => {
+      try {
+        const triggered = ok ? await InferenceAudit.checkLoadTrigger(model, loadedBefore) : false;
+        await inferenceAudit.record({
+          ts: new Date(startTs).toISOString(),
+          caller, model,
+          prompt_head: typeof prompt === 'string' ? prompt.slice(0, 200) : '',
+          prompt_hash: InferenceAudit.hashPrompt(String(prompt ?? '')),
+          max_tokens: Number(max_tokens || 2048),
+          tokens_prompt: tokensP,
+          tokens_completion: tokensC,
+          latency_ms: Date.now() - startTs,
+          triggered_load: triggered,
+          success: ok,
+          error: err,
+        });
+      } catch { /* audit never blocks the response */ }
+    };
+
+    try {
       const response = await fetch('http://localhost:11434/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1834,6 +1867,7 @@ function setupRoutes(app: express.Express, components: any) {
       } as any);
 
       if (!response.ok) {
+        await writeAudit(false, 0, 0, `upstream ${response.status}`);
         return res.status(503).json({
           success: false,
           error: 'Local inference failed - ensure Ollama is running'
@@ -1841,6 +1875,7 @@ function setupRoutes(app: express.Express, components: any) {
       }
 
       const data: any = await response.json();
+      await writeAudit(true, data?.prompt_eval_count || 0, data?.eval_count || 0);
       return res.json({
         success: true,
         response: data?.response || '',
@@ -1852,6 +1887,7 @@ function setupRoutes(app: express.Express, components: any) {
         }
       });
     } catch (error: any) {
+      await writeAudit(false, 0, 0, error?.message || 'unknown');
       return res.status(503).json({
         success: false,
         error: 'Ollama service unavailable'
@@ -2071,7 +2107,7 @@ function setupWebSocketHandlers(io: SocketIOServer, components: any) {
  * All endpoints are safe when GPU_ENABLED=false (snapshot drops GPU fields,
  * gpu/clean returns 503).
  */
-function setupVitalsRoutes(app: express.Express, vitals: VitalsService) {
+function setupVitalsRoutes(app: express.Express, vitals: VitalsService, audit?: InferenceAudit, repair?: SelfRepair) {
   app.get('/api/vitals', async (_req, res) => {
     try {
       const snap = await vitals.getSnapshot();
@@ -2128,7 +2164,44 @@ function setupVitalsRoutes(app: express.Express, vitals: VitalsService) {
   app.post('/api/gpu/enable',  (_req, res) => { vitals.setGpuEnabled(true);  res.json({ success: true, gpu_enabled: true }); });
   app.post('/api/gpu/disable', (_req, res) => { vitals.setGpuEnabled(false); res.json({ success: true, gpu_enabled: false }); });
 
-  logger.info('✓ Vitals/GPU routes wired: /api/vitals, /api/vitals/history, /api/vitals/gpu, POST /api/gpu/{clean,enable,disable}');
+  if (audit) {
+    app.get('/api/vitals/inference-log', async (req, res) => {
+      try {
+        const events = await audit.query({
+          caller: req.query.caller as string | undefined,
+          model:  req.query.model as string | undefined,
+          since:  req.query.since as string | undefined,
+          limit:  req.query.limit ? Number(req.query.limit) : 100,
+        });
+        res.json({ success: true, count: events.length, events });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+  }
+
+  if (repair) {
+    app.get('/api/vitals/repair-log', async (req, res) => {
+      try {
+        const limit = req.query.limit ? Number(req.query.limit) : 50;
+        const events = await repair.getRecent(limit);
+        res.json({ success: true, mode: repair.getMode(), count: events.length, events });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
+    app.post('/api/vitals/repair-mode', (req, res) => {
+      const mode = String(req.body?.mode || req.query.mode || '').toLowerCase();
+      if (mode !== 'observe' && mode !== 'act') {
+        res.status(400).json({ success: false, error: "mode must be 'observe' or 'act'" });
+        return;
+      }
+      repair.setMode(mode as any);
+      res.json({ success: true, mode });
+    });
+  }
+
+  logger.info('✓ Vitals/GPU routes wired: /api/vitals, /api/vitals/history, /api/vitals/gpu, /api/vitals/inference-log, /api/vitals/repair-log, POST /api/gpu/{clean,enable,disable}, POST /api/vitals/repair-mode');
 }
 
 // Start the system
