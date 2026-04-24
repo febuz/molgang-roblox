@@ -253,6 +253,14 @@
             border-radius: 10px;
             padding: 20px;
             backdrop-filter: blur(10px);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 8px 24px rgba(96, 165, 250, 0.15);
         }
 
         .agent-header {
@@ -443,6 +451,68 @@
             font-weight: 600;
         }
 
+        /* CLICKABLE STAT CARDS */
+        .stat-card.clickable {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .stat-card.clickable:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.2);
+        }
+        .stat-card.clickable.active-filter {
+            border-color: var(--primary);
+            background: rgba(96, 165, 250, 0.1);
+        }
+
+        /* TASK ITEMS */
+        .task-row {
+            padding: 12px;
+            background: rgba(30, 41, 59, 0.6);
+            border-left: 3px solid var(--primary);
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+        }
+        .task-row:hover {
+            background: rgba(96, 165, 250, 0.1);
+            transform: translateX(4px);
+        }
+
+        /* SUBTASK CHECKLIST */
+        .subtask-item {
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .subtask-check {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 2px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            flex-shrink: 0;
+        }
+        .subtask-check.done {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
         /* RESPONSIVE */
         @media (max-width: 768px) {
             .layout {
@@ -539,6 +609,14 @@
                     <div class="nav-icon">🎮</div>
                     <div>MOLGANG</div>
                 </div>
+                <div class="nav-item" data-page="tokens">
+                    <div class="nav-icon">📊</div>
+                    <div>Token Usage</div>
+                </div>
+                <div class="nav-item" data-page="social">
+                    <div class="nav-icon">👥</div>
+                    <div>Agent Profiles</div>
+                </div>
                 <div class="nav-item" data-page="system">
                     <div class="nav-icon">🔧</div>
                     <div>System Status</div>
@@ -557,19 +635,24 @@
 
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Version</div>
-                        <div class="stat-value" id="stat-version">3.2</div>
-                        <div class="stat-change">Enterprise Edition</div>
+                        <div class="stat-label">Total Tasks</div>
+                        <div class="stat-value" id="stat-total">--</div>
+                        <div class="stat-change">Backlog items</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">Daily Updates</div>
-                        <div class="stat-value" id="stat-daily-updates">147</div>
-                        <div class="stat-change">System events/day</div>
+                        <div class="stat-label">Completed</div>
+                        <div class="stat-value" style="color: var(--success);" id="stat-completed">--</div>
+                        <div class="stat-change">Delivered</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">QWEN Tokens Used</div>
-                        <div class="stat-value" id="stat-qwen">847K</div>
-                        <div class="stat-change">of 1M daily budget</div>
+                        <div class="stat-label">In Progress</div>
+                        <div class="stat-value" style="color: var(--warning);" id="stat-inprogress">--</div>
+                        <div class="stat-change">Active work</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value" id="stat-pending">--</div>
+                        <div class="stat-change">Queued</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">System Uptime</div>
@@ -580,6 +663,11 @@
                         <div class="stat-label">Cache Hit Rate</div>
                         <div class="stat-value" id="stat-cache">87%</div>
                         <div class="stat-change">Optimization level</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Cost Savings</div>
+                        <div class="stat-value" id="stat-savings">87%</div>
+                        <div class="stat-change">vs. direct API</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Student Capacity</div>
@@ -804,34 +892,76 @@
                 </div>
             </div>
 
-            <!-- MOLGANG PAGE -->
+            <!-- MOLGANG PAGE (Live game development) -->
             <div class="content-section" id="molgang">
                 <div class="page-header">
-                    <div class="page-title">🎮 MOLGANG Game</div>
-                    <div class="page-subtitle">Web version development and integration</div>
+                    <div class="page-title">🎮 MOLGANG Web Game</div>
+                    <div class="page-subtitle">Live development progress — agents building the game in real-time</div>
+                </div>
+
+                <div class="card" style="margin-bottom: 20px; text-align: center; padding: 25px;">
+                    <div style="font-size: 2em; margin-bottom: 10px;">⚗️</div>
+                    <h2 style="color: var(--primary); margin-bottom: 8px;">Chemical Engineering Simulator</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;">Collect atoms, synthesize molecules, learn chemistry. Mouse-controlled interactive lab.</p>
+                    <a href="/game" target="_blank" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 1.1em; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 15px rgba(96,165,250,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                        🎮 Play Demo
+                    </a>
+                </div>
+
+                <div id="game-stats-bar" class="stats-grid" style="margin-bottom: 20px;">
+                    <div class="stat-card"><div class="stat-label">Overall Progress</div><div class="stat-value" id="game-overall">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Sprint</div><div class="stat-value" id="game-sprint">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Tasks Completed</div><div class="stat-value" style="color: var(--success);" id="game-completed">--</div></div>
+                    <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value" style="color: var(--warning);" id="game-inprog">--</div></div>
                 </div>
 
                 <div class="card">
-                    <div class="card-title">🎯 Game Features</div>
-                    <ul style="list-style: none; color: var(--text-secondary);">
-                        <li style="margin-bottom: 10px;">✅ Quantum Computing Trading System</li>
-                        <li style="margin-bottom: 10px;">✅ Steel Factory Tycoon Gameplay</li>
-                        <li style="margin-bottom: 10px;">✅ GTA6-style Physics & Realism</li>
-                        <li style="margin-bottom: 10px;">✅ Multiplayer Racing Mechanics</li>
-                        <li style="margin-bottom: 10px;">✅ Character Customization (M/F)</li>
-                        <li style="margin-bottom: 10px;">✅ Chemistry Education Track</li>
-                        <li style="margin-bottom: 10px;">✅ Superhero Adventure Path</li>
-                    </ul>
+                    <div class="card-title">🗺️ Game Zones</div>
+                    <div id="game-zones" style="display: grid; gap: 12px;"></div>
                 </div>
 
                 <div class="card">
-                    <div class="card-title">🔗 Quick Links</div>
-                    <a href="http://localhost:3000" style="display: inline-block; margin-right: 10px; padding: 10px 20px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none;">
-                        🎮 Play Game
-                    </a>
-                    <a href="https://github.com/febuz/molgang-web" style="display: inline-block; padding: 10px 20px; background: var(--secondary); color: white; border-radius: 6px; text-decoration: none;">
-                        📦 GitHub Repo
-                    </a>
+                    <div class="card-title">⚙️ Game Systems</div>
+                    <div id="game-systems" style="display: grid; gap: 12px;"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🔧 Infrastructure & Art & Optimization</div>
+                    <div id="game-infra" style="display: grid; gap: 12px;"></div>
+                </div>
+            </div>
+
+            <!-- TOKEN USAGE PAGE -->
+            <div class="content-section" id="tokens">
+                <div class="page-header">
+                    <div class="page-title">📊 Token Usage & Model Costs</div>
+                    <div class="page-subtitle">Per-agent model consumption — hourly, daily, monthly</div>
+                </div>
+                <div id="token-combined" class="stats-grid" style="margin-bottom:20px"></div>
+                <div class="card" id="token-agents-card"><div class="card-title">👥 Per-Agent Usage</div><div id="token-agents"></div></div>
+                <div class="card" style="margin-top:16px"><div class="card-title">📈 Hourly Token Usage (24h)</div><div id="token-hourly-chart" style="height:120px;display:flex;align-items:flex-end;gap:2px;padding-top:10px"></div></div>
+                <div class="card" style="margin-top:16px"><div class="card-title">🕐 Recent Model Calls</div><div id="token-events" style="max-height:300px;overflow-y:auto"></div></div>
+            </div>
+
+            <!-- AGENT SOCIAL HUB (Facebook/LinkedIn-style) -->
+            <div class="content-section" id="social">
+                <div class="page-header">
+                    <div class="page-title">👥 Agent Profiles</div>
+                    <div class="page-subtitle">Where the VirtualPC team lets their creativity flow. Click an agent to open their feed.</div>
+                </div>
+                <div id="social-layout" style="display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start;">
+                    <!-- Left column: roster -->
+                    <div class="card" style="padding:12px;">
+                        <div class="card-title" style="font-size:0.85em;">Roster</div>
+                        <div id="social-roster" style="display:grid; gap:8px;"></div>
+                    </div>
+                    <!-- Right column: feed for selected agent -->
+                    <div id="social-feed-wrap">
+                        <div class="card" id="social-feed-empty" style="text-align:center; padding:40px 20px; color:var(--text-secondary);">
+                            Select an agent from the roster to view their feed.
+                        </div>
+                        <div id="social-feed" style="display:none;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -858,128 +988,40 @@
                         <div class="stat-value" style="color: var(--success);">✓</div>
                         <div class="stat-change">Ready</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Kafka</div>
-                        <div class="stat-value" style="color: var(--warning);">⚠</div>
-                        <div class="stat-change">Dev Mode</div>
-                    </div>
                 </div>
 
                 <div class="card">
                     <div class="card-title">Component Status</div>
                     <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">✓ Operational:</strong> API, Database, Caching</p>
-                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">⚠ Dev Mode:</strong> Message Queue (Kafka)</p>
-                        <p><strong style="color: var(--primary);">📊 Status:</strong> 87% operational, all critical systems running</p>
+                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">✓ Operational:</strong> API Server, Neo4j Database, Redis Cache</p>
+                        <p><strong style="color: var(--primary);">📊 Status:</strong> All critical systems running</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- FILL PAGE -->
-            <div class="content-section" id="fill">
-                <div class="page-header">
-                    <div class="page-title">👑 Fill - CEO</div>
-                    <div class="page-subtitle">Ultimate authority and strategic direction</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Authority & Responsibilities</div>
-                    <ul style="list-style: none; color: var(--text-secondary);">
-                        <li style="margin-bottom: 10px;">👑 Ultimate decision-making authority</li>
-                        <li style="margin-bottom: 10px;">🎯 Strategic vision for 1M+ students</li>
-                        <li style="margin-bottom: 10px;">💰 Resource allocation & budgeting</li>
-                        <li style="margin-bottom: 10px;">🔐 Override all other decisions</li>
-                        <li style="margin-bottom: 10px;">📊 Performance metrics & KPIs</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title">Current Focus</div>
-                    <p style="color: var(--text-secondary);">Educating 1M+ students globally through MOLGANG game integration</p>
-                </div>
-            </div>
-
-            <!-- KAI PAGE -->
-            <div class="content-section" id="kai">
-                <div class="page-header">
-                    <div class="page-title">⚡ Kai - CTO</div>
-                    <div class="page-subtitle">Infrastructure and technical systems</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Backlog (5 Active Tasks)</div>
+                <div class="card" style="border-left: 3px solid var(--warning);">
+                    <div class="card-title">⚠ Dev Mode</div>
                     <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;">✅ GitHub repository creation</p>
-                        <p style="margin-bottom: 8px;">⏳ OpenClaw integration</p>
-                        <p style="margin-bottom: 8px;">⏳ QWEN API integration</p>
-                        <p style="margin-bottom: 8px;">⏳ Docker optimization</p>
-                        <p>⏳ Neo4j scaling</p>
+                        <p style="margin-bottom: 8px;"><strong style="color: var(--warning);">Kafka Message Queue</strong> — disabled in development mode, running single-node.</p>
+                        <p style="font-size: 0.85em;">Topics configured: agent.tasks, agent.results, model.requests, model.responses, lightrag.updates, game.events, system.alerts</p>
+                        <p style="font-size: 0.85em; margin-top: 6px;">Enable with <code style="background:rgba(30,58,95,0.3);padding:1px 6px;border-radius:3px">docker-compose up kafka</code></p>
                     </div>
-                </div>
-                <div class="progress-bar" style="margin: 20px 0;">
-                    <div class="progress-fill" style="width: 90%"></div>
                 </div>
             </div>
 
-            <!-- ZIP PAGE -->
-            <div class="content-section" id="zip">
-                <div class="page-header">
-                    <div class="page-title">💻 Zip - Developer</div>
-                    <div class="page-subtitle">Feature implementation and game mechanics</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Backlog (4 Active Tasks)</div>
-                    <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;">⏳ Real task status endpoint</p>
-                        <p style="margin-bottom: 8px;">⏳ Advanced gameplay features</p>
-                        <p style="margin-bottom: 8px;">⏳ Real-time dashboard</p>
-                        <p>⏳ Performance monitoring</p>
-                    </div>
-                </div>
-                <div class="progress-bar" style="margin: 20px 0;">
-                    <div class="progress-fill" style="width: 75%"></div>
-                </div>
-            </div>
+            <!-- AGENT PROFILE PAGE (Dynamic - populated by JS) -->
+            <div class="content-section" id="fill"><div id="fill-content"></div></div>
+            <div class="content-section" id="kai"><div id="kai-content"></div></div>
+            <div class="content-section" id="zip"><div id="zip-content"></div></div>
+            <div class="content-section" id="mira"><div id="mira-content"></div></div>
+            <div class="content-section" id="luna"><div id="luna-content"></div></div>
+        </div>
+    </div>
 
-            <!-- MIRA PAGE -->
-            <div class="content-section" id="mira">
-                <div class="page-header">
-                    <div class="page-title">🎨 Mira - Creative Director</div>
-                    <div class="page-subtitle">All visual, audio, and motion assets (2D-5D)</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Creative Domains</div>
-                    <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">2D:</strong> UI graphics, buttons, icons, dashboards</p>
-                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">3D:</strong> Character models, environments, props</p>
-                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">4D:</strong> Music, SFX, voice acting, audio mixing</p>
-                        <p><strong style="color: var(--primary);">5D:</strong> Animations, motion graphics, VFX</p>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Current Focus</div>
-                    <p style="color: var(--text-secondary);">🎯 VirtualPC Dashboard Design (6-8 hours)</p>
-                </div>
-                <div class="progress-bar" style="margin: 20px 0;">
-                    <div class="progress-fill" style="width: 50%"></div>
-                </div>
-            </div>
-
-            <!-- LUNA PAGE -->
-            <div class="content-section" id="luna">
-                <div class="page-header">
-                    <div class="page-title">✨ Luna - Tech Artist</div>
-                    <div class="page-subtitle">Performance optimization and visual effects</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Backlog (3 Active Tasks)</div>
-                    <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;">⏳ MOLGANG sync & optimization</p>
-                        <p style="margin-bottom: 8px;">⏳ Advanced gameplay features</p>
-                        <p>⏳ Performance optimization</p>
-                    </div>
-                </div>
-                <div class="progress-bar" style="margin: 20px 0;">
-                    <div class="progress-fill" style="width: 73%"></div>
-                </div>
-            </div>
+    <!-- TASK DETAIL MODAL -->
+    <div id="task-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center;">
+        <div style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 30px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; position: relative;">
+            <button onclick="closeTaskModal()" style="position:absolute; top:12px; right:16px; background:none; border:none; color:var(--text-secondary); font-size:1.5em; cursor:pointer;">&times;</button>
+            <div id="task-modal-content"></div>
         </div>
     </div>
 
@@ -999,33 +1041,529 @@
     </div>
 
     <script>
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                // Remove active from all items
-                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                // Add active to clicked item
-                item.classList.add('active');
+        // === AGENT PROFILE DATA ===
+        const agentProfiles = {
+            fill: {
+                name: 'Fill', avatar: '👑', role: 'CEO - Strategic Leadership',
+                subtitle: 'Ultimate authority and strategic direction',
+                color: '#fbbf24',
+                characteristics: [
+                    { label: 'Leadership', value: 95 },
+                    { label: 'Strategy', value: 98 },
+                    { label: 'Decision Making', value: 92 },
+                    { label: 'Communication', value: 88 },
+                    { label: 'Vision', value: 97 }
+                ],
+                responsibilities: [
+                    '👑 Ultimate decision-making authority',
+                    '🎯 Strategic vision for 1M+ students',
+                    '💰 Resource allocation & budgeting',
+                    '🔐 Override all other decisions',
+                    '📊 Performance metrics & KPIs'
+                ],
+                specialties: ['Corporate Strategy', 'Team Leadership', 'Budget Planning', 'Stakeholder Management']
+            },
+            kai: {
+                name: 'Kai', avatar: '⚡', role: 'CTO - Infrastructure & Systems',
+                subtitle: 'Architecture, DevOps, and technical systems',
+                color: '#a78bfa',
+                characteristics: [
+                    { label: 'Backend', value: 96 },
+                    { label: 'DevOps', value: 94 },
+                    { label: 'Architecture', value: 97 },
+                    { label: 'Security', value: 91 },
+                    { label: 'Databases', value: 93 }
+                ],
+                responsibilities: [
+                    '⚡ Backend systems & APIs',
+                    '🗄️ Database & caching (Neo4j, Redis)',
+                    '🐳 Docker & Kubernetes deployment',
+                    '🔐 Security & authentication',
+                    '📡 Kafka message queue orchestration'
+                ],
+                specialties: ['TypeScript/Node.js', 'Neo4j/Redis', 'Docker/K8s', 'CI/CD Pipelines']
+            },
+            zip: {
+                name: 'Zip', avatar: '💻', role: 'Lead Developer - Features & Gameplay',
+                subtitle: 'Feature implementation and game mechanics',
+                color: '#22c55e',
+                characteristics: [
+                    { label: 'Coding Speed', value: 98 },
+                    { label: 'Problem Solving', value: 94 },
+                    { label: 'Game Logic', value: 92 },
+                    { label: 'API Design', value: 90 },
+                    { label: 'Testing', value: 87 }
+                ],
+                responsibilities: [
+                    '💻 Feature implementation & APIs',
+                    '🎮 Game mechanics (PvP, Battle Pass, Shop)',
+                    '📊 Real-time dashboard endpoints',
+                    '🏆 Leaderboard & ranking systems',
+                    '⚡ Performance optimization'
+                ],
+                specialties: ['React/TypeScript', 'Game Systems', 'REST APIs', 'WebSocket']
+            },
+            mira: {
+                name: 'Mira', avatar: '🎨', role: 'Creative Director - Visual & Audio',
+                subtitle: 'All visual, audio, and motion assets (2D-5D)',
+                color: '#ec4899',
+                characteristics: [
+                    { label: 'Visual Design', value: 97 },
+                    { label: 'UI/UX', value: 95 },
+                    { label: '3D Modeling', value: 88 },
+                    { label: 'Animation', value: 91 },
+                    { label: 'Branding', value: 94 }
+                ],
+                responsibilities: [
+                    '🎨 2D: UI graphics, icons, dashboards',
+                    '🏗️ 3D: Character models, environments, props',
+                    '🎵 4D: Music, SFX, voice acting, audio mixing',
+                    '✨ 5D: Animations, motion graphics, VFX',
+                    '🎯 Brand identity & style guides'
+                ],
+                specialties: ['Figma/Sketch', 'Blender/Maya', 'After Effects', 'Brand Design']
+            },
+            luna: {
+                name: 'Luna', avatar: '✨', role: 'Tech Artist - Performance & VFX',
+                subtitle: 'Performance optimization and visual effects',
+                color: '#06b6d4',
+                characteristics: [
+                    { label: 'Optimization', value: 96 },
+                    { label: 'Shader Dev', value: 93 },
+                    { label: 'VFX', value: 94 },
+                    { label: 'Asset Pipeline', value: 91 },
+                    { label: 'Cross-Platform', value: 89 }
+                ],
+                responsibilities: [
+                    '✨ Performance profiling & optimization',
+                    '🖥️ Asset optimization for all platforms',
+                    '🎭 Shader development & VFX',
+                    '📱 Mobile (iOS/Android) optimization',
+                    '🔄 MOLGANG sync & integration'
+                ],
+                specialties: ['Performance Tuning', 'Shader Programming', 'Asset Pipeline', 'Mobile Optimization']
+            }
+        };
 
-                // Hide all sections
-                document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-                // Show selected section
-                const pageId = item.getAttribute('data-page');
-                document.getElementById(pageId).classList.add('active');
-            });
+        // === NAVIGATION ===
+        function navigateTo(pageId) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+
+            const navItem = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+            if (navItem) navItem.classList.add('active');
+
+            const section = document.getElementById(pageId);
+            if (section) section.classList.add('active');
+
+            // Load agent profile if it's an agent page
+            if (agentProfiles[pageId]) {
+                loadAgentProfile(pageId);
+            }
+            // Refresh game page data
+            if (pageId === 'molgang') {
+                loadGamePage();
+            }
+            // Refresh token usage
+            if (pageId === 'tokens') {
+                loadTokenPage();
+            }
+            // Refresh backlog data
+            if (pageId === 'backlog') {
+                loadBacklog();
+            }
+            // Load agent social hub
+            if (pageId === 'social') {
+                loadSocialHub();
+            }
+        }
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => navigateTo(item.getAttribute('data-page')));
         });
 
-        // Paperclip Tips
+        // Make agent cards in the agents grid clickable
+        document.querySelectorAll('.agent-card[data-agent]').forEach(card => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', () => navigateTo(card.getAttribute('data-agent')));
+        });
+
+        // === TASK DETAIL MODAL ===
+        function closeTaskModal() {
+            document.getElementById('task-modal').style.display = 'none';
+        }
+        // Close on backdrop click
+        document.getElementById('task-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeTaskModal();
+        });
+        // Close on Escape
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTaskModal(); });
+
+        async function openTaskDetail(taskId) {
+            try {
+                const res = await fetch(`/api/backlog/item/${taskId}`);
+                const data = await res.json();
+                if (!data.success || !data.item) {
+                    console.log('Task not found:', taskId);
+                    return;
+                }
+                const item = data.item;
+                const priorityColors = { critical: '#ef4444', high: '#f59e0b', medium: '#3b82f6', low: '#22c55e' };
+                const statusColors = { 'in-progress': '#f59e0b', 'pending': '#94a3b8', 'completed': '#22c55e' };
+                const pColor = priorityColors[item.priority] || '#94a3b8';
+                const sColor = statusColors[item.status] || '#94a3b8';
+
+                const subtasks = item.subtasks || [];
+                const doneCount = item.progress ? Math.round(subtasks.length * item.progress / 100) : 0;
+
+                document.getElementById('task-modal-content').innerHTML = `
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px;">
+                        <span style="font-size:0.75em; padding:4px 10px; border-radius:4px; background:${pColor}22; color:${pColor}; font-weight:600; text-transform:uppercase;">${item.priority}</span>
+                        <span style="font-size:0.75em; padding:4px 10px; border-radius:4px; background:${sColor}22; color:${sColor}; font-weight:600; text-transform:uppercase;">${item.status}</span>
+                        <span style="font-size:0.8em; color:var(--text-secondary);">Sprint: ${item.sprint || '-'}</span>
+                    </div>
+                    <h2 style="color:var(--primary); margin-bottom:8px; font-size:1.4em;">${item.title}</h2>
+                    <p style="color:var(--text-secondary); margin-bottom:20px; line-height:1.6;">${item.description}</p>
+
+                    <div class="stats-grid" style="margin-bottom:20px;">
+                        <div class="stat-card"><div class="stat-label">Assigned To</div><div class="stat-value" style="font-size:1.2em;">${item.assigned_to || '-'}</div></div>
+                        <div class="stat-card"><div class="stat-label">Estimated</div><div class="stat-value" style="font-size:1.2em;">${item.estimated_hours || '-'}h</div></div>
+                        <div class="stat-card"><div class="stat-label">Progress</div><div class="stat-value" style="font-size:1.2em; color:var(--primary);">${item.progress || 0}%</div></div>
+                    </div>
+
+                    ${item.progress !== undefined ? `
+                        <div style="margin-bottom:20px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                <span style="color:var(--text-secondary); font-size:0.9em;">Task Progress</span>
+                                <span style="color:var(--primary); font-weight:600;">${item.progress}%</span>
+                            </div>
+                            <div class="progress-bar" style="height:8px;">
+                                <div class="progress-fill" style="width:${item.progress}%;"></div>
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${subtasks.length > 0 ? `
+                        <div style="margin-top:10px;">
+                            <h3 style="color:var(--primary); margin-bottom:12px; font-size:1.1em;">📋 Subtasks (${doneCount}/${subtasks.length})</h3>
+                            ${subtasks.map((st, i) => `
+                                <div class="subtask-item">
+                                    <div class="subtask-check ${i < doneCount ? 'done' : ''}">${i < doneCount ? '✓' : ''}</div>
+                                    <span style="${i < doneCount ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${st}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+
+                    <div style="margin-top:20px; padding-top:15px; border-top:1px solid var(--border); display:flex; justify-content:flex-end;">
+                        <button onclick="closeTaskModal()" style="padding:8px 24px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.9em;">Close</button>
+                    </div>
+                `;
+                document.getElementById('task-modal').style.display = 'flex';
+            } catch (error) {
+                console.log('Task detail error:', error.message);
+            }
+        }
+
+        // === AGENT PROFILE LOADER ===
+        let currentAgentTasks = []; // store tasks for filtering
+        let currentAgentId = '';
+
+        async function loadAgentProfile(agentId) {
+            const profile = agentProfiles[agentId];
+            if (!profile) return;
+            currentAgentId = agentId;
+
+            const container = document.getElementById(`${agentId}-content`);
+            if (!container) return;
+
+            // Fetch live data
+            let progressData = {};
+            let backlogData = {};
+            try {
+                const [progRes, blRes] = await Promise.all([
+                    fetch(`/api/progress/${profile.name}`),
+                    fetch('/api/backlog/per-person')
+                ]);
+                progressData = await progRes.json();
+                backlogData = await blRes.json();
+            } catch (e) { console.log('Agent data fetch error:', e.message); }
+
+            const personBacklog = backlogData[profile.name] || { tasks: [], completed: 0, active: 0, progress: 0 };
+            currentAgentTasks = personBacklog.tasks || [];
+            const progress = progressData.progress || personBacklog.progress || 0;
+            const completed = progressData.completed || personBacklog.completed || 0;
+            const inProg = progressData.inProgress || personBacklog.active || 0;
+            const pending = progressData.pending || 0;
+            const total = progressData.total || (completed + inProg) || 0;
+            const focus = progressData.focus || '';
+
+            container.innerHTML = `
+                <div class="page-header">
+                    <div class="page-title">${profile.avatar} ${profile.name} - ${profile.role.split(' - ')[0]}</div>
+                    <div class="page-subtitle">${profile.subtitle}</div>
+                </div>
+
+                <!-- Profile Card -->
+                <div class="card" style="border-left: 4px solid ${profile.color};">
+                    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
+                        <div style="font-size: 3em; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; background: rgba(96, 165, 250, 0.15); border-radius: 12px;">${profile.avatar}</div>
+                        <div>
+                            <h2 style="color: var(--primary); margin-bottom: 4px;">${profile.name}</h2>
+                            <p style="color: var(--text-secondary);">${profile.role}</p>
+                            <p style="color: ${profile.color}; font-size: 0.85em; margin-top: 4px;">${focus}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        ${profile.specialties.map(s => `<span style="padding: 4px 12px; background: rgba(96, 165, 250, 0.15); border: 1px solid rgba(96, 165, 250, 0.3); border-radius: 20px; font-size: 0.8em; color: var(--primary);">${s}</span>`).join('')}
+                    </div>
+                </div>
+
+                <!-- Progress Stats (clickable filters) -->
+                <div class="stats-grid" id="agent-stat-filters">
+                    <div class="stat-card clickable active-filter" onclick="filterAgentTasks('${agentId}', 'all')">
+                        <div class="stat-label">All Tasks</div>
+                        <div class="stat-value">${total}</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'completed')" style="border-bottom: 3px solid var(--success);">
+                        <div class="stat-label">Completed</div>
+                        <div class="stat-value" style="color: var(--success);">${completed}</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'in-progress')" style="border-bottom: 3px solid var(--warning);">
+                        <div class="stat-label">In Progress</div>
+                        <div class="stat-value" style="color: var(--warning);">${inProg}</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="filterAgentTasks('${agentId}', 'pending')" style="border-bottom: 3px solid var(--text-secondary);">
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value">${pending}</div>
+                    </div>
+                </div>
+
+                <div class="progress-bar" style="margin-bottom: 20px; height: 8px;">
+                    <div class="progress-fill" style="width: ${progress}%; transition: width 1s ease;"></div>
+                </div>
+
+                <!-- Characteristics -->
+                <div class="card">
+                    <div class="card-title">📊 Agent Characteristics</div>
+                    <div style="display: grid; gap: 12px; margin-top: 10px;">
+                        ${profile.characteristics.map(c => `
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                    <span style="color: var(--text-secondary); font-size: 0.9em;">${c.label}</span>
+                                    <span style="color: var(--primary); font-weight: 600; font-size: 0.9em;">${c.value}/100</span>
+                                </div>
+                                <div style="width: 100%; height: 6px; background: rgba(96, 165, 250, 0.15); border-radius: 3px; overflow: hidden;">
+                                    <div style="height: 100%; width: ${c.value}%; background: linear-gradient(90deg, var(--primary), ${profile.color}); border-radius: 3px; transition: width 1s ease;"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Responsibilities -->
+                <div class="card">
+                    <div class="card-title">🎯 Responsibilities</div>
+                    <ul style="list-style: none; color: var(--text-secondary);">
+                        ${profile.responsibilities.map(r => `<li style="margin-bottom: 10px; padding: 8px; background: rgba(96, 165, 250, 0.05); border-radius: 6px;">${r}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <!-- Current Tasks (clickable) -->
+                <div class="card" id="agent-tasks-card">
+                    <div class="card-title" id="agent-tasks-title">📋 All Tasks</div>
+                    <div id="agent-tasks-list"></div>
+                </div>
+
+                <!-- In-Progress Drilldown (only visible when filter = in-progress) -->
+                <div class="card" id="agent-inprogress-drilldown" style="display:none;">
+                    <div class="card-title">🔍 In-Progress — Full Detail</div>
+                    <div id="agent-inprogress-detail"></div>
+                </div>
+
+                <!-- Live CLI Stream (only visible when filter = in-progress) -->
+                <div class="card" id="agent-cli-card" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div class="card-title" style="margin:0;">💻 Live CLI — ${profile.name}</div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span id="cli-live-dot" style="width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e;"></span>
+                            <span style="font-size:0.75em; color:var(--text-secondary);">tailing /api/agents/${profile.name}/cli-log</span>
+                        </div>
+                    </div>
+                    <pre id="agent-cli-stream" style="background:#0a0e1a; color:#e0e0e0; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:0.78em; padding:12px; border-radius:6px; max-height:300px; overflow-y:auto; border:1px solid var(--border); line-height:1.5; margin:0;"></pre>
+                </div>
+            `;
+
+            // Render all tasks initially
+            renderAgentTasks(agentId, 'all');
+        }
+
+        function renderAgentTasks(agentId, filter) {
+            const listEl = document.getElementById('agent-tasks-list');
+            const titleEl = document.getElementById('agent-tasks-title');
+            if (!listEl) return;
+
+            const filterLabels = { 'all': 'All Tasks', 'completed': 'Completed Tasks', 'in-progress': 'In Progress Tasks', 'pending': 'Pending Tasks' };
+            titleEl.textContent = '📋 ' + (filterLabels[filter] || 'All Tasks');
+
+            let filtered = currentAgentTasks;
+            if (filter !== 'all') {
+                filtered = currentAgentTasks.filter(t => t.status === filter);
+            }
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<p style="color: var(--text-secondary); padding: 15px 0;">No ${filter === 'all' ? '' : filter} tasks</p>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(t => {
+                const pColors = { critical: '#ef4444', high: '#f59e0b', medium: '#3b82f6', low: '#22c55e' };
+                const sColors = { 'in-progress': '#f59e0b', 'pending': '#94a3b8', 'completed': '#22c55e' };
+                const pCol = pColors[t.priority] || '#94a3b8';
+                const sCol = sColors[t.status] || '#94a3b8';
+                const hasProgress = t.progress !== undefined && t.status === 'in-progress';
+
+                return `
+                    <div class="task-row" onclick="openTaskDetail('${t.id || ''}')" style="border-left-color: ${pCol};">
+                        <div style="flex:1;">
+                            <div style="color: var(--text-primary); margin-bottom: 4px;">${t.title}</div>
+                            ${t.description ? `<div style="color: var(--text-secondary); font-size: 0.8em; margin-bottom: 4px;">${t.description.substring(0, 80)}${t.description.length > 80 ? '...' : ''}</div>` : ''}
+                            ${hasProgress ? `
+                                <div class="progress-bar" style="height:4px; margin-top:6px; width:200px;">
+                                    <div class="progress-fill" style="width:${t.progress}%;"></div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink:0;">
+                            ${hasProgress ? `<span style="font-size:0.75em; color:var(--primary); font-weight:600;">${t.progress}%</span>` : ''}
+                            <span style="font-size: 0.7em; padding: 2px 8px; border-radius: 4px; background: ${pCol}22; color: ${pCol}; font-weight:600;">${t.priority.toUpperCase()}</span>
+                            <span style="font-size: 0.7em; padding: 2px 8px; border-radius: 4px; background: ${sCol}22; color: ${sCol}; font-weight:600;">${t.status.toUpperCase()}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterAgentTasks(agentId, filter) {
+            // Update active filter styling
+            document.querySelectorAll('#agent-stat-filters .stat-card').forEach(c => c.classList.remove('active-filter'));
+            event.currentTarget.classList.add('active-filter');
+            renderAgentTasks(agentId, filter);
+
+            // Toggle drilldown + CLI panels
+            const drill = document.getElementById('agent-inprogress-drilldown');
+            const cli = document.getElementById('agent-cli-card');
+            const show = (filter === 'in-progress');
+            if (drill) drill.style.display = show ? 'block' : 'none';
+            if (cli) cli.style.display = show ? 'block' : 'none';
+
+            // Start / stop live polling
+            stopAgentLivePolling();
+            if (show) {
+                const profile = agentProfiles[agentId];
+                if (profile) startAgentLivePolling(profile.name);
+            }
+        }
+
+        // === AGENT LIVE STREAM (in-progress detail + CLI log) ===
+        let agentPollTimer = null;
+        let agentPollName = null;
+
+        async function fetchAgentInProgressDetail(name) {
+            try {
+                const r = await fetch(`/api/agents/${name}/in-progress-detail`);
+                const d = await r.json();
+                const wrap = document.getElementById('agent-inprogress-detail');
+                if (!wrap) return;
+                const tasks = d.tasks || [];
+                if (tasks.length === 0) {
+                    wrap.innerHTML = `<p style="color:var(--text-secondary); padding:8px 0;">No in-progress tasks. Agent is idle.</p>`;
+                    return;
+                }
+                wrap.innerHTML = tasks.map(t => `
+                    <div style="margin-bottom:14px; padding:12px; background:rgba(30,58,95,0.25); border-left:3px solid var(--warning); border-radius:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:start; gap:12px; margin-bottom:6px;">
+                            <div>
+                                <div style="font-weight:600; color:var(--text-primary);">${t.title}</div>
+                                <div style="font-size:0.75em; color:var(--text-secondary); margin-top:2px;">
+                                    ${t.id} · sprint ${t.sprint} · ${t.priority.toUpperCase()} · ${t.estimated_hours}h est.
+                                </div>
+                            </div>
+                            <div style="flex-shrink:0; text-align:right;">
+                                <div style="font-size:1.3em; font-weight:700; color:var(--primary);">${t.progress}%</div>
+                                <div style="font-size:0.7em; color:var(--text-secondary);">${t.subtasksDone}/${t.subtasksTotal} subtasks</div>
+                            </div>
+                        </div>
+                        <div style="font-size:0.8em; color:var(--text-secondary); margin-bottom:8px;">${t.description || ''}</div>
+                        ${t.currentSubtask ? `<div style="font-size:0.8em; color:var(--warning); margin-bottom:8px;"><span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--warning); box-shadow:0 0 6px var(--warning); margin-right:6px; vertical-align:middle;"></span>Currently working on: <strong>${t.currentSubtask}</strong></div>` : ''}
+                        <div style="display:grid; gap:4px;">
+                            ${t.subtasks.map(s => `
+                                <div style="display:flex; align-items:center; gap:8px; padding:4px 8px; background:${s.done ? 'rgba(34,197,94,0.08)' : 'rgba(148,163,184,0.05)'}; border-radius:4px; font-size:0.8em;">
+                                    <span style="color:${s.done ? '#22c55e' : '#94a3b8'};">${s.done ? '✓' : '○'}</span>
+                                    <span style="color:${s.done ? 'var(--text-secondary)' : 'var(--text-primary)'}; ${s.done ? 'text-decoration:line-through;' : ''}">${s.name}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { console.log('in-progress-detail fetch:', e.message); }
+        }
+
+        async function fetchAgentCliLog(name) {
+            try {
+                const r = await fetch(`/api/agents/${name}/cli-log?limit=60`);
+                const d = await r.json();
+                const pre = document.getElementById('agent-cli-stream');
+                if (!pre) return;
+                const lines = d.lines || [];
+                if (lines.length === 0) {
+                    pre.textContent = '(no CLI activity yet — commands will appear here as the agent works)';
+                    return;
+                }
+                const colors = { cmd: '#60a5fa', out: '#94a3b8', ok: '#22c55e', warn: '#f59e0b', err: '#ef4444' };
+                // autoscroll if already near bottom
+                const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
+                pre.innerHTML = lines.map(l => {
+                    const hh = new Date(l.ts).toLocaleTimeString('en-GB');
+                    const col = colors[l.level] || '#e0e0e0';
+                    return `<span style="color:#64748b">${hh}</span>  <span style="color:${col}">${escapeHtml(l.line)}</span>`;
+                }).join('\n');
+                if (atBottom) pre.scrollTop = pre.scrollHeight;
+            } catch (e) { console.log('cli-log fetch:', e.message); }
+        }
+
+        function escapeHtml(s) {
+            return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function startAgentLivePolling(name) {
+            agentPollName = name;
+            // immediate fetch
+            fetchAgentInProgressDetail(name);
+            fetchAgentCliLog(name);
+            // then every 2s
+            agentPollTimer = setInterval(() => {
+                if (agentPollName !== name) return;
+                fetchAgentInProgressDetail(name);
+                fetchAgentCliLog(name);
+            }, 2000);
+        }
+
+        function stopAgentLivePolling() {
+            if (agentPollTimer) clearInterval(agentPollTimer);
+            agentPollTimer = null;
+            agentPollName = null;
+        }
+
+        // === PAPERCLIP TIPS ===
         const tips = [
-            "💡 <strong>Tip:</strong> Use the left sidebar to navigate between different views and team members.",
-            "🎯 <strong>Tip:</strong> Each agent has their own page showing their specific backlog and progress.",
+            "💡 <strong>Tip:</strong> Click on any agent card or sidebar name to view their profile, tasks, and characteristics.",
+            "🎯 <strong>Tip:</strong> Each agent has unique skills and characteristics shown with progress bars.",
             "📊 <strong>Tip:</strong> The Overview page shows real-time status of all agents and tasks.",
             "🏆 <strong>Tip:</strong> Check the Leaderboard to see top performers and team rankings.",
-            "🔗 <strong>Tip:</strong> Click 'Open GitHub Tasks' to manage detailed tasks on GitHub.",
-            "🎮 <strong>Tip:</strong> Visit the MOLGANG page to start the game and track development.",
+            "🎮 <strong>Tip:</strong> Visit the MOLGANG page to track game development progress.",
             "⚙️ <strong>Tip:</strong> System Status shows all infrastructure components and their health.",
         ];
-
         let tipIndex = 0;
 
         function nextPaperclipTip() {
@@ -1037,228 +1575,493 @@
             document.querySelector('.paperclip-assistant').style.display = 'none';
         }
 
-        // Update task stats from API (LIVE DATA)
+        // === UPDATE TASK STATS (Overview page) ===
         async function updateTaskStats() {
             try {
                 const response = await fetch('/api/metrics');
                 const data = await response.json();
                 const tasks = data.tasks;
+                if (!tasks) return;
 
-                document.getElementById('stat-total').textContent = tasks.total;
-                document.getElementById('stat-completed').textContent = tasks.completed;
-                document.getElementById('stat-inprogress').textContent = tasks.inProgress;
-                document.getElementById('stat-pending').textContent = tasks.pending;
+                const el = (id) => document.getElementById(id);
+                if (el('stat-total')) el('stat-total').textContent = tasks.total;
+                if (el('stat-completed')) el('stat-completed').textContent = tasks.completed;
+                if (el('stat-inprogress')) el('stat-inprogress').textContent = tasks.inProgress;
+                if (el('stat-pending')) el('stat-pending').textContent = tasks.pending;
 
-                const percent = Math.round((tasks.completed / tasks.total) * 100);
-                document.getElementById('progress-percent').textContent = percent;
-                document.getElementById('progress-overall').style.width = percent + '%';
+                if (tasks.total > 0) {
+                    const percent = Math.round((tasks.completed / tasks.total) * 100);
+                    if (el('progress-percent')) el('progress-percent').textContent = percent;
+                    if (el('progress-overall')) el('progress-overall').style.width = percent + '%';
+                }
+
+                // Update other stat cards if they exist
+                if (data.uptime && el('stat-uptime')) el('stat-uptime').textContent = data.uptime.toFixed(2) + '%';
+                if (data.cacheHitRate && el('stat-cache')) el('stat-cache').textContent = data.cacheHitRate + '%';
             } catch (error) {
-                console.log('Metrics fetch (expected during startup):', error.message);
+                console.log('Metrics fetch:', error.message);
             }
         }
 
-        // Initialize
-        updateTaskStats();
-        setInterval(updateTaskStats, 5000); // Update every 5 seconds
+        // === LOAD TEAM OVERVIEW (builds once, updates text in-place) ===
+        let teamBuilt = false;
+        async function loadTeamOverview() {
+            const container = document.getElementById('team-overview');
+            if (!container) return;
 
-        // Load backlog data
+            const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna'];
+            const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨' };
+            const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist' };
+            const colors = { Fill: '#fbbf24', Kai: '#a78bfa', Zip: '#22c55e', Mira: '#ec4899', Luna: '#06b6d4' };
+
+            // Build DOM structure once
+            if (!teamBuilt) {
+                teamBuilt = true;
+                container.innerHTML = '';
+                for (const agent of agents) {
+                    const card = document.createElement('div');
+                    card.className = 'agent-card';
+                    card.id = `team-card-${agent}`;
+                    card.setAttribute('data-agent', agent.toLowerCase());
+                    card.style.cursor = 'pointer';
+                    card.style.borderLeftColor = colors[agent];
+                    card.addEventListener('click', () => navigateTo(agent.toLowerCase()));
+                    card.innerHTML = `
+                        <div class="agent-header">
+                            <div class="agent-avatar">${avatars[agent]}</div>
+                            <div class="agent-info">
+                                <div class="agent-name">${agent}</div>
+                                <div class="agent-role">${roles[agent]}</div>
+                            </div>
+                        </div>
+                        <div class="agent-status">
+                            <div class="status-indicator online"></div>
+                            <span id="team-focus-${agent}" style="font-size: 0.85em;">Loading...</span>
+                        </div>
+                        <div class="task-list">
+                            <div class="task-item">
+                                <span class="task-badge" id="team-done-${agent}" style="background: rgba(34,197,94,0.2); color: #86efac;">0</span> Completed
+                            </div>
+                            <div class="task-item">
+                                <span class="task-badge" id="team-ip-${agent}" style="background: rgba(245,158,11,0.2); color: #fcd34d;">0</span> In Progress
+                            </div>
+                        </div>
+                        <div class="progress-bar" style="margin-top: 10px;">
+                            <div class="progress-fill" id="team-prog-${agent}" style="width: 0%; transition: width 0.5s ease;"></div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                }
+            }
+
+            // Update values in-place (no flicker)
+            for (const agent of agents) {
+                try {
+                    const response = await fetch(`/api/progress/${agent}`);
+                    const data = await response.json();
+                    const el = (id) => document.getElementById(id);
+                    if (el(`team-focus-${agent}`)) el(`team-focus-${agent}`).textContent = data.focus || 'Available';
+                    if (el(`team-done-${agent}`)) el(`team-done-${agent}`).textContent = data.completed || 0;
+                    if (el(`team-ip-${agent}`)) el(`team-ip-${agent}`).textContent = data.inProgress || 0;
+                    if (el(`team-prog-${agent}`)) el(`team-prog-${agent}`).style.width = (data.progress || 0) + '%';
+                } catch (e) {}
+            }
+        }
+
+        // === LOAD BACKLOG ===
+        let backlogItems = [];
+        let backlogFilter = 'all';
+
         async function loadBacklog() {
             try {
                 const response = await fetch('/api/backlog');
                 const data = await response.json();
+                const summary = data.summary || { completed: 0, inProgress: 0, pending: 0, total: 0 };
+                backlogItems = data.items || [];
 
-                const backlogHtml = `
-                    <div class="card">
-                        <div class="card-title">📊 Current Backlog Status</div>
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-label">Completed</div>
-                                <div class="stat-value">${data.summary.completed}</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">In Progress</div>
-                                <div class="stat-value">${data.summary.inProgress}</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Pending</div>
-                                <div class="stat-value">${data.summary.pending}</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">Total</div>
-                                <div class="stat-value">${data.summary.total}</div>
-                            </div>
+                const container = document.getElementById('backlog-container');
+                if (!container) return;
+                backlogFilter = 'all'; // reset filter on reload
+
+                container.innerHTML = `
+                    <div class="stats-grid" id="backlog-filters">
+                        <div class="stat-card clickable active-filter" onclick="setBacklogFilter('all', this)">
+                            <div class="stat-label">All Items</div>
+                            <div class="stat-value">${summary.total}</div>
+                        </div>
+                        <div class="stat-card clickable" onclick="setBacklogFilter('completed', this)" style="border-bottom: 3px solid var(--success);">
+                            <div class="stat-label">Completed</div>
+                            <div class="stat-value" style="color: var(--success);">${summary.completed}</div>
+                        </div>
+                        <div class="stat-card clickable" onclick="setBacklogFilter('in_progress', this)" style="border-bottom: 3px solid var(--warning);">
+                            <div class="stat-label">In Progress</div>
+                            <div class="stat-value" style="color: var(--warning);">${summary.inProgress}</div>
+                        </div>
+                        <div class="stat-card clickable" onclick="setBacklogFilter('pending', this)" style="border-bottom: 3px solid var(--text-secondary);">
+                            <div class="stat-label">Pending</div>
+                            <div class="stat-value">${summary.pending}</div>
                         </div>
                     </div>
-
                     <div class="card">
-                        <div class="card-title">🎯 Priority Queue (Next Tasks)</div>
-                        <div style="color: var(--text-secondary);">
-                            ${data.priority_queue.map(item => `
-                                <div style="margin-bottom: 10px; padding: 8px; background: rgba(96, 165, 250, 0.1); border-left: 3px solid var(--primary); border-radius: 4px;">
-                                    <strong style="color: var(--primary);">#${item.rank}</strong> ${item.task}
-                                    <span style="float: right; font-size: 0.85em; color: ${item.status === 'done' ? '#22c55e' : item.status === 'in-progress' ? '#f59e0b' : '#94a3b8'}">
-                                        ${item.status.toUpperCase()}
-                                    </span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-title">📁 Backlog Files</div>
-                        <p style="color: var(--text-secondary); margin-bottom: 10px;">
-                            View detailed tasks in these backlog files:
-                        </p>
-                        <a href="https://github.com/febuz/molgang-roblox/blob/main/.backlog/high-priority.md"
-                           style="display: inline-block; margin-right: 10px; padding: 8px 16px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none;"
-                           target="_blank">
-                            📋 High Priority Tasks
-                        </a>
-                        <a href="https://github.com/febuz/molgang-roblox/blob/main/.backlog/session-actions.md"
-                           style="display: inline-block; padding: 8px 16px; background: var(--secondary); color: white; border-radius: 6px; text-decoration: none;"
-                           target="_blank">
-                            📝 Session Actions
-                        </a>
+                        <div class="card-title" id="backlog-list-title">📋 All Backlog Items</div>
+                        <div id="backlog-items-list"></div>
                     </div>
                 `;
-
-                // Insert before the footer or at the end
-                const container = document.querySelector('.main-content');
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = backlogHtml;
-                container.appendChild(tempDiv);
+                renderBacklogItems('all');
             } catch (error) {
                 console.log('Backlog fetch error:', error.message);
             }
         }
 
-        // Load metrics on page load
-        loadBacklog();
+        function setBacklogFilter(filter, el) {
+            backlogFilter = filter;
+            document.querySelectorAll('#backlog-filters .stat-card').forEach(c => c.classList.remove('active-filter'));
+            if (el) el.classList.add('active-filter');
+            renderBacklogItems(filter);
+        }
 
-        // Populate backlog
-        function populateBacklog() {
-            const backlog = {
-                'Fill (CEO)': ['Strategic planning (2 tasks)', 'Resource allocation (1 task)'],
-                'Kai (CTO)': ['GitHub repo creation', 'OpenClaw integration', 'QWEN API setup', 'Docker optimization'],
-                'Zip (Developer)': ['Real task status endpoint', 'Advanced gameplay', 'Real-time dashboard', 'Monitoring'],
-                'Mira (Artist)': ['VirtualPC Dashboard Design (6-8h in progress)'],
-                'Luna (Tech Artist)': ['MOLGANG sync', 'Advanced gameplay support', 'Performance optimization']
-            };
+        function renderBacklogItems(filter) {
+            const listEl = document.getElementById('backlog-items-list');
+            const titleEl = document.getElementById('backlog-list-title');
+            if (!listEl) return;
 
-            const container = document.getElementById('backlog-container');
-            container.innerHTML = '';
+            const labels = { all: 'All Backlog Items', completed: 'Completed Items', in_progress: 'In Progress', pending: 'Pending Items' };
+            if (titleEl) titleEl.textContent = '📋 ' + (labels[filter] || 'All Backlog Items');
 
-            for (const [person, tasks] of Object.entries(backlog)) {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-title">${person}</div>
-                    <ul style="list-style: none; color: var(--text-secondary);">
-                        ${tasks.map(task => `<li style="margin-bottom: 8px;">⏳ ${task}</li>`).join('')}
-                    </ul>
+            let items = backlogItems;
+            if (filter !== 'all') {
+                items = backlogItems.filter(i => i.status === filter);
+            }
+
+            if (items.length === 0) {
+                listEl.innerHTML = '<p style="color: var(--text-secondary); padding: 15px 0;">No items match this filter</p>';
+                return;
+            }
+
+            const pColors = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' };
+            const sColors = { in_progress: '#f59e0b', pending: '#94a3b8', completed: '#22c55e' };
+            const sLabels = { in_progress: 'IN PROGRESS', pending: 'PENDING', completed: 'COMPLETED' };
+
+            listEl.innerHTML = items.map(item => {
+                const pCol = pColors[item.priority] || '#94a3b8';
+                const sCol = sColors[item.status] || '#94a3b8';
+                return `
+                    <div class="task-row" onclick="openTaskDetail('${item.id}')" style="border-left-color: ${pCol};">
+                        <div style="flex: 1;">
+                            <div style="color: var(--text-primary); font-weight: 500;">${item.title}</div>
+                            <div style="color: var(--text-secondary); font-size: 0.8em; margin-top: 4px;">${item.description || ''}</div>
+                            <div style="color: var(--text-secondary); font-size: 0.75em; margin-top: 6px; display: flex; gap: 12px;">
+                                <span>👤 ${item.assigned_to}</span>
+                                <span>📅 ${item.sprint}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                            <span style="font-size: 0.7em; padding: 2px 8px; border-radius: 4px; background: ${pCol}22; color: ${pCol}; font-weight: 600;">${(item.priority || '').toUpperCase()}</span>
+                            <span style="font-size: 0.7em; padding: 2px 8px; border-radius: 4px; background: ${sCol}22; color: ${sCol}; font-weight: 600;">${sLabels[item.status] || item.status.toUpperCase()}</span>
+                        </div>
+                    </div>
                 `;
-                container.appendChild(card);
-            }
+            }).join('');
         }
 
-        populateBacklog();
-
-        // Load per-agent metrics
-        async function loadTeamOverview() {
+        // === GAME MILESTONES LOADER ===
+        async function loadGamePage() {
             try {
-                const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna'];
-                const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨' };
-                const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Artist', Luna: 'Tech Artist' };
-                const status = { Fill: 'online', Kai: 'online', Zip: 'online', Mira: 'online', Luna: 'busy' };
+                const [msRes, stRes] = await Promise.all([
+                    fetch('/api/game/milestones'),
+                    fetch('/api/game/stats')
+                ]);
+                const msData = await msRes.json();
+                const stData = await stRes.json();
+                const milestones = msData.milestones || [];
 
-                const container = document.getElementById('team-overview');
-                container.innerHTML = '';
+                // Stats bar
+                const el = (id) => document.getElementById(id);
+                if (el('game-overall')) el('game-overall').textContent = (stData.overallGameProgress || 0) + '%';
+                if (el('game-sprint')) el('game-sprint').textContent = '#' + (stData.sprintNumber || 1);
+                if (el('game-completed')) el('game-completed').textContent = stData.tasksCompleted || 0;
+                if (el('game-inprog')) el('game-inprog').textContent = stData.tasksInProgress || 0;
 
-                for (const agent of agents) {
-                    try {
-                        const response = await fetch(`/api/progress/${agent}`);
-                        const data = await response.json();
+                const catIcons = { zone: '🗺️', system: '⚙️', infrastructure: '🔧', art: '🎨', optimization: '⚡' };
+                const statusColors = { completed: 'var(--success)', 'in-progress': 'var(--warning)', 'not-started': 'var(--text-secondary)' };
+                const statusLabels = { completed: 'COMPLETE', 'in-progress': 'BUILDING...', 'not-started': 'QUEUED' };
 
-                        const card = document.createElement('div');
-                        card.className = 'agent-card';
-                        card.innerHTML = `
-                            <div class="agent-header">
-                                <div class="agent-avatar">${avatars[agent]}</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">${agent}</div>
-                                    <div class="agent-role">${roles[agent]}</div>
-                                </div>
+                function renderMilestone(m) {
+                    return `
+                        <div style="padding: 14px; background: rgba(30, 41, 59, 0.6); border-radius: 8px; border-left: 4px solid ${statusColors[m.status]};">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-weight: 600; color: var(--text-primary);">${catIcons[m.category] || '📦'} ${m.name}</div>
+                                <span style="font-size: 0.75em; padding: 2px 10px; border-radius: 4px; background: ${statusColors[m.status]}22; color: ${statusColors[m.status]}; font-weight: 600;">${statusLabels[m.status]}</span>
                             </div>
-                            <div class="agent-status">
-                                <div class="status-indicator ${status[agent]}"></div>
-                                <span>${data.focus}</span>
+                            <p style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 8px;">${m.description}</p>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="progress-bar" style="flex: 1; height: 6px;">
+                                    <div class="progress-fill" style="width: ${m.progress}%; ${m.status === 'completed' ? 'background: var(--success);' : ''}"></div>
+                                </div>
+                                <span style="color: var(--primary); font-weight: 600; font-size: 0.85em; min-width: 35px;">${m.progress}%</span>
                             </div>
-                            <div class="task-list">
-                                <div class="task-item">
-                                    <span class="task-badge">${data.inProgress || 0}</span> In Progress
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">${data.completed || 0}</span> Completed
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">${data.total || 0}</span> Total
-                                </div>
-                            </div>
-                        `;
-                        container.appendChild(card);
-                    } catch (error) {
-                        console.log(`Error loading ${agent} metrics:`, error.message);
-                    }
+                            <div style="margin-top: 6px; font-size: 0.75em; color: var(--text-secondary);">Contributors: ${m.contributors.join(', ')}</div>
+                        </div>
+                    `;
                 }
-            } catch (error) {
-                console.log('Team overview error:', error.message);
+
+                const zones = milestones.filter(m => m.category === 'zone');
+                const systems = milestones.filter(m => m.category === 'system');
+                const infra = milestones.filter(m => m.category === 'infrastructure' || m.category === 'art' || m.category === 'optimization');
+
+                if (el('game-zones')) el('game-zones').innerHTML = zones.map(renderMilestone).join('');
+                if (el('game-systems')) el('game-systems').innerHTML = systems.map(renderMilestone).join('');
+                if (el('game-infra')) el('game-infra').innerHTML = infra.map(renderMilestone).join('');
+            } catch (e) {
+                console.log('Game page error:', e.message);
             }
         }
 
-        // Update metrics from backend
-        async function updateMetrics() {
+        // === TOKEN USAGE PAGE ===
+        async function loadTokenPage() {
             try {
-                const response = await fetch('/api/metrics');
-                const data = await response.json();
+                const [sumRes, hourRes, evtRes] = await Promise.all([
+                    fetch('/api/tokens/summary'),
+                    fetch('/api/tokens/hourly'),
+                    fetch('/api/tokens/events?limit=30')
+                ]);
+                const sumData = await sumRes.json();
+                const hourData = await hourRes.json();
+                const evtData = await evtRes.json();
 
-                // Version
-                if (data.version) {
-                    document.getElementById('stat-version').textContent = data.version;
-                }
-                // Daily Updates
-                if (data.dailyUpdates !== undefined) {
-                    document.getElementById('stat-daily-updates').textContent = data.dailyUpdates;
-                }
-                // QWEN Tokens
-                if (data.qwenTokens?.consumed !== undefined) {
-                    const consumed = Math.round(data.qwenTokens.consumed / 1000);
-                    document.getElementById('stat-qwen').textContent = consumed + 'K';
-                }
-                // Uptime
-                if (data.uptime !== undefined) {
-                    document.getElementById('stat-uptime').textContent = data.uptime.toFixed(2) + '%';
-                }
-                // Cache Hit Rate
-                if (data.cacheHitRate !== undefined) {
-                    document.getElementById('stat-cache').textContent = data.cacheHitRate + '%';
-                }
-                // Student Capacity
-                if (data.studentCapacity !== undefined) {
-                    const cap = data.studentCapacity >= 1000000 ? '1M+' : data.studentCapacity;
-                    document.getElementById('stat-capacity').textContent = cap;
-                }
+                const c = sumData.combined || {};
+                const agents = sumData.agents || {};
+
+                // Combined totals
+                const el = (id) => document.getElementById(id);
+                el('token-combined').innerHTML = `
+                    <div class="stat-card"><div class="stat-label">Total Tokens</div><div class="stat-value">${formatNum(c.totalTokens)}</div></div>
+                    <div class="stat-card"><div class="stat-label">Total Cost</div><div class="stat-value" style="color:var(--warning)">$${c.totalCost?.toFixed(2)}</div></div>
+                    <div class="stat-card"><div class="stat-label">API Calls</div><div class="stat-value">${formatNum(c.totalCalls)}</div></div>
+                    <div class="stat-card"><div class="stat-label">Free Tier %</div><div class="stat-value" style="color:var(--success)">${c.costSavingsPercent}%</div></div>
+                `;
+
+                // Per-agent table
+                const tierBar = (t1,t2,t3) => `
+                    <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;width:120px">
+                        <div style="width:${t1}%;background:#22c55e" title="Tier 1 (free)"></div>
+                        <div style="width:${t2}%;background:#f59e0b" title="Tier 2"></div>
+                        <div style="width:${t3}%;background:#ef4444" title="Tier 3"></div>
+                    </div>
+                `;
+
+                const avatars = {Fill:'👑',Kai:'⚡',Zip:'💻',Mira:'🎨',Luna:'✨'};
+
+                el('token-agents').innerHTML = `
+                    <div style="display:grid;grid-template-columns:40px 1fr 80px 80px 80px 80px 130px;gap:8px;padding:8px 0;font-size:0.75em;color:var(--text-secondary);border-bottom:1px solid var(--border)">
+                        <div></div><div>Agent</div><div>This Hour</div><div>Today</div><div>Month</div><div>Cost</div><div>Tier Mix</div>
+                    </div>
+                    ${Object.entries(agents).map(([name, a]) => `
+                        <div style="display:grid;grid-template-columns:40px 1fr 80px 80px 80px 80px 130px;gap:8px;padding:10px 0;align-items:center;border-bottom:1px solid rgba(148,163,184,0.1);font-size:0.8em">
+                            <div style="font-size:1.4em">${avatars[name]||'👤'}</div>
+                            <div>
+                                <div style="font-weight:600">${name}</div>
+                                <div style="font-size:0.8em;color:var(--text-secondary)">${a.primaryModel}</div>
+                            </div>
+                            <div>${formatNum(a.thisHour?.tokens)}</div>
+                            <div>${formatNum(a.today?.tokens)}</div>
+                            <div>${formatNum(a.month?.tokens)}</div>
+                            <div style="color:var(--warning)">$${a.allTime?.cost?.toFixed(2)}</div>
+                            <div>
+                                ${tierBar(a.allTime?.tier1Pct, a.allTime?.tier2Pct, a.allTime?.tier3Pct)}
+                                <div style="font-size:0.7em;color:var(--text-secondary);margin-top:2px">
+                                    <span style="color:#22c55e">T1:${a.allTime?.tier1Pct}%</span>
+                                    <span style="color:#f59e0b">T2:${a.allTime?.tier2Pct}%</span>
+                                    <span style="color:#ef4444">T3:${a.allTime?.tier3Pct}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                    <div style="display:grid;grid-template-columns:40px 1fr 80px 80px 80px 80px 130px;gap:8px;padding:10px 0;font-weight:700;font-size:0.8em;border-top:2px solid var(--border)">
+                        <div>Σ</div>
+                        <div>Combined</div>
+                        <div>${formatNum(Object.values(agents).reduce((s,a) => s + (a.thisHour?.tokens||0), 0))}</div>
+                        <div>${formatNum(Object.values(agents).reduce((s,a) => s + (a.today?.tokens||0), 0))}</div>
+                        <div>${formatNum(Object.values(agents).reduce((s,a) => s + (a.month?.tokens||0), 0))}</div>
+                        <div style="color:var(--warning)">$${c.totalCost?.toFixed(2)}</div>
+                        <div style="color:var(--success)">${c.costSavingsPercent}% free</div>
+                    </div>
+                `;
+
+                // Hourly bar chart
+                const hours = hourData.hours || [];
+                const maxTokens = Math.max(...hours.map(h => h.tokens), 1);
+                el('token-hourly-chart').innerHTML = hours.map(h => {
+                    const pct = Math.max(2, (h.tokens / maxTokens) * 100);
+                    const t1pct = h.tokens > 0 ? (h.tier1 / h.tokens * 100) : 0;
+                    const t2pct = h.tokens > 0 ? (h.tier2 / h.tokens * 100) : 0;
+                    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px" title="${h.hour}: ${formatNum(h.tokens)} tokens, $${h.cost}">
+                        <div style="font-size:0.5em;color:var(--text-secondary)">${formatNum(h.tokens)}</div>
+                        <div style="width:100%;height:${pct}%;border-radius:2px 2px 0 0;overflow:hidden;display:flex;flex-direction:column">
+                            <div style="flex:${100-t1pct-t2pct};background:#ef4444"></div>
+                            <div style="flex:${t2pct};background:#f59e0b"></div>
+                            <div style="flex:${t1pct};background:#22c55e"></div>
+                        </div>
+                        <div style="font-size:0.45em;color:var(--text-secondary)">${h.hour}</div>
+                    </div>`;
+                }).join('');
+
+                // Recent events
+                const events = evtData.events || [];
+                el('token-events').innerHTML = events.length === 0 ? '<p style="color:var(--text-secondary);padding:8px">No events yet</p>' :
+                    `<div style="display:grid;grid-template-columns:60px 50px 100px 30px 70px 55px 1fr;gap:6px;padding:6px 0;font-size:0.65em;color:var(--text-secondary);border-bottom:1px solid var(--border)">
+                        <div>Time</div><div>Agent</div><div>Model</div><div>T</div><div>Tokens</div><div>Cost</div><div>Action</div>
+                    </div>` +
+                    events.map(e => {
+                        const tierCol = {1:'#22c55e',2:'#f59e0b',3:'#ef4444'}[e.tier] || '#94a3b8';
+                        return `<div style="display:grid;grid-template-columns:60px 50px 100px 30px 70px 55px 1fr;gap:6px;padding:4px 0;font-size:0.7em;border-bottom:1px solid rgba(148,163,184,0.05)">
+                            <div style="color:var(--text-secondary)">${e.time}</div>
+                            <div style="font-weight:600">${e.agent}</div>
+                            <div style="color:var(--primary)">${e.model}</div>
+                            <div style="color:${tierCol};font-weight:700">T${e.tier}</div>
+                            <div>${formatNum(e.tokens)}</div>
+                            <div style="color:var(--warning)">$${e.cost}</div>
+                            <div style="color:var(--text-secondary)">${e.action}</div>
+                        </div>`;
+                    }).join('');
+
             } catch (error) {
-                console.log('Metrics fetch error:', error.message);
+                console.log('Token page error:', error.message);
             }
         }
 
-        // Update metrics immediately and every 5 seconds
+        function formatNum(n) {
+            if (n === undefined || n === null) return '0';
+            if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+            return Math.floor(n).toString();
+        }
+
+        // === AGENT SOCIAL HUB ===
+        let socialRosterData = [];
+        let socialSelected = null;
+
+        async function loadSocialHub() {
+            try {
+                const r = await fetch('/api/social/roster');
+                const d = await r.json();
+                socialRosterData = d.agents || [];
+            } catch (e) { console.log('social roster:', e.message); return; }
+
+            const list = document.getElementById('social-roster');
+            if (!list) return;
+            list.innerHTML = socialRosterData.map(a => `
+                <div class="social-roster-card" data-agent="${a.name}" onclick="openSocialFeed('${a.name}')"
+                    style="display:flex; gap:10px; align-items:center; padding:10px; background:rgba(30,58,95,0.2); border:1px solid var(--border); border-left:3px solid ${a.color}; border-radius:8px; cursor:pointer; transition:all 0.2s;">
+                    <div style="font-size:1.8em; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:${a.color}22; border-radius:8px;">${a.avatar}</div>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-weight:600; color:var(--text-primary);">${a.name}</div>
+                        <div style="font-size:0.7em; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.role}</div>
+                        <div style="font-size:0.65em; color:${a.color}; margin-top:2px;">${a.stats.activeTasks} active · ${a.stats.tasksCompleted} shipped</div>
+                    </div>
+                </div>
+            `).join('');
+            // auto-open Fill if nothing selected
+            if (!socialSelected && socialRosterData.length) openSocialFeed(socialRosterData[0].name);
+        }
+
+        async function openSocialFeed(name) {
+            socialSelected = name;
+            // highlight in roster
+            document.querySelectorAll('.social-roster-card').forEach(c => {
+                c.style.background = c.dataset.agent === name ? 'rgba(96,165,250,0.15)' : 'rgba(30,58,95,0.2)';
+            });
+
+            try {
+                const r = await fetch(`/api/social/${name}/feed`);
+                const d = await r.json();
+                const profile = d.profile || {};
+                const feed = d.feed || [];
+
+                const empty = document.getElementById('social-feed-empty');
+                const wrap = document.getElementById('social-feed');
+                if (empty) empty.style.display = 'none';
+                if (!wrap) return;
+                wrap.style.display = 'block';
+
+                const reactionsHtml = (r) => `
+                    <div style="display:flex; gap:14px; padding-top:10px; border-top:1px solid var(--border); margin-top:10px; font-size:0.78em; color:var(--text-secondary);">
+                        <span>👍 ${r.like || 0}</span>
+                        <span>💡 ${r.insight || 0}</span>
+                        <span>🎉 ${r.celebrate || 0}</span>
+                    </div>`;
+
+                const typeBadge = (t) => {
+                    const map = { completion: ['✅','#22c55e','Shipped'], progress: ['🔧','#f59e0b','Progress'], intro: ['👋','#60a5fa','Intro'] };
+                    const [icon, col, label] = map[t] || ['📝','#94a3b8','Post'];
+                    return `<span style="font-size:0.7em; padding:2px 8px; border-radius:10px; background:${col}22; color:${col}; font-weight:600;">${icon} ${label}</span>`;
+                };
+
+                const fmtTime = (ts) => {
+                    const d = new Date(ts);
+                    const diff = (Date.now() - d.getTime()) / 1000;
+                    if (diff < 60) return 'just now';
+                    if (diff < 3600) return Math.round(diff / 60) + 'm ago';
+                    if (diff < 86400) return Math.round(diff / 3600) + 'h ago';
+                    return d.toLocaleDateString();
+                };
+
+                wrap.innerHTML = `
+                    <!-- Profile banner -->
+                    <div class="card" style="border-left:4px solid ${profile.color}; padding:20px;">
+                        <div style="display:flex; gap:18px; align-items:center;">
+                            <div style="font-size:3.2em; width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:${profile.color}22; border-radius:14px;">${profile.avatar}</div>
+                            <div style="flex:1;">
+                                <div style="display:flex; align-items:baseline; gap:10px;">
+                                    <h2 style="color:var(--text-primary); margin:0;">${profile.name}</h2>
+                                    <span style="color:var(--text-secondary); font-size:0.85em;">${profile.handle}</span>
+                                </div>
+                                <div style="color:var(--text-secondary); margin-top:2px;">${profile.role}</div>
+                                <div style="color:${profile.color}; font-size:0.9em; margin-top:6px; font-style:italic;">${profile.headline}</div>
+                            </div>
+                        </div>
+                        <p style="color:var(--text-secondary); font-size:0.9em; line-height:1.5; margin-top:14px; margin-bottom:10px;">${profile.bio || ''}</p>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+                            ${(profile.specialties || []).map(s => `<span style="padding:3px 10px; background:rgba(96,165,250,0.15); border:1px solid rgba(96,165,250,0.3); border-radius:12px; font-size:0.72em; color:var(--primary);">${s}</span>`).join('')}
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding-top:12px; border-top:1px solid var(--border);">
+                            <div style="text-align:center;"><div style="font-size:1.3em; font-weight:700; color:var(--primary);">${d.profile.stats?.tasksCompleted ?? 0}</div><div style="font-size:0.7em; color:var(--text-secondary);">Shipped</div></div>
+                            <div style="text-align:center;"><div style="font-size:1.3em; font-weight:700; color:var(--warning);">${d.profile.stats?.activeTasks ?? 0}</div><div style="font-size:0.7em; color:var(--text-secondary);">Active</div></div>
+                            <div style="text-align:center;"><div style="font-size:1.3em; font-weight:700; color:var(--success);">${d.profile.stats?.subtasksCompleted ?? 0}</div><div style="font-size:0.7em; color:var(--text-secondary);">Subtasks</div></div>
+                            <div style="text-align:center;"><div style="font-size:1.3em; font-weight:700; color:#ec4899;">${Math.round((d.profile.stats?.minutesLogged ?? 0) / 60)}h</div><div style="font-size:0.7em; color:var(--text-secondary);">Logged</div></div>
+                        </div>
+                    </div>
+
+                    <!-- Feed -->
+                    <div style="margin-top:16px;">
+                        <h3 style="color:var(--primary); font-size:1em; margin-bottom:10px; padding-left:4px;">🕐 Feed</h3>
+                        ${feed.length === 0 ? '<div class="card" style="text-align:center; color:var(--text-secondary);">No posts yet.</div>' : feed.map(p => `
+                            <div class="card" style="margin-bottom:10px; padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    ${typeBadge(p.type)}
+                                    <span style="font-size:0.72em; color:var(--text-secondary);">${fmtTime(p.timestamp)}</span>
+                                </div>
+                                <div style="font-weight:600; color:var(--text-primary); margin-bottom:6px;">${p.title}</div>
+                                <div style="color:var(--text-secondary); font-size:0.88em; line-height:1.5;">${p.body || ''}</div>
+                                ${p.meta && Object.keys(p.meta).length ? `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">${Object.entries(p.meta).map(([k,v]) => `<span style="font-size:0.7em; padding:2px 8px; background:rgba(148,163,184,0.08); border-radius:4px; color:var(--text-secondary);"><strong>${k}:</strong> ${v}</span>`).join('')}</div>` : ''}
+                                ${reactionsHtml(p.reactions || {})}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (e) { console.log('social feed:', e.message); }
+        }
+
+        // === INITIALIZE ===
+        updateTaskStats();
         loadTeamOverview();
-        updateMetrics();
-        setInterval(() => {
-            updateMetrics();
-            loadTeamOverview();
-        }, 5000);
+        loadBacklog();
+        loadGamePage();
+
+        // Refresh live data periodically
+        setInterval(updateTaskStats, 30000);
+        setInterval(loadTeamOverview, 20000); // agent cards update every 20s
+        setInterval(loadGamePage, 15000); // game milestones update every 15s
     </script>
 </body>
 </html>

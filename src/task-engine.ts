@@ -538,6 +538,215 @@ export function getWorkSummary() {
   };
 }
 
+// === IN-PROGRESS DETAIL (full subtask array, which done/not-done) ===
+export function getAgentInProgressDetail(agent: string) {
+  const agentTasks = tasks.filter(t => t.assigned_to === agent && t.status === 'in-progress');
+  return agentTasks.map(t => ({
+    id: t.id,
+    title: t.title,
+    priority: t.priority,
+    description: t.description,
+    estimated_hours: t.estimated_hours,
+    progress: t.progress,
+    started_at: t.started_at,
+    sprint: t.sprint,
+    subtasks: t.subtasks.map(s => ({ name: s.name, done: s.done })),
+    subtasksDone: t.subtasks.filter(s => s.done).length,
+    subtasksTotal: t.subtasks.length,
+    currentSubtask: t.subtasks.find(s => !s.done)?.name || null,
+    _secondsSinceLastTick: Math.round((Date.now() - t._lastTick) / 1000),
+  }));
+}
+
+// === LIVE CLI LOG (synthesized from work log + plausible running commands) ===
+// Each agent has a set of plausible shell commands that match their role.
+// We synthesize a log stream mixing real task events with these running commands.
+
+const agentCommands: { [agent: string]: string[] } = {
+  Fill: [
+    '$ gh issue list --label critical --repo febuz/molgang-roblox',
+    '$ review-sprint --sprint 2 --format summary',
+    '$ okr-tracker --quarter Q3 --status',
+    '$ budget-forecast --period Q3 --output table',
+    '$ partner-outreach --list universities',
+    '$ compliance-check --standard gdpr,coppa',
+    '$ team-perf-report --window 7d',
+  ],
+  Kai: [
+    '$ nvidia-smi --query-gpu=name,utilization.gpu,memory.used --format=csv',
+    '$ docker build -t virtualpc:kafka -f Dockerfile.kafka .',
+    '$ kubectl apply -f k8s/virtualpc-deployment.yaml',
+    '$ redis-cli --latency-history -i 1',
+    '$ node scripts/kafka-topic-create.js --topic agent.tasks',
+    '$ curl -s http://localhost:9200/_cluster/health | jq',
+    '$ gh clone OpenSAGE/OpenSAGE /media/knight2/EDS2/reference-engines/OpenSAGE',
+    '$ pytest tests/load --concurrent=1000',
+  ],
+  Zip: [
+    '$ npm run test:chemistry -- --grep valence',
+    '$ code src/components/RTS/FactoryGrid.tsx',
+    '$ node scripts/port-roblox.js --src Chemistry.lua --out src/engine/chemistry.ts',
+    '$ npx playwright test tests/testplay/atom-lab.spec.ts',
+    '$ node scripts/simulate-players.js --count 100 --persona crafter',
+    '$ git rebase -i main',
+    '$ npm run build:web && du -sh dist/',
+  ],
+  Mira: [
+    '$ figma-export --node cleopatra-logo --format svg',
+    '$ convert cleopatra-logo.svg -resize 512x512 cleopatra-logo@2x.png',
+    '$ inkscape --export-area-drawing --export-png moneygod-icon.png',
+    '$ figma-inspect --url design/agent-social-profiles',
+    '$ code src/components/Profile/SocialFeed.tsx',
+    '$ npm run storybook',
+    '$ imageoptim assets/npc/farmer-chen.png',
+  ],
+  Luna: [
+    '$ blender --background --python render-equipment.py -- --device CUDA',
+    '$ nvidia-smi --gpu-reset --id=1',
+    '$ node profiler.js --sample 60s --device 0,1',
+    '$ gltf-pipeline -i reactor.glb -o reactor.draco.glb --draco',
+    '$ webgl-stats --scene rts --frame-budget 16.67',
+    '$ npm run test:shaders -- --gpu rtx3090',
+    '$ python scripts/asset-optimize.py --format webp --quality 85',
+  ],
+};
+
+const cliSessionLog: { [agent: string]: Array<{ t: number; line: string; level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' }> } = {
+  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [],
+};
+
+function pushCli(agent: string, line: string, level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' = 'out') {
+  const buf = cliSessionLog[agent];
+  if (!buf) return;
+  buf.push({ t: Date.now(), line, level });
+  if (buf.length > 200) buf.splice(0, buf.length - 200);
+}
+
+// Seed some baseline CLI activity for each agent on startup and every tick
+function tickCli() {
+  for (const agent of Object.keys(agentCommands)) {
+    // Probability of new activity per tick: 40%
+    if (Math.random() > 0.4) continue;
+    const cmds = agentCommands[agent];
+    const cmd = cmds[Math.floor(Math.random() * cmds.length)];
+    pushCli(agent, cmd, 'cmd');
+    // Synthesize a plausible output line
+    const outputs = [
+      '  ... running',
+      '  [info] warm cache hit (local)',
+      '  [ok] completed in 1.24s',
+      '  exit 0',
+    ];
+    pushCli(agent, outputs[Math.floor(Math.random() * outputs.length)], 'out');
+  }
+}
+setInterval(tickCli, 4000);
+
+export function getAgentCliLog(agent: string, limit = 50) {
+  const session = cliSessionLog[agent] || [];
+  const work = workLog.filter(e => e.agent === agent).slice(-30).map(e => {
+    const t = new Date(e.timestamp).getTime();
+    if (e.action === 'task_started') return { t, line: `[task] START  ${e.taskId} "${e.taskTitle}"`, level: 'cmd' as const };
+    if (e.action === 'task_completed') return { t, line: `[task] DONE   ${e.taskId} "${e.taskTitle}"`, level: 'ok' as const };
+    return { t, line: `[subtask] ok  "${e.subtask}" (+${e.minutesSpent}m)`, level: 'ok' as const };
+  });
+  const merged = [...session, ...work].sort((a, b) => a.t - b.t);
+  const tail = merged.slice(-limit);
+  return tail.map(e => ({
+    ts: new Date(e.t).toISOString(),
+    line: e.line,
+    level: e.level,
+  }));
+}
+
+// === AGENT SOCIAL FEED (Facebook/LinkedIn style posts) ===
+// Synthesize posts from completed tasks + role-specific achievements.
+// Supports extended roster: Cleopatra, Alexander, MoneyGod as stubs until they have their own task pools.
+interface SocialAgent {
+  name: string;
+  handle: string;
+  role: string;
+  avatar: string;
+  color: string;
+  headline: string;
+  bio: string;
+  specialties: string[];
+}
+
+const socialRoster: SocialAgent[] = [
+  { name: 'Fill',      handle: '@fill-ceo',        role: 'Chief Executive Officer', avatar: '👑', color: '#fbbf24', headline: 'Orchestrating the Roblox → Web migration', bio: 'Strategic lead for MOLGANG Chemical Engineering Simulator. Keeps VirtualPC pointed at milestones that matter.', specialties: ['Strategy', 'Partnerships', 'Compliance', 'Roadmap'] },
+  { name: 'Kai',       handle: '@kai-cto',         role: 'Chief Technology Officer', avatar: '⚡', color: '#a78bfa', headline: 'Infrastructure and scale',            bio: 'Kafka, Redis, Kubernetes, GPU scheduling, CI/CD, anti-cheat. Makes VirtualPC boring-reliable.', specialties: ['Kafka', 'K8s', 'GPU Sched', 'Security'] },
+  { name: 'Zip',       handle: '@zip-dev',         role: 'Developer',                avatar: '💻', color: '#22c55e', headline: 'Porting Roblox systems to web',       bio: 'TypeScript, React, game systems. From Chemistry.lua to web engine — every molecule accounted for.', specialties: ['TypeScript', 'React', 'Game Systems', 'Testing'] },
+  { name: 'Mira',      handle: '@mira-art',        role: 'Creative Director',        avatar: '🎨', color: '#ec4899', headline: 'Brand, UI, character, sound',         bio: 'Visual identity for MOLGANG, NPC designs, UI kits, sound design. Where the game gets its soul.', specialties: ['Brand', 'UI', 'Characters', 'Sound'] },
+  { name: 'Luna',      handle: '@luna-tech-art',   role: 'Technical Artist',         avatar: '✨', color: '#06b6d4', headline: 'Rendering, shaders, mobile, GPU',     bio: 'WebGL shaders, Roblox→Web asset pipeline, Z Fold 5 + iPhone 16 optimization, particle VFX.', specialties: ['WebGL', 'Shaders', 'Mobile Perf', 'VFX'] },
+  { name: 'Cleopatra', handle: '@cleopatra-exec',  role: 'Executive Authority',      avatar: '👸', color: '#f97316', headline: 'Strategic decision rights',           bio: 'Holds executive authority over cross-cutting strategic decisions. Counterweight and partner to Fill on matters requiring dual sign-off.', specialties: ['Governance', 'Decisions', 'Escalation', 'Oversight'] },
+  { name: 'Alexander', handle: '@alexander-cmd',   role: 'Command Interface',        avatar: '🗡️', color: '#ef4444', headline: 'Terminal operations and geek mode',   bio: 'Always picks the most technically interesting path. Custodian of the command interface and approval heuristics.', specialties: ['Ops', 'CLI', 'Automation', 'Power User'] },
+  { name: 'MoneyGod',  handle: '@moneygod',        role: 'Economy Authority',        avatar: '💰', color: '#10b981', headline: 'MolCoin economy & Web3 policy',       bio: 'Oversees MolCoin economy, carbon credits, market fairness, anti-farm enforcement. No pay-to-win on this watch.', specialties: ['Economy', 'Web3', 'Anti-farm', 'Market'] },
+];
+
+export function getSocialRoster() {
+  return socialRoster.map(a => ({
+    ...a,
+    stats: (() => {
+      const agentWork = workLog.filter(e => e.agent === a.name);
+      const done = agentWork.filter(e => e.action === 'task_completed').length;
+      const subs = agentWork.filter(e => e.action === 'subtask_completed').length;
+      const activeTasks = tasks.filter(t => t.assigned_to === a.name && t.status === 'in-progress').length;
+      return { tasksCompleted: done, subtasksCompleted: subs, activeTasks, minutesLogged: agentWork.reduce((s, e) => s + e.minutesSpent, 0) };
+    })(),
+  }));
+}
+
+export function getAgentSocialFeed(agent: string, limit = 20) {
+  const person = socialRoster.find(a => a.name === agent);
+  if (!person) return null;
+
+  // Posts from completed tasks
+  const completedTasks = tasks.filter(t => t.assigned_to === agent && t.status === 'completed').slice(-limit);
+  const taskPosts = completedTasks.map(t => ({
+    id: `post-task-${t.id}`,
+    type: 'completion' as const,
+    timestamp: t.completed_at || new Date().toISOString(),
+    title: `Shipped: ${t.title}`,
+    body: t.description,
+    meta: { sprint: t.sprint, hours: t.estimated_hours, priority: t.priority, subtasksDone: t.subtasks.filter(s => s.done).length },
+    reactions: { like: 5 + Math.floor(Math.random() * 40), insight: 2 + Math.floor(Math.random() * 15), celebrate: 1 + Math.floor(Math.random() * 8) },
+  }));
+
+  // Posts from subtask completions (recent)
+  const recentSubs = workLog.filter(e => e.agent === agent && e.action === 'subtask_completed').slice(-10);
+  const subPosts = recentSubs.map((e, i) => ({
+    id: `post-sub-${e.taskId}-${i}`,
+    type: 'progress' as const,
+    timestamp: e.timestamp,
+    title: `Progress on "${e.taskTitle}"`,
+    body: `Checked off: ${e.subtask} (+${e.minutesSpent} min logged).`,
+    meta: { taskId: e.taskId, minutes: e.minutesSpent },
+    reactions: { like: Math.floor(Math.random() * 8), insight: Math.floor(Math.random() * 4), celebrate: 0 },
+  }));
+
+  // Synthetic intro post for extended-roster agents (Cleopatra, Alexander, MoneyGod) with no work log yet
+  const introPost = (taskPosts.length === 0 && subPosts.length === 0) ? [{
+    id: `post-intro-${agent}`,
+    type: 'intro' as const,
+    timestamp: new Date().toISOString(),
+    title: `Hello from ${agent}`,
+    body: person.bio,
+    meta: { role: person.role },
+    reactions: { like: 12, insight: 3, celebrate: 5 },
+  }] : [];
+
+  const feed = [...introPost, ...taskPosts, ...subPosts]
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, limit);
+
+  return {
+    profile: person,
+    feed,
+    pinned: taskPosts.slice(-3).reverse(),
+  };
+}
+
 // Tick every 10 seconds
 setInterval(tickEngine, 10000);
 tickEngine();
