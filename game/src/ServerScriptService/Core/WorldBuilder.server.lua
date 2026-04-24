@@ -2586,6 +2586,129 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 	})
 
 	-- ================================================================
+	-- Advanced Processing Equipment (distillation, heat exchanger, centrifuge)
+	-- ================================================================
+	local advancedModel = createModel(pipelineModel, "AdvancedEquipment")
+
+	-- Distillation Column (tall, next to product silos)
+	local distColumn = createCylinder(advancedModel, {
+		Name = "DistillationColumn",
+		Size = Vector3.new(30, 5, 5),
+		Position = Vector3.new(-1780, 25, 30),
+		Color = Color3.fromRGB(160, 170, 200),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 0, 90),
+	})
+	tagInteractable(distColumn, "FactoryEquipment")
+	-- Tray rings
+	for i = 1, 6 do
+		createCylinder(advancedModel, {
+			Name = "DistTray_" .. i,
+			Size = Vector3.new(0.5, 5.5, 5.5),
+			Position = Vector3.new(-1780, 12 + i * 4, 30),
+			Color = Color3.fromRGB(180, 190, 210),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+	end
+	addBillboard(distColumn, {
+		Text = "Distillation Column\nHigh-purity V2O5 recovery",
+		Size = UDim2.new(10, 0, 3, 0),
+		StudsOffset = Vector3.new(0, 18, 0),
+		TextColor = Color3.fromRGB(160, 170, 200),
+		BackgroundColor = Color3.fromRGB(15, 18, 25),
+		MaxDistance = 100,
+	})
+	addPointLight(distColumn, { Color = Color3.fromRGB(160, 170, 200), Brightness = 1, Range = 15 })
+
+	-- Heat Exchanger (horizontal, between leach tanks and filtration)
+	local heatExch = createCylinder(advancedModel, {
+		Name = "HeatExchanger",
+		Size = Vector3.new(12, 4, 4),
+		Position = Vector3.new(-1870, 14, 10),
+		Color = Color3.fromRGB(180, 130, 80),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 90, 0),
+	})
+	tagInteractable(heatExch, "FactoryEquipment")
+	-- Tube ends (copper colored)
+	for zOff = -6, 6, 12 do
+		createCylinder(advancedModel, {
+			Name = "HeatExchEnd_" .. zOff,
+			Size = Vector3.new(0.5, 4.5, 4.5),
+			Position = Vector3.new(-1870, 14, 10 + zOff),
+			Color = Color3.fromRGB(200, 120, 50),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 90, 0),
+		})
+	end
+	addBillboard(heatExch, {
+		Text = "Heat Exchanger\n30% energy recovery",
+		Size = UDim2.new(10, 0, 2.5, 0),
+		StudsOffset = Vector3.new(0, 8, 0),
+		TextColor = Color3.fromRGB(200, 150, 80),
+		BackgroundColor = Color3.fromRGB(25, 18, 8),
+		MaxDistance = 80,
+	})
+
+	-- Centrifuge (next to filtration press)
+	local centrifugeBody = createCylinder(advancedModel, {
+		Name = "Centrifuge",
+		Size = Vector3.new(8, 6, 6),
+		Position = Vector3.new(-1860, 16, 50),
+		Color = Color3.fromRGB(140, 160, 180),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 0, 90),
+	})
+	tagInteractable(centrifugeBody, "FactoryEquipment")
+	-- Motor on top
+	createCylinder(advancedModel, {
+		Name = "CentrifugeMotor",
+		Size = Vector3.new(3, 2.5, 2.5),
+		Position = Vector3.new(-1860, 21, 50),
+		Color = Color3.fromRGB(40, 100, 40),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 0, 90),
+	})
+	addBillboard(centrifugeBody, {
+		Text = "Basket Centrifuge\nHigh-speed separation",
+		Size = UDim2.new(10, 0, 2.5, 0),
+		StudsOffset = Vector3.new(0, 10, 0),
+		TextColor = Color3.fromRGB(140, 180, 220),
+		BackgroundColor = Color3.fromRGB(15, 20, 30),
+		MaxDistance = 80,
+	})
+
+	-- Cyclone Separator (between screen and ball mill)
+	local cycloneBody = createCylinder(advancedModel, {
+		Name = "CycloneUpper",
+		Size = Vector3.new(8, 4, 4),
+		Position = Vector3.new(-2060, 18, -25),
+		Color = Color3.fromRGB(180, 160, 120),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 0, 90),
+	})
+	tagInteractable(cycloneBody, "FactoryEquipment")
+	-- Cone bottom
+	local cycloneCone = Instance.new("Part")
+	cycloneCone.Name = "CycloneCone"
+	cycloneCone.Shape = Enum.PartType.Block  -- approx cone with tapered part
+	cycloneCone.Size = Vector3.new(3, 8, 3)
+	cycloneCone.Position = Vector3.new(-2060, 10, -25)
+	cycloneCone.Color = Color3.fromRGB(180, 160, 120)
+	cycloneCone.Material = Enum.Material.SmoothPlastic
+	cycloneCone.Anchored = true
+	cycloneCone.Parent = advancedModel
+	addBillboard(cycloneBody, {
+		Text = "Cyclone Separator\n40 t/hr classification",
+		Size = UDim2.new(10, 0, 2.5, 0),
+		StudsOffset = Vector3.new(0, 8, 0),
+		TextColor = Color3.fromRGB(200, 180, 120),
+		BackgroundColor = Color3.fromRGB(25, 22, 12),
+		MaxDistance = 80,
+	})
+
+	-- ================================================================
 	-- Process flow arrows (neon path markers between stations)
 	-- ================================================================
 	local arrowPositions = {
