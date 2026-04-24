@@ -325,6 +325,6 @@ end
 
 -- Initial progress
 local done, total, pct = ResearchTree.GetProgress(unlockedResearch)
-progressL.Text = done .. "/" .. total .. " (" .. pct .. "%)"
+progressL.Text = done .. "/" .. total .. " researched (" .. pct .. "%) — 3 already unlocked! Click RESEARCH to unlock more."
 
 print("[MOLGANG] ResearchGui loaded — T key, 5 branches, " .. #ResearchTree.Nodes .. " technologies")

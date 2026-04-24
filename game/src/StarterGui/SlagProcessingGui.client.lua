@@ -215,7 +215,12 @@ tabButtons["slag"].TextColor3 = C.text
 local slagPanel = tabPanels["slag"]
 
 -- Slag inventory display
-label(slagPanel, {Name="InvTitle", Size=UDim2.new(1,-20,0,24), Position=UDim2.new(0,10,0,8),
+-- Info: What is slag?
+label(slagPanel, {Name="WhatIsSlag", Size=UDim2.new(1,-20,0,28), Position=UDim2.new(0,10,0,4),
+	Text="Steel slag = byproduct of steelmaking (BOF). Contains V, Fe, Ti, Cr, Mn. Buy chunks → crush → leach with acids → extract valuable metals!",
+	Color=C.textDim})
+
+label(slagPanel, {Name="InvTitle", Size=UDim2.new(1,-20,0,24), Position=UDim2.new(0,10,0,34),
 	Text="Slag Inventory", Color=C.accent, Font=Enum.Font.GothamBold})
 
 local slagCards = {}
