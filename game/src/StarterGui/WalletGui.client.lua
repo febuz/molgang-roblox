@@ -265,8 +265,8 @@ local el = Instance.new("UIListLayout"); el.Padding = UDim.new(0, 3); el.Parent 
 -- ══════════════════════════════════════════════
 
 local function refresh()
-	local data = Remotes.GetPlayerData:InvokeServer()
-	if not data then return end
+	local ok, data = pcall(function() return Remotes.GetPlayerData:InvokeServer() end) -- #93
+	if not ok or not data then return end
 	for _, card in ipairs(bf:GetChildren()) do
 		if card:IsA("Frame") then
 			local v = card:FindFirstChild("Value")
