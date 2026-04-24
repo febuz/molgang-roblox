@@ -59,6 +59,11 @@ local serverToClientEvents = {
 	"FactoryUpdate",      -- {placements, power, costs, bonuses} factory state
 	"EquipmentPlaced",    -- {itemId, gridX, gridY} placement confirmed
 	"EquipmentRemoved",   -- {gridX, gridY} removal confirmed
+	-- Mining System
+	"MiningUpdate",       -- {plots, ownedPlots, marketListings} mining state
+	"PlotExplored",       -- {plotId, composition, vanadiumPct} exploration result
+	"OreMined",           -- {plotId, kgMined, totalStockpile} ore production update
+	"PlotPurchased",      -- {plotId, seller, buyer, price} plot trade confirmation
 }
 
 -- ══════════════════════════════════════════════
@@ -103,6 +108,15 @@ local clientToServerEvents = {
 	"RequestRemoveEquipment",-- {gridX, gridY} remove equipment at position
 	"RequestBuyEquipment",   -- {itemId} purchase equipment for inventory
 	"RequestFactoryInfo",    -- {} get current factory state
+	-- Mining System
+	"RequestBuyExplorationLicense", -- {plotId} buy exploration license (composition unknown!)
+	"RequestExplorePlot",    -- {plotId} drill to discover mineral composition
+	"RequestBuyMiningEquip", -- {equipId} purchase mining equipment
+	"RequestDeployEquipment",-- {plotId, equipId} place equipment on plot
+	"RequestCollectOre",     -- {plotId} collect mined ore stockpile
+	"RequestListPlotForSale",-- {plotId, askPrice} list mining plot on market
+	"RequestBuyPlotFromMarket", -- {plotId} buy listed mining plot from another player
+	"RequestMiningInfo",     -- {} get all plot data
 }
 
 -- ══════════════════════════════════════════════
