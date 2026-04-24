@@ -243,7 +243,7 @@ SteelSlag.TwoStageLeach = {
 		name = "Ammonium Nitrate",
 		target = "CaO",
 		duration = 720,           -- half day per stage
-		cost = 150,
+		cost = 80,                -- reduced from 150 (#59)
 		extractionRate = 0.90,    -- 90% Ca removal
 	},
 	stage2 = {
@@ -251,8 +251,8 @@ SteelSlag.TwoStageLeach = {
 		name = "Ammonium Carbonate",
 		target = "V2O5",
 		duration = 720,
-		cost = 250,
-		extractionRate = 0.75,    -- 75% V recovery (high purity)
+		cost = 120,               -- reduced from 250 (#59)
+		extractionRate = 0.85,    -- 85% V recovery, up from 75% (#59)
 	},
 }
 
@@ -387,7 +387,7 @@ SteelSlag.Reagents = {
 		color = Color3.fromRGB(100, 180, 255),
 		cost = 0,
 		description = "Free but very slow. Only dissolves free lime (CaO).",
-		baseLeachTime = 7200,     -- 5 game days base
+		baseLeachTime = 2880,     -- 5 game days base
 		extraction = {
 			CaO   = 0.40,  -- free lime hydrates in water
 			MgO   = 0.05,

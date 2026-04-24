@@ -706,7 +706,9 @@ end
 
 -- Calculate total monthly costs
 function FactoryEquipment.CalculateMonthlyCost(placements)
-	local rent = FactoryEquipment.FloorConfig.baseRent
+	-- Idle factories pay only 25% rent (#62)
+	local hasEquipment = #placements > 0
+	local rent = hasEquipment and FactoryEquipment.FloorConfig.baseRent or math.floor(FactoryEquipment.FloorConfig.baseRent * 0.25)
 	local maintenance = 0
 	for _, placement in ipairs(placements) do
 		local item = FactoryEquipment.GetItem(placement.itemId)
