@@ -865,6 +865,111 @@ export function getAllArtifacts(limit = 50): Artifact[] {
   return artifacts.slice(-limit).reverse();
 }
 
+// === MULTI-AGENT PROPOSALS (agents actually collaborate via LM Studio) ===
+// Periodically, a proposer agent sends a targeted message to another agent
+// (Vice -> Zip, Cleopatra -> Fill, Analyst -> MoneyGod, etc.). Each proposal
+// is a real LM Studio call grounded in both agents' roles. Shows up in the
+// target's Inbox and the proposer's Outbox on the dashboard.
+interface Proposal {
+  id: string;
+  from: string;      // proposer agent name
+  to: string;        // target agent name
+  timestamp: string;
+  topic: string;     // short subject line
+  content: string;   // generated body
+  model: string;
+  latencyMs: number;
+  tokens: number;
+  status: 'delivered';
+}
+
+const proposals: Proposal[] = [];
+const MAX_PROPOSALS = 300;
+
+// Proposer → possible targets + a matching prompt scaffold.
+const PROPOSAL_LANES: Array<{ from: string; to: string; topic: string; prompt: (from: string, to: string) => string }> = [
+  // Vice (open-world design) files task proposals back to implementers
+  { from: 'Vice', to: 'Zip', topic: 'Open-world mechanic to implement', prompt: (f, t) => `As ${f}, write a concrete 3-bullet task proposal for ${t} (web developer) to implement a new open-world mechanic in MOLGANG inspired by EVE Online or GTA, tied to our chemistry simulation. Include one rough effort estimate. Under 120 words.` },
+  { from: 'Vice', to: 'Luna', topic: 'Rendering/visual direction request', prompt: (f, t) => `As ${f}, brief ${t} (technical artist) on a visual-direction change for one of our districts. Reference color palette, lighting mood, time-of-day. Include one ask ${t} owns. Under 120 words.` },
+  { from: 'Vice', to: 'Mira', topic: 'Asset commission', prompt: (f, t) => `As ${f}, commission ${t} (creative director) to design a set of props / NPCs for an upcoming district. Name 3 specific assets. Under 100 words.` },
+  // Analyst surfaces data-driven proposals
+  { from: 'Analyst', to: 'MoneyGod', topic: 'Economy signal requiring policy response', prompt: (f, t) => `As ${f} (data analyst), brief ${t} (economy authority) on a specific signal you found in player/market data that warrants a policy change. One signal, proposed intervention, expected outcome. Under 120 words.` },
+  { from: 'Analyst', to: 'Fill', topic: 'KPI update', prompt: (f, t) => `As ${f}, send ${t} (CEO) a one-paragraph KPI update: one metric moving, one metric stuck, one recommendation. Under 100 words.` },
+  { from: 'Analyst', to: 'Kai', topic: 'Performance regression to investigate', prompt: (f, t) => `As ${f}, flag to ${t} (CTO) a performance regression you spotted in the event stream. Include which endpoint or zone, severity, and suggested next step. Under 100 words.` },
+  // Atlas audits CAD / physics realism
+  { from: 'Atlas', to: 'Mira', topic: 'FreeCAD fidelity audit finding', prompt: (f, t) => `As ${f} (simulation/realism authority), report one specific finding from your FreeCAD audit of ${t}'s equipment models where the geometry would fail an industrial P&ID review. Give the fix. Under 120 words.` },
+  { from: 'Atlas', to: 'Luna', topic: 'Physics validation vs Perry handbook', prompt: (f, t) => `As ${f}, file a small physics validation report for ${t} (tech artist). Name one simulation behavior (fluid, heat, vapor) that drifts from Perry's Chemical Engineers' Handbook values and propose the fix. Under 120 words.` },
+  // Cleopatra runs governance reviews
+  { from: 'Cleopatra', to: 'Fill', topic: 'Governance review of recent decision', prompt: (f, t) => `As ${f} (executive authority), produce an independent second-opinion on one of ${t}'s (CEO) recent strategic decisions. Agree, dissent, or request modification — with one reason. Under 120 words.` },
+  { from: 'Cleopatra', to: 'Kai', topic: 'Compliance intersection question', prompt: (f, t) => `As ${f}, ask ${t} (CTO) one pointed question about GDPR / COPPA / EU AI Act compliance for a specific subsystem. Explain why you are asking. Under 100 words.` },
+  // Alexander arbitrates tech-stack choices
+  { from: 'Alexander', to: 'Kai', topic: 'ADR arbitration', prompt: (f, t) => `As ${f} (technical arbiter), write a short ADR stance on a tech-stack choice ${t} proposed (e.g., ORM, test framework, queue backend). Pick the more technically-interesting defensible option. Under 140 words.` },
+  { from: 'Alexander', to: 'Zip', topic: 'Code-review delegation note', prompt: (f, t) => `As ${f}, send ${t} (developer) a note about a code-review standard you are enforcing. Pick a pattern you want reinforced and one to avoid. Under 100 words.` },
+  // MoneyGod challenges the budget / economy decisions
+  { from: 'MoneyGod', to: 'Fill', topic: 'Budget challenge', prompt: (f, t) => `As ${f} (economy authority), push back on a specific line in ${t}'s (CEO) Q3 budget forecast. Name the line, the concern, and a concrete alternative. Under 120 words.` },
+  { from: 'MoneyGod', to: 'Zip', topic: 'Anti-farm gap to patch', prompt: (f, t) => `As ${f}, tell ${t} (developer) about an anti-farm gap you spotted in the MolCoin economy. One signal, one implementation ask. Under 100 words.` },
+];
+
+function pickProposalLane(): typeof PROPOSAL_LANES[number] {
+  return PROPOSAL_LANES[Math.floor(Math.random() * PROPOSAL_LANES.length)];
+}
+
+async function generateProposal(): Promise<void> {
+  const lane = pickProposalLane();
+  try {
+    const lms = await import('./lmstudio');
+    const result = await lms.chatAsAgent(
+      lane.from,
+      [
+        { role: 'system', content: lms.systemPromptForAgent(lane.from, roleMap[lane.from] || lane.from) },
+        { role: 'user', content: lane.prompt(lane.from, lane.to) },
+      ],
+      { taskType: 'cheap', max_tokens: 260 }
+    );
+    if (!result.ok) {
+      logger.warn(`proposal skipped (${lane.from} -> ${lane.to}): ${result.reason}`);
+      return;
+    }
+    const p: Proposal = {
+      id: `prop-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      from: lane.from,
+      to: lane.to,
+      timestamp: new Date().toISOString(),
+      topic: lane.topic,
+      content: result.content,
+      model: result.model,
+      latencyMs: result.latencyMs,
+      tokens: result.usage?.total_tokens || 0,
+      status: 'delivered',
+    };
+    proposals.push(p);
+    if (proposals.length > MAX_PROPOSALS) proposals.splice(0, proposals.length - MAX_PROPOSALS);
+    logger.info(`📨 proposal ${lane.from} → ${lane.to}: ${lane.topic} (${p.tokens} tokens)`);
+    dirty = true;
+  } catch (e: any) {
+    logger.warn(`proposal generation crashed: ${e.message}`);
+  }
+}
+
+// Fire a proposal every 3 minutes. Starts 45s after boot so the first tick
+// has time to warm up tasks and for LM Studio to be ready.
+setTimeout(() => {
+  generateProposal();
+  setInterval(generateProposal, 180_000);
+}, 45_000);
+
+export function getAgentInbox(agent: string, limit = 15): Proposal[] {
+  return proposals.filter(p => p.to === agent).slice(-limit).reverse();
+}
+
+export function getAgentOutbox(agent: string, limit = 15): Proposal[] {
+  return proposals.filter(p => p.from === agent).slice(-limit).reverse();
+}
+
+export function getAllProposals(limit = 50): Proposal[] {
+  return proposals.slice(-limit).reverse();
+}
+
 // === IN-PROGRESS DETAIL (full subtask array, which done/not-done) ===
 export function getAgentInProgressDetail(agent: string) {
   const agentTasks = tasks.filter(t => t.assigned_to === agent && t.status === 'in-progress');

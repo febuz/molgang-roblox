@@ -142,6 +142,22 @@ app.get('/api/tokens/events', (req, res) => {
   res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
 });
 
+// Multi-agent proposals (Inbox / Outbox / global)
+app.get('/api/agents/:name/inbox', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 15;
+  res.json({ success: true, agent: req.params.name, inbox: taskEngine.getAgentInbox(req.params.name, limit) });
+});
+
+app.get('/api/agents/:name/outbox', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 15;
+  res.json({ success: true, agent: req.params.name, outbox: taskEngine.getAgentOutbox(req.params.name, limit) });
+});
+
+app.get('/api/proposals', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  res.json({ success: true, proposals: taskEngine.getAllProposals(limit) });
+});
+
 // Agent artifacts — real LM Studio outputs generated on task completion
 app.get('/api/agents/:name/artifacts', (req, res) => {
   const limit = parseInt(req.query.limit as string) || 10;

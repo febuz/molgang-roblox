@@ -1658,6 +1658,24 @@
                     </div>
                     <div id="agent-artifacts-list"><p style="color:var(--text-secondary); font-size:0.85em; padding:8px 0;">Nothing yet. Artifacts appear here when ${profile.name} completes a task (asynchronous LM Studio call).</p></div>
                 </div>
+
+                <!-- Inbox — proposals received from other agents -->
+                <div class="card" id="agent-inbox-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div class="card-title" style="margin:0;">📮 Inbox — proposals from other agents</div>
+                        <span style="font-size:0.72em;color:var(--text-secondary);">populated every ~3 min via LM Studio</span>
+                    </div>
+                    <div id="agent-inbox-list"><p style="color:var(--text-secondary); font-size:0.85em; padding:8px 0;">No inbound proposals yet. Other agents will write to ${profile.name} here.</p></div>
+                </div>
+
+                <!-- Outbox — proposals this agent sent to others -->
+                <div class="card" id="agent-outbox-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div class="card-title" style="margin:0;">📤 Outbox — proposals sent</div>
+                        <span style="font-size:0.72em;color:var(--text-secondary);">${profile.name}'s outgoing proposals</span>
+                    </div>
+                    <div id="agent-outbox-list"><p style="color:var(--text-secondary); font-size:0.85em; padding:8px 0;">Nothing sent yet.</p></div>
+                </div>
             `;
 
             // Render all tasks initially
@@ -1825,20 +1843,62 @@
             } catch (e) { console.log('artifact fetch:', e.message); }
         }
 
+        async function fetchAgentInbox(name) {
+            try {
+                const [inR, outR] = await Promise.all([
+                    fetch(`/api/agents/${name}/inbox?limit=10`),
+                    fetch(`/api/agents/${name}/outbox?limit=10`),
+                ]);
+                const inD = await inR.json();
+                const outD = await outR.json();
+                const renderProposalList = (items, targetId, emptyMsg, kind) => {
+                    const wrap = document.getElementById(targetId);
+                    if (!wrap) return;
+                    if (!items || items.length === 0) {
+                        // keep existing placeholder
+                        return;
+                    }
+                    wrap.innerHTML = items.map(p => {
+                        const dt = new Date(p.timestamp);
+                        const ago = (Date.now() - dt.getTime()) / 1000;
+                        const timeStr = ago < 60 ? 'just now' : ago < 3600 ? Math.round(ago/60)+'m ago' : ago < 86400 ? Math.round(ago/3600)+'h ago' : dt.toLocaleDateString();
+                        const counterpart = kind === 'inbox' ? p.from : p.to;
+                        const counterpartColor = (agentProfiles[counterpart.toLowerCase()]?.color) || 'var(--primary)';
+                        const counterpartAvatar = (agentProfiles[counterpart.toLowerCase()]?.avatar) || '👤';
+                        const arrow = kind === 'inbox' ? '←' : '→';
+                        return `
+                            <div style="margin-bottom:10px;padding:12px;background:rgba(30,58,95,0.25);border-left:3px solid ${counterpartColor};border-radius:6px;">
+                                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px;">
+                                    <div style="font-weight:600;color:var(--text-primary);font-size:0.88em;">${arrow} ${counterpartAvatar} ${escapeHtml(counterpart)} — ${escapeHtml(p.topic)}</div>
+                                    <div style="font-size:0.7em;color:var(--text-secondary);white-space:nowrap;">${timeStr}</div>
+                                </div>
+                                <div style="white-space:pre-wrap;color:var(--text-secondary);font-size:0.84em;line-height:1.5;">${escapeHtml(p.content)}</div>
+                                <div style="font-size:0.68em;color:var(--text-secondary);margin-top:6px;border-top:1px solid rgba(148,163,184,0.1);padding-top:4px;">${p.model} · ${(p.latencyMs/1000).toFixed(1)}s · ${p.tokens} tokens</div>
+                            </div>
+                        `;
+                    }).join('');
+                };
+                renderProposalList(inD.inbox || [], 'agent-inbox-list', 'No inbound proposals yet.', 'inbox');
+                renderProposalList(outD.outbox || [], 'agent-outbox-list', 'Nothing sent yet.', 'outbox');
+            } catch (e) { console.log('inbox fetch:', e.message); }
+        }
+
         function startAgentLivePolling(name) {
             agentPollName = name;
             // immediate fetch
             fetchAgentInProgressDetail(name);
             fetchAgentCliLog(name);
             fetchAgentArtifacts(name);
-            // then every 2s (artifacts every 6s since they change rarely)
-            let artifactCounter = 0;
+            fetchAgentInbox(name);
+            // then every 2s (slower things on multiples of that)
+            let slowCounter = 0;
             agentPollTimer = setInterval(() => {
                 if (agentPollName !== name) return;
                 fetchAgentInProgressDetail(name);
                 fetchAgentCliLog(name);
-                artifactCounter++;
-                if (artifactCounter >= 3) { fetchAgentArtifacts(name); artifactCounter = 0; }
+                slowCounter++;
+                if (slowCounter % 3 === 0) fetchAgentArtifacts(name);
+                if (slowCounter % 5 === 0) fetchAgentInbox(name);
             }, 2000);
         }
 
