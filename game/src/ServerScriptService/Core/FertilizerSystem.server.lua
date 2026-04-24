@@ -432,9 +432,10 @@ task.spawn(function()
 
 						if progress >= 100 then
 							plot.ready = true
+							-- Announce with distinct sound (#40)
 							Remotes.FireClient("ServerAnnounce", player, {
-								message = plot.cropName .. " in Plot " .. plot.id .. " is ready to harvest!",
-								rarity = "rare",
+								message = "HARVEST READY: " .. plot.cropName .. " in Plot " .. plot.id .. "! Press F to harvest.",
+								rarity = "epic",
 							})
 						end
 

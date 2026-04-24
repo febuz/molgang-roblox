@@ -838,6 +838,35 @@ local function buildNexusHub(zonesFolder: Folder)
 		})
 	end
 
+	-- Teleport pads to mining regions (#28)
+	local teleportTargets = {
+		{name = "North Ridge", target = Vector3.new(0, 10, 3500), offset = Vector3.new(30, 14, -20)},
+		{name = "East Plateau", target = Vector3.new(3500, 10, 0), offset = Vector3.new(45, 14, -20)},
+		{name = "South Basin", target = Vector3.new(0, 10, -3500), offset = Vector3.new(60, 14, -20)},
+		{name = "Deep West", target = Vector3.new(-3500, -5, 0), offset = Vector3.new(75, 14, -20)},
+	}
+	for _, tp in ipairs(teleportTargets) do
+		local pad = createPart(zone, {
+			Name = "TeleportPad_" .. tp.name:gsub(" ", ""),
+			Size = Vector3.new(8, 1, 8),
+			Position = tp.offset,
+			Color = Color3.fromRGB(200, 160, 40),
+			Material = Enum.Material.Neon,
+		})
+		pad:SetAttribute("TeleportTarget", tp.target)
+		pad:SetAttribute("TeleportName", tp.name)
+		addBillboard(pad, {
+			Text = "TELEPORT\n→ " .. tp.name,
+			Size = UDim2.new(6, 0, 2, 0),
+			StudsOffset = Vector3.new(0, 3, 0),
+			TextColor = Color3.fromRGB(255, 200, 40),
+			BackgroundColor = Color3.fromRGB(30, 20, 5),
+			BackgroundTransparency = 0.3,
+			MaxDistance = 60,
+		})
+		addPointLight(pad, {Color = Color3.fromRGB(255, 200, 40), Brightness = 2, Range = 12})
+	end
+
 	print("[WorldBuilder] Zone 1: Nexus Hub built (with Bubble Tea Bar)")
 	return zone
 end

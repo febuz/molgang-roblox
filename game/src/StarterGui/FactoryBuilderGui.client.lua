@@ -348,10 +348,36 @@ for x = 1, GRID_W do
 			end
 		end)
 
-		-- Right-click to remove
+		-- Right-click to remove (with confirmation for expensive items #30)
 		cell.MouseButton2Click:Connect(function()
-			local r = Remotes:FindFirstChild("RequestRemoveEquipment")
-			if r then r:FireServer(x, y) end
+			playUIClick()
+			-- Check if cell has expensive equipment
+			local isExpensive = cell:GetAttribute("Occupied") and cell:GetAttribute("Cost") and cell:GetAttribute("Cost") > 1000
+			if isExpensive then
+				-- Show confirm dialog
+				local cg = Instance.new("ScreenGui"); cg.Name = "ConfirmRemove"; cg.Parent = playerGui
+				local cf = Instance.new("Frame"); cf.Size = UDim2.new(0.3,0,0,60); cf.Position = UDim2.new(0.35,0,0.4,0)
+				cf.BackgroundColor3 = Color3.fromRGB(40,15,15); cf.Parent = cg
+				local cl = Instance.new("TextLabel"); cl.Size = UDim2.new(1,0,0.5,0); cl.BackgroundTransparency = 1
+				cl.Text = "Remove expensive equipment? (No refund)"; cl.TextColor3 = Color3.fromRGB(255,180,80)
+				cl.TextScaled = true; cl.Font = Enum.Font.GothamBold; cl.Parent = cf
+				local yb = Instance.new("TextButton"); yb.Size = UDim2.new(0.4,0,0.4,0); yb.Position = UDim2.new(0.05,0,0.55,0)
+				yb.Text = "Yes"; yb.BackgroundColor3 = Color3.fromRGB(200,60,60); yb.TextColor3 = Color3.new(1,1,1)
+				yb.TextScaled = true; yb.Font = Enum.Font.GothamBold; yb.Parent = cf
+				local nb = Instance.new("TextButton"); nb.Size = UDim2.new(0.4,0,0.4,0); nb.Position = UDim2.new(0.55,0,0.55,0)
+				nb.Text = "No"; nb.BackgroundColor3 = Color3.fromRGB(60,60,80); nb.TextColor3 = Color3.new(1,1,1)
+				nb.TextScaled = true; nb.Font = Enum.Font.GothamBold; nb.Parent = cf
+				yb.MouseButton1Click:Connect(function()
+					local r = Remotes:FindFirstChild("RequestRemoveEquipment")
+					if r then r:FireServer(x, y) end
+					cg:Destroy()
+				end)
+				nb.MouseButton1Click:Connect(function() cg:Destroy() end)
+				task.delay(5, function() if cg.Parent then cg:Destroy() end end)
+			else
+				local r = Remotes:FindFirstChild("RequestRemoveEquipment")
+				if r then r:FireServer(x, y) end
+			end
 		end)
 
 		-- Hover preview

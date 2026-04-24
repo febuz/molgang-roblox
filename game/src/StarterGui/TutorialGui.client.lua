@@ -77,6 +77,12 @@ local STEPS = {
 		target = 4,  -- total (including first)
 	},
 	{
+		title = "Build a Molecule!",
+		text = "Press R to open the Recipe Book. Combine your atoms into molecules like H2O or NaCl. Each recipe shows the required atoms and their valence!",
+		condition = "press_key",
+		key = Enum.KeyCode.R,
+	},
+	{
 		title = "Process Steel Slag!",
 		text = "Press S to open the Slag Processing lab. Buy raw slag, crush it, and leach metals with acids. This is real chemical engineering!",
 		condition = "press_key",

@@ -259,14 +259,26 @@ local controlsData = {
 	{"Space", "Jump"},
 	{"P", "Periodic Table"},
 	{"D", "Dashboard"},
+	{"I", "Inventory"},
+	{"R", "Recipe Book"},
+	{"Q", "Quest Log"},
 	{"S", "Slag Processing"},
 	{"F", "Fertilizer Lab"},
 	{"G", "Factory Builder"},
 	{"C", "Process Control"},
+	{"T", "Research Tree"},
+	{"V", "Mining"},
+	{"X", "Product Exchange"},
+	{"B", "Bubble Tea Bar"},
+	{"L", "Leaderboards"},
+	{"A", "Achievements"},
+	{"Tab", "Wallet"},
+	{"M", "Map / Mahjong"},
+	{"Esc", "Close All"},
 }
 
 local controlsFrame = Instance.new("Frame")
-controlsFrame.Size = UDim2.new(1, -30, 0, 140)
+controlsFrame.Size = UDim2.new(1, -30, 0, 340)  -- taller for 20 controls (#23)
 controlsFrame.Position = UDim2.new(0, 15, 0, 125)
 controlsFrame.BackgroundTransparency = 1
 controlsFrame.Parent = contentPanel
