@@ -39,15 +39,23 @@
 | 24 | 3D-024 | Mine Haul Truck (30t) | haul_truck.fbx | FBX | ~3,000 | 48 | 2026-04-24 | Blender Python procedural | €140 | 3yr linear | Active |
 | 25 | 3D-025 | BOF Converter (Velzen) | bof_converter.fbx | FBX | ~3,200 | 49 | 2026-04-24 | Blender Python procedural | €180 | 3yr linear | Active |
 
-**Subtotaal 3D Modellen: 25 assets | €3,220 totale waarde | 1.5 MB totale bestandsgrootte**
+| 26 | 3D-026 | Leaching Tank (from photo test) | leaching_tank_500L_from_photo.obj | OBJ | ~716 | 44 | 2026-04-24 | MiDaS GPU depth → trimesh | €80 | 3yr linear | Active |
+| 27 | 3D-027 | Centrifugal Pump | centrifugal_pump.fbx | FBX | ~3,000 | 50 | 2026-04-24 | Blender Python procedural | €150 | 3yr linear | Active |
+| 28 | 3D-028 | Gate Valve Assembly | gate_valve.fbx | FBX | ~4,000 | 79 | 2026-04-24 | Blender Python procedural | €120 | 3yr linear | Active |
+| 29 | 3D-029 | Laboratory Bench | lab_bench.fbx | FBX | ~3,500 | 65 | 2026-04-24 | Blender Python procedural | €160 | 3yr linear | Active |
+| 30 | 3D-030 | Spray Dryer | spray_dryer.fbx | FBX | ~3,200 | 60 | 2026-04-24 | Blender Python procedural | €180 | 3yr linear | Active |
+| 31 | 3D-031 | Screw Conveyor (12m) | screw_conveyor.fbx | FBX | ~4,500 | 120 | 2026-04-24 | Blender Python procedural | €170 | 3yr linear | Active |
+| 32 | 3D-032 | Thickener/Clarifier Tank | thickener_tank.fbx | FBX | ~3,800 | 65 | 2026-04-24 | Blender Python procedural | €200 | 3yr linear | Active |
+
+**Subtotaal 3D Modellen: 32 assets | €4,280 totale waarde | 2.1 MB totale bestandsgrootte**
 
 ### GPU-Rendered Preview Images (25 images)
 
 | # | Asset ID | Name | File | Resolution | Size | Render Engine | GPU Used |
 |---|----------|------|------|------------|------|---------------|----------|
-| 1-25 | RENDER-001 to RENDER-025 | Equipment preview renders | assets/renders/*_preview.png | 1280×960 | ~1.2MB each | Blender Cycles 64spp + Denoise | 2× RTX 3090 (OptiX) |
+| 1-32 | RENDER-001 to RENDER-032 | Equipment preview renders | assets/renders/*_preview.png | 1280×960 | ~1.1MB each | Blender Cycles 64spp + Denoise | 2× RTX 3090 (OptiX) |
 
-**Subtotaal Renders: 25 images | 28 MB | €500 totale waarde (GPU compute + artist time)**
+**Subtotaal Renders: 32 images | 36 MB | €640 totale waarde (GPU compute + artist time)**
 
 ---
 
@@ -149,8 +157,8 @@
 | Documentatie | 7 docs | €1,200 | 5 jaar lineair |
 | Data Assets | 10 datasets | €2,750 | 5 jaar lineair |
 | Infrastructure | 5 tools | €1,150 | 3 jaar lineair |
-| GPU Renders | 25 images | €500 | 3 jaar lineair |
-| **TOTAAL** | **147 assets** | **€36,070** | |
+| GPU Renders | 32 images | €640 | 3 jaar lineair |
+| **TOTAAL** | **161 assets** | **€38,340** | |
 
 ### Jaarlijkse Afschrijving
 - 3D Modellen: €2,650 / 3 = **€883/jaar**
