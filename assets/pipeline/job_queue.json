@@ -140,10 +140,27 @@
       "created": "2026-04-24T04:12:17.120513",
       "started": "2026-04-24T04:14:05.641632",
       "completed": "2026-04-24T04:14:07.946797"
+    },
+    {
+      "id": "job_11_1776998162",
+      "type": "blender_convert",
+      "input": "/home/knight2/molgang-roblox/assets/downloads/leaching_tank_500L_from_photo.obj",
+      "output": "",
+      "params": {
+        "target_studs": 5.0,
+        "decimate": 0.5
+      },
+      "gpu": "0",
+      "priority": 2,
+      "est_minutes": 2,
+      "status": "completed",
+      "created": "2026-04-24T04:36:02.743835",
+      "started": "2026-04-24T04:36:03.396205",
+      "completed": "2026-04-24T04:36:05.863160"
     }
   ],
   "stats": {
-    "total_jobs": 10,
-    "gpu_hours": 0.006389254166666667
+    "total_jobs": 11,
+    "gpu_hours": 0.007074519444444444
   }
 }
