@@ -513,11 +513,22 @@ if factoryEvent then
 			data.maxPlacements or 30
 		)
 
-		-- Power warning
+		-- Power warning — flash red when overloaded (#39)
 		if (data.powerBalance or 0) < 0 then
 			statsLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+			-- Flash effect
+			task.spawn(function()
+				for _ = 1, 3 do
+					statsLabel.BackgroundTransparency = 0
+					statsLabel.BackgroundColor3 = Color3.fromRGB(80, 10, 10)
+					task.wait(0.3)
+					statsLabel.BackgroundTransparency = 1
+					task.wait(0.3)
+				end
+			end)
 		else
 			statsLabel.TextColor3 = C.textDim
+			statsLabel.BackgroundTransparency = 1
 		end
 
 		-- Clear grid

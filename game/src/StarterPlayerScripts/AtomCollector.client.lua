@@ -202,6 +202,21 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
+	-- Attraction trail when approaching (#42)
+	if closestAtom and closestDist <= COLLECT_RANGE * 1.5 and closestDist > COLLECT_RANGE then
+		if not closestAtom:FindFirstChild("TrailEmitter") then
+			local emitter = Instance.new("ParticleEmitter")
+			emitter.Name = "TrailEmitter"
+			emitter.Color = ColorSequence.new(closestAtom.Color)
+			emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 0)})
+			emitter.Lifetime = NumberRange.new(0.3, 0.6)
+			emitter.Rate = 15
+			emitter.Speed = NumberRange.new(5, 10)
+			emitter.SpreadAngle = Vector2.new(30, 30)
+			emitter.Parent = closestAtom
+		end
+	end
+
 	-- Auto-collect bij proximity (touch = collect)
 	if closestAtom and closestDist <= COLLECT_RANGE then
 		local now = tick()

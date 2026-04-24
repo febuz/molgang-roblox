@@ -1142,7 +1142,7 @@ local function buildPeriodicTableBiome(zonesFolder: Folder)
 			for side = -1, 1, 2 do
 				createPart(bridgeModel, {
 					Name = "BridgeLight_" .. seg .. "_" .. side,
-					Size = Vector3.new(1, 3, 1),
+					Size = Vector3.new(1.5, 3.5, 1.5),   -- thicker for VR (#44)
 					Position = Vector3.new(side * 4, bridgeY + 2, bridgeZ),
 					Color = CONFIG.NEON_GREEN,
 					Material = Enum.Material.Neon,
@@ -1367,7 +1367,7 @@ local function buildQuantumLab(zonesFolder: Folder)
 			for side = -1, 1, 2 do
 				createPart(bridgeModel, {
 					Name = "BridgeLight_" .. seg .. "_" .. side,
-					Size = Vector3.new(1, 3, 1),
+					Size = Vector3.new(1.5, 3.5, 1.5),   -- thicker for VR (#44)
 					Position = Vector3.new(bridgeX, bridgeY + 2, side * 4),
 					Color = CONFIG.NEON_PURPLE,
 					Material = Enum.Material.Neon,
@@ -1933,22 +1933,25 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 			Orientation = Vector3.new(0, 0, 90),
 		})
 
-		-- Bubble particles
+		-- Bubble particles — more lively (#45)
 		addParticleEmitter(liquid, {
 			Color = ColorSequence.new(vatColors[v]),
 			Size = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.3),
-				NumberSequenceKeypoint.new(1, 0.8),
+				NumberSequenceKeypoint.new(0, 0.2),
+				NumberSequenceKeypoint.new(0.5, 0.6),
+				NumberSequenceKeypoint.new(1, 1.0),
 			}),
 			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.2),
+				NumberSequenceKeypoint.new(0, 0.1),
+				NumberSequenceKeypoint.new(0.7, 0.4),
 				NumberSequenceKeypoint.new(1, 1),
 			}),
-			Lifetime = NumberRange.new(1, 3),
-			Rate = 8,
-			Speed = NumberRange.new(1, 3),
-			SpreadAngle = Vector2.new(30, 30),
-			LightEmission = 0.6,
+			Lifetime = NumberRange.new(1.5, 4),
+			Rate = 20,              -- more bubbles (#45)
+			Speed = NumberRange.new(2, 5),
+			SpreadAngle = Vector2.new(45, 45),
+			LightEmission = 0.7,
+			RotSpeed = NumberRange.new(-30, 30),  -- rotation for visual variety
 		})
 
 		addPointLight(liquid, {
@@ -2093,8 +2096,8 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		})
 		addPointLight(lightPart, {
 			Color = Color3.fromRGB(255, 255, 240),
-			Brightness = 1.5,
-			Range = 40,
+			Brightness = 3,       -- brighter interior (#29)
+			Range = 60,           -- wider coverage (#29)
 		})
 	end
 
