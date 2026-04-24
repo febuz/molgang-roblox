@@ -57,7 +57,7 @@ screenGui.Parent = playerGui
 -- Widget panel (top-right, compact)
 local widget = Instance.new("Frame")
 widget.Name = "Widget"
-widget.Size = UDim2.new(0, 240, 0, 215)
+widget.Size = UDim2.new(0, 240, 0, 232)
 widget.Position = UDim2.new(1, -250, 0, 10)
 widget.BackgroundColor3 = COLORS.panel
 widget.BackgroundTransparency = 0.12
@@ -156,11 +156,25 @@ molsLabel.Font = Enum.Font.Gotham
 molsLabel.TextXAlignment = Enum.TextXAlignment.Left
 molsLabel.Parent = widget
 
+-- ── Production status (#32) ──
+
+local prodLabel = Instance.new("TextLabel")
+prodLabel.Name = "Production"
+prodLabel.Size = UDim2.new(1, -16, 0, 16)
+prodLabel.Position = UDim2.new(0, 8, 0, 92)
+prodLabel.BackgroundTransparency = 1
+prodLabel.Text = "Production: idle"
+prodLabel.TextColor3 = COLORS.textSecondary
+prodLabel.TextScaled = true
+prodLabel.Font = Enum.Font.Gotham
+prodLabel.TextXAlignment = Enum.TextXAlignment.Left
+prodLabel.Parent = widget
+
 -- ── Elements discovery progress bar ──
 
 local elemLabel = Instance.new("TextLabel")
 elemLabel.Size = UDim2.new(1, -16, 0, 18)
-elemLabel.Position = UDim2.new(0, 8, 0, 94)
+elemLabel.Position = UDim2.new(0, 8, 0, 110)
 elemLabel.BackgroundTransparency = 1
 elemLabel.Text = "Elements: 0/118"
 elemLabel.TextColor3 = COLORS.textSecondary
@@ -171,7 +185,7 @@ elemLabel.Parent = widget
 
 local progressBg = Instance.new("Frame")
 progressBg.Size = UDim2.new(1, -16, 0, 6)
-progressBg.Position = UDim2.new(0, 8, 0, 114)
+progressBg.Position = UDim2.new(0, 8, 0, 128)
 progressBg.BackgroundColor3 = COLORS.progressBg
 progressBg.BorderSizePixel = 0
 progressBg.Parent = widget
@@ -195,7 +209,7 @@ pfCorner.Parent = progressFill
 local claimLabel = Instance.new("TextLabel")
 claimLabel.Name = "DailyClaim"
 claimLabel.Size = UDim2.new(1, -16, 0, 16)
-claimLabel.Position = UDim2.new(0, 8, 0, 122)
+claimLabel.Position = UDim2.new(0, 8, 0, 138)
 claimLabel.BackgroundTransparency = 1
 claimLabel.Text = "Daily: Ready!"
 claimLabel.TextColor3 = COLORS.accent
@@ -206,7 +220,7 @@ claimLabel.Parent = widget
 
 local btnFrame = Instance.new("Frame")
 btnFrame.Size = UDim2.new(1, -16, 0, 28)
-btnFrame.Position = UDim2.new(0, 8, 0, 140)
+btnFrame.Position = UDim2.new(0, 8, 0, 156)
 btnFrame.BackgroundTransparency = 1
 btnFrame.Parent = widget
 
@@ -295,6 +309,20 @@ local function refreshHUD()
 	-- Molecules total
 	local molCount = countTable(playerData.molecules)
 	molsLabel.Text = "Mols: " .. molCount
+
+	-- Production status (#32)
+	if playerData.facilities then
+		local fac = playerData.facilities
+		local totalFac = (fac.mines or 0) + (fac.factories or 0) + (fac.researchLabs or 0) + (fac.offices or 0)
+		if totalFac > 0 then
+			local atomsPerCycle = (fac.mines or 0) * 10 + 3  -- +3 for starter bench
+			prodLabel.Text = "Prod: " .. atomsPerCycle .. " atoms/min"
+			prodLabel.TextColor3 = COLORS.accent
+		else
+			prodLabel.Text = "Production: Buy a Starter Bench!"
+			prodLabel.TextColor3 = Color3.fromRGB(200, 160, 60)
+		end
+	end
 
 	-- Elements discovered
 	local elemCount = countKeys(playerData.elementsFound)
