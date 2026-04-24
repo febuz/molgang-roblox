@@ -46,14 +46,22 @@
 | 30 | 3D-030 | Spray Dryer | spray_dryer.fbx | FBX | ~3,200 | 60 | 2026-04-24 | Blender Python procedural | €180 | 3yr linear | Active |
 | 31 | 3D-031 | Screw Conveyor (12m) | screw_conveyor.fbx | FBX | ~4,500 | 120 | 2026-04-24 | Blender Python procedural | €170 | 3yr linear | Active |
 | 32 | 3D-032 | Thickener/Clarifier Tank | thickener_tank.fbx | FBX | ~3,800 | 65 | 2026-04-24 | Blender Python procedural | €200 | 3yr linear | Active |
+| 33 | 3D-033 | Teleport Pad | teleport_pad.fbx | FBX | ~2,500 | 38 | 2026-04-24 | Blender Python procedural | €120 | 3yr linear | Active |
+| 34 | 3D-034 | Slag Ladle | slag_ladle.fbx | FBX | ~2,200 | 35 | 2026-04-24 | Blender Python procedural | €150 | 3yr linear | Active |
+| 35 | 3D-035 | Rail Cart | rail_cart.fbx | FBX | ~2,800 | 40 | 2026-04-24 | Blender Python procedural | €100 | 3yr linear | Active |
+| 36 | 3D-036 | Safety Fence Post | safety_fence_post.fbx | FBX | ~800 | 15 | 2026-04-24 | Blender Python procedural | €30 | 3yr linear | Active |
+| 37 | 3D-037 | Warning Beacon | warning_beacon.fbx | FBX | ~1,500 | 22 | 2026-04-24 | Blender Python procedural | €50 | 3yr linear | Active |
+| 38 | 3D-038 | Solar Panel | solar_panel.fbx | FBX | ~1,200 | 18 | 2026-04-24 | Blender Python procedural | €80 | 3yr linear | Active |
+| 39 | 3D-039 | Boba Tea Cup | boba_tea_cup.fbx | FBX | ~2,000 | 30 | 2026-04-24 | Blender Python procedural | €60 | 3yr linear | Active |
+| 40 | 3D-040 | Diploma Frame | diploma_frame.fbx | FBX | ~600 | 12 | 2026-04-24 | Blender Python procedural | €40 | 3yr linear | Active |
 
-**Subtotaal 3D Modellen: 32 assets | €4,280 totale waarde | 2.1 MB totale bestandsgrootte**
+**Subtotaal 3D Modellen: 40 assets | €4,910 totale waarde | 2.6 MB totale bestandsgrootte**
 
-### GPU-Rendered Preview Images (25 images)
+### GPU-Rendered Preview Images (40 images)
 
 | # | Asset ID | Name | File | Resolution | Size | Render Engine | GPU Used |
 |---|----------|------|------|------------|------|---------------|----------|
-| 1-32 | RENDER-001 to RENDER-032 | Equipment preview renders | assets/renders/*_preview.png | 1280×960 | ~1.1MB each | Blender Cycles 64spp + Denoise | 2× RTX 3090 (OptiX) |
+| 1-40 | RENDER-001 to RENDER-040 | Equipment preview renders | assets/renders/*_preview.png | 1280×960 | ~1.1MB each | Blender Cycles 64spp + Denoise | 2× RTX 3090 (OptiX) |
 
 **Subtotaal Renders: 32 images | 36 MB | €640 totale waarde (GPU compute + artist time)**
 
@@ -152,18 +160,19 @@
 
 | Categorie | Aantal | Waarde (EUR) | Afschrijving |
 |-----------|--------|-------------|--------------|
-| 3D Modellen | 21 | €2,650 | 3 jaar lineair |
-| Software Code | 69 scripts | €24,920 | 5 jaar lineair |
-| Documentatie | 7 docs | €1,200 | 5 jaar lineair |
+| 3D Modellen | 40 | €4,910 | 3 jaar lineair |
+| Software Code | 83 scripts | €29,920 | 5 jaar lineair |
+| Documentatie | 8 docs | €1,400 | 5 jaar lineair |
 | Data Assets | 10 datasets | €2,750 | 5 jaar lineair |
-| Infrastructure | 5 tools | €1,150 | 3 jaar lineair |
-| GPU Renders | 32 images | €640 | 3 jaar lineair |
-| **TOTAAL** | **161 assets** | **€38,340** | |
+| Infrastructure | 6 tools | €1,350 | 3 jaar lineair |
+| GPU Renders | 40 images | €800 | 3 jaar lineair |
+| New Modules | 11 modules | €3,300 | 5 jaar lineair |
+| **TOTAAL** | **198 assets** | **€44,430** | |
 
 ### Jaarlijkse Afschrijving
-- 3D Modellen: €2,650 / 3 = **€883/jaar**
-- Software + Docs + Data: €28,870 / 5 = **€5,774/jaar**
-- Infrastructure: €1,150 / 3 = **€383/jaar**
+- 3D Modellen + Renders: €5,710 / 3 = **€1,903/jaar**
+- Software + Modules + Docs + Data: €37,370 / 5 = **€7,474/jaar**
+- Infrastructure: €1,350 / 3 = **€450/jaar**
 - **Totale jaarlijkse afschrijving: €7,040/jaar**
 
 ### Boekwaarde per 31-12-2026
