@@ -77,10 +77,28 @@ local STEPS = {
 		target = 4,  -- total (including first)
 	},
 	{
-		title = "You're Ready!",
-		text = "Great work! Explore the 6 zones, craft molecules, trade on the market, and climb the leaderboards. Have fun!",
+		title = "Process Steel Slag!",
+		text = "Press S to open the Slag Processing lab. Buy raw slag, crush it, and leach metals with acids. This is real chemical engineering!",
+		condition = "press_key",
+		key = Enum.KeyCode.S,
+	},
+	{
+		title = "Control Your Process",
+		text = "Press C for the Process Control Panel. Adjust temperature, pressure, pH, and flow rate to optimize your leaching. Arrhenius kinetics!",
+		condition = "press_key",
+		key = Enum.KeyCode.C,
+	},
+	{
+		title = "Become an Entrepreneur!",
+		text = "Press G to open the Factory Builder. Rent a 1000m² indoor factory and place equipment on a grid. Build your chemical empire!",
 		condition = "auto",
 		delay = 8,
+	},
+	{
+		title = "You're Ready!",
+		text = "Explore all 19 features! Mine vanadium (V), sell products (X), research tech (T), farm fertilizer (F), and build your empire. Good luck, chemical engineer!",
+		condition = "auto",
+		delay = 10,
 		isFinal = true,
 	},
 }
