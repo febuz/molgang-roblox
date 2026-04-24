@@ -57,7 +57,7 @@ screenGui.Parent = playerGui
 -- Widget panel (top-right, compact)
 local widget = Instance.new("Frame")
 widget.Name = "Widget"
-widget.Size = UDim2.new(0, 240, 0, 200)
+widget.Size = UDim2.new(0, 240, 0, 215)
 widget.Position = UDim2.new(1, -250, 0, 10)
 widget.BackgroundColor3 = COLORS.panel
 widget.BackgroundTransparency = 0.12
@@ -190,9 +190,23 @@ pfCorner.Parent = progressFill
 
 -- ── Quick action buttons ──
 
+-- ── Daily claim indicator ──
+
+local claimLabel = Instance.new("TextLabel")
+claimLabel.Name = "DailyClaim"
+claimLabel.Size = UDim2.new(1, -16, 0, 16)
+claimLabel.Position = UDim2.new(0, 8, 0, 122)
+claimLabel.BackgroundTransparency = 1
+claimLabel.Text = "Daily: Ready!"
+claimLabel.TextColor3 = COLORS.accent
+claimLabel.TextScaled = true
+claimLabel.Font = Enum.Font.Gotham
+claimLabel.TextXAlignment = Enum.TextXAlignment.Left
+claimLabel.Parent = widget
+
 local btnFrame = Instance.new("Frame")
 btnFrame.Size = UDim2.new(1, -16, 0, 28)
-btnFrame.Position = UDim2.new(0, 8, 0, 128)
+btnFrame.Position = UDim2.new(0, 8, 0, 140)
 btnFrame.BackgroundTransparency = 1
 btnFrame.Parent = widget
 
@@ -231,7 +245,7 @@ createQuickBtn("Quests", Color3.fromRGB(200, 140, 50), "QuestTrackerGui")
 
 local versionLabel = Instance.new("TextLabel")
 versionLabel.Size = UDim2.new(1, -16, 0, 16)
-versionLabel.Position = UDim2.new(0, 8, 1, -22)
+versionLabel.Position = UDim2.new(0, 8, 1, -18)
 versionLabel.BackgroundTransparency = 1
 versionLabel.Text = "MOLGANG ChemEng Sim v0.2"
 versionLabel.TextColor3 = Color3.fromRGB(70, 75, 90)
@@ -367,7 +381,13 @@ end)
 DailyClaimResult.OnClientEvent:Connect(function(data)
 	if playerData and data.success and data.amount then
 		playerData.molCoins = (playerData.molCoins or 0) + data.amount
+		playerData.lastDailyClaim = os.time()
+		claimLabel.Text = "Daily: Claimed! +200 MC"
+		claimLabel.TextColor3 = COLORS.gold
 		refreshHUD()
+	elseif data and not data.success then
+		claimLabel.Text = "Daily: Already claimed"
+		claimLabel.TextColor3 = Color3.fromRGB(100, 110, 130)
 	end
 end)
 
