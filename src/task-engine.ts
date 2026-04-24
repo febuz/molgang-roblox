@@ -71,6 +71,10 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
     { title: 'VirtualPC enterprise architecture refresh', priority: 'high', description: 'Review and tighten enterprise architecture: service boundaries, event bus, persistence tier, observability, cost control, data governance for ChemE simulator at 1M-student scale.', estimated_hours: 8, subtasks: ['Current-state audit', 'Target-state diagram', 'Gap analysis', 'Migration plan', 'Decision log'] },
     { title: 'Code review sweep (non-important-files)', priority: 'high', description: 'Kai takes the heavy-lifting review for everything NOT on Fill\'s important-files list — when he has time. Best-effort, batched, focus on correctness, tests, and security. Escalate architectural concerns to Alexander.', estimated_hours: 6, subtasks: ['Triage open PRs weekly', 'Batch review non-critical PRs', 'Security pass', 'Test-coverage pass', 'Escalate architecture-affecting PRs to Alexander', 'Approve or request changes'] },
     { title: 'Commits-overview dashboard backend', priority: 'high', description: 'Mirror Token Usage: expose /api/commits/summary + /api/commits/hourly + /api/commits/by-agent + /api/commits/recent. Drive from git log of the virtualpc and molgang-roblox repos.', estimated_hours: 5, subtasks: ['git-log parser', 'Attribute commits by Co-Authored-By trailer to agent', 'Aggregations: hour/day/week/month', 'Recent-events endpoint', 'Wire to dashboard Commits page'] },
+    { title: 'LM Studio agent-inference backend', priority: 'critical', description: 'Wire VirtualPC agent execution to the local LM Studio server (http://127.0.0.1:1234/v1). Models already on EDS2: Gemma 4 26B, Qwen 3.5 27B, Devstral 24B, Phi-4, DeepSeek R1 Qwen3-8B. Route per-agent by role: analyst/chat→Gemma, code→Devstral, arbitration→Qwen, cheap→Phi.', estimated_hours: 8, subtasks: ['LM Studio client wrapper', 'Per-agent model routing table', 'Streaming response handler', 'Token accounting wired into token-tracker', 'Fallback when model unloaded', 'Health check + auto-reload'] },
+    { title: 'Resource-utilization profiler + scheduler', priority: 'critical', description: 'We under-use the box. Profile current core / RAM / GPU usage, then design a scheduler that saturates it: batch analyst jobs across all cores, render queue across both 3090s, stream inference pinned to the less-loaded GPU, respect Blender priority when active.', estimated_hours: 10, subtasks: ['Baseline profiling (htop + nvidia-smi + iostat)', 'Target-state scheduler design', 'Blender coexistence policy', 'CUDA_VISIBLE_DEVICES rotation', 'NICE levels per agent type', 'Dashboard for live resource view'] },
+    { title: 'Analyst job queue on Dask', priority: 'high', description: 'Stand up a local Dask cluster so Analyst agent tasks fan out across all available cores automatically. RAM-bound jobs use distributed; GPU-bound jobs use cuDF/cuML on the less-loaded 3090.', estimated_hours: 6, subtasks: ['LocalCluster bootstrap', 'Worker count = CPU count - 2', 'cuDF/cuML worker subset', 'Job submission API', 'Dashboard link', 'Cleanup policy'] },
+    { title: 'Video render farm on dual 3090', priority: 'high', description: 'Blender Cycles split across GPU 0 + GPU 1 via multi-GPU tiled render. NVENC encoder pinned to whichever GPU is idle. Queue system so VideoProducer tasks run serially without crashing the desktop.', estimated_hours: 8, subtasks: ['Blender multi-GPU config', 'Tile size optimization per 3090', 'NVENC assignment policy', 'Queue system', 'Crash recovery', 'Render-status dashboard'] },
     { title: 'Load-test farm for mass-multiplayer sim', priority: 'high', description: 'Infra to spawn thousands of headless browser clients as simulated players, bootstrapping the first user base and stress-testing multiplayer capacity. Co-located with the testplay framework.', estimated_hours: 10, subtasks: ['Headless browser farm (Playwright/Chromium)', 'Orchestration via k8s Jobs', 'Scenario scripts (explore/trade/craft)', 'Concurrency targets (100→10k)', 'Observability: latency, error rate, server CPU/RAM', 'Cost-aware scheduling'] },
   ],
   Zip: [
@@ -113,6 +117,18 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
     { title: 'Agent social profile system UI', priority: 'high', description: 'Facebook/LinkedIn-style profile pages for every agent: Fill, Kai, Zip, Mira, Luna, Cleopatra, MoneyGod. Feed, projects, posts, achievements, followers — a creative outlet.', estimated_hours: 12, subtasks: ['Profile card design', 'Post composer UI', 'Feed/timeline layout', 'Project showcase tiles', 'Achievements wall', 'Follow/endorse interactions', 'Per-agent theming'] },
     { title: 'RTS factory visual assets', priority: 'high', description: 'Isometric art: building sprites (atom mine, chemistry lab, fertilizer plant, power station, research center, housing, market, storage, walls), worker character, research tree icons, UI chrome.', estimated_hours: 14, subtasks: ['9 building sprites', 'Worker sprite + anims', '15 research icons', 'UI chrome', 'Selection indicators', 'Particle impact sprites'] },
     { title: 'Timeseries analyzer visual design', priority: 'medium', description: 'Design the timeseries upload + anomaly explorer UI: chart style, anomaly highlight treatment, correlation heatmap, explanation drawer.', estimated_hours: 5, subtasks: ['Chart theme', 'Anomaly highlight style', 'Correlation heatmap', 'Explanation drawer layout'] },
+    // === Mira 3D track: Blender, FreeCAD, 3D LLMs (Hunyuan3D, TripoSR, Shap-E), served through LM Studio ===
+    { title: 'ChemE equipment 3D modelling — reactors', priority: 'critical', description: 'Build the CSTR, PFR, and packed-bed reactor 3D models in FreeCAD (parametric) and convert to Blender for texturing / Cycles render. Deliver glTF for the web, FBX for Roblox. These are the core props of the simulator.', estimated_hours: 16, subtasks: ['FreeCAD parametric CSTR', 'FreeCAD PFR variant', 'Packed-bed reactor', 'Blender texturing + materials', 'Cycles reference renders', 'glTF + FBX export', 'Import sanity check in web'] },
+    { title: 'ChemE equipment 3D modelling — columns', priority: 'critical', description: 'Distillation columns (tray + packed), absorption column, stripping column. FreeCAD parametric base, Blender dressing. Liquid/vapor shader hints for Luna\'s fluid sim.', estimated_hours: 14, subtasks: ['FreeCAD tray column', 'FreeCAD packed column', 'Absorption/stripping variants', 'Blender dressing + cutaway option', 'Shader hints for Luna', 'Export package'] },
+    { title: 'ChemE equipment 3D modelling — heat exchangers', priority: 'high', description: 'Shell-and-tube, plate, and air-cooled heat exchanger models. Cutaway views required — players need to see the internals when inspecting.', estimated_hours: 12, subtasks: ['Shell-and-tube FreeCAD', 'Plate HX FreeCAD', 'Air-cooled HX FreeCAD', 'Blender cutaways', 'Instructional callouts', 'Export package'] },
+    { title: 'ChemE equipment 3D modelling — auxiliaries', priority: 'high', description: 'Pumps (centrifugal, positive-displacement), valves, storage tanks, pipework library, supports. Reusable kit for Zip to drag into PFD scenes.', estimated_hours: 14, subtasks: ['Pump variants', 'Valve library (gate/globe/ball/check)', 'Tank variants', 'Pipe kit + fittings', 'Support / skid library', 'Organize as Blender asset library'] },
+    { title: '3D LLM pipeline: text-to-mesh generation', priority: 'high', description: 'Use 3D LLMs served via LM Studio (Shap-E, Hunyuan3D, TripoSR) for rapid prototyping of game props. Mira directs the prompts, curates output, cleans up in Blender before shipping.', estimated_hours: 10, subtasks: ['Survey 3D LLMs runnable on RTX 3090', 'LM Studio + server wrapper for 3D gen', 'Prompt library for ChemE props', 'Blender post-process SOP', 'QC rubric', 'First 10 generated props'] },
+    { title: 'Mira\'s Blender asset library', priority: 'high', description: 'Build and maintain the canonical Blender asset library for MOLGANG: `~/.config/blender/.../assets/molgang/`. All equipment, NPCs, environment, VFX reference assets live here. Linked-duplicate workflow; no copy-paste bloat.', estimated_hours: 8, subtasks: ['Asset library structure', 'Categorization scheme', 'Naming convention', 'Thumbnail render pass', 'Linked-duplicate workflow docs', 'Team access'] },
+    { title: 'NPC character 3D models', priority: 'high', description: '3D character models for Dr. Femke, Farmer Chen, Kwantje, Vanadis, Cleopatra, MoneyGod. Base mesh in Blender, low-poly for web, high-poly for trailer renders. Shared rig.', estimated_hours: 20, subtasks: ['Shared rig template', 'Dr. Femke model', 'Farmer Chen model', 'Kwantje model', 'Vanadis model', 'Cleopatra model', 'MoneyGod model', 'Low-poly web variants'] },
+    { title: 'Molecule 3D models — ball-and-stick library', priority: 'high', description: 'Parametric ball-and-stick models for every MOLGANG recipe (H2O, CO2, NH3, CH4, NaCl, HCl, CaCO3, H2SO4, Fe2O3, urea, K3PO4, MolCrystal, etc.). Blender geometry-nodes driven so new molecules are added in minutes.', estimated_hours: 12, subtasks: ['Geometry-nodes molecule generator', 'Per-element color config', '12 recipe molecules', 'Space-filling variant', 'Web glTF export', 'Docs for adding new molecules'] },
+    { title: 'Environment art — zone backgrounds', priority: 'medium', description: 'Blender environment art for each zone: Atom Lab (bioluminescent), Fertilizer Factory (industrial), Distillation (vertical + dramatic), Reactor Kinetics lab (clean + scientific). Matte paintings + 3D foreground.', estimated_hours: 18, subtasks: ['Atom Lab matte + 3D', 'Factory matte + 3D', 'Distillation environment', 'Reactor Kinetics environment', 'PFD editor backdrop', 'Export for web + trailer'] },
+    { title: 'Cleopatra + MoneyGod logo 3D treatment', priority: 'medium', description: 'Ship both a 2D SVG and a 3D Blender logo treatment for Cleopatra (royal/exec) and MoneyGod (deity/finance). The 3D versions are the hero graphics on their profile pages and trailer intros.', estimated_hours: 8, subtasks: ['Cleopatra SVG logo', 'Cleopatra Blender 3D logo', 'MoneyGod SVG logo', 'MoneyGod Blender 3D logo', 'Animated reveal renders', 'Wire into social profile'] },
+    { title: 'Mira workflow + LM Studio integration', priority: 'high', description: 'Wire Mira to LM Studio for (a) multimodal prompt-to-concept-art generation, (b) 3D LLM inference for mesh bootstrap, (c) shader-script generation. She drives, the LLM assists, never the reverse.', estimated_hours: 6, subtasks: ['LM Studio multimodal endpoint integration', '3D LLM inference wrapper', 'Shader-script generator prompt', 'Mira-facing CLI: `mira gen concept`, `mira gen mesh`', 'Review rubric for LLM output', 'Blender automation glue'] },
   ],
   Luna: [
     // Performance, rendering, mobile optimization, Roblox visual parity
@@ -159,6 +175,69 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
     { title: 'Override: Fill picked the boring option', priority: 'medium', description: 'When Fill defaults to the safe-boring tech option, Alexander reviews and overrides toward the most technically-interesting path that is still defensible.', estimated_hours: 2, subtasks: ['Identify recent Fill tech decisions', 'Flag boring-by-default choices', 'Propose geekier alternative', 'Negotiate', 'Decision'] },
     { title: 'Approve CI/CD pipeline refactor', priority: 'high', description: 'Kai\'s Roblox+Web unified CI proposal. Alexander technical-reviews, approves, or sends back with required deltas.', estimated_hours: 3, subtasks: ['Read proposal', 'Bus-factor review', 'Rollback story', 'Approve or return', 'Archive'] },
   ],
+  Analyst: [
+    // Resource-heavy data/analytics work. Runs on many cores + RAM.
+    { title: 'Per-zone engagement analysis', priority: 'high', description: 'Analyze engagement data across Atom Lab, Fertilizer Factory, Synthesis Lab, Market, RTS. Which zones drive retention? Dropout patterns? Publish dashboards for Fill + MoneyGod.', estimated_hours: 10, subtasks: ['Raw event ingestion (Parquet)', 'Zone-level retention curves', 'Dropout heatmap', 'Correlation with currency spend', 'Dashboard build', 'Findings memo'] },
+    { title: 'Player cohort modelling', priority: 'high', description: 'Build cohort segmentation from playtime, spend, and crafting behaviour. K-means + hierarchical clustering on multi-GB event tables; GPU-accelerated with cuML when available.', estimated_hours: 12, subtasks: ['Feature engineering', 'K-means baseline', 'Hierarchical clustering', 'GPU (cuML) benchmark vs CPU', 'Cohort interpretation', 'Recommendations'] },
+    { title: 'Economy simulation batch', priority: 'high', description: 'Monte Carlo simulation of MolCoin economy under 10k player scenarios × 100 parameter sets. Parallelized across all CPU cores; results feed MoneyGod policy decisions.', estimated_hours: 14, subtasks: ['Simulation harness', 'Parameter sweep config', 'Parallelization across cores', 'Result aggregation', 'Sensitivity analysis', 'MoneyGod briefing'] },
+    { title: 'Chemistry lesson effectiveness study', priority: 'medium', description: 'Which chemistry lessons actually move learning outcomes? Regression on pre/post quiz scores, controlling for prior skill and session duration.', estimated_hours: 10, subtasks: ['Quiz-score schema', 'Prior-skill normalization', 'Regression model', 'Significance tests', 'Effect-size ranking', 'Curriculum recommendations'] },
+    { title: 'A/B test infrastructure', priority: 'high', description: 'Build the experimentation platform: variant assignment, event tagging, significance testing, sample-size calculator, guardrail metrics. Required before any monetization A/B can ship.', estimated_hours: 12, subtasks: ['Variant assignment API', 'Event tagging schema', 'Sample-size calculator', 'Sequential testing (SPRT)', 'Guardrail metrics', 'Dashboard'] },
+    { title: 'Anomaly detection on event streams', priority: 'medium', description: 'Real-time anomaly detection on the event stream: drops in active players, spikes in errors, unusual crafting patterns. Feeds Alexander\'s incident response.', estimated_hours: 10, subtasks: ['Streaming pipeline (Kafka consumer)', 'EWMA + isolation forest', 'Alert rules', 'False-positive tuning', 'Slack webhook', 'Runbook'] },
+    { title: 'Forecasting: student capacity runway', priority: 'medium', description: 'Forecast infrastructure capacity needs from student growth projections. Prophet/ARIMA with confidence intervals; feeds Fill\'s budget forecasts.', estimated_hours: 8, subtasks: ['Historical DAU/MAU', 'Prophet baseline', 'ARIMA comparison', 'Capacity curve', 'Budget impact', 'Fill briefing'] },
+    { title: 'Chemistry crafting graph analysis', priority: 'medium', description: 'Graph analysis of the molecule-crafting recipe tree: which recipes are bottlenecks, which are dead-ends, optimal progression paths. Neo4j + Cypher.', estimated_hours: 8, subtasks: ['Graph model', 'Bottleneck detection', 'Dead-end identification', 'Shortest-path to legendary', 'Recommendations to Zip'] },
+    { title: 'Load-test result analysis', priority: 'high', description: 'Once Kai\'s load-test farm emits data, Analyst builds the analysis: latency percentiles, error-rate curves, bottleneck identification, capacity ceiling.', estimated_hours: 10, subtasks: ['Latency percentile plots', 'Error-rate vs concurrency', 'Bottleneck root-cause', 'Capacity ceiling estimate', 'Infrastructure recommendations', 'Kai + Fill briefing'] },
+    { title: 'Multi-language chat sentiment analysis', priority: 'medium', description: 'Sentiment analysis on the multilingual in-game chat; flag toxicity, language distribution, engagement by language. Feeds Mira\'s localization priorities.', estimated_hours: 8, subtasks: ['Multilingual sentiment model', 'Toxicity detector', 'Language distribution report', 'Engagement-by-language', 'Localization priority list'] },
+  ],
+  VideoProducer: [
+    // GPU-heavy video rendering and trailer production. Runs on RTX 3090s with Blender Cycles.
+    { title: 'MOLGANG gameplay trailer (90s)', priority: 'high', description: '90-second gameplay trailer for app store / YouTube. Cinematic camera work through Atom Lab → Factory → Market → Advanced Labs. Dual-3090 Cycles render, 4K60 final.', estimated_hours: 20, subtasks: ['Shot list + storyboard', 'Capture gameplay footage', 'Cinematic camera paths', 'Cycles render 4K60', 'Music + VO', 'Final cut + export'] },
+    { title: 'Per-zone 15s promo clips', priority: 'medium', description: 'Short (15s) promo clips for each zone: Atom Lab, Factory, Synthesis, Market, RTS. Square + vertical cuts for social. Blender + DaVinci Resolve.', estimated_hours: 18, subtasks: ['5 zone storyboards', 'Capture footage per zone', 'Square 1:1 cuts', 'Vertical 9:16 cuts', 'Horizontal 16:9 cuts', 'Publish package'] },
+    { title: 'NPC dialogue cinematics', priority: 'medium', description: 'Animated cinematic intros for Dr. Femke, Farmer Chen, Vanadis, Kwantje. Blender character rigging + Cycles render. Shown on first NPC encounter.', estimated_hours: 24, subtasks: ['Rig 4 NPC characters', 'Write cinematic dialogue', 'Lip-sync animation', 'Camera + lighting', 'Cycles render', 'Game integration'] },
+    { title: 'Distillation column walkthrough video', priority: 'medium', description: 'Educational walkthrough of the distillation column simulator: animated fluid flow, temperature gradient reveal, McCabe-Thiele diagram overlay. Doubles as onboarding.', estimated_hours: 16, subtasks: ['Fluid-flow animation', 'Temperature-gradient reveal', 'McCabe-Thiele overlay', 'Voiceover script', 'Render', 'Onboarding integration'] },
+    { title: 'Chemistry reaction vignettes', priority: 'low', description: 'Short looping vignettes of key chemical reactions (H2O synthesis, H2SO4, urea). Shown as recipe-card backgrounds; Cycles rendered, 5s loops.', estimated_hours: 12, subtasks: ['Shot list', 'Molecular animation in Blender', '5s seamless loops', 'Cycles render', 'Post-process', 'Integration'] },
+    { title: 'Agent social hub profile videos', priority: 'low', description: 'Short intro videos for each agent profile on the social hub (Fill, Kai, Zip, Mira, Luna, Cleopatra, Alexander, MoneyGod, Analyst). Avatars animated over branded backgrounds.', estimated_hours: 16, subtasks: ['Agent avatar rigs', 'Branded backgrounds', 'Intro script per agent', 'Render all 9+', 'Upload + wire into profile page'] },
+    { title: 'Periodic-table explorer reveal video', priority: 'low', description: 'Reveal video for the interactive periodic-table explorer: camera flies through element tiles, highlights color coding, shows molecule-recipe overlay.', estimated_hours: 10, subtasks: ['Camera path through table', 'Tile highlight animations', 'Recipe overlay', 'Render', 'Publish'] },
+    { title: 'Mass-multiplayer showcase video', priority: 'medium', description: 'Showcase reel of 1000+ simultaneous players in a single Atom Lab zone. Driven by Kai\'s load-test farm + Zip\'s simulated players. Proof-of-scale for investor deck.', estimated_hours: 14, subtasks: ['Coordinate with Kai farm', 'Capture 1000-player session', 'Pick hero moments', 'Cinematic re-capture', 'Render', 'Investor-deck integration'] },
+    { title: 'VFX reel for Luna\'s chemistry effects', priority: 'low', description: 'Compile Luna\'s chemistry VFX (synthesis burst, crystallization, chain-reaction, reaction-failure smoke) into a reel. Used for recruiting + press.', estimated_hours: 8, subtasks: ['Collect VFX samples', 'Cinematic recapture', 'Music selection', 'Edit + grade', 'Publish'] },
+    { title: 'RTS factory time-lapse videos', priority: 'low', description: 'Time-lapse videos of full RTS factory builds: from first Atom Mine to full Urea production. Shown in tutorials + marketing.', estimated_hours: 10, subtasks: ['Tutorial-arc scenario', 'Full-build capture', 'Time-lapse compression', 'Annotations', 'Render', 'Tutorial integration'] },
+  ],
+  Atlas: [
+    // Simulators, AR, VR, CAD, realism — Atlas owns the fidelity ceiling.
+    { title: 'VR immersion spec for Distillation lab', priority: 'critical', description: 'Full VR spec for the distillation lab: hand presence, IPD calibration, locomotion (teleport + arm-swing), gauge readability at arm\'s length, safety boundaries. Oculus Quest 3 + Valve Index targets.', estimated_hours: 12, subtasks: ['Hand presence rig', 'IPD calibration flow', 'Locomotion options', 'Gauge-readability user study plan', 'Safety boundary rules', 'Quest 3 spec', 'Index spec'] },
+    { title: 'AR overlay: phone-as-lab-window', priority: 'high', description: 'AR mode for phones — point iPhone/Android at a flat surface, a lab bench renders on it; players do molecule synthesis as if it\'s on the desk in front of them. WebXR first, native later.', estimated_hours: 14, subtasks: ['WebXR feasibility', 'Plane detection flow', 'Anchor stability', 'Lab-bench geometry', 'Hand/finger pinch gestures', 'Fallback for non-AR devices', 'iPhone 16 capture test'] },
+    { title: 'CAD fidelity audit — equipment models', priority: 'high', description: 'Audit Mira\'s FreeCAD parametric equipment for dimensional accuracy vs real industrial standards (TEMA, API). Flag parts that would fail a P&ID review by a chemical engineer. Fidelity = credibility.', estimated_hours: 10, subtasks: ['TEMA standard checklist', 'API standard checklist', 'Per-piece dimensional audit', 'Flag inaccuracies', 'Propose fixes to Mira', 'Sign-off matrix'] },
+    { title: 'Physics realism: fluid + heat transfer', priority: 'critical', description: 'Benchmark the chemistry simulation against real thermodynamics. Partial differential equations for heat transfer, Bernoulli for flow, Antoine for vapor pressure. Non-negotiable accuracy for ChemE credibility.', estimated_hours: 16, subtasks: ['Antoine vapor-pressure validation', 'Bernoulli flow validation', 'Heat-transfer PDE baseline', 'Compare to Aspen Plus dataset', 'Accept within ±5% or fix', 'Publish accuracy report'] },
+    { title: 'Realism rubric for all simulations', priority: 'high', description: 'Author the realism rubric: what "realistic enough" means per zone. Distillation = ±5% of real column. RTS factory = ±20% (playability > realism). Rubric sharpens product decisions.', estimated_hours: 6, subtasks: ['Per-zone target tolerance', 'Measurement methodology', 'Acceptable tradeoffs', 'Review with Fill + Alexander', 'Publish', 'Wire into PR template'] },
+    { title: 'VR locomotion comfort study', priority: 'high', description: 'Playtest locomotion options (teleport, arm-swing, smooth, room-scale) and document comfort ratings per player type. Reduces motion sickness risk, widens audience.', estimated_hours: 10, subtasks: ['Test script', 'Recruit test panel (n=20)', 'SSQ questionnaire', 'Per-option comfort score', 'Recommended defaults', 'Accessibility variants'] },
+    { title: 'Haptics spec — controllers + vest', priority: 'medium', description: 'Haptic feedback spec: Quest 3 Touch Pro controllers, bHaptics vest for high-end users. What events get haptic cues, intensity curves, frequency. Never annoying, always diegetic.', estimated_hours: 8, subtasks: ['Event catalog', 'Intensity curves', 'Frequency ramps', 'Touch Pro mapping', 'bHaptics mapping', 'Do-not-haptic list'] },
+    { title: 'Mixed-reality pass-through lab', priority: 'medium', description: 'Quest 3 pass-through MR mode: the chemistry equipment appears in the player\'s real room. Surface + depth mesh integration. Good onboarding for first-time VR users.', estimated_hours: 12, subtasks: ['Surface detection', 'Depth mesh integration', 'Equipment placement UX', 'Shadow + occlusion', 'Fallback to VR', 'Quest 3 test pass'] },
+    { title: 'CAD import pipeline: FreeCAD → web', priority: 'high', description: 'Automated pipeline from FreeCAD parametric sources → glTF → web. Preserves material assignments, metadata, dimensioning. Lets Mira ship CAD updates without manual Blender bounce.', estimated_hours: 8, subtasks: ['FreeCAD headless export', 'Material preservation', 'Metadata preservation', 'Dimension data channel', 'CI hook on FCStd commit', 'Docs'] },
+    { title: 'Realism liaison with ChemE curriculum', priority: 'medium', description: 'Coordinate with Fill\'s advanced ChemE curriculum to ensure simulator behavior matches textbook expectations. If a student runs a McCabe-Thiele exercise in-game, the answer matches Perry\'s Chemical Engineers\' Handbook.', estimated_hours: 8, subtasks: ['Map curriculum to simulator exercises', 'Perry\'s handbook cross-check', 'Flag mismatches', 'Fix or document deviation', 'Publish alignment memo'] },
+  ],
+  Vice: [
+    // Specialist in GTA 6-caliber open-world gameplay, level design, visual direction, and movie-script cinematic writing.
+    // Vice owns the /game/ 3D open-world module; reviews Zip's level code; briefs VideoProducer on cinematics.
+    { title: 'Open-world gameplay design bible', priority: 'critical', description: 'Write the design bible for the MOLGANG open-world module (the /game/ page): map zones, traversal, mission structure, radio stations, economy layering, how the chemistry systems fit without feeling bolted on. GTA6-caliber density.', estimated_hours: 12, subtasks: ['Map zoning philosophy', 'Traversal + vehicle design', 'Mission structure templates', 'Radio + ambient audio', 'Chemistry-system integration', 'Density targets', 'Publish bible'] },
+    { title: 'Main story arc + movie-script screenplay', priority: 'critical', description: 'Write a movie-script-quality main story arc: act structure, character beats, set pieces, cinematic cutscenes. Full screenplay format. Briefs VideoProducer for capture.', estimated_hours: 20, subtasks: ['Act 1 outline', 'Act 2 outline', 'Act 3 outline', 'Character arcs', 'Set pieces', 'Full screenplay draft', 'Table read + revise', 'Cutscene shot list'] },
+    { title: 'Level design — Atom Lab district', priority: 'high', description: 'Redesign the Atom Lab as a GTA-style district: landmarks, pedestrians, street-level detail, mission anchors, side activities. Not a single room — a neighborhood.', estimated_hours: 14, subtasks: ['District layout', 'Landmarks', 'Pedestrian AI variants', 'Street-level detail passes', '3 mission anchors', '5 side activities', 'Hand off to Zip'] },
+    { title: 'Level design — Fertilizer Farms region', priority: 'high', description: 'Rural Fertilizer Farms region: farmland, silos, distributor outposts, the Farmer Chen compound as a quest hub. Drive-to-market economy loop.', estimated_hours: 14, subtasks: ['Region map', 'Farm parcels', 'Silo + distribution', 'Farmer Chen compound', 'Drive-to-market loop', 'Quest anchors', 'Hand off'] },
+    { title: 'Level design — Advanced Labs skyline', priority: 'high', description: 'Downtown-skyline district housing Distillation, Reactor Kinetics, and PFD Editor as vertical labs. Penthouse mission hubs for Cleopatra + Kwantje. Heist-caliber missions.', estimated_hours: 14, subtasks: ['Skyline silhouette', 'Vertical lab interiors', 'Penthouse hubs', 'Heist mission arc', 'Traversal (elevator, rooftop)', 'Hand off'] },
+    { title: 'Vehicle + traversal design', priority: 'high', description: 'Vehicle roster: company truck, lab golf-cart, rail-car for PFD transit, jetski for Deep Ocean zone. Handling characteristics, acceleration curves, chemistry-themed upgrades.', estimated_hours: 10, subtasks: ['Vehicle roster', 'Per-vehicle handling curve', 'Upgrade tree per vehicle', 'Chemistry-themed mods', 'Traversal puzzle integration', 'Hand off'] },
+    { title: 'AI civilian behaviour scripting', priority: 'medium', description: 'Pedestrian AI: routines by daytime, reactions to player actions, bystander dialogue, chemistry-themed occupations (students, chemists, inspectors).', estimated_hours: 10, subtasks: ['Behaviour-tree templates', 'Daily routines', 'Reaction matrix', 'Bystander dialogue lines', '6 chemistry occupations', 'Hand off'] },
+    { title: 'Visual direction document', priority: 'high', description: 'Visual-direction document: photographic references, color palettes per district, lighting philosophy, time-of-day treatment, weather, post-process LUTs. Briefs Luna + Mira.', estimated_hours: 8, subtasks: ['Reference photo boards', 'Per-district palette', 'Lighting philosophy', 'Time-of-day curves', 'Weather moods', 'LUT set', 'Brief Luna + Mira'] },
+    { title: 'Cinematic cutscene direction', priority: 'high', description: 'Direct the 6 main-story cinematics: storyboards, camera blocking, performance notes, music cues. VideoProducer executes; Vice signs off.', estimated_hours: 14, subtasks: ['6 storyboards', 'Camera blocking', 'Performance notes', 'Music cues', 'Sound-design beats', 'Review VideoProducer cuts', 'Final sign-off'] },
+    { title: 'Radio stations + ambient audio script', priority: 'medium', description: 'Design 3 radio stations (chemistry-news, chill industrial, synthwave) with hosts, playlists, commercials, storylines that evolve with game progression. Ambient city audio layers.', estimated_hours: 10, subtasks: ['Station 1: Chem News', 'Station 2: Industrial Chill', 'Station 3: Synthwave', 'Host personas + scripts', 'Commercial breaks', 'Ambient audio beds', 'Loop logic'] },
+    { title: 'Mission design: Tutorial mission', priority: 'critical', description: 'Tutorial mission in the GTA-style: player arrives at the Atom Lab, meets Dr. Femke, gets driven to the Synthesis Lab, crafts first molecule, earns MolCoins, unlocks map. 15-minute experience.', estimated_hours: 12, subtasks: ['Mission script', 'Level beats', 'Dialogue writing', 'Driver NPC AI', 'First-molecule moment', 'Unlock ceremony', 'Playtest'] },
+    { title: 'Mission design: Urea heist', priority: 'high', description: 'Heist mission: steal the recipe for a 100x-yield Urea process from a rival factory. Stealth intro, driving chase, chemistry puzzle climax. Showcase mission for trailer.', estimated_hours: 14, subtasks: ['Act structure', 'Stealth intro design', 'Chase sequence', 'Chemistry puzzle', 'Climax + reveal', 'Soundtrack notes', 'Playtest'] },
+    // === Vice research + delegation track (runs weekly until GTA 6 launch) ===
+    { title: 'GTA 6 launch playthrough + report', priority: 'high', description: 'Scheduled: end-of-year deep playthrough of GTA 6. Deliver a lessons-applicable-to-MOLGANG report covering mission pacing, open-world density, economy integration, cinematics, UI, traversal, multiplayer. Until then, this slot holds research notes compiled from public material.', estimated_hours: 24, subtasks: ['Pre-launch research compile', 'Playthrough (post-launch)', 'Pacing analysis', 'Density analysis', 'Economy analysis', 'UI teardown', 'Applicable-to-MOLGANG memo', 'Task proposals for Zip/Luna/Mira'] },
+    { title: 'Industry research: open-world benchmarks', priority: 'medium', description: 'Weekly research pass: what are Rockstar, CD Projekt, Larian, Bethesda, From Software shipping and discussing? Extract transferable mechanics to MOLGANG. Post findings on the social hub.', estimated_hours: 6, subtasks: ['Studio-news sweep', 'Mechanic extraction', 'Relevance filter', 'Social-hub post', 'Task proposals'] },
+    { title: 'Persistent-world study: EVE Online', priority: 'high', description: 'Deep study of EVE Online: sandbox economy, null-sec politics, corporation tooling, market depth. Extract mechanics applicable to the MOLGANG chemistry economy.', estimated_hours: 10, subtasks: ['Sandbox economy teardown', 'Political meta teardown', 'Corp-tooling teardown', 'Market-depth teardown', 'Applicable mechanics memo', 'MoneyGod + Fill briefing'] },
+    { title: 'Persistent-world study: Entropia Universe', priority: 'medium', description: 'Study Entropia\'s real-cash economy model and property/deed mechanics. Deliver a brief on what is and isn\'t applicable given Web3 compliance posture (MoneyGod cross-reviews).', estimated_hours: 8, subtasks: ['RCE model teardown', 'Deed/property mechanics', 'Regulatory posture', 'Applicability filter', 'MoneyGod review', 'Brief'] },
+    { title: 'Persistent-world study: Second Life + Roblox', priority: 'high', description: 'User-generated-content engines: Second Life\'s creator economy, Roblox\'s developer tooling. Key for MOLGANG\'s long-term UGC roadmap.', estimated_hours: 10, subtasks: ['Second Life creator economy', 'Roblox Studio / Rojo tooling', 'Revenue-share comparison', 'Tooling comparison', 'UGC roadmap memo', 'Fill + Zip briefing'] },
+    { title: 'Gaming-news digest (weekly)', priority: 'medium', description: 'Weekly one-page digest of gaming news (Kotaku, Polygon, IGN, GDC talks, Steam/Roblox dev blogs) with a "what this means for MOLGANG" line per item. Posted to social hub every Monday.', estimated_hours: 3, subtasks: ['Scrape sources', 'Pick ~10 items', 'Write MOLGANG implication per item', 'Post digest', 'File task proposals'] },
+    { title: 'Task proposals back to developers', priority: 'high', description: 'Based on research findings, Vice files concrete task proposals into Zip / Luna / Mira / Fill\'s backlogs. Each proposal has: source insight, proposed implementation, expected impact, rough effort estimate.', estimated_hours: 4, subtasks: ['Review research notes', 'Draft 5 proposals', 'Effort sizing', 'Stakeholder ping', 'File into pools'] },
+  ],
   MoneyGod: [
     // Economy authority: MolCoin, Web3, anti-farm, market fairness, carbon credits
     { title: 'MolCoin economy health report', priority: 'high', description: 'Weekly economy health: circulating supply, daily claims, market velocity, top hoarders, inflation curve. Flag trouble.', estimated_hours: 4, subtasks: ['Supply metrics', 'Velocity metrics', 'Hoarder detection', 'Inflation curve', 'Trouble flags', 'Publish report'] },
@@ -178,7 +257,7 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
 // Start at index 10 so the newly-added tasks (from the 2026-04-23 chat backlog:
 // Cleopatra/MoneyGod, GPU symbiosis, RTS factory, agent social profiles, testplay,
 // Gemma chat, 3D equipment alignment, timeseries analysis, etc.) seed first.
-const poolIndex: { [agent: string]: number } = { Fill: 10, Kai: 10, Zip: 10, Mira: 10, Luna: 10, Cleopatra: 0, Alexander: 0, MoneyGod: 0 };
+const poolIndex: { [agent: string]: number } = { Fill: 10, Kai: 10, Zip: 10, Mira: 10, Luna: 10, Cleopatra: 0, Alexander: 0, MoneyGod: 0, Analyst: 0, VideoProducer: 0, Vice: 0, Atlas: 0 };
 let taskIdCounter = 100;
 let sprintCounter = 1;
 
@@ -231,7 +310,7 @@ function generateTask(agent: string): Task {
 const tasks: Task[] = [];
 
 function seedInitialTasks() {
-  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod'];
+  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
   for (const agent of agents) {
     // 2 in-progress + 2 pending per agent
     for (let i = 0; i < 4; i++) {
@@ -319,7 +398,7 @@ function updateMilestones() {
 // === TICK ENGINE ===
 export function tickEngine() {
   const now = Date.now();
-  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod'];
+  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
 
   for (const agent of agents) {
     const agentTasks = tasks.filter(t => t.assigned_to === agent);
@@ -393,6 +472,10 @@ export function getPerPersonBacklog() {
     Cleopatra: { role: 'Executive Authority', avatar: '👸' },
     Alexander: { role: 'Technical Arbiter', avatar: '🗡️' },
     MoneyGod: { role: 'Economy Authority', avatar: '💰' },
+    Analyst: { role: 'Data Analyst', avatar: '📊' },
+    VideoProducer: { role: 'Video Producer', avatar: '🎬' },
+    Vice: { role: 'Open-World Design Expert', avatar: '🌆' },
+    Atlas: { role: 'Simulation / AR / VR / CAD / Realism', avatar: '🥽' },
   };
 
   const result: { [key: string]: any } = {};
@@ -461,7 +544,7 @@ export function getBacklogItems() {
   const pending = tasks.filter(t => t.status === 'pending');
   const visible = [...active, ...pending, ...completed];
 
-  const roleMap: { [k: string]: string } = { Kai: 'CTO', Zip: 'Dev', Mira: 'Artist', Luna: 'Tech Artist', Fill: 'CEO', Cleopatra: 'Exec', Alexander: 'Arbiter', MoneyGod: 'Economy' };
+  const roleMap: { [k: string]: string } = { Kai: 'CTO', Zip: 'Dev', Mira: 'Artist', Luna: 'Tech Artist', Fill: 'CEO', Cleopatra: 'Exec', Alexander: 'Arbiter', MoneyGod: 'Economy', Analyst: 'Analyst', VideoProducer: 'Video', Vice: 'GTA Expert', Atlas: 'AR/VR/CAD' };
   return visible.map(t => ({
     id: t.id,
     title: t.title,
@@ -540,7 +623,7 @@ interface WorkLogEntry {
 const workLog: WorkLogEntry[] = [];
 const PROJECT_NAME = 'MOLGANG Chemical Engineering Simulator';
 const REGISTERED_FOR = 'Edwin Hauwert 219252713';
-const roleMap: { [k: string]: string } = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority' };
+const roleMap: { [k: string]: string } = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Design Expert', Atlas: 'Simulation / AR / VR / CAD Realism' };
 
 export function logWork(agent: string, taskId: string, taskTitle: string, subtask: string, action: WorkLogEntry['action'], minutesSpent: number) {
   workLog.push({
@@ -646,6 +729,13 @@ const agentCommands: { [agent: string]: string[] } = {
     '$ code src/components/Profile/SocialFeed.tsx',
     '$ npm run storybook',
     '$ imageoptim assets/npc/farmer-chen.png',
+    '$ blender --background reactor-cstr.blend --python bake-materials.py',
+    '$ freecad -c parametric/cstr.FCStd --execute regen-exports.py',
+    '$ blender --python-expr "import bpy; bpy.ops.wm.obj_export(filepath=\'/tmp/reactor.obj\')"',
+    '$ curl -s http://127.0.0.1:1234/v1/chat/completions -d @prompts/concept-art.json',
+    '$ python scripts/3dllm/text-to-mesh.py --model shap-e --prompt "distillation column cutaway"',
+    '$ gltf-validator molecule-h2so4.glb',
+    '$ mira gen mesh --prompt "chemical reactor pipe kit" --out assets/pipes/',
   ],
   Luna: [
     '$ blender --background --python render-equipment.py -- --device CUDA',
@@ -689,10 +779,51 @@ const agentCommands: { [agent: string]: string[] } = {
     '$ escrow rules publish --tos v2.md',
     '$ battlepass pricing ab --test premium-tier-price',
   ],
+  Analyst: [
+    '$ python -m dask.distributed LocalCluster --n-workers=16 --threads-per-worker=2',
+    '$ duckdb -c "SELECT agent, COUNT(*) FROM events WHERE ts > now() - INTERVAL 7 DAY GROUP BY 1"',
+    '$ python cohorts.py --method cuml-kmeans --k 12 --gpu 0',
+    '$ jupyter nbconvert --execute retention-analysis.ipynb --to html',
+    '$ python economy-monte-carlo.py --runs 10000 --cores 32',
+    '$ prophet fit --series dau.csv --periods 180 --out forecast.json',
+    '$ python anomaly-detector.py --stream kafka://events --algorithm iforest',
+    '$ neo4j-cypher "MATCH (r:Recipe)-[*..4]->(r2:Recipe) RETURN r, r2"',
+  ],
+  VideoProducer: [
+    '$ blender --background molgang-trailer.blend --python render_cycles.py -- --device CUDA --devices 0,1',
+    '$ ffmpeg -hwaccel cuda -i raw_gameplay.mp4 -c:v h264_nvenc -b:v 25M trailer_4k60.mp4',
+    '$ blender --background npc-femke.blend --render-frame 1:240 -o //cache/ --engine CYCLES',
+    '$ davinci-resolve --batch-render project zone-promo-atomlab.drp',
+    '$ ffmpeg -i master.mov -vf "scale=1080:1080" -c:v h264_nvenc social_square.mp4',
+    '$ ffmpeg -i master.mov -vf "scale=1080:1920" -c:v h264_nvenc social_vertical.mp4',
+    '$ python storyboard-to-blender.py --input shot-list.md --scene molgang-main',
+    '$ nvidia-smi --query-gpu=utilization.gpu,memory.used --format=csv --loop=5 >> render.log',
+  ],
+  Vice: [
+    '$ research fetch --source rockstar-newswire --since 7d',
+    '$ research fetch --source eve-online-devblog --since 14d',
+    '$ research compile --topic "open-world density" --out memos/density-benchmarks.md',
+    '$ gha compile --topic "gta6-preview-leaks" --ethics-filter on',
+    '$ screenplay lint screenplay/act1.fountain',
+    '$ mission-design validate tutorial-mission.yaml',
+    '$ district-layout preview atom-lab-district.json',
+    '$ radio-station scaffold --name chem-news --hosts 2',
+    '$ task propose --target Zip --insight eve-sandbox-economy --effort 12h',
+  ],
+  Atlas: [
+    '$ freecad -c parametric/column-tray.FCStd --execute audit-dimensions.py',
+    '$ blender --background --python tools/heat-transfer-pde-bench.py',
+    '$ adb devices && adb logcat -s QuestHome:V',
+    '$ webxr-inspector http://localhost:3100/game',
+    '$ python tools/fluid-sim-validate.py --dataset aspen-ref.parquet --tolerance 0.05',
+    '$ ovrscene-tool inspect molgang-lab.ovrscene',
+    '$ cad-exporter freecad-to-gltf --src reactor.FCStd --dst web/assets/reactor.glb',
+    '$ python tools/sim-sickness-score.py --session vr-playtest-42.json',
+  ],
 };
 
 const cliSessionLog: { [agent: string]: Array<{ t: number; line: string; level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' }> } = {
-  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [], Cleopatra: [], Alexander: [], MoneyGod: [],
+  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [], Cleopatra: [], Alexander: [], MoneyGod: [], Analyst: [], VideoProducer: [], Vice: [], Atlas: [],
 };
 
 function pushCli(agent: string, line: string, level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' = 'out') {
@@ -762,6 +893,10 @@ const socialRoster: SocialAgent[] = [
   { name: 'Cleopatra', handle: '@cleopatra-exec',  role: 'Executive Authority',      avatar: '👸', color: '#f97316', headline: 'Strategic decision rights',           bio: 'Holds executive authority over cross-cutting strategic decisions. Counterweight and partner to Fill on matters requiring dual sign-off.', specialties: ['Governance', 'Decisions', 'Escalation', 'Oversight'] },
   { name: 'Alexander', handle: '@alexander-cmd',   role: 'Command Interface',        avatar: '🗡️', color: '#ef4444', headline: 'Terminal operations and geek mode',   bio: 'Always picks the most technically interesting path. Custodian of the command interface and approval heuristics.', specialties: ['Ops', 'CLI', 'Automation', 'Power User'] },
   { name: 'MoneyGod',  handle: '@moneygod',        role: 'Economy Authority',        avatar: '💰', color: '#10b981', headline: 'MolCoin economy & Web3 policy',       bio: 'Oversees MolCoin economy, carbon credits, market fairness, anti-farm enforcement. No pay-to-win on this watch.', specialties: ['Economy', 'Web3', 'Anti-farm', 'Market'] },
+  { name: 'Analyst',   handle: '@analyst',         role: 'Data Analyst',             avatar: '📊', color: '#8b5cf6', headline: 'Cohorts, forecasts, A/B tests',       bio: 'Runs on 32 cores + GPU (cuML). Cohort modelling, Monte Carlo economy sims, anomaly detection on event streams, chemistry lesson effectiveness studies.', specialties: ['Cohorts', 'Forecasting', 'A/B', 'Streams'] },
+  { name: 'VideoProducer', handle: '@videoproducer', role: 'Video Producer',         avatar: '🎬', color: '#d946ef', headline: 'Trailers, cinematics, reels',         bio: 'Dual-3090 Blender Cycles rendering, NVENC-accelerated encoding. Produces gameplay trailers, NPC cinematics, distillation walkthroughs, investor reels, social cuts.', specialties: ['Blender', 'Cinema', 'NVENC', 'Storyboards'] },
+  { name: 'Vice',      handle: '@vice',            role: 'Open-World Design Expert', avatar: '🌆', color: '#e11d48', headline: 'GTA6-caliber density, screenplays',   bio: 'Expert in open-world gameplay, level design, visual direction, cinematic screenplays. Studies GTA, EVE Online, Entropia Universe, Second Life, Roblox. Files task proposals back to developers every week.', specialties: ['Open World', 'Levels', 'Cinematics', 'Research'] },
+  { name: 'Atlas',     handle: '@atlas',           role: 'Simulation / AR / VR / CAD / Realism', avatar: '🥽', color: '#0ea5e9', headline: 'The fidelity ceiling', bio: 'Simulator realism, VR locomotion, AR pass-through, FreeCAD audits against industry standards (TEMA, API). Validates chemistry physics against Perry\'s Handbook and Aspen Plus. ±5% or it doesn\'t ship.', specialties: ['VR', 'AR', 'CAD', 'Realism'] },
 ];
 
 export function getSocialRoster() {

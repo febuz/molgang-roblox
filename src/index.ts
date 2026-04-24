@@ -141,6 +141,22 @@ app.get('/api/agents/:name/cli-log', (req, res) => {
   res.json({ success: true, agent: req.params.name, lines });
 });
 
+// Testplay latest results — read by Alexander's testplay dashboard
+app.get('/api/testplay/latest', (req, res) => {
+  try {
+    const fs = require('fs');
+    const p = path.resolve(__dirname, '..', 'tests', 'testplay', 'results', 'latest.json');
+    if (!fs.existsSync(p)) {
+      res.json({ success: true, _empty: true, reason: 'No testplay run yet. Run scripts/run-testplay.sh.' });
+      return;
+    }
+    const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+    res.json({ success: true, ...data });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // Commits overview - mirrors Token Usage page
 app.get('/api/commits/summary', (req, res) => {
   res.json({ success: true, ...commitsTracker.getCommitSummary() });
