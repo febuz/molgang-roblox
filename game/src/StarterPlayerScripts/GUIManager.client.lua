@@ -56,12 +56,40 @@ end)
 -- GUI TOGGLE HELPER
 -- ══════════════════════════════════════════════
 
+-- Cost hints for expensive GUIs (#7)
+local GUI_COST_HINTS = {
+	FactoryBuilderGui = {cost = 2000, hint = "Factory rental costs 2000 MC/month"},
+	MiningGui = {cost = 800, hint = "Exploration licenses start at 800 MC"},
+	SlagProcessingGui = {cost = 50, hint = "Raw slag costs 50 MC per batch"},
+}
+
 local function toggleGui(guiName)
 	local gui = playerGui:FindFirstChild(guiName)
 	if gui then
 		gui.Enabled = not gui.Enabled
 		guiStates[guiName] = gui.Enabled
 		playSound(gui.Enabled and "ui_open" or "ui_close")
+		-- Cost warning when opening expensive GUIs (#7)
+		if gui.Enabled and playerData and GUI_COST_HINTS[guiName] then
+			local hint = GUI_COST_HINTS[guiName]
+			if playerData.molCoins < hint.cost then
+				task.defer(function()
+					local warnGui = Instance.new("ScreenGui")
+					warnGui.Name = "CostWarning"; warnGui.Parent = playerGui
+					local wl = Instance.new("TextLabel")
+					wl.Size = UDim2.new(0.4, 0, 0, 24)
+					wl.Position = UDim2.new(0.3, 0, 0.12, 0)
+					wl.BackgroundColor3 = Color3.fromRGB(60, 20, 10)
+					wl.BackgroundTransparency = 0.2
+					wl.Text = "  " .. hint.hint .. " (You have " .. playerData.molCoins .. " MC)"
+					wl.TextColor3 = Color3.fromRGB(255, 180, 80)
+					wl.TextScaled = true
+					wl.Font = Enum.Font.GothamBold
+					wl.Parent = warnGui
+					task.delay(4, function() warnGui:Destroy() end)
+				end)
+			end
+		end
 		return gui.Enabled
 	end
 	return false
@@ -244,11 +272,31 @@ player:GetAttributeChangedSignal("CurrentZone"):Connect(updateAmbientMusic)
 -- EVENT LISTENERS FOR AUDIO FEEDBACK
 -- ══════════════════════════════════════════════
 
+local firstAtomHintShown = false
 Remotes.AtomCollected.OnClientEvent:Connect(function(data)
 	if data.isQuantumDot then
 		playSound("quantum_catch")
 	else
 		playSound("atom_collect")
+	end
+	-- Quest hint after first atom (#17)
+	if not firstAtomHintShown then
+		firstAtomHintShown = true
+		task.delay(2, function()
+			local hg = Instance.new("ScreenGui")
+			hg.Name = "QuestHint"; hg.Parent = playerGui
+			local hl = Instance.new("TextLabel")
+			hl.Size = UDim2.new(0.5, 0, 0, 28)
+			hl.Position = UDim2.new(0.25, 0, 0.18, 0)
+			hl.BackgroundColor3 = Color3.fromRGB(20, 10, 50)
+			hl.BackgroundTransparency = 0.15
+			hl.Text = "  Press Q to open Quest Log — complete quests to earn MolCoins!"
+			hl.TextColor3 = Color3.fromRGB(180, 140, 255)
+			hl.TextScaled = true
+			hl.Font = Enum.Font.GothamBold
+			hl.Parent = hg
+			task.delay(6, function() hg:Destroy() end)
+		end)
 	end
 end)
 

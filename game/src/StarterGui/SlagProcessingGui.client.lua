@@ -492,6 +492,10 @@ label(leachPanel, {Name="SizeTitle", Size=UDim2.new(0.5,-10,0,20), Position=UDim
 selectedReagentLabel = label(leachPanel, {Name="SelReagent", Size=UDim2.new(0.5,-10,0,20),
 	Position=UDim2.new(0.5,0,0,322), Text="No reagent selected", Color=C.textDim, Align=Enum.TextXAlignment.Right})
 
+-- Reagent comparison header (#38)
+label(leachPanel, {Name="CompareTitle", Size=UDim2.new(1,-20,0,14), Position=UDim2.new(0,10,0,318),
+	Text="Quick Compare: H2SO4(best yield) | HCl(fast+cheap) | NaOH(selective) | H2O(free, slow)", Color=Color3.fromRGB(140,160,180)})
+
 -- Size buttons
 local selectedSize = nil
 local sizeBtns = {}

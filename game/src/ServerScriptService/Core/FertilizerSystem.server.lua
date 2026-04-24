@@ -183,6 +183,37 @@ Remotes.RequestCraftFertilizer.OnServerEvent:Connect(function(player, fertilizer
 end)
 
 -- ═══════════════════════════════════════════════
+-- SELL SURPLUS FERTILIZER (#65)
+-- ═══════════════════════════════════════════════
+
+Remotes.RequestSellFertilizer.OnServerEvent:Connect(function(player, fertilizerId)
+	local userId = player.UserId
+	local farm = getPlayerFarm(userId)
+
+	if type(fertilizerId) ~= "string" then return end
+	if (farm.fertilizerInventory[fertilizerId] or 0) <= 0 then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "No " .. fertilizerId .. " to sell.",
+			rarity = "common",
+		})
+		return
+	end
+
+	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
+	if not fert then return end
+
+	local sellPrice = math.floor(fert.points * 0.5)
+	farm.fertilizerInventory[fertilizerId] = farm.fertilizerInventory[fertilizerId] - 1
+	PlayerDataBridge.AddMolCoins(userId, sellPrice)
+
+	Remotes.FireClient("ServerAnnounce", player, {
+		message = "Sold " .. fert.name .. " for " .. sellPrice .. " MC",
+		rarity = "uncommon",
+	})
+	sendFarmUpdate(player, userId)
+end)
+
+-- ═══════════════════════════════════════════════
 -- APPLY FERTILIZER TO PLOT
 -- ═══════════════════════════════════════════════
 

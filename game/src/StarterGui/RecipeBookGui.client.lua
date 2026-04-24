@@ -151,16 +151,19 @@ for _, mol in ipairs(molList) do
 	pointsLabel.TextXAlignment = Enum.TextXAlignment.Center
 	pointsLabel.Parent = recipeCard
 
-	-- Recipe ingredients
+	-- Recipe ingredients with valence hints (#27)
 	local ingredientsText = ""
+	local valenceHints = {}
 	for sym, count in pairs(recipe.atoms) do
 		if ingredientsText ~= "" then ingredientsText = ingredientsText .. " + " end
 		ingredientsText = ingredientsText .. sym .. "x" .. count
+		local v = Chemistry.Valence[sym]
+		if v then table.insert(valenceHints, sym .. "=" .. v) end
 	end
 
 	local ingredientsLabel = Instance.new("TextLabel")
-	ingredientsLabel.Size = UDim2.new(1, -20, 0.5, 0)
-	ingredientsLabel.Position = UDim2.new(0, 10, 0.5, 5)
+	ingredientsLabel.Size = UDim2.new(0.7, -10, 0.35, 0)
+	ingredientsLabel.Position = UDim2.new(0, 10, 0.45, 0)
 	ingredientsLabel.BackgroundTransparency = 1
 	ingredientsLabel.Text = "Ingredients: " .. ingredientsText
 	ingredientsLabel.TextColor3 = COLORS.textSecondary
@@ -168,6 +171,18 @@ for _, mol in ipairs(molList) do
 	ingredientsLabel.Font = Enum.Font.Gotham
 	ingredientsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	ingredientsLabel.Parent = recipeCard
+
+	-- Valence tooltip (#27)
+	local valLabel = Instance.new("TextLabel")
+	valLabel.Size = UDim2.new(0.7, -10, 0.2, 0)
+	valLabel.Position = UDim2.new(0, 10, 0.78, 0)
+	valLabel.BackgroundTransparency = 1
+	valLabel.Text = "Valence: " .. table.concat(valenceHints, ", ")
+	valLabel.TextColor3 = Color3.fromRGB(140, 140, 180)
+	valLabel.TextScaled = true
+	valLabel.Font = Enum.Font.Gotham
+	valLabel.TextXAlignment = Enum.TextXAlignment.Left
+	valLabel.Parent = recipeCard
 
 	-- Craft button (if player has ingredients)
 	local canCraft = false

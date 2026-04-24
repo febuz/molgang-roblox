@@ -107,6 +107,7 @@ local clientToServerEvents = {
 	"RequestApplyFertilizer",-- {plotId, fertilizerId} apply fertilizer to soil
 	"RequestHarvestCrop",    -- {plotId} harvest a ready crop
 	"RequestCraftFertilizer",-- {fertilizerId} synthesize a fertilizer
+	"RequestSellFertilizer", -- {fertilizerId} sell surplus fertilizer (#65)
 	"RequestFertilizerInfo", -- {} get all plots, quests, state
 	-- Entrepreneur / Factory Builder
 	"RequestRentFactory",    -- {} rent the 1000m² factory

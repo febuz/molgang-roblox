@@ -17,6 +17,16 @@ local Quests = {}
 
 Quests.AllQuests = {
 	-- STARTER QUESTS
+	first_atom = {
+		id = "first_atom",
+		name = "Your First Atom",
+		description = "Walk near a glowing atom to collect it — start your chemistry journey!",
+		category = "starter",
+		reward = {molCoins = 100},
+		condition = {type = "atomsCollected", target = 1},
+		order = 0,
+	},
+
 	collect_atoms = {
 		id = "collect_atoms",
 		name = "Atom Collector",
@@ -25,6 +35,7 @@ Quests.AllQuests = {
 		reward = {molCoins = 200},
 		condition = {type = "atomsCollected", target = 10},
 		order = 1,
+		requires = "first_atom",
 	},
 
 	build_first_mine = {
@@ -35,7 +46,7 @@ Quests.AllQuests = {
 		reward = {molCoins = 300},
 		condition = {type = "facilitiesBuilt", target = 1},
 		order = 2,
-		requires = "collect_atoms",  -- Must complete collect_atoms first
+		requires = "collect_atoms",
 	},
 
 	collect_more_atoms = {

@@ -100,7 +100,9 @@ local function showCollectPopup(elementData)
 	coinLabel.Size = UDim2.fromScale(0.45, 0.5)
 	coinLabel.Position = UDim2.fromScale(0.3, 0.5)
 	coinLabel.BackgroundTransparency = 1
-	coinLabel.Text = "+" .. tostring(elementData.coinReward) .. " MolCoins"
+	-- Show reward tier for clarity (#56)
+	local tierName = elementData.coinReward >= 100 and "LEGENDARY" or elementData.coinReward >= 25 and "EPIC" or elementData.coinReward >= 10 and "RARE" or elementData.coinReward >= 3 and "UNCOMMON" or "COMMON"
+	coinLabel.Text = "+" .. tostring(elementData.coinReward) .. " MC (" .. tierName .. ")"
 	coinLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 	coinLabel.TextScaled = true
 	coinLabel.Font = Enum.Font.GothamBold
