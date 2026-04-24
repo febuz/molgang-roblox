@@ -232,6 +232,21 @@ local function populateDrinks(drinks, activeBuffs)
 			end)
 		end)
 
+		-- Low balance warning overlay (P1 #18)
+		if drink.cost > 30 then
+			local warnL = Instance.new("TextLabel")
+			warnL.Name = "LowBalWarn"
+			warnL.Size = UDim2.new(1,-8,0,10)
+			warnL.Position = UDim2.new(0,4,1,-12)
+			warnL.BackgroundTransparency = 1
+			warnL.Text = drink.cost > 40 and "Save MC for slag!" or ""
+			warnL.TextColor3 = Color3.fromRGB(200,100,80)
+			warnL.TextScaled = true
+			warnL.Font = Enum.Font.Gotham
+			warnL.Visible = false
+			warnL.Parent = card
+		end
+
 		drinkCards[drink.id] = {card = card, buyBtn = buyBtn}
 	end
 end
