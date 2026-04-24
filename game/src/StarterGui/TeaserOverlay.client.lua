@@ -183,6 +183,17 @@ player.CharacterAdded:Connect(function(char)
 end)
 
 local frameCount = 0
+-- Force immediate distance update on first frame
+task.delay(2, function()
+	if hrp and hrp.Parent then
+		local playerPos = hrp.Position
+		for i, zone in ipairs(ZONES) do
+			local dist = (playerPos - zone.pos).Magnitude
+			zoneDistLabels[i].Text = dist < 50 and "HERE" or (dist < 500 and (math.floor(dist) .. "m") or string.format("%.1fk", dist/1000))
+		end
+	end
+end)
+
 RunService.Heartbeat:Connect(function()
 	frameCount = frameCount + 1
 	if frameCount % 30 ~= 0 then return end -- update every ~0.5s

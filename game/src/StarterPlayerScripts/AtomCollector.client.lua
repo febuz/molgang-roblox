@@ -147,8 +147,8 @@ local function showCollectPopup(elementData)
 	TweenService:Create(nameLabel, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
 	TweenService:Create(coinLabel, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
 
-	-- Animate out na 2 sec
-	task.delay(2, function()
+	-- Animate out after 3.5 sec (was 2 — too fast to read)
+	task.delay(3.5, function()
 		local tweenOut = TweenService:Create(frame, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
 			Position = UDim2.new(0.5, -100, 0.6, 0),
 			BackgroundTransparency = 1,

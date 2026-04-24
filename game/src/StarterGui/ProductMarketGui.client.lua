@@ -90,10 +90,21 @@ closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
 closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
 
+-- Hint for new players
+local hintLabel = Instance.new("TextLabel")
+hintLabel.Size = UDim2.new(1, -16, 0, 16)
+hintLabel.Position = UDim2.new(0, 8, 0, 44)
+hintLabel.BackgroundTransparency = 1
+hintLabel.Text = "TIP: Process slag (S key) → extract atoms → sell as refined products here for MolCoins!"
+hintLabel.TextColor3 = Color3.fromRGB(100, 180, 130)
+hintLabel.TextScaled = true; hintLabel.Font = Enum.Font.Gotham
+hintLabel.TextXAlignment = Enum.TextXAlignment.Left
+hintLabel.Parent = main
+
 -- Game day indicator
 local dayLabel = Instance.new("TextLabel")
 dayLabel.Size = UDim2.new(1, -16, 0, 18)
-dayLabel.Position = UDim2.new(0, 8, 0, 44)
+dayLabel.Position = UDim2.new(0, 8, 0, 60)
 dayLabel.BackgroundTransparency = 1
 dayLabel.Text = "Market Day 1 — Prices update daily"
 dayLabel.TextColor3 = C.textDim
