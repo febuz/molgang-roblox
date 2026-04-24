@@ -2741,6 +2741,102 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 	end
 
 	-- ================================================================
+	-- VELZEN — Miniature Tata Steel IJmuiden Factory
+	-- The source of all BOF steel slag in the game
+	-- ================================================================
+	local velzenModel = createModel(zone, "VelzenFactory")
+
+	-- Main factory building (large steel structure)
+	local velzenMain = createPart(velzenModel, {
+		Name = "VelzenMainBuilding",
+		Size = Vector3.new(120, 40, 80),
+		Position = Vector3.new(-2200, 29, -200),
+		Color = Color3.fromRGB(55, 55, 60),
+		Material = Enum.Material.SmoothPlastic,
+	})
+	tagInteractable(velzenMain, "VelzenFactory")
+	tagZone(velzenMain, "West")
+
+	-- BOF converter dome (hemisphere on top)
+	local bofDome = createSphere(velzenModel, {
+		Name = "BOFConverterDome",
+		Size = Vector3.new(30, 20, 30),
+		Position = Vector3.new(-2200, 55, -200),
+		Color = Color3.fromRGB(70, 65, 60),
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	-- Smokestacks (3 tall chimneys with steam)
+	for i, xOff in ipairs({-40, 0, 40}) do
+		local stack = createCylinder(velzenModel, {
+			Name = "VelzenStack_" .. i,
+			Size = Vector3.new(60, 4, 4),
+			Position = Vector3.new(-2200 + xOff, 59, -220),
+			Color = Color3.fromRGB(45, 45, 50),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+
+		-- Steam from top
+		local steamTop = createPart(velzenModel, {
+			Name = "SteamSource_" .. i,
+			Size = Vector3.new(3, 1, 3),
+			Position = Vector3.new(-2200 + xOff, 90, -220),
+			Transparency = 1,
+			CanCollide = false,
+		})
+		addParticleEmitter(steamTop, {
+			Color = ColorSequence.new(Color3.fromRGB(200, 205, 210)),
+			Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 2),
+				NumberSequenceKeypoint.new(0.5, 6),
+				NumberSequenceKeypoint.new(1, 10),
+			}),
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0.3),
+				NumberSequenceKeypoint.new(0.5, 0.6),
+				NumberSequenceKeypoint.new(1, 1),
+			}),
+			Lifetime = NumberRange.new(3, 7),
+			Rate = 8,
+			Speed = NumberRange.new(3, 8),
+			SpreadAngle = Vector2.new(15, 15),
+			LightEmission = 0.1,
+		})
+	end
+
+	-- Slag dump area (glowing orange)
+	local slagDump = createPart(velzenModel, {
+		Name = "VelzenSlagDump",
+		Size = Vector3.new(30, 5, 25),
+		Position = Vector3.new(-2160, 12, -180),
+		Color = Color3.fromRGB(120, 60, 20),
+		Material = Enum.Material.Neon,
+		Transparency = 0.3,
+	})
+	addPointLight(slagDump, {
+		Color = Color3.fromRGB(255, 120, 30),
+		Brightness = 3,
+		Range = 20,
+	})
+
+	-- Velzen sign
+	addBillboard(velzenMain, {
+		Text = "VELZEN — Tata Steel IJmuiden (Miniature)\nBOF Steel Production | V2O5: 0.85% in slag\n\"Where the slag comes from\"",
+		Size = UDim2.new(22, 0, 6, 0),
+		StudsOffset = Vector3.new(0, 30, 50),
+		TextColor = Color3.fromRGB(255, 200, 80),
+		BackgroundColor = Color3.fromRGB(30, 25, 15),
+		BackgroundTransparency = 0.2,
+		MaxDistance = 500,
+	})
+	addPointLight(velzenMain, {
+		Color = Color3.fromRGB(255, 200, 80),
+		Brightness = 2,
+		Range = 40,
+	})
+
+	-- ================================================================
 	-- Factory Master Sign
 	-- ================================================================
 	local masterSign = createPart(zone, {

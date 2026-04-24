@@ -39,6 +39,7 @@ local guiStates = {
 	FactoryBuilderGui = false,
 	ProcessControlGui = false,
 	ResearchGui = false,
+	MiningGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -162,6 +163,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- T = Toggle Research Tree
 	if input.KeyCode == Enum.KeyCode.T then
 		toggleGui("ResearchGui")
+	end
+
+	-- V = Toggle Mining (Vanadium)
+	if input.KeyCode == Enum.KeyCode.V then
+		toggleGui("MiningGui")
 	end
 
 	-- / or Slash = Toggle Settings
