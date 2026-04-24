@@ -277,9 +277,26 @@ end
 -- GAUGES LAYOUT
 -- ═══════════════════════════════════════════════
 
+-- Help bar explaining what each gauge does
+local helpBar = Instance.new("TextLabel")
+helpBar.Size = UDim2.new(1, -20, 0, 32)
+helpBar.Position = UDim2.new(0, 10, 0, 42)
+helpBar.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+helpBar.BackgroundTransparency = 0.3
+helpBar.Text = "  TEMP: Higher = faster (Arrhenius) | PRESSURE: Helps dissolve gases | pH: Controls which metals precipitate | FLOW: Slower = better conversion"
+helpBar.TextColor3 = C.textDim
+helpBar.TextScaled = true
+helpBar.Font = Enum.Font.Gotham
+helpBar.TextWrapped = true
+helpBar.TextXAlignment = Enum.TextXAlignment.Left
+helpBar.Parent = main
+local hbCorner = Instance.new("UICorner")
+hbCorner.CornerRadius = UDim.new(0, 6)
+hbCorner.Parent = helpBar
+
 local gaugeArea = Instance.new("Frame")
-gaugeArea.Size = UDim2.new(1, -20, 1, -50)
-gaugeArea.Position = UDim2.new(0, 10, 0, 44)
+gaugeArea.Size = UDim2.new(1, -20, 1, -80)
+gaugeArea.Position = UDim2.new(0, 10, 0, 76)
 gaugeArea.BackgroundTransparency = 1
 gaugeArea.Parent = main
 
