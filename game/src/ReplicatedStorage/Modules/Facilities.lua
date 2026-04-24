@@ -10,6 +10,14 @@ local Facilities = {}
 
 -- Facility definitions
 local FACILITY_TYPES = {
+	["Starter Bench"] = {
+		name = "Starter Bench",
+		cost = 200,
+		description = "Basic workbench. Produces 3 atoms/cycle. Your first step!",
+		productionRate = 3,
+		productionTime = 60,
+		maxLevel = 1,
+	},
 	Mine = {
 		name = "Mine",
 		cost = 800,

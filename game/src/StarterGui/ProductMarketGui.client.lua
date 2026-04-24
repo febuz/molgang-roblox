@@ -113,10 +113,40 @@ dayLabel.Font = Enum.Font.Gotham
 dayLabel.TextXAlignment = Enum.TextXAlignment.Left
 dayLabel.Parent = main
 
+-- Sell All button (#36)
+local sellAllBtn = Instance.new("TextButton")
+sellAllBtn.Size = UDim2.new(0, 120, 0, 26)
+sellAllBtn.Position = UDim2.new(1, -136, 0, 60)
+sellAllBtn.BackgroundColor3 = C.accent
+sellAllBtn.Text = "SELL ALL"
+sellAllBtn.TextColor3 = Color3.new(0, 0, 0)
+sellAllBtn.Font = Enum.Font.GothamBold
+sellAllBtn.TextScaled = true
+sellAllBtn.Parent = main
+local saCorner = Instance.new("UICorner")
+saCorner.CornerRadius = UDim.new(0, 6)
+saCorner.Parent = sellAllBtn
+
+sellAllBtn.MouseButton1Click:Connect(function()
+	-- Sell 1 of each product that player has atoms for
+	for _, product in ipairs(ProductMarket.Products) do
+		local r = Remotes:FindFirstChild("RequestSellProduct")
+		if r and #product.requiredAtoms > 0 then
+			r:FireServer(product.id, 1)
+		end
+	end
+	sellAllBtn.Text = "SELLING..."
+	sellAllBtn.BackgroundColor3 = C.gold
+	task.delay(1, function()
+		sellAllBtn.Text = "SELL ALL"
+		sellAllBtn.BackgroundColor3 = C.accent
+	end)
+end)
+
 -- Product list
 local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, -16, 1, -70)
-scroll.Position = UDim2.new(0, 8, 0, 64)
+scroll.Size = UDim2.new(1, -16, 1, -92)
+scroll.Position = UDim2.new(0, 8, 0, 86)
 scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 6
 scroll.CanvasSize = UDim2.new(0, 0, 0, #ProductMarket.Products * 62)
