@@ -1,0 +1,48 @@
+name: MOLGANG Build & Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rojo
+        uses: rojo-rbx/setup-rojo@v1
+        with:
+          version: 7.4.4
+
+      - name: Build Roblox place file
+        run: rojo build game -o build.rbxl
+
+      - name: Verify build artifact
+        run: |
+          ls -la build.rbxl
+          echo "Build size: $(du -h build.rbxl | cut -f1)"
+
+      - name: Count Luau scripts
+        run: |
+          echo "Server scripts: $(find game/src/ServerScriptService -name '*.lua' | wc -l)"
+          echo "Client scripts: $(find game/src/StarterGui game/src/StarterPlayerScripts -name '*.lua' | wc -l)"
+          echo "Modules: $(find game/src/ReplicatedStorage -name '*.lua' | wc -l)"
+          echo "Total LOC: $(find game/src -name '*.lua' -exec cat {} + | wc -l)"
+
+      - name: Check for common Luau issues
+        run: |
+          # Check for require() calls that reference missing modules
+          echo "Checking module references..."
+          grep -rn "require(" game/src/ --include="*.lua" | grep -v "game\." | grep -v "script\." | head -20 || true
+          echo "Build validation complete."
+
+      - name: Upload build artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: molgang-build
+          path: build.rbxl
+          retention-days: 30

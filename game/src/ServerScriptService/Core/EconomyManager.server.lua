@@ -238,7 +238,7 @@ task.spawn(function()
 				processAtomCollect(player, collectData)
 			end
 		end
-		task.wait(0.1) -- check 10x per second
+		task.wait(1) -- throttled from 0.1s to 1s (#94)
 	end
 end)
 

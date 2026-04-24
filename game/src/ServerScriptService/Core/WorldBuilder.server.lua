@@ -2884,6 +2884,58 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Range = 40,
 	})
 
+	-- Velzen detail (#49): windows, piping, rail tracks
+	-- Windows (row of neon strips)
+	for w = 1, 5 do
+		createPart(velzenModel, {
+			Name = "VelzenWindow_" .. w,
+			Size = Vector3.new(1, 6, 10),
+			Position = Vector3.new(-2200 + (w - 3) * 20, 35, -160),
+			Color = Color3.fromRGB(120, 180, 220),
+			Material = Enum.Material.Neon,
+			Transparency = 0.3,
+		})
+	end
+	-- Exterior piping
+	for p = 1, 3 do
+		createCylinder(velzenModel, {
+			Name = "VelzenPipe_" .. p,
+			Size = Vector3.new(90, 2, 2),
+			Position = Vector3.new(-2200, 15 + p * 8, -240),
+			Color = Color3.fromRGB(150, 155, 160),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 90, 0),
+		})
+	end
+	-- Rail tracks (two parallel rails)
+	for rail = -1, 1, 2 do
+		createPart(velzenModel, {
+			Name = "RailTrack",
+			Size = Vector3.new(200, 0.3, 0.8),
+			Position = Vector3.new(-2200, 9.2, -180 + rail * 3),
+			Color = Color3.fromRGB(120, 100, 80),
+			Material = Enum.Material.Metal,
+		})
+	end
+	-- Slag ladle (large container near dump)
+	createCylinder(velzenModel, {
+		Name = "SlagLadle",
+		Size = Vector3.new(10, 12, 12),
+		Position = Vector3.new(-2170, 16, -195),
+		Color = Color3.fromRGB(100, 90, 80),
+		Material = Enum.Material.SmoothPlastic,
+		Orientation = Vector3.new(0, 0, 90),
+	})
+	-- Glow inside ladle (molten slag)
+	local ladleGlow = createPart(velzenModel, {
+		Name = "LadleGlow",
+		Size = Vector3.new(8, 1, 8),
+		Position = Vector3.new(-2170, 20, -195),
+		Color = Color3.fromRGB(255, 140, 30),
+		Material = Enum.Material.Neon,
+	})
+	addPointLight(ladleGlow, {Color = Color3.fromRGB(255, 100, 20), Brightness = 4, Range = 15})
+
 	-- ================================================================
 	-- Factory Master Sign
 	-- ================================================================
@@ -3642,6 +3694,47 @@ local function buildGlobalElements(zonesFolder: Folder)
 			Color = Color3.fromRGB(200, 160, 40),
 			Brightness = 2,
 			Range = 30,
+		})
+
+		-- Additional detail (#48): Safety fences, equipment, ore piles
+		-- Corner fence posts
+		for fx = -1, 1, 2 do
+			for fz = -1, 1, 2 do
+				createPart(outpost, {
+					Name = "FencePost",
+					Size = Vector3.new(1, 6, 1),
+					Position = region.center + Vector3.new(fx * 55, 6, fz * 55),
+					Color = Color3.fromRGB(200, 160, 40),
+					Material = Enum.Material.SmoothPlastic,
+				})
+			end
+		end
+		-- Warning lights at corners
+		for cx = -1, 1, 2 do
+			local wl = createSphere(outpost, {
+				Name = "WarningBeacon",
+				Size = Vector3.new(2, 2, 2),
+				Position = region.center + Vector3.new(cx * 55, 10, 0),
+				Color = Color3.fromRGB(255, 140, 0),
+				Material = Enum.Material.Neon,
+			})
+			addPointLight(wl, {Color = Color3.fromRGB(255, 140, 0), Brightness = 1.5, Range = 15})
+		end
+		-- Extra ore piles (#48)
+		createSphere(outpost, {
+			Name = "OrePile2",
+			Size = Vector3.new(12, 5, 10),
+			Position = region.center + Vector3.new(-25, 6, 30),
+			Color = Color3.fromRGB(70, 55, 40),
+			Material = Enum.Material.Slate,
+		})
+		-- Equipment shed
+		createPart(outpost, {
+			Name = "EquipmentShed",
+			Size = Vector3.new(15, 8, 10),
+			Position = region.center + Vector3.new(40, 7, -20),
+			Color = Color3.fromRGB(80, 80, 85),
+			Material = Enum.Material.SmoothPlastic,
 		})
 	end
 	for idx, bData in beaconData do
