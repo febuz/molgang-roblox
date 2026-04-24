@@ -25,6 +25,7 @@ import { CollaborationManager } from './features/collaboration';
 import { AdvancedAnalytics } from './analytics/advanced-analytics';
 import { BackupManager } from './automation/backup-manager';
 import { AuditLogger } from './security/audit-logger';
+import VitalsService from './vitals/vitals-service';
 import { EntityModel } from './integrations/numerai/entity-model';
 import NumeraiDataFetcher from './integrations/numerai/data-fetcher';
 import OpenClawEDBBridge from './integrations/numerai/openclaw-edb-bridge';
@@ -43,6 +44,7 @@ import { activityMonitor } from './terminal-activity-monitor';
 import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
 import * as commitsTracker from './commits-tracker';
+import * as lmstudio from './lmstudio';
 
 // Load environment
 config();
@@ -139,6 +141,45 @@ app.get('/api/agents/:name/cli-log', (req, res) => {
   const limit = parseInt(req.query.limit as string) || 50;
   const lines = taskEngine.getAgentCliLog(req.params.name, limit);
   res.json({ success: true, agent: req.params.name, lines });
+});
+
+// LM Studio agent-inference endpoints
+app.get('/api/llm/health', async (req, res) => {
+  const h = await lmstudio.healthCheck();
+  res.json({ success: true, ...h });
+});
+
+app.get('/api/llm/models', async (req, res) => {
+  const models = await lmstudio.getModels();
+  res.json({ success: true, count: models.length, models });
+});
+
+app.post('/api/llm/chat', async (req, res) => {
+  const { agent, message, messages, taskType, temperature, max_tokens } = req.body || {};
+  if (!agent || typeof agent !== 'string') {
+    res.status(400).json({ success: false, error: 'agent required' });
+    return;
+  }
+  // Accept either a single `message` or a full `messages[]`
+  let msgs: { role: 'system' | 'user' | 'assistant'; content: string }[];
+  if (Array.isArray(messages)) {
+    msgs = messages;
+  } else if (typeof message === 'string') {
+    const role = req.body.role || 'Agent';
+    msgs = [
+      { role: 'system', content: lmstudio.systemPromptForAgent(agent, role, req.body.context) },
+      { role: 'user', content: message },
+    ];
+  } else {
+    res.status(400).json({ success: false, error: 'message or messages[] required' });
+    return;
+  }
+  const result = await lmstudio.chatAsAgent(agent, msgs, { taskType, temperature, max_tokens });
+  if (!result.ok) {
+    res.status(503).json({ success: false, ...result });
+    return;
+  }
+  res.json({ success: true, ...result });
 });
 
 // Testplay latest results — read by Alexander's testplay dashboard
@@ -863,6 +904,12 @@ async function initialize() {
 
     // 6. Setup WebSocket handlers for real-time updates
     setupWebSocketHandlers(io, { lightrag, kafka });
+
+    // 6b. Start vitals monitor (if GPU_ENABLED). Spawns vitals-monitor.sh
+    //     as a child so the JSONL keeps updating. Routes wired below.
+    const vitals = new VitalsService();
+    if (vitals.isGpuEnabled()) vitals.startMonitor(30);
+    setupVitalsRoutes(app, vitals);
 
     // 7. Start server
     server.listen(PORT, () => {
@@ -2017,6 +2064,71 @@ function setupWebSocketHandlers(io: SocketIOServer, components: any) {
   });
 
   logger.info('✓ WebSocket handlers configured');
+}
+
+/**
+ * Vitals + GPU control routes.
+ * All endpoints are safe when GPU_ENABLED=false (snapshot drops GPU fields,
+ * gpu/clean returns 503).
+ */
+function setupVitalsRoutes(app: express.Express, vitals: VitalsService) {
+  app.get('/api/vitals', async (_req, res) => {
+    try {
+      const snap = await vitals.getSnapshot();
+      if (!snap) return res.status(404).json({ success: false, error: 'no snapshot yet' });
+      return res.json({ success: true, gpu_enabled: vitals.isGpuEnabled(), snapshot: snap });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.get('/api/vitals/history', async (req, res) => {
+    try {
+      const windowsParam = String(req.query.windows || '');
+      const windows = windowsParam
+        ? Object.fromEntries(windowsParam.split(',').map(w => {
+            const [name, secs] = w.split(':');
+            return [name, secs === 'all' ? null : Number(secs)];
+          }))
+        : undefined;
+      const history = await vitals.getHistory(windows as any);
+      return res.json({ success: true, gpu_enabled: vitals.isGpuEnabled(), history });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.get('/api/vitals/gpu', async (_req, res) => {
+    try {
+      const snap = await vitals.getSnapshot();
+      if (!snap) return res.status(404).json({ success: false, error: 'no snapshot yet' });
+      return res.json({
+        success: true,
+        gpu_enabled: vitals.isGpuEnabled(),
+        gpus: snap.gpus,
+        gpu_procs: snap.gpu_procs,
+        ollama: snap.ollama,
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post('/api/gpu/clean', async (_req, res) => {
+    if (!vitals.isGpuEnabled())
+      return res.status(503).json({ success: false, error: 'GPU_ENABLED=false' });
+    try {
+      const result = await vitals.cleanGpu();
+      return res.json({ success: true, ...result });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post('/api/gpu/enable',  (_req, res) => { vitals.setGpuEnabled(true);  res.json({ success: true, gpu_enabled: true }); });
+  app.post('/api/gpu/disable', (_req, res) => { vitals.setGpuEnabled(false); res.json({ success: true, gpu_enabled: false }); });
+
+  logger.info('✓ Vitals/GPU routes wired: /api/vitals, /api/vitals/history, /api/vitals/gpu, POST /api/gpu/{clean,enable,disable}');
 }
 
 // Start the system

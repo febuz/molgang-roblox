@@ -43,7 +43,9 @@ export class OllamaClient {
   private healthCheck: boolean = false;
   private inferenceStats: Map<string, { count: number; totalLatency: number }> = new Map();
 
-  constructor(baseUrl: string = 'http://localhost:11434') {
+  constructor(baseUrl: string = process.env.OLLAMA_HOST
+    ? (process.env.OLLAMA_HOST.startsWith('http') ? process.env.OLLAMA_HOST : `http://${process.env.OLLAMA_HOST}`)
+    : 'http://localhost:11434') {
     this.baseUrl = baseUrl;
     this.timeout = 120000; // 2 minutes for long inference
     this.initializeModels();
@@ -54,29 +56,31 @@ export class OllamaClient {
    * Initialize model configurations for 3090 GPUs
    */
   private initializeModels(): void {
+    // Variants map internal names to real Ollama tags. Unpulled tags
+    // fall back to cloud tier via UnifiedExecutor's fallback chain.
     const models: OllamaModelConfig[] = [
       {
         name: 'qwen-27b',
-        variant: 'qwen:27b',
+        variant: 'qwen2.5-coder:32b',
         max_tokens: 32000,
         temperature: 0.7,
-        gpu_layers: 32, // Load all layers on GPU for 3090 (48GB VRAM)
+        gpu_layers: 99,
         batch_size: 1
       },
       {
         name: 'qwen-14b',
-        variant: 'qwen:14b',
+        variant: 'qwen2.5-coder:14b',
         max_tokens: 32000,
         temperature: 0.7,
-        gpu_layers: 40,
+        gpu_layers: 99,
         batch_size: 2
       },
       {
         name: 'qwen-7b',
-        variant: 'qwen:7b',
+        variant: 'qwen2.5-coder:7b',
         max_tokens: 32000,
         temperature: 0.7,
-        gpu_layers: 40,
+        gpu_layers: 99,
         batch_size: 4
       },
       {
@@ -84,31 +88,31 @@ export class OllamaClient {
         variant: 'deepseek-r1:8b',
         max_tokens: 32000,
         temperature: 0.7,
-        gpu_layers: 40,
+        gpu_layers: 99,
         batch_size: 2
       },
       {
         name: 'phi-4-15b',
-        variant: 'phi:latest',
-        max_tokens: 4096,
+        variant: 'phi4:14b',
+        max_tokens: 16000,
         temperature: 0.7,
-        gpu_layers: 40,
+        gpu_layers: 99,
         batch_size: 4
       },
       {
         name: 'mistral-7b',
-        variant: 'mistral:latest',
+        variant: 'mistral:7b',
         max_tokens: 32000,
         temperature: 0.7,
-        gpu_layers: 40,
+        gpu_layers: 99,
         batch_size: 4
       },
       {
         name: 'llama-70b',
-        variant: 'llama2:70b',
+        variant: 'llama3.3:70b',
         max_tokens: 8000,
         temperature: 0.7,
-        gpu_layers: 20, // Partial GPU for 70B model on 48GB 3090
+        gpu_layers: 99,
         batch_size: 1
       }
     ];
