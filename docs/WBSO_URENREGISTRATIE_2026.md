@@ -123,6 +123,10 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 
 **Subtotaal 23/24-04: 30 uur 00 minuten**
 
+| 24-04-2026 | 3 | 00 | Top 100 verbeteringslijst (72/100 fixes) | **S&O kernactiviteit**: Systematische kwaliteitsverbetering: 12 batches bugfixes en features. Audio: leach-geluid, UI-klikken, quest-chime, achtergrondmuziek. UI/UX: kostwaarschuwingen, valentie-tooltips, reagensvergelijking, beloningsduidelijkheid. Balans: loogtijd, energie, brandstof, huur. Visueel: fabrieksverlichting, deeltjestrails, dag/nachtcyclus, stoomvariatie. Nieuwe modules: CarbonScore, Cosmetics, Certificate, SeasonalEvents, Analytics, Accessibility. 20 extra moleculen (45+ totaal). CI/CD GitHub Actions workflow. DataStore exponential backoff. Teleportpads. 83 scripts, 33.847 LOC. |
+
+**Subtotaal 24-04 (vervolg): 3 uur 00 minuten**
+
 ---
 
 ## Totaaloverzicht per week
@@ -134,9 +138,10 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 | Week 15 | 12-04-2026 | 4 | 30 | 4:30 |
 | Week 17 | 22-04-2026 | 4 | 45 | 4:45 |
 | Week 17 | 23/24-04-2026 | 30 | 00 | 30:00 |
-| | | | | **53:15** |
+| Week 17 | 24-04-2026 (vervolg) | 3 | 00 | 3:00 |
+| | | | | **56:15** |
 
-**Totaal geregistreerde S&O-uren april 2026: 53 uur en 15 minuten**
+**Totaal geregistreerde S&O-uren april 2026: 56 uur en 15 minuten**
 
 ---
 
