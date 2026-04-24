@@ -282,10 +282,36 @@ end)
 -- EVENT HANDLERS
 -- ══════════════════════════════════════════════
 
+-- Mini-tutorial overlay shown once (#34)
+local tutorialShown = false
+local function showMiniTutorial()
+	if tutorialShown then return end
+	tutorialShown = true
+	local tut = Instance.new("Frame")
+	tut.Size = UDim2.new(0.5, 0, 0.3, 0)
+	tut.Position = UDim2.new(0.25, 0, 0.35, 0)
+	tut.BackgroundColor3 = Color3.fromRGB(10, 15, 30)
+	tut.BackgroundTransparency = 0.1
+	tut.Parent = gui
+	local tc = Instance.new("UICorner"); tc.CornerRadius = UDim.new(0, 12); tc.Parent = tut
+	local tl = Instance.new("TextLabel")
+	tl.Size = UDim2.new(1, -20, 1, -10)
+	tl.Position = UDim2.new(0, 10, 0, 5)
+	tl.BackgroundTransparency = 1
+	tl.Text = "HGMS MINERAL SORTING\n\nMinerals arrive on the conveyor.\nDrag or click to sort into bins:\n  RED = Magnetic (Fe3O4)\n  GOLD = Valuable (V2O5, TiO2)\n  GREEN = Hazardous (Cr(VI))\n\nSort correctly to earn MolCoins!"
+	tl.TextColor3 = Color3.fromRGB(200, 220, 255)
+	tl.TextScaled = true
+	tl.Font = Enum.Font.GothamBold
+	tl.TextWrapped = true
+	tl.Parent = tut
+	task.delay(5, function() tut:Destroy() end)
+end
+
 -- New orb spawned on conveyor
 Remotes.MiniGameOrbSpawned.OnClientEvent:Connect(function(data)
 	if not gui.Enabled then
 		gui.Enabled = true
+		showMiniTutorial()
 	end
 
 	currentOrbId = data.orbId

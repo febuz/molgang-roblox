@@ -298,11 +298,25 @@ end
 
 PlayerDataLoaded.OnClientEvent:Connect(updateDisplay)
 
--- Update every 3 seconds
+-- Recent achievements log (#66)
+local recentAchievements = {}
+local AchievementUnlocked = Remotes:FindFirstChild("AchievementUnlocked")
+if AchievementUnlocked then
+	AchievementUnlocked.OnClientEvent:Connect(function(data)
+		table.insert(recentAchievements, 1, {
+			name = data.name or "Achievement",
+			desc = data.description or "",
+			time = os.date("%H:%M"),
+		})
+		if #recentAchievements > 10 then table.remove(recentAchievements) end
+	end)
+end
+
+-- Update every 5 seconds (was 3)
 task.spawn(function()
-	while screenGui.Enabled do
-		task.wait(3)
-		if playerData then
+	while true do
+		task.wait(5)
+		if screenGui.Enabled and playerData then
 			updateDisplay()
 		end
 	end

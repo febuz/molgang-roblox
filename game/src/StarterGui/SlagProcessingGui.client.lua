@@ -700,11 +700,18 @@ if slagInvEvent then
 	end)
 end
 
--- Crush progress update
+-- Crush progress update — persisted between opens (#33)
+local lastCrushProgress = 0
+local lastCrushHits = 0
+local lastCrushTotal = 8
+
 local crushEvent = Remotes:FindFirstChild("SlagCrushProgress")
 if crushEvent then
 	crushEvent.OnClientEvent:Connect(function(data)
 		local progress = data.hits / data.totalHits
+		lastCrushProgress = progress
+		lastCrushHits = data.hits
+		lastCrushTotal = data.totalHits
 		TweenService:Create(crushBarFill, TweenInfo.new(0.1), {
 			Size = UDim2.new(progress, 0, 1, 0),
 		}):Play()
@@ -713,6 +720,8 @@ if crushEvent then
 		if data.hits >= data.totalHits then
 			crushLabel.Text = "Crushed! Ready for next batch."
 			crushBarFill.BackgroundColor3 = C.green
+			lastCrushProgress = 0
+			lastCrushHits = 0
 			task.delay(1, function()
 				crushBarFill.BackgroundColor3 = C.accent
 				TweenService:Create(crushBarFill, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 1, 0)}):Play()
@@ -781,10 +790,15 @@ if leachStartEvent then
 	end)
 end
 
--- Request initial slag data when GUI opens
+-- Request initial slag data when GUI opens + restore crush bar (#33)
 screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	if screenGui.Enabled then
 		refreshMonitor()
+		-- Restore crush progress (#33)
+		if lastCrushProgress > 0 then
+			crushBarFill.Size = UDim2.new(lastCrushProgress, 0, 1, 0)
+			crushLabel.Text = "Hammering... " .. lastCrushHits .. "/" .. lastCrushTotal .. " hits"
+		end
 		-- Also request slag inventory
 		local remote = Remotes:FindFirstChild("RequestSlagInfo")
 		if remote then remote:FireServer() end

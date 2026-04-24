@@ -104,9 +104,28 @@ end
 
 local function getPlayerLeaches(userId)
 	if not playerLeaches[userId] then
-		playerLeaches[userId] = {}
+		-- Try to restore from saved data (#77 crash recovery)
+		local pData = PlayerDataBridge.GetPlayerData(userId)
+		if pData and pData.activeLeaches then
+			playerLeaches[userId] = {}
+			for leachId, saved in pairs(pData.activeLeaches) do
+				playerLeaches[userId][leachId] = saved
+			end
+		else
+			playerLeaches[userId] = {}
+		end
 	end
 	return playerLeaches[userId]
+end
+
+-- Save leach state to player data for crash recovery (#77)
+local function persistLeachState(userId)
+	local leaches = playerLeaches[userId]
+	if not leaches then return end
+	local pData = PlayerDataBridge.GetPlayerData(userId)
+	if pData then
+		pData.activeLeaches = leaches
+	end
 end
 
 local function countActiveLeaches(userId)
@@ -369,6 +388,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		rarity = "rare",
 	})
 
+	persistLeachState(userId)  -- #77 crash recovery
 	sendSlagUpdate(player, userId)
 	print("[SlagProcessing]", player.Name, "started leach:", reagentId, particleSize, "ETA:", timeStr)
 end)
