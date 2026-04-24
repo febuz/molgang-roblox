@@ -40,6 +40,7 @@ local guiStates = {
 	ProcessControlGui = false,
 	ResearchGui = false,
 	MiningGui = false,
+	ProductMarketGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -168,6 +169,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- V = Toggle Mining (Vanadium)
 	if input.KeyCode == Enum.KeyCode.V then
 		toggleGui("MiningGui")
+	end
+
+	-- X = Toggle Product Exchange
+	if input.KeyCode == Enum.KeyCode.X then
+		toggleGui("ProductMarketGui")
 	end
 
 	-- / or Slash = Toggle Settings

@@ -64,6 +64,9 @@ local serverToClientEvents = {
 	"PlotExplored",       -- {plotId, composition, vanadiumPct} exploration result
 	"OreMined",           -- {plotId, kgMined, totalStockpile} ore production update
 	"PlotPurchased",      -- {plotId, seller, buyer, price} plot trade confirmation
+	-- Product Market
+	"ProductPricesUpdate", -- {prices} current market prices for all products
+	"ProductSold",         -- {productId, quantity, revenue} sale confirmation
 }
 
 -- ══════════════════════════════════════════════
@@ -117,6 +120,9 @@ local clientToServerEvents = {
 	"RequestListPlotForSale",-- {plotId, askPrice} list mining plot on market
 	"RequestBuyPlotFromMarket", -- {plotId} buy listed mining plot from another player
 	"RequestMiningInfo",     -- {} get all plot data
+	-- Product Market
+	"RequestSellProduct",    -- {productId, quantity} sell refined product
+	"RequestProductPrices",  -- {} get current market prices
 }
 
 -- ══════════════════════════════════════════════
