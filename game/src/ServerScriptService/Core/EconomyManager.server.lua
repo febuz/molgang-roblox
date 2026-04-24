@@ -547,6 +547,43 @@ Remotes.RequestNPCInteract.OnServerEvent:Connect(function(player, npcName)
 end)
 
 -- ══════════════════════════════════════════════
+-- NPC PROXIMITY QUEST OFFERS (#26)
+-- ══════════════════════════════════════════════
+
+local npcHintCooldowns = {} -- {userId = lastHintTime}
+
+task.spawn(function()
+	while true do
+		task.wait(10)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local char = player.Character
+			if char then
+				local hrp = char:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					-- Check proximity to NPC models
+					for _, obj in workspace:GetDescendants() do
+						if obj:IsA("BasePart") and obj:GetAttribute("NPCName") then
+							local dist = (hrp.Position - obj.Position).Magnitude
+							if dist < 25 then
+								local now = tick()
+								local key = player.UserId .. "_" .. obj:GetAttribute("NPCName")
+								if not npcHintCooldowns[key] or (now - npcHintCooldowns[key]) > 60 then
+									npcHintCooldowns[key] = now
+									Remotes.FireClient("ServerAnnounce", player, {
+										message = obj:GetAttribute("NPCName") .. " wants to talk! Click to interact.",
+										rarity = "uncommon",
+									})
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- ══════════════════════════════════════════════
 -- REMOTE FUNCTIONS
 -- ══════════════════════════════════════════════
 

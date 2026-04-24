@@ -378,11 +378,18 @@ end
 -- ═══════════════════════════════════════════════
 
 local AI_NAMES = {"Ming", "Yuki", "Carlos"}
+-- Easy mode AI plays randomly, normal uses personalities (#31)
+MahjongGame.DifficultyMode = "normal" -- "easy" or "normal"
+
 local AI_PERSONALITIES = {
 	{name = "Ming", style = "aggressive", riskTolerance = 0.7},   -- goes for big hands
 	{name = "Yuki", style = "defensive", riskTolerance = 0.3},    -- safe plays
 	{name = "Carlos", style = "balanced", riskTolerance = 0.5},   -- mixed strategy
 }
+
+function MahjongGame.SetDifficulty(mode)
+	MahjongGame.DifficultyMode = mode == "easy" and "easy" or "normal"
+end
 
 function MahjongGame.GetAINames()
 	return AI_NAMES
@@ -427,6 +434,11 @@ end
 -- Smart AI: discard least useful tile
 function MahjongGame.AIChooseDiscard(hand, aiIndex)
 	if #hand == 0 then return nil end
+
+	-- Easy mode: AI discards randomly (#31)
+	if MahjongGame.DifficultyMode == "easy" then
+		return hand[math.random(#hand)]
+	end
 
 	local personality = AI_PERSONALITIES[aiIndex] or AI_PERSONALITIES[1]
 	local worstTile = hand[1]

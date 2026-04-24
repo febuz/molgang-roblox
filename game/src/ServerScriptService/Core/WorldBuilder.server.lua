@@ -428,13 +428,28 @@ local function setupLighting()
 	sky.SkyboxLf = ""
 	sky.SkyboxRt = ""
 	sky.SkyboxUp = ""
-	sky.StarCount = 5000
-	sky.CelestialBodiesShown = false
-	sky.MoonAngularSize = 0
-	sky.SunAngularSize = 0
+	sky.StarCount = 8000          -- more stars (#43)
+	sky.CelestialBodiesShown = true  -- show moon/sun for visual depth (#43)
+	sky.MoonAngularSize = 8       -- small distant moon
+	sky.SunAngularSize = 4        -- tiny distant sun
 	sky.Parent = Lighting
 
-	print("[WorldBuilder] Lighting configured: Moleculia deep-space ambiance")
+	-- Subtle day/night cycle (#46) — very slow rotation for atmosphere
+	task.spawn(function()
+		while true do
+			Lighting.ClockTime = Lighting.ClockTime + 0.002  -- ~1 game day per 2 hours
+			if Lighting.ClockTime >= 24 then Lighting.ClockTime = 0 end
+			-- Keep it mostly dark (space theme) by capping brightness
+			if Lighting.ClockTime > 5 and Lighting.ClockTime < 19 then
+				Lighting.Brightness = 0.25  -- slightly brighter during "day"
+			else
+				Lighting.Brightness = 0.15  -- darker during "night"
+			end
+			task.wait(5)
+		end
+	end)
+
+	print("[WorldBuilder] Lighting configured: Moleculia deep-space ambiance + day/night cycle")
 end
 
 --------------------------------------------------------------------------------
@@ -1739,11 +1754,12 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 	-- ================================================================
 	-- Smokestacks with ParticleEmitters
 	-- ================================================================
+	-- Varied per-stack steam settings (#47)
 	local smokestackPositions = {
-		{pos = Vector3.new(-2110, 9, -60), height = 50},
-		{pos = Vector3.new(-2090, 9, -60), height = 45},
-		{pos = Vector3.new(-1960, 9, -60), height = 40},
-		{pos = Vector3.new(-1910, 9, 30), height = 35},
+		{pos = Vector3.new(-2110, 9, -60), height = 50, rate = 18, speed = {6, 14}, color2 = Color3.fromRGB(200, 200, 210)},
+		{pos = Vector3.new(-2090, 9, -60), height = 45, rate = 8, speed = {3, 8}, color2 = Color3.fromRGB(160, 170, 180)},
+		{pos = Vector3.new(-1960, 9, -60), height = 40, rate = 14, speed = {5, 12}, color2 = Color3.fromRGB(190, 180, 170)},
+		{pos = Vector3.new(-1910, 9, 30), height = 35, rate = 6, speed = {2, 6}, color2 = Color3.fromRGB(170, 175, 185)},
 	}
 	for idx, stackConfig in smokestackPositions do
 		local stack = createCylinder(zone, {
@@ -1780,23 +1796,23 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		addParticleEmitter(steamEmitter, {
 			Color = ColorSequence.new({
 				ColorSequenceKeypoint.new(0, CONFIG.STEAM_WHITE),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 185, 190)),
+				ColorSequenceKeypoint.new(1, stackConfig.color2 or Color3.fromRGB(180, 185, 190)),
 			}),
 			Size = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 2),
-				NumberSequenceKeypoint.new(0.3, 6),
-				NumberSequenceKeypoint.new(0.7, 10),
-				NumberSequenceKeypoint.new(1, 14),
+				NumberSequenceKeypoint.new(0, 1.5 + idx * 0.5),
+				NumberSequenceKeypoint.new(0.3, 4 + idx * 1.5),
+				NumberSequenceKeypoint.new(0.7, 8 + idx),
+				NumberSequenceKeypoint.new(1, 12 + idx),
 			}),
 			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.3),
-				NumberSequenceKeypoint.new(0.5, 0.6),
+				NumberSequenceKeypoint.new(0, 0.2 + idx * 0.05),
+				NumberSequenceKeypoint.new(0.5, 0.5 + idx * 0.05),
 				NumberSequenceKeypoint.new(1, 1),
 			}),
-			Lifetime = NumberRange.new(3, 6),
-			Rate = 12,
-			Speed = NumberRange.new(4, 10),
-			SpreadAngle = Vector2.new(20, 20),
+			Lifetime = NumberRange.new(2 + idx, 5 + idx),
+			Rate = stackConfig.rate or 12,
+			Speed = NumberRange.new(stackConfig.speed[1], stackConfig.speed[2]),
+			SpreadAngle = Vector2.new(15 + idx * 5, 15 + idx * 5),
 			LightEmission = 0.1,
 			LightInfluence = 0.5,
 		})
