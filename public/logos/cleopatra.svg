@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Cleopatra executive mark">
+  <title>Cleopatra</title>
+  <defs>
+    <linearGradient id="cleoG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fb923c"/>
+      <stop offset="1" stop-color="#c2410c"/>
+    </linearGradient>
+    <linearGradient id="cleoRim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- outer circle, brand disc -->
+  <circle cx="64" cy="64" r="60" fill="#0a0e1a" stroke="url(#cleoRim)" stroke-width="3"/>
+  <!-- upper crown silhouette: three pointed pillars + flanking wings -->
+  <path d="M30 52 L40 22 L48 44 L64 14 L80 44 L88 22 L98 52 Z" fill="url(#cleoG)" stroke="url(#cleoRim)" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- central headdress disc with encircled sun motif -->
+  <circle cx="64" cy="68" r="18" fill="none" stroke="url(#cleoRim)" stroke-width="2"/>
+  <circle cx="64" cy="68" r="5" fill="url(#cleoRim)"/>
+  <!-- lower band — executive authority bar -->
+  <rect x="28" y="92" width="72" height="6" rx="2" fill="url(#cleoG)"/>
+  <rect x="36" y="102" width="56" height="4" rx="1.5" fill="url(#cleoRim)" opacity="0.8"/>
+  <!-- serif initial C -->
+  <text x="64" y="77" font-family="Georgia,serif" font-size="18" font-weight="700" fill="#0a0e1a" text-anchor="middle">C</text>
+</svg>

@@ -1122,6 +1122,18 @@
     </div>
 
     <script>
+        // === AGENT AVATAR HELPER ===
+        // Cleopatra, Alexander, MoneyGod have hand-authored SVG logos — use them
+        // instead of emoji. Everyone else keeps their emoji avatar.
+        const LOGO_AGENTS = { Cleopatra: '/logos/cleopatra.svg', Alexander: '/logos/alexander.svg', MoneyGod: '/logos/moneygod.svg' };
+        function avatarHtml(name, fallbackEmoji, sizePx) {
+            const url = LOGO_AGENTS[name];
+            if (url) {
+                return `<img src="${url}" alt="${name}" style="width:${sizePx}px;height:${sizePx}px;display:block;"/>`;
+            }
+            return `<span style="font-size:${Math.round(sizePx * 0.5)}px;line-height:1;">${fallbackEmoji}</span>`;
+        }
+
         // === AGENT PROFILE DATA ===
         const agentProfiles = {
             fill: {
@@ -1537,7 +1549,7 @@
                 <!-- Profile Card -->
                 <div class="card" style="border-left: 4px solid ${profile.color};">
                     <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
-                        <div style="font-size: 3em; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; background: rgba(96, 165, 250, 0.15); border-radius: 12px;">${profile.avatar}</div>
+                        <div style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; background: rgba(96, 165, 250, 0.15); border-radius: 12px; overflow:hidden;">${avatarHtml(profile.name, profile.avatar, 72)}</div>
                         <div>
                             <h2 style="color: var(--primary); margin-bottom: 4px;">${profile.name}</h2>
                             <p style="color: var(--text-secondary);">${profile.role}</p>
@@ -2307,7 +2319,7 @@
             list.innerHTML = socialRosterData.map(a => `
                 <div class="social-roster-card" data-agent="${a.name}" onclick="openSocialFeed('${a.name}')"
                     style="display:flex; gap:10px; align-items:center; padding:10px; background:rgba(30,58,95,0.2); border:1px solid var(--border); border-left:3px solid ${a.color}; border-radius:8px; cursor:pointer; transition:all 0.2s;">
-                    <div style="font-size:1.8em; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:${a.color}22; border-radius:8px;">${a.avatar}</div>
+                    <div style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:${a.color}22; border-radius:8px; overflow:hidden;">${avatarHtml(a.name, a.avatar, 40)}</div>
                     <div style="flex:1; min-width:0;">
                         <div style="font-weight:600; color:var(--text-primary);">${a.name}</div>
                         <div style="font-size:0.7em; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.role}</div>
@@ -2364,7 +2376,7 @@
                     <!-- Profile banner -->
                     <div class="card" style="border-left:4px solid ${profile.color}; padding:20px;">
                         <div style="display:flex; gap:18px; align-items:center;">
-                            <div style="font-size:3.2em; width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:${profile.color}22; border-radius:14px;">${profile.avatar}</div>
+                            <div style="width:80px; height:80px; display:flex; align-items:center; justify-content:center; background:${profile.color}22; border-radius:14px; overflow:hidden;">${avatarHtml(profile.name, profile.avatar, 72)}</div>
                             <div style="flex:1;">
                                 <div style="display:flex; align-items:baseline; gap:10px;">
                                     <h2 style="color:var(--text-primary); margin:0;">${profile.name}</h2>

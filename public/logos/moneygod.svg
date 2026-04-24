@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="MoneyGod economy authority mark">
+  <title>MoneyGod</title>
+  <defs>
+    <linearGradient id="mgRim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <radialGradient id="mgFace" cx="0.4" cy="0.35" r="0.8">
+      <stop offset="0" stop-color="#d1fae5"/>
+      <stop offset="0.6" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#065f46"/>
+    </radialGradient>
+  </defs>
+  <!-- outer disc = coin edge -->
+  <circle cx="64" cy="64" r="60" fill="#0a0e1a" stroke="url(#mgRim)" stroke-width="3"/>
+  <!-- coin body -->
+  <circle cx="64" cy="64" r="48" fill="url(#mgFace)" stroke="url(#mgRim)" stroke-width="2"/>
+  <!-- inner ring (coin detail) -->
+  <circle cx="64" cy="64" r="40" fill="none" stroke="#064e3b" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>
+  <!-- central mark: stylized M with crown above -->
+  <path d="M52 30 L56 36 L60 30 L64 36 L68 30 L72 36 L76 30 L76 42 L52 42 Z" fill="url(#mgRim)" opacity="0.9"/>
+  <!-- the M -->
+  <path d="M44 86 L44 50 L52 50 L64 72 L76 50 L84 50 L84 86 L76 86 L76 64 L68 78 L60 78 L52 64 L52 86 Z" fill="#0a0e1a" stroke="#065f46" stroke-width="0.75"/>
+  <!-- small carbon credit leaf, bottom right -->
+  <path d="M92 96 Q100 90 104 100 Q98 106 92 96 Z" fill="#34d399" opacity="0.9"/>
+  <path d="M92 96 Q98 98 104 100" fill="none" stroke="#065f46" stroke-width="0.75"/>
+</svg>
