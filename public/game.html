@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOLGANG - Chemical Engineering Simulator</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#080c18;color:#e0e0e0;overflow:hidden;user-select:none}
+
+/* GLOBAL HUD */
+#hud{position:fixed;top:0;left:0;right:0;height:48px;background:rgba(8,12,24,0.97);border-bottom:1px solid #1a2a44;display:flex;align-items:center;padding:0 16px;z-index:200;gap:16px}
+#hud .logo{font-weight:700;font-size:1em;background:linear-gradient(90deg,#60a5fa,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-right:auto}
+.hud-stat{display:flex;align-items:center;gap:4px;font-size:.8em;padding:4px 10px;background:rgba(30,58,95,0.3);border-radius:6px;border:1px solid #1a2a44}
+.hud-stat .val{color:#60a5fa;font-weight:700}
+
+/* SCREENS */
+.screen{display:none;position:fixed;top:48px;left:0;right:0;bottom:0;overflow-y:auto}
+.screen.active{display:block}
+
+/* === HUB === */
+#hub{background:linear-gradient(180deg,#0a1628 0%,#0d1f3c 100%);padding:20px}
+.hub-welcome{text-align:center;padding:20px 0 10px}
+.hub-welcome h1{font-size:1.8em;background:linear-gradient(135deg,#60a5fa,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hub-welcome p{color:#94a3b8;margin-top:4px}
+
+.hub-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0}
+.hub-stat-card{background:rgba(30,58,95,0.25);border:1px solid #1a2a44;border-radius:8px;padding:12px;text-align:center}
+.hub-stat-card .label{font-size:.7em;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+.hub-stat-card .value{font-size:1.6em;font-weight:700;color:#60a5fa;margin-top:2px}
+
+.hub-section{margin:20px 0}
+.hub-section h2{color:#60a5fa;font-size:1.1em;margin-bottom:12px;padding-left:4px}
+
+.zone-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.zone-card{background:rgba(20,30,55,0.8);border:2px solid #1a2a44;border-radius:10px;padding:16px;cursor:pointer;transition:all .3s}
+.zone-card:hover{border-color:#60a5fa;transform:translateY(-4px);box-shadow:0 8px 24px rgba(96,165,250,0.15)}
+.zone-card .z-icon{font-size:2em;margin-bottom:6px}
+.zone-card .z-name{font-weight:700;font-size:1em;margin-bottom:2px}
+.zone-card .z-desc{font-size:.75em;color:#94a3b8;line-height:1.4}
+.zone-card .z-tag{display:inline-block;margin-top:8px;font-size:.65em;padding:2px 8px;border-radius:10px;font-weight:600}
+
+.quest-list{display:grid;gap:8px}
+.quest-item{padding:10px 14px;background:rgba(30,58,95,0.2);border:1px solid #1a2a44;border-radius:8px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s}
+.quest-item:hover{border-color:#60a5fa;background:rgba(96,165,250,0.05)}
+.quest-item .q-icon{font-size:1.2em}
+.quest-item .q-info{flex:1}
+.quest-item .q-name{font-weight:600;font-size:.85em}
+.quest-item .q-desc{font-size:.7em;color:#94a3b8}
+.quest-item .q-reward{font-size:.75em;color:#fbbf24;font-weight:600}
+.quest-item.done{opacity:.5;border-color:#22c55e}
+.quest-item.done .q-name{text-decoration:line-through}
+
+/* NAV BAR (bottom) */
+#nav{position:fixed;bottom:0;left:0;right:0;height:56px;background:rgba(8,12,24,0.97);border-top:1px solid #1a2a44;display:flex;align-items:center;justify-content:center;gap:4px;z-index:200;padding:0 8px}
+.nav-btn{flex:1;max-width:100px;height:44px;background:rgba(30,58,95,0.2);border:1px solid transparent;border-radius:8px;color:#94a3b8;font-size:.65em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;transition:all .2s}
+.nav-btn:hover{background:rgba(96,165,250,0.1);color:#60a5fa}
+.nav-btn.active{background:rgba(96,165,250,0.15);border-color:#60a5fa;color:#60a5fa}
+.nav-btn .nav-icon{font-size:1.4em}
+
+/* === ZONE SCREENS === */
+.zone-header{padding:12px 16px;background:rgba(8,12,24,0.8);border-bottom:1px solid #1a2a44;display:flex;align-items:center;gap:12px}
+.zone-header .back-btn{padding:6px 14px;background:rgba(96,165,250,0.15);border:1px solid #60a5fa;border-radius:6px;color:#60a5fa;cursor:pointer;font-size:.8em}
+.zone-header .back-btn:hover{background:rgba(96,165,250,0.25)}
+.zone-header h2{flex:1}
+.zone-body{padding:16px;height:calc(100vh - 48px - 56px - 52px);overflow-y:auto}
+
+/* Lab canvas */
+#lab-canvas{width:100%;height:400px;background:rgba(10,20,40,0.8);border:1px solid #1a2a44;border-radius:8px;cursor:crosshair}
+
+/* Factory */
+.factory-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.factory-panel{flex:1;min-width:200px;background:rgba(20,30,55,0.6);border:1px solid #1a2a44;border-radius:8px;padding:14px}
+.factory-panel h3{color:#60a5fa;font-size:.9em;margin-bottom:10px}
+.slider-group{margin-bottom:12px}
+.slider-group label{display:flex;justify-content:space-between;font-size:.8em;margin-bottom:4px}
+.slider-group input[type=range]{width:100%;accent-color:#60a5fa}
+.craft-btn{width:100%;padding:10px;background:linear-gradient(135deg,#22c55e,#06b6d4);color:white;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:.9em;transition:all .2s}
+.craft-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(34,197,94,0.3)}
+.craft-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.gauge{height:8px;background:rgba(30,58,95,0.4);border-radius:4px;overflow:hidden;margin-top:6px}
+.gauge-fill{height:100%;border-radius:4px;transition:width .5s}
+
+/* Inventory */
+.inv-grid{display:flex;flex-wrap:wrap;gap:6px}
+.inv-item{width:54px;height:54px;background:rgba(30,58,95,0.3);border:1px solid #1a2a44;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.75em;position:relative}
+.inv-item .sym{font-weight:700;font-size:1.1em}
+.inv-item .cnt{position:absolute;bottom:1px;right:4px;font-size:.6em;color:#94a3b8}
+.inv-item.molecule{border-color:#22c55e30}
+
+/* Recipes */
+.recipe-grid{display:grid;gap:8px}
+.recipe-card{padding:10px;background:rgba(20,30,55,0.6);border:1px solid #1a2a44;border-radius:6px;cursor:pointer;transition:all .2s;font-size:.8em}
+.recipe-card:hover{border-color:#60a5fa}
+.recipe-card.can-craft{border-color:#22c55e;background:rgba(34,197,94,0.05)}
+.recipe-card .r-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.recipe-card .r-name{font-weight:600}
+.recipe-card .r-tier{font-size:.7em;padding:1px 6px;border-radius:8px}
+.recipe-card .r-formula{color:#60a5fa;font-size:.9em;margin-bottom:4px}
+.recipe-card .r-needs{color:#94a3b8;font-size:.85em}
+.recipe-card .r-reward{color:#fbbf24;font-size:.85em;margin-top:3px}
+
+/* Toast */
+#toast{position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:300;pointer-events:none}
+.tmsg{padding:6px 18px;background:rgba(34,197,94,0.9);color:white;border-radius:16px;font-size:.8em;font-weight:600;margin-bottom:4px;animation:tin .3s,tout .4s 2s forwards;text-align:center;white-space:nowrap}
+.tmsg.w{background:rgba(245,158,11,0.9)}.tmsg.i{background:rgba(96,165,250,0.9)}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tout{to{opacity:0}}
+
+/* NPC dialog */
+#npc-dlg{display:none;position:fixed;bottom:64px;left:50%;transform:translateX(-50%);width:460px;max-width:92vw;background:rgba(12,18,36,0.97);border:1px solid #60a5fa;border-radius:10px;padding:14px;z-index:250}
+#npc-dlg .nd-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#npc-dlg .nd-av{font-size:1.8em}
+#npc-dlg .nd-nm{color:#60a5fa;font-weight:700}
+#npc-dlg .nd-txt{color:#cbd5e1;line-height:1.5;font-size:.85em}
+#npc-dlg .nd-close{position:absolute;top:6px;right:10px;background:none;border:none;color:#94a3b8;font-size:1.2em;cursor:pointer}
+#npc-dlg .nd-next{margin-top:8px;padding:5px 16px;background:rgba(96,165,250,0.2);border:1px solid #60a5fa;border-radius:5px;color:#60a5fa;cursor:pointer;font-size:.8em}
+</style>
+</head>
+<body>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="logo">⚗️ MOLGANG</div>
+  <div class="hud-stat">💰 <span class="val" id="h-coins">0</span></div>
+  <div class="hud-stat">⚗️ <span class="val" id="h-mol">0</span></div>
+  <div class="hud-stat">⚛️ <span class="val" id="h-atoms">0</span></div>
+  <div class="hud-stat">Lv <span class="val" id="h-lvl">1</span></div>
+  <a href="/" style="color:#60a5fa;font-size:.75em;text-decoration:none;padding:4px 10px;border:1px solid #1a2a44;border-radius:5px">← Dashboard</a>
+</div>
+
+<!-- NAV BAR -->
+<div id="nav">
+  <div class="nav-btn active" onclick="go('hub')"><span class="nav-icon">🏠</span>Hub</div>
+  <div class="nav-btn" onclick="go('lab')"><span class="nav-icon">⚛️</span>Lab</div>
+  <div class="nav-btn" onclick="go('factory')"><span class="nav-icon">🏭</span>Factory</div>
+  <div class="nav-btn" onclick="go('recipes')"><span class="nav-icon">📖</span>Recipes</div>
+  <div class="nav-btn" onclick="go('inventory')"><span class="nav-icon">🎒</span>Bag</div>
+  <div class="nav-btn" onclick="go('market')"><span class="nav-icon">📊</span>Market</div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- NPC DIALOG -->
+<div id="npc-dlg">
+  <button class="nd-close" onclick="closeNPC()">&times;</button>
+  <div class="nd-head"><span class="nd-av" id="nd-av"></span><span class="nd-nm" id="nd-nm"></span></div>
+  <div class="nd-txt" id="nd-txt"></div>
+  <button class="nd-next" onclick="nextNPC()">Continue →</button>
+</div>
+
+<!-- ==================== SCREENS ==================== -->
+
+<!-- HUB -->
+<div class="screen active" id="hub">
+  <div class="hub-welcome">
+    <h1>⚗️ Chemical Engineering Simulator</h1>
+    <p>Collect atoms, synthesize molecules, build your fertilizer empire</p>
+  </div>
+  <div class="hub-stats">
+    <div class="hub-stat-card"><div class="label">MolCoins</div><div class="value" id="hub-coins">0</div></div>
+    <div class="hub-stat-card"><div class="label">Molecules</div><div class="value" id="hub-mol">0</div></div>
+    <div class="hub-stat-card"><div class="label">Level</div><div class="value" id="hub-lvl">1</div></div>
+    <div class="hub-stat-card"><div class="label">Quests</div><div class="value" id="hub-q">0/6</div></div>
+  </div>
+
+  <div class="hub-section">
+    <h2>🗺️ Zones</h2>
+    <div class="zone-grid">
+      <div class="zone-card" onclick="go('lab')">
+        <div class="z-icon">⚛️</div>
+        <div class="z-name">Atom Lab</div>
+        <div class="z-desc">Collect floating atoms with your mouse. Click to grab them before they drift away!</div>
+        <span class="z-tag" style="background:#22c55e30;color:#22c55e">MINIGAME</span>
+      </div>
+      <div class="zone-card" onclick="go('factory')">
+        <div class="z-icon">🏭</div>
+        <div class="z-name">Fertilizer Factory</div>
+        <div class="z-desc">Mix NPK nutrients and produce fertilizer. Control heat and pressure for optimal yield.</div>
+        <span class="z-tag" style="background:#f59e0b30;color:#f59e0b">PRODUCTION</span>
+      </div>
+      <div class="zone-card" onclick="go('recipes')">
+        <div class="z-icon">📖</div>
+        <div class="z-name">Synthesis Lab</div>
+        <div class="z-desc">Combine your atoms into molecules. Unlock higher tiers as you level up.</div>
+        <span class="z-tag" style="background:#60a5fa30;color:#60a5fa">CRAFTING</span>
+      </div>
+      <div class="zone-card" onclick="go('market')">
+        <div class="z-icon">📊</div>
+        <div class="z-name">Market Exchange</div>
+        <div class="z-desc">Trade molecules for MolCoins. Prices fluctuate based on supply and demand!</div>
+        <span class="z-tag" style="background:#a855f730;color:#a855f7">TRADING</span>
+      </div>
+      <div class="zone-card" style="opacity:.5;cursor:default">
+        <div class="z-icon">🔬</div>
+        <div class="z-name">Advanced Labs</div>
+        <div class="z-desc">Distillation columns, reactor kinetics, PFD editor. Unlock at Level 10 on the web version.</div>
+        <span class="z-tag" style="background:#ef444430;color:#ef4444">COMING SOON</span>
+      </div>
+      <div class="zone-card" style="opacity:.5;cursor:default">
+        <div class="z-icon">🌊</div>
+        <div class="z-name">Deep Ocean Zone</div>
+        <div class="z-desc">Bioluminescent underwater world with reactor puzzles. Play on Roblox first!</div>
+        <span class="z-tag" style="background:#06b6d430;color:#06b6d4">ROBLOX</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hub-section">
+    <h2>🎯 Active Quests</h2>
+    <div class="quest-list" id="quest-list"></div>
+  </div>
+
+  <div class="hub-section">
+    <h2>👥 NPCs</h2>
+    <div class="zone-grid" id="npc-grid"></div>
+  </div>
+</div>
+
+<!-- LAB (atom collector minigame) -->
+<div class="screen" id="lab">
+  <div class="zone-header">
+    <button class="back-btn" onclick="go('hub')">← Hub</button>
+    <h2>⚛️ Atom Lab</h2>
+  </div>
+  <div class="zone-body" style="padding:8px">
+    <canvas id="lab-canvas"></canvas>
+    <p style="text-align:center;color:#94a3b8;font-size:.8em;margin-top:8px">Click floating atoms to collect them. Higher levels spawn rarer elements.</p>
+  </div>
+</div>
+
+<!-- FACTORY -->
+<div class="screen" id="factory">
+  <div class="zone-header">
+    <button class="back-btn" onclick="go('hub')">← Hub</button>
+    <h2>🏭 Fertilizer Factory</h2>
+  </div>
+  <div class="zone-body">
+    <div class="factory-row">
+      <div class="factory-panel">
+        <h3>🧪 NPK Mixer</h3>
+        <div class="slider-group">
+          <label><span>Nitrogen (N)</span><span id="n-val">50</span>%</label>
+          <input type="range" id="n-slider" min="0" max="100" value="50" oninput="updateNPK()">
+        </div>
+        <div class="slider-group">
+          <label><span>Phosphorus (P)</span><span id="p-val">30</span>%</label>
+          <input type="range" id="p-slider" min="0" max="100" value="30" oninput="updateNPK()">
+        </div>
+        <div class="slider-group">
+          <label><span>Potassium (K)</span><span id="k-val">20</span>%</label>
+          <input type="range" id="k-slider" min="0" max="100" value="20" oninput="updateNPK()">
+        </div>
+        <div style="margin:8px 0">
+          <label style="font-size:.8em">Crop Target:</label>
+          <select id="crop-select" onchange="updateNPK()" style="width:100%;padding:6px;background:#0d1f3c;color:#e0e0e0;border:1px solid #1a2a44;border-radius:4px;margin-top:4px">
+            <option value="wheat">🌾 Wheat (N:40 P:30 K:30)</option>
+            <option value="corn">🌽 Corn (N:50 P:25 K:25)</option>
+            <option value="rice">🍚 Rice (N:35 P:35 K:30)</option>
+          </select>
+        </div>
+        <div style="margin-top:8px">
+          <label style="font-size:.8em;display:flex;justify-content:space-between"><span>NPK Match Quality</span><span id="npk-quality" style="color:#22c55e;font-weight:700">0%</span></label>
+          <div class="gauge"><div class="gauge-fill" id="npk-gauge" style="width:0%;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e)"></div></div>
+        </div>
+      </div>
+      <div class="factory-panel">
+        <h3>🔥 Reaction Controls</h3>
+        <div class="slider-group">
+          <label><span>Temperature</span><span id="temp-val">200</span>°C</label>
+          <input type="range" id="temp-slider" min="50" max="500" value="200" oninput="updateReaction()">
+        </div>
+        <div class="slider-group">
+          <label><span>Pressure</span><span id="pres-val">150</span> atm</label>
+          <input type="range" id="pres-slider" min="10" max="300" value="150" oninput="updateReaction()">
+        </div>
+        <div style="margin-top:8px">
+          <label style="font-size:.8em;display:flex;justify-content:space-between"><span>Reaction Efficiency</span><span id="react-eff" style="color:#f59e0b;font-weight:700">0%</span></label>
+          <div class="gauge"><div class="gauge-fill" id="react-gauge" style="width:0%;background:#f59e0b"></div></div>
+        </div>
+        <div style="margin-top:12px;padding:8px;background:rgba(30,58,95,0.2);border-radius:6px;font-size:.75em;color:#94a3b8">
+          <div>Required atoms: <span id="fert-cost" style="color:#60a5fa">N:3 H:6 C:1 O:1</span></div>
+          <div>Yield: <span id="fert-yield" style="color:#22c55e">1x Urea</span> + <span id="fert-bonus" style="color:#fbbf24">40 MolCoins</span></div>
+        </div>
+        <button class="craft-btn" id="fert-btn" onclick="produceFertilizer()" style="margin-top:12px">🏭 Produce Fertilizer</button>
+      </div>
+    </div>
+    <div class="factory-panel" style="max-width:100%">
+      <h3>📦 Production Log</h3>
+      <div id="prod-log" style="max-height:150px;overflow-y:auto;font-size:.75em;color:#94a3b8"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RECIPES -->
+<div class="screen" id="recipes">
+  <div class="zone-header">
+    <button class="back-btn" onclick="go('hub')">← Hub</button>
+    <h2>📖 Synthesis Lab</h2>
+  </div>
+  <div class="zone-body">
+    <div class="recipe-grid" id="recipe-list"></div>
+  </div>
+</div>
+
+<!-- INVENTORY -->
+<div class="screen" id="inventory">
+  <div class="zone-header">
+    <button class="back-btn" onclick="go('hub')">← Hub</button>
+    <h2>🎒 Inventory</h2>
+  </div>
+  <div class="zone-body">
+    <h3 style="color:#60a5fa;font-size:.9em;margin-bottom:8px">⚛️ Atoms</h3>
+    <div class="inv-grid" id="inv-atoms"></div>
+    <h3 style="color:#22c55e;font-size:.9em;margin:14px 0 8px">⚗️ Molecules</h3>
+    <div class="inv-grid" id="inv-mol"></div>
+    <h3 style="color:#fbbf24;font-size:.9em;margin:14px 0 8px">🧪 Fertilizer</h3>
+    <div class="inv-grid" id="inv-fert"></div>
+  </div>
+</div>
+
+<!-- MARKET -->
+<div class="screen" id="market">
+  <div class="zone-header">
+    <button class="back-btn" onclick="go('hub')">← Hub</button>
+    <h2>📊 Market Exchange</h2>
+  </div>
+  <div class="zone-body">
+    <p style="font-size:.85em;color:#94a3b8;margin-bottom:12px">Sell your molecules and fertilizer for MolCoins. Prices update every 30 seconds.</p>
+    <div id="market-list"></div>
+  </div>
+</div>
+
+<script>
+// === STATE ===
+const S = { coins:0, lvl:1, xp:0, atoms:{}, molecules:{}, fertilizer:0, totalMol:0, questsDone:new Set(), prodCount:0 };
+
+// === ELEMENTS ===
+const EL = [
+  {s:'H',n:'Hydrogen',c:'#e0e0e0',r:16,m:1},
+  {s:'O',n:'Oxygen',c:'#ff4444',r:20,m:16},
+  {s:'C',n:'Carbon',c:'#666',r:18,m:12},
+  {s:'N',n:'Nitrogen',c:'#4488ff',r:18,m:14},
+  {s:'Na',n:'Sodium',c:'#ffaa00',r:22,m:23},
+  {s:'Cl',n:'Chlorine',c:'#00ff88',r:20,m:35},
+  {s:'Ca',n:'Calcium',c:'#ccc',r:24,m:40},
+  {s:'Fe',n:'Iron',c:'#cc6633',r:22,m:56},
+  {s:'S',n:'Sulfur',c:'#dddd44',r:20,m:32},
+  {s:'P',n:'Phosphorus',c:'#ff66ff',r:18,m:31},
+  {s:'K',n:'Potassium',c:'#aa66ff',r:22,m:39},
+];
+
+// === RECIPES ===
+const RCP = [
+  {n:'Water',f:'H₂O',need:{H:2,O:1},rw:10,t:'basic'},
+  {n:'Carbon Dioxide',f:'CO₂',need:{C:1,O:2},rw:15,t:'basic'},
+  {n:'Ammonia',f:'NH₃',need:{N:1,H:3},rw:20,t:'basic'},
+  {n:'Salt',f:'NaCl',need:{Na:1,Cl:1},rw:12,t:'basic'},
+  {n:'Hydrochloric Acid',f:'HCl',need:{H:1,Cl:1},rw:18,t:'basic'},
+  {n:'Methane',f:'CH₄',need:{C:1,H:4},rw:25,t:'intermediate'},
+  {n:'Calcium Carbonate',f:'CaCO₃',need:{Ca:1,C:1,O:3},rw:35,t:'intermediate'},
+  {n:'Sulfuric Acid',f:'H₂SO₄',need:{H:2,S:1,O:4},rw:50,t:'rare'},
+  {n:'Iron Oxide',f:'Fe₂O₃',need:{Fe:2,O:3},rw:40,t:'rare'},
+  {n:'Urea',f:'CO(NH₂)₂',need:{C:1,O:1,N:2,H:4},rw:60,t:'epic'},
+  {n:'Potassium Phosphate',f:'K₃PO₄',need:{K:3,P:1,O:4},rw:80,t:'epic'},
+  {n:'MolCrystal',f:'✦ LEGENDARY',need:{Fe:2,S:2,Ca:2,Na:2,K:1},rw:200,t:'legendary'},
+];
+
+// === QUESTS ===
+const QUESTS = [
+  {id:'q1',name:'First Collection',desc:'Collect 10 atoms',icon:'⚛️',check:()=>atomCount()>=10,reward:20},
+  {id:'q2',name:'Water Maker',desc:'Synthesize Water (H₂O)',icon:'💧',check:()=>(S.molecules['Water']||0)>=1,reward:30},
+  {id:'q3',name:'Chemist',desc:'Synthesize 5 different molecules',icon:'🧪',check:()=>Object.keys(S.molecules).length>=5,reward:50},
+  {id:'q4',name:'Farmer Helper',desc:'Produce 1 fertilizer batch',icon:'🌾',check:()=>S.fertilizer>=1,reward:60},
+  {id:'q5',name:'Mogul',desc:'Earn 500 MolCoins total',icon:'💰',check:()=>S.coins>=500,reward:100},
+  {id:'q6',name:'MolCrystal',desc:'Synthesize the legendary MolCrystal',icon:'✦',check:()=>(S.molecules['MolCrystal']||0)>=1,reward:300},
+];
+
+// === NPCs ===
+const NPCS = [
+  {name:'Dr. Femke',av:'👩‍🔬',msgs:['Welcome to the Chemical Engineering Simulator! Start by visiting the Atom Lab to collect elements.','Use the Synthesis Lab to combine atoms into molecules. Water is a great first target!','The Factory lets you produce fertilizer - farmers need it!','Tip: Higher levels unlock rarer elements and better recipes.']},
+  {name:'Farmer Chen',av:'👨‍🌾',msgs:['My crops need fertilizer! Can you help?','Wheat needs balanced NPK: 40% Nitrogen, 30% Phosphorus, 30% Potassium.','The closer your NPK mix matches the crop needs, the better the yield!','Make enough fertilizer and I\'ll reward you handsomely with MolCoins.']},
+  {name:'Kwantje',av:'🔬',msgs:['I study quantum chemistry at the molecular level!','Did you know H₂SO₄ (sulfuric acid) is the most produced chemical in the world?','Iron Oxide (Fe₂O₃) is what we call rust. But it has many industrial uses!','The legendary MolCrystal requires the rarest elements. Keep hunting!']},
+  {name:'Vanadis',av:'⚡',msgs:['I work with rare earth elements and catalysts.','Vanadium catalysts make sulfuric acid production possible on an industrial scale.','In the Advanced Labs, you\'ll learn about distillation and reactor design.','The web version has features that go beyond what Roblox can offer!']},
+];
+let npcIdx={};
+
+// === NAVIGATION ===
+let currentScreen = 'hub';
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`.nav-btn[onclick="go('${id}')"]`)?.classList.add('active');
+  currentScreen = id;
+  if (id==='hub') refreshHub();
+  if (id==='lab') initLab();
+  if (id==='recipes') renderRecipes();
+  if (id==='inventory') renderInventory();
+  if (id==='market') renderMarket();
+  if (id==='factory') updateNPK(); updateReaction();
+}
+
+// === HUD ===
+function atomCount(){ return Object.values(S.atoms).reduce((a,b)=>a+b,0); }
+function refreshHUD(){
+  document.getElementById('h-coins').textContent=S.coins;
+  document.getElementById('h-mol').textContent=S.totalMol;
+  document.getElementById('h-atoms').textContent=atomCount();
+  document.getElementById('h-lvl').textContent=S.lvl;
+}
+
+// === HUB ===
+function refreshHub(){
+  document.getElementById('hub-coins').textContent=S.coins;
+  document.getElementById('hub-mol').textContent=S.totalMol;
+  document.getElementById('hub-lvl').textContent=S.lvl;
+  checkQuests();
+  const done=QUESTS.filter(q=>S.questsDone.has(q.id)).length;
+  document.getElementById('hub-q').textContent=`${done}/${QUESTS.length}`;
+  // Quests
+  const ql=document.getElementById('quest-list');
+  ql.innerHTML=QUESTS.map(q=>{
+    const d=S.questsDone.has(q.id);
+    return `<div class="quest-item${d?' done':''}" onclick="${d?'':'claimQuest(\''+q.id+'\')'}">
+      <div class="q-icon">${q.icon}</div>
+      <div class="q-info"><div class="q-name">${d?'✅ ':q.check()?'🟢 ':''}${q.name}</div><div class="q-desc">${q.desc}</div></div>
+      <div class="q-reward">${d?'Claimed':'💰 '+q.reward}</div>
+    </div>`;
+  }).join('');
+  // NPCs
+  const ng=document.getElementById('npc-grid');
+  ng.innerHTML=NPCS.map(n=>`<div class="zone-card" onclick="showNPC('${n.name}')" style="padding:12px">
+    <div style="font-size:2em">${n.av}</div><div class="z-name">${n.name}</div>
+    <div class="z-desc" style="font-size:.7em">Click to talk</div>
+  </div>`).join('');
+}
+
+function checkQuests(){
+  for(const q of QUESTS){
+    if(!S.questsDone.has(q.id)&&q.check()){
+      // Quest completable but not yet claimed - highlight
+    }
+  }
+}
+function claimQuest(id){
+  const q=QUESTS.find(x=>x.id===id);
+  if(!q||S.questsDone.has(id)||!q.check()) return;
+  S.questsDone.add(id);
+  S.coins+=q.reward;
+  S.xp+=q.reward;
+  toast(`🎯 Quest complete: ${q.name}! +${q.reward} MolCoins`);
+  checkLvl();
+  refreshHUD();
+  refreshHub();
+}
+
+// === NPC ===
+let curNPC=null;
+function showNPC(name){
+  const n=NPCS.find(x=>x.name===name);if(!n)return;
+  curNPC=n;
+  if(!npcIdx[name])npcIdx[name]=0;
+  document.getElementById('nd-av').textContent=n.av;
+  document.getElementById('nd-nm').textContent=n.name;
+  document.getElementById('nd-txt').textContent=n.msgs[npcIdx[name]%n.msgs.length];
+  document.getElementById('npc-dlg').style.display='block';
+}
+function nextNPC(){
+  if(!curNPC)return;
+  npcIdx[curNPC.name]=(npcIdx[curNPC.name]||0)+1;
+  document.getElementById('nd-txt').textContent=curNPC.msgs[npcIdx[curNPC.name]%curNPC.msgs.length];
+}
+function closeNPC(){document.getElementById('npc-dlg').style.display='none'}
+
+// === TOAST ===
+function toast(m,t){const e=document.createElement('div');e.className='tmsg'+(t?' '+t:'');e.textContent=m;document.getElementById('toast').appendChild(e);setTimeout(()=>e.remove(),2500)}
+
+// === LEVEL ===
+function checkLvl(){
+  const need=S.lvl*120;
+  if(S.xp>=need){S.xp-=need;S.lvl++;toast(`🎉 Level ${S.lvl}!`);refreshHUD()}
+}
+
+// === ATOM LAB (canvas minigame) ===
+let labAtoms=[],labCanvas,labCtx,labW,labH,labMouse={x:0,y:0},labRunning=false,labSpawnT=0;
+
+function initLab(){
+  labCanvas=document.getElementById('lab-canvas');
+  labCtx=labCanvas.getContext('2d');
+  labCanvas.width=labCanvas.clientWidth;
+  labCanvas.height=labCanvas.clientHeight;
+  labW=labCanvas.width;labH=labCanvas.height;
+  if(labAtoms.length<8)for(let i=0;i<10;i++)spawnLabAtom();
+  if(!labRunning){labRunning=true;labLoop()}
+  labCanvas.onmousemove=e=>{const r=labCanvas.getBoundingClientRect();labMouse.x=e.clientX-r.left;labMouse.y=e.clientY-r.top};
+  labCanvas.onclick=e=>{
+    const r=labCanvas.getBoundingClientRect();
+    const mx=e.clientX-r.left,my=e.clientY-r.top;
+    for(let i=labAtoms.length-1;i>=0;i--){
+      const a=labAtoms[i],dx=mx-a.x,dy=my-a.y;
+      if(dx*dx+dy*dy<(a.el.r+8)*(a.el.r+8)){
+        S.atoms[a.el.s]=(S.atoms[a.el.s]||0)+1;
+        labAtoms.splice(i,1);
+        toast(`+1 ${a.el.n} (${a.el.s})`,'i');
+        S.xp+=5;checkLvl();refreshHUD();
+        return;
+      }
+    }
+  };
+}
+
+function spawnLabAtom(){
+  const maxEl=Math.min(EL.length,3+S.lvl*2);
+  const el=EL[Math.floor(Math.random()*maxEl)];
+  labAtoms.push({x:Math.random()*(labW-40)+20,y:Math.random()*(labH-40)+20,vx:(Math.random()-.5)*1.2,vy:(Math.random()-.5)*1.2,el,life:800+Math.random()*400});
+}
+
+function labLoop(){
+  if(currentScreen!=='lab'){labRunning=false;return}
+  labCtx.clearRect(0,0,labW,labH);
+  // Grid
+  labCtx.strokeStyle='rgba(30,58,95,0.2)';
+  for(let x=0;x<labW;x+=30){labCtx.beginPath();labCtx.moveTo(x,0);labCtx.lineTo(x,labH);labCtx.stroke()}
+  for(let y=0;y<labH;y+=30){labCtx.beginPath();labCtx.moveTo(0,y);labCtx.lineTo(labW,y);labCtx.stroke()}
+
+  labSpawnT++;
+  if(labSpawnT>Math.max(25,60-S.lvl*3)&&labAtoms.length<15+S.lvl*2){spawnLabAtom();labSpawnT=0}
+
+  for(const a of labAtoms){
+    a.x+=a.vx;a.y+=a.vy;a.life--;
+    if(a.x<a.el.r||a.x>labW-a.el.r)a.vx*=-1;
+    if(a.y<a.el.r||a.y>labH-a.el.r)a.vy*=-1;
+    a.x=Math.max(a.el.r,Math.min(labW-a.el.r,a.x));
+    a.y=Math.max(a.el.r,Math.min(labH-a.el.r,a.y));
+    const dx=labMouse.x-a.x,dy=labMouse.y-a.y;
+    const hov=dx*dx+dy*dy<(a.el.r+10)*(a.el.r+10);
+    if(hov){labCtx.beginPath();labCtx.arc(a.x,a.y,a.el.r+10,0,Math.PI*2);labCtx.fillStyle='rgba(96,165,250,0.2)';labCtx.fill();labCanvas.style.cursor='grab'}
+    const alpha=a.life<50?a.life/50:1;
+    labCtx.globalAlpha=alpha;
+    labCtx.beginPath();labCtx.arc(a.x,a.y,a.el.r,0,Math.PI*2);
+    const g=labCtx.createRadialGradient(a.x-3,a.y-3,2,a.x,a.y,a.el.r);
+    g.addColorStop(0,'#fff');g.addColorStop(1,a.el.c);
+    labCtx.fillStyle=g;labCtx.fill();
+    labCtx.strokeStyle=hov?'#fff':'rgba(255,255,255,0.3)';labCtx.lineWidth=hov?2:1;labCtx.stroke();
+    labCtx.font=`bold ${a.el.r*.85}px sans-serif`;labCtx.textAlign='center';
+    labCtx.fillStyle=(a.el.c==='#e0e0e0'||a.el.c==='#ccc')?'#0a0e1a':'#fff';
+    labCtx.fillText(a.el.s,a.x,a.y+a.el.r*.3);
+    labCtx.textAlign='left';labCtx.globalAlpha=1;
+  }
+  labAtoms=labAtoms.filter(a=>a.life>0);
+  if(!labAtoms.some(a=>{const dx=labMouse.x-a.x,dy=labMouse.y-a.y;return dx*dx+dy*dy<(a.el.r+10)*(a.el.r+10)}))labCanvas.style.cursor='crosshair';
+  requestAnimationFrame(labLoop);
+}
+
+// === RECIPES ===
+function renderRecipes(){
+  const list=document.getElementById('recipe-list');
+  const tierC={basic:'#94a3b8',intermediate:'#60a5fa',rare:'#a855f7',epic:'#f59e0b',legendary:'#ef4444'};
+  const minLvl={basic:1,intermediate:2,rare:3,epic:4,legendary:5};
+  list.innerHTML=RCP.filter(r=>S.lvl>=(minLvl[r.t]||1)).map((r,i)=>{
+    const can=Object.entries(r.need).every(([s,n])=>(S.atoms[s]||0)>=n);
+    const needs=Object.entries(r.need).map(([s,n])=>{
+      const h=(S.atoms[s]||0)>=n;
+      return `<span style="color:${h?'#22c55e':'#ef4444'}">${s}:${S.atoms[s]||0}/${n}</span>`;
+    }).join(' ');
+    return `<div class="recipe-card${can?' can-craft':''}" onclick="synth(${i})">
+      <div class="r-top"><span class="r-name">${r.n}</span><span class="r-tier" style="background:${tierC[r.t]}22;color:${tierC[r.t]}">${r.t}</span></div>
+      <div class="r-formula">${r.f}</div>
+      <div class="r-needs">${needs}</div>
+      <div class="r-reward">💰 +${r.rw} MolCoins</div>
+    </div>`;
+  }).join('');
+}
+function synth(i){
+  const r=RCP[i];
+  for(const[s,n]of Object.entries(r.need))if((S.atoms[s]||0)<n){toast(`Need more ${s}!`,'w');return}
+  for(const[s,n]of Object.entries(r.need))S.atoms[s]-=n;
+  S.molecules[r.n]=(S.molecules[r.n]||0)+1;S.totalMol++;S.coins+=r.rw;S.xp+=r.rw;
+  toast(`⚗️ ${r.n}! +${r.rw} MolCoins`);
+  checkLvl();refreshHUD();renderRecipes();
+}
+
+// === FACTORY ===
+const CROPS={wheat:{n:40,p:30,k:30},corn:{n:50,p:25,k:25},rice:{n:35,p:35,k:30}};
+function updateNPK(){
+  const n=+document.getElementById('n-slider').value,p=+document.getElementById('p-slider').value,k=+document.getElementById('k-slider').value;
+  document.getElementById('n-val').textContent=n;document.getElementById('p-val').textContent=p;document.getElementById('k-val').textContent=k;
+  const crop=CROPS[document.getElementById('crop-select').value];
+  const quality=Math.max(0,100-Math.abs(n-crop.n)-Math.abs(p-crop.p)-Math.abs(k-crop.k));
+  document.getElementById('npk-quality').textContent=quality+'%';
+  document.getElementById('npk-gauge').style.width=quality+'%';
+  updateFertBtn();
+}
+function updateReaction(){
+  const temp=+document.getElementById('temp-slider').value,pres=+document.getElementById('pres-slider').value;
+  document.getElementById('temp-val').textContent=temp;document.getElementById('pres-val').textContent=pres;
+  // Optimal: 180-220°C, 140-180 atm
+  const tEff=Math.max(0,100-Math.abs(temp-200)*0.8);
+  const pEff=Math.max(0,100-Math.abs(pres-160)*0.7);
+  const eff=Math.round((tEff+pEff)/2);
+  document.getElementById('react-eff').textContent=eff+'%';
+  document.getElementById('react-gauge').style.width=eff+'%';
+  document.getElementById('react-gauge').style.background=eff>70?'#22c55e':eff>40?'#f59e0b':'#ef4444';
+  updateFertBtn();
+}
+function updateFertBtn(){
+  const has=(S.atoms.N||0)>=3&&(S.atoms.H||0)>=6&&(S.atoms.C||0)>=1&&(S.atoms.O||0)>=1;
+  document.getElementById('fert-btn').disabled=!has;
+}
+function produceFertilizer(){
+  if((S.atoms.N||0)<3||(S.atoms.H||0)<6||(S.atoms.C||0)<1||(S.atoms.O||0)<1){toast('Need N:3 H:6 C:1 O:1','w');return}
+  S.atoms.N-=3;S.atoms.H-=6;S.atoms.C-=1;S.atoms.O-=1;
+  const q=parseInt(document.getElementById('npk-quality').textContent);
+  const e=parseInt(document.getElementById('react-eff').textContent);
+  const bonus=Math.round(40*(q/100)*(e/100));
+  const reward=20+bonus;
+  S.fertilizer++;S.coins+=reward;S.xp+=reward;S.prodCount++;
+  const crop=document.getElementById('crop-select').selectedOptions[0].text;
+  const log=document.getElementById('prod-log');
+  log.innerHTML=`<div style="margin-bottom:4px;padding:4px 8px;background:rgba(34,197,94,0.1);border-radius:4px">🏭 Batch #${S.prodCount}: Urea for ${crop} | Quality:${q}% Eff:${e}% | +${reward} MolCoins</div>`+log.innerHTML;
+  toast(`🏭 Fertilizer produced! +${reward} MolCoins`);
+  checkLvl();refreshHUD();updateFertBtn();
+}
+
+// === INVENTORY ===
+function renderInventory(){
+  const aa=document.getElementById('inv-atoms'),am=document.getElementById('inv-mol'),af=document.getElementById('inv-fert');
+  aa.innerHTML=EL.filter(e=>(S.atoms[e.s]||0)>0).map(e=>`<div class="inv-item"><div class="sym" style="color:${e.c}">${e.s}</div><div class="cnt">x${S.atoms[e.s]}</div></div>`).join('')||'<span style="font-size:.8em;color:#94a3b8">Empty - visit the Atom Lab!</span>';
+  am.innerHTML=Object.entries(S.molecules).filter(([,c])=>c>0).map(([n,c])=>`<div class="inv-item molecule"><div class="sym" style="color:#22c55e;font-size:.8em">⚗️</div><div style="font-size:.5em">${n}</div><div class="cnt">x${c}</div></div>`).join('')||'<span style="font-size:.8em;color:#94a3b8">No molecules yet - use the Synthesis Lab!</span>';
+  af.innerHTML=S.fertilizer>0?`<div class="inv-item" style="border-color:#f59e0b30"><div class="sym">🌾</div><div style="font-size:.5em">Urea</div><div class="cnt">x${S.fertilizer}</div></div>`:'<span style="font-size:.8em;color:#94a3b8">No fertilizer - visit the Factory!</span>';
+}
+
+// === MARKET ===
+let marketPrices={};
+function updateMarketPrices(){
+  for(const r of RCP)marketPrices[r.n]=Math.round(r.rw*(0.7+Math.random()*0.6));
+  marketPrices['Urea Fertilizer']=Math.round(40*(0.8+Math.random()*0.4));
+}
+updateMarketPrices();setInterval(updateMarketPrices,30000);
+
+function renderMarket(){
+  const list=document.getElementById('market-list');
+  const items=[];
+  for(const[n,c]of Object.entries(S.molecules)){if(c>0)items.push({name:n,count:c,price:marketPrices[n]||10,type:'mol'})}
+  if(S.fertilizer>0)items.push({name:'Urea Fertilizer',count:S.fertilizer,price:marketPrices['Urea Fertilizer']||40,type:'fert'});
+  if(items.length===0){list.innerHTML='<p style="color:#94a3b8;font-size:.85em">Nothing to sell yet. Synthesize molecules or produce fertilizer first!</p>';return}
+  list.innerHTML=items.map(it=>`<div style="padding:10px;background:rgba(20,30,55,0.6);border:1px solid #1a2a44;border-radius:6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-weight:600">${it.type==='fert'?'🌾':'⚗️'} ${it.name}</div><div style="font-size:.75em;color:#94a3b8">In stock: ${it.count}</div></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="color:#fbbf24;font-weight:700">💰 ${it.price}</span>
+      <button onclick="sell('${it.name}','${it.type}')" style="padding:6px 14px;background:#22c55e;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:.8em">Sell 1</button>
+    </div>
+  </div>`).join('');
+}
+function sell(name,type){
+  const price=marketPrices[name]||10;
+  if(type==='fert'){if(S.fertilizer<1)return;S.fertilizer--;
+  }else{if((S.molecules[name]||0)<1)return;S.molecules[name]--}
+  S.coins+=price;S.xp+=Math.round(price/2);
+  toast(`💰 Sold ${name} for ${price} MolCoins`);
+  checkLvl();refreshHUD();renderMarket();
+}
+
+// === INIT ===
+refreshHUD();
+refreshHub();
+setTimeout(()=>toast('Welcome to MOLGANG! Start at the Atom Lab ⚛️','i'),500);
+setTimeout(()=>toast('Talk to Dr. Femke for tips','i'),3000);
+</script>
+</body>
+</html>

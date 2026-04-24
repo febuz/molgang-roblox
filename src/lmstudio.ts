@@ -16,32 +16,42 @@ const LM_STUDIO_URL = process.env.LM_STUDIO_URL || 'http://127.0.0.1:1234/v1';
 
 // Per-agent / per-task-type model routing. Keys are agent names from the roster.
 // Right-hand side is a substring that must appear in the LM Studio model id.
+//
+// Policy: default to SMALL/FAST models (phi-4, devstral-small, deepseek-r1-8b)
+// that fit alongside Blender + the OS on the RTX 3090s. The big 26B+ models
+// (gemma-4-26b, qwen3.5-27b) are only picked when the user explicitly requests
+// taskType: 'deep' — this stops "load cancelled" failures like Vice was hitting
+// when two requests raced to load Gemma 26B.
 const AGENT_MODEL_ROUTES: { [agent: string]: string } = {
   // Core 5
-  Fill:        'gemma-4-26b',     // executive chat
+  Fill:        'phi-4',           // executive chat
   Kai:         'devstral',        // code-heavy
   Zip:         'devstral',        // code-heavy
-  Mira:        'gemma-4-26b',     // visual concept articulation
+  Mira:        'phi-4',           // visual concept articulation
   Luna:        'devstral',        // shader + renderer code
-  // Decision makers
-  Cleopatra:   'qwen3.5-27b',     // arbitration / reasoning
-  Alexander:   'qwen3.5-27b',     // arbitration / reasoning
-  MoneyGod:    'qwen3.5-27b',     // economic reasoning
+  // Decision makers — need reasoning but keep default fast; deep work via taskType
+  Cleopatra:   'deepseek-r1',
+  Alexander:   'deepseek-r1',
+  MoneyGod:    'deepseek-r1',
   // Resource-heavy
-  Analyst:     'gemma-4-26b',     // explanatory writing + code snippets
-  VideoProducer: 'gemma-4-26b',   // storyboarding / script
+  Analyst:     'phi-4',           // narrative + code snippets
+  VideoProducer: 'phi-4',         // storyboarding / script
   // Specialists
-  Vice:        'gemma-4-26b',     // screenplay / narrative
+  Vice:        'phi-4',           // screenplay / narrative (NOT gemma 26b by default)
   Atlas:       'devstral',        // CAD / physics code
 };
 
 const TASK_TYPE_ROUTES: { [kind: string]: string } = {
-  chat:         'gemma-4-26b',
+  chat:         'phi-4',          // default chat goes to Phi-4 (fast, loaded)
   code:         'devstral',
-  arbitration:  'qwen3.5-27b',
+  arbitration:  'deepseek-r1',    // reasoning model, smaller than qwen-27b
   reasoning:    'deepseek-r1',
   cheap:        'phi-4',
   embedding:    'nomic-embed',
+  // Explicit opt-in for the heavy models, used by tasks that genuinely need
+  // long-context or larger capacity (governance audits, lengthy screenplays).
+  deep:         'qwen3.5-27b',
+  concept:      'gemma-4-26b',
 };
 
 interface LmModel {
@@ -132,13 +142,18 @@ export async function healthCheck(): Promise<{
   }
 }
 
-/** Pick the loaded model whose id contains the given substring. First match wins. */
+/** Pick the best currently-available model. Never triggers an on-demand load
+ *  of a heavy model (which can cancel under memory pressure and fail chat).
+ *  Priority: hint-substring match → fast-model fallback chain → any non-embed.
+ */
 async function resolveModel(hint: string): Promise<string | null> {
   const models = await getModels();
+  if (models.length === 0) return null;
   const lower = hint.toLowerCase();
   const match = models.find(m => m.id.toLowerCase().includes(lower));
   if (match) return match.id;
-  // Prefer smaller/faster model chain: phi-4 -> deepseek-r1 -> devstral -> anything non-embed
+  // Prefer smaller/faster model chain (lowest VRAM footprint first) so a chat
+  // request doesn't try to load the 18 GB Gemma 26B when Phi-4 is already warm.
   const preferredFallback = ['phi-4', 'deepseek-r1', 'devstral', 'gemma', 'qwen'];
   for (const p of preferredFallback) {
     const found = models.find(m => m.id.toLowerCase().includes(p));
@@ -176,19 +191,23 @@ export async function chatAsAgent(
   }
 
   const started = Date.now();
-  try {
+  const attemptChat = async (useModel: string): Promise<LmChatResponse> => {
     const req: LmChatRequest = {
-      model,
+      model: useModel,
       messages,
       temperature: opts.temperature ?? 0.6,
       max_tokens: opts.max_tokens ?? 512,
       stream: false,
     };
-    const r = await fetchJson<LmChatResponse>(
+    return await fetchJson<LmChatResponse>(
       `${LM_STUDIO_URL}/chat/completions`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req) },
       60_000
     );
+  };
+
+  try {
+    const r = await attemptChat(model);
     return {
       ok: true,
       model,
@@ -198,6 +217,29 @@ export async function chatAsAgent(
       latencyMs: Date.now() - started,
     };
   } catch (e: any) {
+    // If the model failed to load (common when a 26B is requested under memory
+    // pressure), automatically retry once with Phi-4 which is almost always warm.
+    const looksLikeLoadFailure = /Failed to load model|Operation canceled|unload|not yet loaded/i.test(e.message || '');
+    if (looksLikeLoadFailure) {
+      const fallbackHint = 'phi-4';
+      const fallbackModel = await resolveModel(fallbackHint);
+      if (fallbackModel && fallbackModel !== model) {
+        try {
+          const r = await attemptChat(fallbackModel);
+          logger.info(`LM Studio fallback: ${model} failed, served via ${fallbackModel}`);
+          return {
+            ok: true,
+            model: fallbackModel,
+            agent,
+            content: r.choices[0]?.message?.content || '',
+            usage: r.usage || null,
+            latencyMs: Date.now() - started,
+          };
+        } catch (e2: any) {
+          return { ok: false, reason: `Both ${model} and fallback ${fallbackModel} failed. Last: ${e2.message}`, hint: 'Try `lms load microsoft/phi-4` then retry' };
+        }
+      }
+    }
     return { ok: false, reason: e.message, hint: 'Check `lms server status` and `lms ps`' };
   }
 }

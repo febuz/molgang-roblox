@@ -12,15 +12,14 @@
 
 import { execSync } from 'child_process';
 import * as path from 'path';
+import { AGENT_NAMES } from './agent-registry';
 
 const REPO_PATH = path.resolve(__dirname, '..');
 const CACHE_TTL_MS = 30_000;
 
-const KNOWN_AGENTS = [
-  'Fill', 'Kai', 'Zip', 'Mira', 'Luna',
-  'Cleopatra', 'Alexander', 'MoneyGod',
-  'Claude', // Opus/Sonnet commits get attributed here
-];
+// Single source of truth — includes all 12 agents plus Claude for co-authored
+// AI-assisted commits. Adding a new agent = only editing agent-registry.ts.
+const KNOWN_AGENTS = [...AGENT_NAMES, 'Claude'];
 
 interface ParsedCommit {
   sha: string;
