@@ -368,7 +368,7 @@ local function applyUIScale()
 						desc.Size.Y.Scale * VR_CONFIG.worldUIScale,
 						desc.Size.Y.Offset * VR_CONFIG.worldUIScale
 					)
-					desc.MaxDistance = desc.MaxDistance * 1.5  -- visible from further in VR
+					desc.MaxDistance = desc.MaxDistance * 2.5  -- visible from further in VR
 				end
 			end
 		end)
@@ -478,4 +478,73 @@ mCorner.Parent = modeLabel
 print("[MOLGANG] VR/AR Controller initialized — Mode:", MODE)
 if isVR then
 	print("  VR Features: Laser pointer, teleport, comfort vignette, spatial UI")
+
+	-- VR-specific onboarding tutorial (#68)
+	task.delay(3, function()
+		local vrTutGui = Instance.new("ScreenGui")
+		vrTutGui.Name = "VRTutorial"
+		vrTutGui.DisplayOrder = 50
+		vrTutGui.Parent = playerGui
+
+		local panel = Instance.new("Frame")
+		panel.Size = UDim2.new(0.6, 0, 0.5, 0)
+		panel.Position = UDim2.new(0.2, 0, 0.25, 0)
+		panel.BackgroundColor3 = Color3.fromRGB(10, 10, 30)
+		panel.BackgroundTransparency = 0.15
+		panel.Parent = vrTutGui
+		local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 16); c.Parent = panel
+
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, -20, 0, 40)
+		title.Position = UDim2.new(0, 10, 0, 10)
+		title.BackgroundTransparency = 1
+		title.Text = "WELCOME TO VR MODE"
+		title.TextColor3 = Color3.fromRGB(100, 60, 255)
+		title.TextScaled = true
+		title.Font = Enum.Font.GothamBold
+		title.Parent = panel
+
+		local steps = {
+			"POINT your controller at objects to interact",
+			"TRIGGER to select and collect atoms",
+			"GRIP + POINT to teleport to a location",
+			"Look at billboards — they scale for VR comfort",
+			"All GUIs work with laser pointer (aim + trigger)",
+			"Comfort vignette reduces motion sickness",
+			"Press Menu/Start for settings",
+		}
+
+		for i, step in ipairs(steps) do
+			local sl = Instance.new("TextLabel")
+			sl.Size = UDim2.new(1, -30, 0, 24)
+			sl.Position = UDim2.new(0, 15, 0, 50 + (i - 1) * 28)
+			sl.BackgroundTransparency = 1
+			sl.Text = i .. ". " .. step
+			sl.TextColor3 = Color3.fromRGB(200, 210, 240)
+			sl.TextScaled = true
+			sl.Font = Enum.Font.Gotham
+			sl.TextXAlignment = Enum.TextXAlignment.Left
+			sl.Parent = panel
+		end
+
+		local dismiss = Instance.new("TextButton")
+		dismiss.Size = UDim2.new(0.3, 0, 0, 36)
+		dismiss.Position = UDim2.new(0.35, 0, 1, -50)
+		dismiss.BackgroundColor3 = Color3.fromRGB(80, 40, 200)
+		dismiss.Text = "Got it! Start Playing"
+		dismiss.TextColor3 = Color3.new(1,1,1)
+		dismiss.TextScaled = true
+		dismiss.Font = Enum.Font.GothamBold
+		dismiss.Parent = panel
+		local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(0, 8); dc.Parent = dismiss
+
+		dismiss.MouseButton1Click:Connect(function()
+			vrTutGui:Destroy()
+		end)
+
+		-- Auto-dismiss after 30 seconds
+		task.delay(30, function()
+			if vrTutGui and vrTutGui.Parent then vrTutGui:Destroy() end
+		end)
+	end)
 end

@@ -41,6 +41,7 @@ local guiStates = {
 	ResearchGui = false,
 	MiningGui = false,
 	ProductMarketGui = false,
+	AtomTradeGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -207,6 +208,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- / or Slash = Toggle Settings
 	if input.KeyCode == Enum.KeyCode.Slash then
 		toggleGui("SettingsGui")
+	end
+
+	-- . (Period) = Toggle Atom Trading (#71)
+	if input.KeyCode == Enum.KeyCode.Period then
+		toggleGui("AtomTradeGui")
 	end
 
 	-- ESC = Close all overlays

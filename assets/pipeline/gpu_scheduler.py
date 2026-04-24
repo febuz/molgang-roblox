@@ -208,6 +208,53 @@ print(f"Exported: {output_file}")
     script_path.unlink(missing_ok=True)
     return result.returncode == 0
 
+def execute_image_to_3d(job):
+    """Convert 2D image to 3D mesh using MiDaS depth estimation + mesh reconstruction (#98)."""
+    input_path = Path(job["input"])
+    output_path = Path(job.get("output") or str(MODELS_DIR / (input_path.stem + "_from_photo.fbx")))
+    gpu_id = job.get("gpu", GPU_1)
+
+    log(f"Image→3D: {input_path} → {output_path} (GPU {gpu_id})")
+
+    # Use image_to_3d.py pipeline
+    pipeline_script = Path(__file__).parent / "image_to_3d.py"
+    if not pipeline_script.exists():
+        log(f"ERROR: image_to_3d.py not found at {pipeline_script}")
+        return False
+
+    venv_python = Path(__file__).parent.parent / "pipeline_env" / "bin" / "python"
+    if not venv_python.exists():
+        venv_python = "python3"
+
+    env = os.environ.copy()
+    env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+
+    try:
+        result = subprocess.run(
+            [str(venv_python), str(pipeline_script), str(input_path), str(output_path)],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 min max
+        )
+        if result.returncode == 0:
+            log(f"Image→3D complete: {output_path}")
+            # Convert OBJ/PLY to FBX via Blender
+            if output_path.suffix in (".obj", ".ply"):
+                fbx_path = output_path.with_suffix(".fbx")
+                convert_job = {"input": str(output_path), "output": str(fbx_path), "gpu": gpu_id}
+                execute_blender_convert(convert_job)
+            return True
+        else:
+            log(f"Image→3D FAILED: {result.stderr[:200]}")
+            return False
+    except subprocess.TimeoutExpired:
+        log(f"Image→3D TIMEOUT for {input_path}")
+        return False
+    except Exception as e:
+        log(f"Image→3D ERROR: {e}")
+        return False
+
 def execute_mesh_optimize(job):
     """Optimize mesh: decimate, clean, and re-export."""
     return execute_blender_convert(job)  # Same pipeline with different decimate ratio
@@ -235,6 +282,7 @@ EXECUTORS = {
     "blender_convert": execute_blender_convert,
     "mesh_optimize": execute_mesh_optimize,
     "batch_fbx_export": execute_batch_fbx_export,
+    "image_to_3d": execute_image_to_3d,  # #98
 }
 
 # ═══════════════════════════════════════════════

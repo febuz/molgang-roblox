@@ -129,6 +129,7 @@ end
 local function createModel(parent: Instance, name: string): Model
 	local model = Instance.new("Model")
 	model.Name = name
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Default  -- LOD streaming (#91)
 	model.Parent = parent
 	return model
 end
