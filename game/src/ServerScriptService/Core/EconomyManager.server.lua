@@ -100,11 +100,21 @@ local function savePlayerData(player)
 
 	if not success then
 		warn("[EconomyManager] Failed to save data for", player.Name, ":", err)
-		-- Retry after 5 seconds
-		task.delay(5, function()
-			pcall(function()
-				playerDataStore:SetAsync("player_" .. tostring(userId), data)
-			end)
+		-- Exponential backoff retry queue (#95)
+		task.spawn(function()
+			for attempt = 1, 4 do
+				local delay = 5 * (2 ^ (attempt - 1))  -- 5, 10, 20, 40 seconds
+				task.wait(delay)
+				local retryOk = pcall(function()
+					playerDataStore:SetAsync("player_" .. tostring(userId), data)
+				end)
+				if retryOk then
+					print("[EconomyManager] Retry #" .. attempt .. " succeeded for", player.Name)
+					return
+				end
+				warn("[EconomyManager] Retry #" .. attempt .. " failed for", player.Name)
+			end
+			warn("[EconomyManager] All retries exhausted for", player.Name, "- data may be lost!")
 		end)
 	end
 end
