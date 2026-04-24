@@ -1,0 +1,140 @@
+{
+  "_comment": "Real-world dimensions of chemical engineering equipment for accurate Roblox scaling",
+  "_scale": "1 Roblox stud = 0.28 meters. All dimensions in meters.",
+  "_source": "Perry's Chemical Engineers' Handbook, equipment manufacturer specs",
+
+  "jaw_crusher": {
+    "name": "Jaw Crusher (PE-400x600)",
+    "real_meters": {"length": 1.7, "width": 1.7, "height": 1.6},
+    "roblox_studs": {"length": 6, "width": 6, "height": 6},
+    "weight_kg": 6500,
+    "capacity_tph": "16-60",
+    "motor_kw": 30
+  },
+  "cone_crusher": {
+    "name": "Cone Crusher (Symons 3ft)",
+    "real_meters": {"length": 1.5, "width": 1.5, "height": 2.1},
+    "roblox_studs": {"length": 5, "width": 5, "height": 8},
+    "weight_kg": 9000,
+    "capacity_tph": "30-100",
+    "motor_kw": 75
+  },
+  "ball_mill": {
+    "name": "Ball Mill (1.2x4.5m)",
+    "real_meters": {"length": 6.5, "width": 1.8, "height": 2.2},
+    "roblox_studs": {"length": 23, "width": 6, "height": 8},
+    "weight_kg": 12000,
+    "capacity_tph": "1-5",
+    "motor_kw": 55
+  },
+  "leaching_tank_500L": {
+    "name": "Agitated Leaching Tank (500L)",
+    "real_meters": {"diameter": 0.9, "height": 1.5},
+    "roblox_studs": {"diameter": 3, "height": 5},
+    "weight_kg": 250,
+    "capacity_liters": 500,
+    "motor_kw": 2.2
+  },
+  "leaching_tank_2000L": {
+    "name": "Agitated Leaching Tank (2000L)",
+    "real_meters": {"diameter": 1.5, "height": 2.2},
+    "roblox_studs": {"diameter": 5, "height": 8},
+    "weight_kg": 800,
+    "capacity_liters": 2000,
+    "motor_kw": 5.5
+  },
+  "magnetic_separator": {
+    "name": "HGMS Drum Separator (600mm)",
+    "real_meters": {"length": 2.0, "width": 1.2, "height": 1.5},
+    "roblox_studs": {"length": 7, "width": 4, "height": 5},
+    "weight_kg": 1500,
+    "capacity_tph": "5-15",
+    "motor_kw": 3
+  },
+  "vibrating_screen": {
+    "name": "Vibrating Screen (1200x3000mm)",
+    "real_meters": {"length": 3.8, "width": 1.6, "height": 1.2},
+    "roblox_studs": {"length": 14, "width": 6, "height": 4},
+    "weight_kg": 2200,
+    "capacity_tph": "20-80",
+    "motor_kw": 5.5
+  },
+  "roasting_kiln": {
+    "name": "Rotary Kiln (1.5x15m)",
+    "real_meters": {"length": 17.0, "width": 2.0, "height": 2.5},
+    "roblox_studs": {"length": 61, "width": 7, "height": 9},
+    "weight_kg": 35000,
+    "capacity_tph": "2-8",
+    "temperature_max_c": 1100,
+    "motor_kw": 45
+  },
+  "filtration_press": {
+    "name": "Filter Press (630mm, 20 plates)",
+    "real_meters": {"length": 3.0, "width": 1.0, "height": 1.3},
+    "roblox_studs": {"length": 11, "width": 4, "height": 5},
+    "weight_kg": 2800,
+    "capacity_m3_cycle": 0.8,
+    "motor_kw": 4
+  },
+  "storage_silo": {
+    "name": "Steel Silo (3m diameter, 6m height)",
+    "real_meters": {"diameter": 3.0, "height": 8.0},
+    "roblox_studs": {"diameter": 11, "height": 29},
+    "weight_kg": 2000,
+    "capacity_m3": 42
+  },
+  "conveyor_belt": {
+    "name": "Belt Conveyor (650mm width, 10m length)",
+    "real_meters": {"length": 10.0, "width": 1.0, "height": 1.2},
+    "roblox_studs": {"length": 36, "width": 4, "height": 4},
+    "weight_kg": 800,
+    "capacity_tph": "50-200",
+    "motor_kw": 3
+  },
+  "cooling_pit": {
+    "name": "Slag Cooling Pit (5x8m)",
+    "real_meters": {"length": 8.0, "width": 5.0, "height": 2.0},
+    "roblox_studs": {"length": 29, "width": 18, "height": 7},
+    "weight_kg": 0,
+    "notes": "Concrete lined, air-cooled"
+  },
+  "distillation_column": {
+    "name": "Packed Column (300mm x 3m)",
+    "real_meters": {"diameter": 0.3, "height": 3.5},
+    "roblox_studs": {"diameter": 1, "height": 13},
+    "weight_kg": 200,
+    "notes": "For solvent recovery"
+  },
+  "heat_exchanger": {
+    "name": "Shell-and-Tube (1m2 area)",
+    "real_meters": {"length": 1.5, "width": 0.5, "height": 0.5},
+    "roblox_studs": {"length": 5, "width": 2, "height": 2},
+    "weight_kg": 150,
+    "duty_kw": 50
+  },
+  "centrifuge": {
+    "name": "Basket Centrifuge (600mm)",
+    "real_meters": {"diameter": 1.0, "height": 1.2},
+    "roblox_studs": {"diameter": 4, "height": 4},
+    "weight_kg": 500,
+    "motor_kw": 7.5
+  },
+  "ph_meter_station": {
+    "name": "Benchtop pH Meter + Electrodes",
+    "real_meters": {"length": 0.4, "width": 0.3, "height": 0.5},
+    "roblox_studs": {"length": 1, "width": 1, "height": 2},
+    "weight_kg": 5
+  },
+  "xrf_analyzer": {
+    "name": "Benchtop XRF Spectrometer",
+    "real_meters": {"length": 0.6, "width": 0.5, "height": 0.5},
+    "roblox_studs": {"length": 2, "width": 2, "height": 2},
+    "weight_kg": 45
+  },
+  "icp_oes": {
+    "name": "ICP-OES Spectrometer (Agilent 5800)",
+    "real_meters": {"length": 1.2, "width": 0.6, "height": 0.7},
+    "roblox_studs": {"length": 4, "width": 2, "height": 3},
+    "weight_kg": 80
+  }
+}
