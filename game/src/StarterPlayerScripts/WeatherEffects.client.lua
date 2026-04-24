@@ -192,6 +192,26 @@ if weatherChangedEvent then
 		rainParticles.Rate = rainIntensity * 300  -- 0-300 particles/sec
 		hailParticles.Rate = hailIntensity * 100
 
+		-- Rain/wind ambient sound (#25, #54)
+		local rainSound = SoundService:FindFirstChild("rain_loop")
+		local windSound = SoundService:FindFirstChild("wind_loop")
+		if rainSound then
+			if rainIntensity > 0 then
+				if not rainSound.IsPlaying then rainSound:Play() end
+				rainSound.Volume = rainIntensity * 0.4
+			else
+				rainSound:Stop()
+			end
+		end
+		if windSound then
+			if windSpeed > 20 then
+				if not windSound.IsPlaying then windSound:Play() end
+				windSound.Volume = math.clamp(windSpeed / 100, 0.1, 0.5)
+			else
+				windSound:Stop()
+			end
+		end
+
 		-- Wind angle on rain
 		if windSpeed > 0 then
 			rainParticles.SpreadAngle = Vector2.new(windSpeed / 3, windSpeed / 3)
@@ -241,6 +261,16 @@ if lightningEvent then
 				}):Play()
 			end)
 		end)
+
+		-- Thunder sound
+		local thunderSound = SoundService:FindFirstChild("thunder")
+		if thunderSound then
+			local clone = thunderSound:Clone()
+			clone.Volume = 0.6 * intensity
+			clone.Parent = SoundService
+			clone:Play()
+			clone.Ended:Connect(function() clone:Destroy() end)
+		end
 
 		-- Camera shake
 		local originalCF = camera.CFrame

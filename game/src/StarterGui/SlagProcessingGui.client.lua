@@ -324,6 +324,16 @@ millBtn.TextColor3 = Color3.new(1,1,1)
 hammerBtn.MouseButton1Click:Connect(function()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
 	if remote then remote:FireServer("crushed") end
+	-- Hammer sound (#51)
+	local SoundService = game:GetService("SoundService")
+	local hammerSound = SoundService:FindFirstChild("crusher_impact")
+	if hammerSound then
+		local clone = hammerSound:Clone()
+		clone.Volume = 0.5
+		clone.Parent = SoundService
+		clone:Play()
+		clone.Ended:Connect(function() clone:Destroy() end)
+	end
 	-- Visual hammer effect
 	TweenService:Create(hammerBtn, TweenInfo.new(0.05), {Size=UDim2.new(0.26,-4,0,36)}):Play()
 	task.delay(0.05, function()
