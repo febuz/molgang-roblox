@@ -125,6 +125,37 @@ function NPCDialogues.GetRandomDialogue(npcName)
 	return nil
 end
 
+-- Quest-aware dialogue: returns context-specific dialogue based on player progress (#85)
+function NPCDialogues.GetQuestDialogue(npcName, playerData)
+	local npc = NPCDialogues.GetNPC(npcName)
+	if not npc then return nil end
+
+	local atomCount = 0
+	if playerData and playerData.atoms then
+		for _, c in pairs(playerData.atoms) do atomCount = atomCount + c end
+	end
+	local hasFactory = playerData and playerData.facilities and (playerData.facilities.factories or 0) > 0
+
+	-- Branching dialogues based on progress
+	if npcName == "Direk" then
+		if atomCount == 0 then
+			return {text = "You haven't collected any atoms yet! Walk towards the glowing orbs nearby.", choices = {"Where are they?", "I'll go look!"}}
+		elseif atomCount < 10 then
+			return {text = "Good job collecting " .. atomCount .. " atoms! Try pressing R to combine them into molecules.", choices = {"How do molecules work?", "Thanks!"}}
+		else
+			return {text = "You're becoming a real chemist! Have you tried the Slag Processing lab? Press S!", choices = {"Tell me about slag", "I'll try it!"}}
+		end
+	elseif npcName == "Prof. Femke" then
+		if not hasFactory then
+			return {text = "To really do chemistry, you'll want a factory. Press G to see the Factory Builder!", choices = {"What equipment do I need?", "How much does it cost?"}}
+		else
+			return {text = "Excellent factory setup! Try the two-stage leach for maximum V2O5 purity.", choices = {"What's two-stage leach?", "Which reagents?"}}
+		end
+	end
+
+	return NPCDialogues.GetRandomDialogue(npcName)
+end
+
 -- ═══════════════════════════════════════════════
 -- TRUST & RELATIONSHIPS
 -- ═══════════════════════════════════════════════
