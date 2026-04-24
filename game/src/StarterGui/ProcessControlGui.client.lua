@@ -441,6 +441,17 @@ RunService.Heartbeat:Connect(function()
 	-- Update derived values
 	ProcessEng.UpdateDerivedValues(processState)
 
+	-- Send process variables to server
+	local setControlRemote = Remotes:FindFirstChild("RequestSetProcessControl")
+	if setControlRemote then
+		setControlRemote:FireServer(
+			processState.temperature,
+			processState.pressure,
+			processState.pH,
+			processState.flowRate
+		)
+	end
+
 	-- Update reaction rate display
 	rateLabel.Text = string.format("Reaction Rate: %.2fx", processState.reactionRate)
 	if processState.reactionRate > 5 then

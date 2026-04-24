@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
+local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
@@ -39,7 +40,41 @@ local LEACH_UPDATE_INTERVAL = 5   -- seconds between progress updates to client
 local playerSlagData = {}         -- {userId = slagInventory}
 local playerLeaches = {}          -- {userId = {leachId = leachState}}
 local playerCrushState = {}       -- {userId = {lastHitTime, currentHits, targetSize}}
+local playerProcessState = {}     -- {userId = ProcessEngineering.CreateProcessState()}
 local leachIdCounter = 0
+
+-- Get player's process control settings
+local function getProcessState(userId)
+	if not playerProcessState[userId] then
+		playerProcessState[userId] = ProcessEng.CreateProcessState()
+	end
+	return playerProcessState[userId]
+end
+
+-- Calculate effective leach duration based on process controls
+local function getEffectiveLeachDuration(userId, baseMinutes, reagentId)
+	local state = getProcessState(userId)
+	ProcessEng.UpdateDerivedValues(state)
+
+	-- Apply Arrhenius temperature effect to leaching
+	local Ea = 50  -- default activation energy
+	if reagentId == "H2SO4" or reagentId == "HNO3" then Ea = 40 end
+	if reagentId == "NaOH" then Ea = 55 end
+	if reagentId == "CitricAcid" then Ea = 60 end
+
+	local tempMultiplier = ProcessEng.ArrheniusMultiplier(state.temperature, Ea)
+	local pressureMultiplier = ProcessEng.PressureMultiplier(state.pressure)
+	local residenceEffect = ProcessEng.ResidenceTimeEffect(state.flowRate, state.reactorVolume)
+
+	-- Combined effect: higher rate = shorter duration
+	local combinedRate = math.max(tempMultiplier * pressureMultiplier * residenceEffect, 0.1)
+	local effectiveDuration = baseMinutes / combinedRate
+
+	-- Clamp to reasonable range (min 10% of base, max 500%)
+	effectiveDuration = math.clamp(effectiveDuration, baseMinutes * 0.1, baseMinutes * 5)
+
+	return math.floor(effectiveDuration), combinedRate
+end
 
 -- ══════════════════════════════════════════════
 -- HELPERS
@@ -277,10 +312,18 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	-- Consume 1kg of slag
 	slag[particleSize] = slag[particleSize] - 1
 
-	-- Calculate leach time and yield
-	local leachMinutes = SteelSlag.CalculateLeachTime(particleSize, reagentId)
+	-- Calculate leach time with process control adjustments
+	local baseLeachMinutes = SteelSlag.CalculateLeachTime(particleSize, reagentId)
+	local leachMinutes, reactionRate = getEffectiveLeachDuration(userId, baseLeachMinutes, reagentId)
 	local leachRealSeconds = leachMinutes * TIME_SCALE
 	local yield = SteelSlag.CalculateYield(particleSize, reagentId, SteelSlag.BATCH_WEIGHT_KG)
+
+	-- Process controls boost yield slightly when reaction rate is high
+	if reactionRate > 2.0 then
+		for _, entry in ipairs(yield) do
+			entry.atomCount = math.floor(entry.atomCount * math.min(reactionRate / 2, 1.5))
+		end
+	end
 
 	-- Create leach record
 	local leachId = generateLeachId()
@@ -474,6 +517,37 @@ task.spawn(function()
 		end
 		task.wait(LEACH_UPDATE_INTERVAL)
 	end
+end)
+
+-- ══════════════════════════════════════════════
+-- PROCESS CONTROL VARIABLES (from ProcessControlGui)
+-- ══════════════════════════════════════════════
+
+Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperature, pressure, pH, flowRate)
+	local userId = player.UserId
+	local state = getProcessState(userId)
+
+	-- Validate and clamp inputs
+	if type(temperature) == "number" then
+		state.temperature = math.clamp(temperature, 0, 1000)
+	end
+	if type(pressure) == "number" then
+		state.pressure = math.clamp(pressure, 50, 500)
+	end
+	if type(pH) == "number" then
+		state.pH = math.clamp(pH, 0, 14)
+	end
+	if type(flowRate) == "number" then
+		state.flowRate = math.clamp(flowRate, 1, 50)
+	end
+
+	ProcessEng.UpdateDerivedValues(state)
+
+	-- Set player attributes for other scripts to read
+	player:SetAttribute("ProcessTemp", state.temperature)
+	player:SetAttribute("ProcessPressure", state.pressure)
+	player:SetAttribute("ProcessPH", state.pH)
+	player:SetAttribute("ReactionRate", state.reactionRate)
 end)
 
 -- ══════════════════════════════════════════════

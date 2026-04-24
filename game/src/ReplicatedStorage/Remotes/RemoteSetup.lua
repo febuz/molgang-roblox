@@ -86,6 +86,7 @@ local clientToServerEvents = {
 	"RequestStartLeach",     -- {reagentId, particleSize} begin leaching process
 	"RequestExtractProducts",-- {leachId} collect finished leach products
 	"RequestSlagInfo",       -- {} get current slag processing state
+	"RequestSetProcessControl", -- {temperature, pressure, pH, flowRate} update process variables
 	-- Bubble Tea Bar
 	"RequestBuyDrink",       -- {drinkId} purchase a bubble tea
 	"RequestDrinkList",      -- {} get drink menu and active buffs
