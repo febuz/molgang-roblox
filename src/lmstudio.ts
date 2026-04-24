@@ -138,7 +138,12 @@ async function resolveModel(hint: string): Promise<string | null> {
   const lower = hint.toLowerCase();
   const match = models.find(m => m.id.toLowerCase().includes(lower));
   if (match) return match.id;
-  // Fallback: any non-embedding model
+  // Prefer smaller/faster model chain: phi-4 -> deepseek-r1 -> devstral -> anything non-embed
+  const preferredFallback = ['phi-4', 'deepseek-r1', 'devstral', 'gemma', 'qwen'];
+  for (const p of preferredFallback) {
+    const found = models.find(m => m.id.toLowerCase().includes(p));
+    if (found) return found.id;
+  }
   const fallback = models.find(m => !/embed/i.test(m.id));
   return fallback?.id || null;
 }

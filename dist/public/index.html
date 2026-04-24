@@ -1596,6 +1596,21 @@
                     <div id="agent-tasks-list"></div>
                 </div>
 
+                <!-- Ask this agent (live LM Studio chat) -->
+                <div class="card" id="agent-chat-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div class="card-title" style="margin:0;">💬 Ask ${profile.name}</div>
+                        <span id="agent-chat-status" style="font-size:0.72em;color:var(--text-secondary);">routed via LM Studio · EDS2</span>
+                    </div>
+                    <div id="agent-chat-history" style="display:flex;flex-direction:column;gap:10px;max-height:340px;overflow-y:auto;margin-bottom:10px;"></div>
+                    <div style="display:flex;gap:8px;">
+                        <textarea id="agent-chat-input" rows="2" placeholder="Ask ${profile.name} something..." style="flex:1;padding:10px;background:rgba(10,14,26,0.6);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.9em;resize:vertical;"
+                            onkeydown="if(event.ctrlKey && event.key==='Enter'){ sendAgentChat('${agentId}'); }"></textarea>
+                        <button onclick="sendAgentChat('${agentId}')" style="padding:0 16px;background:linear-gradient(135deg,var(--primary),${profile.color});color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;white-space:nowrap;">Send ⏎</button>
+                    </div>
+                    <div style="font-size:0.7em;color:var(--text-secondary);margin-top:6px;">Ctrl+Enter to send · responses stream from the local Gemma/Phi/Qwen/Devstral on RTX 3090 (GPU 1)</div>
+                </div>
+
                 <!-- In-Progress Drilldown (always visible) -->
                 <div class="card" id="agent-inprogress-drilldown">
                     <div class="card-title">🔍 In-Progress — Full Detail</div>
@@ -2336,6 +2351,82 @@
                     </div>
                 `;
             } catch (e) { console.log('social feed:', e.message); }
+        }
+
+        // === AGENT CHAT (live LM Studio) ===
+        const agentChatHistory = {};  // { agentId: [{role, content, model, latencyMs, tokens}] }
+
+        function appendChatMessage(agentId, role, content, meta) {
+            const history = document.getElementById('agent-chat-history');
+            if (!history) return;
+            const agent = agentProfiles[agentId];
+            const roleColor = role === 'user' ? 'var(--primary)' : (agent?.color || '#22c55e');
+            const roleLabel = role === 'user' ? 'You' : (agent?.name || agentId);
+            const roleAvatar = role === 'user' ? '🧑' : (agent?.avatar || '🤖');
+            const metaLine = meta ? `<div style="font-size:0.65em;color:var(--text-secondary);margin-top:4px;">${meta}</div>` : '';
+            const div = document.createElement('div');
+            div.style.cssText = `padding:10px 12px;background:${role==='user' ? 'rgba(96,165,250,0.08)' : 'rgba(30,58,95,0.25)'};border-left:3px solid ${roleColor};border-radius:6px;`;
+            div.innerHTML = `
+                <div style="font-size:0.8em;font-weight:600;color:${roleColor};margin-bottom:4px;">${roleAvatar} ${roleLabel}</div>
+                <div style="color:var(--text-primary);font-size:0.9em;line-height:1.5;white-space:pre-wrap;">${escapeHtml(content || '')}</div>
+                ${metaLine}
+            `;
+            history.appendChild(div);
+            history.scrollTop = history.scrollHeight;
+            return div;
+        }
+
+        async function sendAgentChat(agentId) {
+            const agent = agentProfiles[agentId];
+            if (!agent) return;
+            const input = document.getElementById('agent-chat-input');
+            const statusEl = document.getElementById('agent-chat-status');
+            const message = input.value.trim();
+            if (!message) return;
+
+            if (!agentChatHistory[agentId]) agentChatHistory[agentId] = [];
+            agentChatHistory[agentId].push({ role: 'user', content: message });
+
+            appendChatMessage(agentId, 'user', message);
+            input.value = '';
+            input.disabled = true;
+            if (statusEl) statusEl.textContent = '⏳ thinking on GPU 1...';
+
+            const thinkingDiv = appendChatMessage(agentId, 'assistant', '⋯', 'streaming from LM Studio');
+
+            try {
+                const resp = await fetch('/api/llm/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent: agent.name,
+                        role: agent.role,
+                        message,
+                        taskType: 'chat',
+                        max_tokens: 400,
+                    }),
+                });
+                const data = await resp.json();
+                if (!data.success) {
+                    thinkingDiv.querySelector('div:nth-child(2)').textContent = `⚠ ${data.reason || 'Error'}`;
+                    thinkingDiv.querySelector('div:last-child').textContent = data.hint || '';
+                    if (statusEl) statusEl.textContent = '✗ LM Studio unreachable';
+                } else {
+                    const content = data.content || '(empty — model output went to reasoning tokens; try a clearer prompt)';
+                    thinkingDiv.querySelector('div:nth-child(2)').textContent = content;
+                    const tokens = data.usage?.total_tokens || '?';
+                    const latency = ((data.latencyMs || 0) / 1000).toFixed(1);
+                    thinkingDiv.querySelector('div:last-child').textContent = `model: ${data.model} · ${latency}s · ${tokens} tokens`;
+                    agentChatHistory[agentId].push({ role: 'assistant', content, model: data.model, latencyMs: data.latencyMs });
+                    if (statusEl) statusEl.textContent = `✓ ${data.model} · ${latency}s`;
+                }
+            } catch (e) {
+                thinkingDiv.querySelector('div:nth-child(2)').textContent = `⚠ ${e.message}`;
+                if (statusEl) statusEl.textContent = '✗ fetch error';
+            } finally {
+                input.disabled = false;
+                input.focus();
+            }
         }
 
         // === LIVE RESOURCES PANEL (CPU / RAM / dual-3090 GPU) ===
