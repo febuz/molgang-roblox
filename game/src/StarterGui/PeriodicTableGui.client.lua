@@ -331,6 +331,47 @@ local progressText = createTextLabel(header, {
 	ZIndex = 3,
 })
 
+-- Filter toggle button (P1 #10)
+local filterBtn = Instance.new("TextButton")
+filterBtn.Name = "FilterBtn"
+filterBtn.Size = UDim2.new(0, 120, 0, 20)
+filterBtn.Position = UDim2.new(0, 210, 0, 33)
+filterBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+filterBtn.BackgroundTransparency = 0.3
+filterBtn.Text = "Show: All"
+filterBtn.TextColor3 = COLORS.accent
+filterBtn.TextScaled = true
+filterBtn.Font = Enum.Font.GothamBold
+filterBtn.ZIndex = 5
+filterBtn.Parent = header
+
+local filterCorner = Instance.new("UICorner")
+filterCorner.CornerRadius = UDim.new(0, 4)
+filterCorner.Parent = filterBtn
+
+local filterMode = "all" -- all, found, missing
+
+filterBtn.MouseButton1Click:Connect(function()
+	if filterMode == "all" then
+		filterMode = "found"
+		filterBtn.Text = "Show: Found"
+		filterBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 50)
+	elseif filterMode == "found" then
+		filterMode = "missing"
+		filterBtn.Text = "Show: Missing"
+		filterBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
+	else
+		filterMode = "all"
+		filterBtn.Text = "Show: All"
+		filterBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+	end
+	-- Apply filter by changing button visibility
+	-- elementButtons is populated later in the file
+	if _G.MolGangApplyFilter then
+		_G.MolGangApplyFilter(filterMode)
+	end
+end)
+
 -- Progress bar background
 local progressBarBg = Instance.new("Frame")
 progressBarBg.Name = "ProgressBarBg"
@@ -794,6 +835,20 @@ end
 -- Create all element cells
 for _, elemData in ipairs(ELEMENT_DATA) do
 	createElementCell(elemData)
+end
+
+-- Filter apply function (P1 #10)
+_G.MolGangApplyFilter = function(mode)
+	for z, cell in pairs(elementButtons) do
+		local isFound = cell.button.BackgroundTransparency < 0.3
+		if mode == "all" then
+			cell.button.Visible = true
+		elseif mode == "found" then
+			cell.button.Visible = isFound
+		elseif mode == "missing" then
+			cell.button.Visible = not isFound
+		end
+	end
 end
 
 --------------------------------------------------------------------------------
