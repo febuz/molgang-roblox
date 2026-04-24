@@ -394,12 +394,14 @@ PlayerDataLoaded.OnClientEvent:Connect(function()
 	updateCompactTracker()
 end)
 
+-- Throttled to every 60 frames (#92)
+local questFrameCount = 0
 RunService.Heartbeat:Connect(function()
+	questFrameCount = questFrameCount + 1
+	if questFrameCount < 60 then return end
+	questFrameCount = 0
 	if playerData and questProgress then
-		-- Update periodically
-		if math.random() < 0.01 then
-			updateCompactTracker()
-		end
+		updateCompactTracker()
 	end
 end)
 

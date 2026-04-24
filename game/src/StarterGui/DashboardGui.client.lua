@@ -308,10 +308,14 @@ end)
 
 PlayerDataLoaded.OnClientEvent:Connect(updateDashboard)
 
--- Update every frame to catch changes
+-- Update every 30 frames (~0.5s) instead of every frame (#92)
+local dashFrameCount = 0
 RunService.Heartbeat:Connect(function()
+	dashFrameCount = dashFrameCount + 1
+	if dashFrameCount < 30 then return end
+	dashFrameCount = 0
+
 	if playerData then
-		-- Check if day or cash changed
 		local newDayText = "Day " .. (playerData.day or 1)
 		if dayLabel.Text ~= newDayText then
 			dayLabel.Text = newDayText
