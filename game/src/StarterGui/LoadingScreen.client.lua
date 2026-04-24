@@ -259,10 +259,10 @@ local controlsData = {
 	{"Space", "Jump"},
 	{"P", "Periodic Table"},
 	{"D", "Dashboard"},
-	{"I", "Inventory"},
-	{"Tab", "Wallet"},
-	{"Q", "Quest Tracker"},
-	{"L", "Leaderboards"},
+	{"S", "Slag Processing"},
+	{"F", "Fertilizer Lab"},
+	{"G", "Factory Builder"},
+	{"C", "Process Control"},
 }
 
 local controlsFrame = Instance.new("Frame")
