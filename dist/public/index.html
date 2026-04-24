@@ -1628,6 +1628,15 @@
                     </div>
                     <pre id="agent-cli-stream" style="background:#0a0e1a; color:#e0e0e0; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:0.78em; padding:12px; border-radius:6px; max-height:300px; overflow-y:auto; border:1px solid var(--border); line-height:1.5; margin:0;">connecting...</pre>
                 </div>
+
+                <!-- Artifacts produced by LM Studio on task completion -->
+                <div class="card" id="agent-artifacts-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div class="card-title" style="margin:0;">📄 Artifacts — real LM Studio output</div>
+                        <span style="font-size:0.72em;color:var(--text-secondary);">generated when tasks complete · max 10 shown</span>
+                    </div>
+                    <div id="agent-artifacts-list"><p style="color:var(--text-secondary); font-size:0.85em; padding:8px 0;">Nothing yet. Artifacts appear here when ${profile.name} completes a task (asynchronous LM Studio call).</p></div>
+                </div>
             `;
 
             // Render all tasks initially
@@ -1764,16 +1773,51 @@
             return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
 
+        async function fetchAgentArtifacts(name) {
+            try {
+                const r = await fetch(`/api/agents/${name}/artifacts?limit=10`);
+                const d = await r.json();
+                const wrap = document.getElementById('agent-artifacts-list');
+                if (!wrap) return;
+                const list = d.artifacts || [];
+                if (list.length === 0) {
+                    // Keep the existing placeholder — don't clobber it while waiting for first artifact
+                    return;
+                }
+                wrap.innerHTML = list.map(a => {
+                    const dt = new Date(a.timestamp);
+                    const ago = (Date.now() - dt.getTime()) / 1000;
+                    const timeStr = ago < 60 ? 'just now' : ago < 3600 ? Math.round(ago/60)+'m ago' : ago < 86400 ? Math.round(ago/3600)+'h ago' : dt.toLocaleDateString();
+                    return `
+                        <div style="margin-bottom:12px;padding:12px;background:rgba(34,197,94,0.06);border-left:3px solid #22c55e;border-radius:6px;">
+                            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:10px;">
+                                <div style="font-weight:600;color:var(--text-primary);font-size:0.88em;">${escapeHtml(a.taskTitle)}</div>
+                                <div style="font-size:0.7em;color:var(--text-secondary);white-space:nowrap;">${timeStr}</div>
+                            </div>
+                            <div style="white-space:pre-wrap;color:var(--text-secondary);font-size:0.85em;line-height:1.5;">${escapeHtml(a.content)}</div>
+                            <div style="font-size:0.68em;color:var(--text-secondary);margin-top:6px;border-top:1px solid rgba(148,163,184,0.1);padding-top:4px;">
+                                ${a.model} · ${(a.latencyMs/1000).toFixed(1)}s · ${a.tokens} tokens · task ${a.taskId}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) { console.log('artifact fetch:', e.message); }
+        }
+
         function startAgentLivePolling(name) {
             agentPollName = name;
             // immediate fetch
             fetchAgentInProgressDetail(name);
             fetchAgentCliLog(name);
-            // then every 2s
+            fetchAgentArtifacts(name);
+            // then every 2s (artifacts every 6s since they change rarely)
+            let artifactCounter = 0;
             agentPollTimer = setInterval(() => {
                 if (agentPollName !== name) return;
                 fetchAgentInProgressDetail(name);
                 fetchAgentCliLog(name);
+                artifactCounter++;
+                if (artifactCounter >= 3) { fetchAgentArtifacts(name); artifactCounter = 0; }
             }, 2000);
         }
 

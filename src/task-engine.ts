@@ -540,6 +540,11 @@ export function tickEngine() {
         dirty = true;
         logWork(agent, task.id, task.title, '', 'task_completed', 0);
         logger.info(`✅ ${agent} completed: ${task.title}`);
+        // Fire-and-forget LM Studio generation of a real artifact for this task.
+        // Agents actually think when they finish work.
+        generateArtifactForCompletedTask(agent, task).catch(err =>
+          logger.warn(`artifact gen failed for ${agent}/${task.id}: ${err.message}`)
+        );
       }
     }
 
@@ -787,6 +792,77 @@ export function getWorkSummary() {
     agents: agentSummaries,
     uptime: Math.round((Date.now() - startTime) / 1000),
   };
+}
+
+// === AGENT ARTIFACTS (real LM Studio outputs on task completion) ===
+interface Artifact {
+  id: string;
+  agent: string;
+  taskId: string;
+  taskTitle: string;
+  timestamp: string;
+  model: string;
+  latencyMs: number;
+  tokens: number;
+  content: string;
+  promptType: 'task_summary';
+}
+
+const artifacts: Artifact[] = [];
+const MAX_ARTIFACTS = 300;
+
+function artifactPromptFor(agent: string, task: Task): string {
+  const subtasks = task.subtasks.map(s => s.name).join(', ');
+  return `You are ${agent}. You just completed the task "${task.title}" (sprint ${task.sprint}, ${task.estimated_hours}h). Subtasks covered: ${subtasks}. Description: ${task.description}
+
+Produce a concise post-completion artifact:
+1. One-sentence outcome.
+2. 3-5 bullet points with the key deliverables or decisions.
+3. One risk or follow-up for the next sprint.
+
+Keep it under 150 words. Plain text.`;
+}
+
+async function generateArtifactForCompletedTask(agent: string, task: Task): Promise<void> {
+  // Lazy import to avoid circular dep with the lmstudio module
+  const lms = await import('./lmstudio');
+  const prompt = artifactPromptFor(agent, task);
+  const result = await lms.chatAsAgent(
+    agent,
+    [
+      { role: 'system', content: lms.systemPromptForAgent(agent, roleMap[agent] || agent) },
+      { role: 'user', content: prompt },
+    ],
+    { taskType: 'cheap', max_tokens: 300 }
+  );
+  if (!result.ok) {
+    logger.warn(`artifact skipped (${agent}/${task.id}): ${result.reason}`);
+    return;
+  }
+  const art: Artifact = {
+    id: `art-${task.id}-${Date.now()}`,
+    agent,
+    taskId: task.id,
+    taskTitle: task.title,
+    timestamp: new Date().toISOString(),
+    model: result.model,
+    latencyMs: result.latencyMs,
+    tokens: result.usage?.total_tokens || 0,
+    content: result.content,
+    promptType: 'task_summary',
+  };
+  artifacts.push(art);
+  if (artifacts.length > MAX_ARTIFACTS) artifacts.splice(0, artifacts.length - MAX_ARTIFACTS);
+  logger.info(`📄 artifact saved for ${agent}/${task.id} (${art.tokens} tokens, ${art.latencyMs}ms via ${art.model})`);
+  dirty = true;
+}
+
+export function getAgentArtifacts(agent: string, limit = 10): Artifact[] {
+  return artifacts.filter(a => a.agent === agent).slice(-limit).reverse();
+}
+
+export function getAllArtifacts(limit = 50): Artifact[] {
+  return artifacts.slice(-limit).reverse();
 }
 
 // === IN-PROGRESS DETAIL (full subtask array, which done/not-done) ===

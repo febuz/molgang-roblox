@@ -142,6 +142,18 @@ app.get('/api/tokens/events', (req, res) => {
   res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
 });
 
+// Agent artifacts — real LM Studio outputs generated on task completion
+app.get('/api/agents/:name/artifacts', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  const items = taskEngine.getAgentArtifacts(req.params.name, limit);
+  res.json({ success: true, agent: req.params.name, count: items.length, artifacts: items });
+});
+
+app.get('/api/artifacts', (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  res.json({ success: true, artifacts: taskEngine.getAllArtifacts(limit) });
+});
+
 // Agent in-progress drilldown with full subtask detail
 app.get('/api/agents/:name/in-progress-detail', (req, res) => {
   const details = taskEngine.getAgentInProgressDetail(req.params.name);
