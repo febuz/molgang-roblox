@@ -1311,6 +1311,47 @@ if UserInputService.TouchEnabled then
 		local minimap = screenGui:FindFirstChild("MiniMap", true)
 		if minimap then minimap.Visible = not minimap.Visible end
 	end)
+
+	-- Second row of mobile buttons for ChemEng systems
+	local mobileBar2 = Instance.new("Frame")
+	mobileBar2.Name = "MobileButtons2"
+	mobileBar2.Size = UDim2.new(0, 340, 0, 44)
+	mobileBar2.Position = UDim2.new(1, -350, 1, -110)
+	mobileBar2.BackgroundTransparency = 1
+	mobileBar2.Parent = screenGui
+
+	local mb2Layout = Instance.new("UIListLayout")
+	mb2Layout.FillDirection = Enum.FillDirection.Horizontal
+	mb2Layout.Padding = UDim.new(0, 4)
+	mb2Layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	mb2Layout.Parent = mobileBar2
+
+	local function createMobileBtn2(text, color, guiName)
+		local btn2 = Instance.new("TextButton")
+		btn2.Size = UDim2.fromOffset(48, 38)
+		btn2.BackgroundColor3 = color
+		btn2.BackgroundTransparency = 0.25
+		btn2.Text = text
+		btn2.TextColor3 = Color3.new(1, 1, 1)
+		btn2.TextScaled = true
+		btn2.Font = Enum.Font.GothamBold
+		btn2.Parent = mobileBar2
+		local c2 = Instance.new("UICorner")
+		c2.CornerRadius = UDim.new(0, 8)
+		c2.Parent = btn2
+		btn2.MouseButton1Click:Connect(function()
+			local gui = playerGui:FindFirstChild(guiName)
+			if gui then gui.Enabled = not gui.Enabled end
+		end)
+	end
+
+	createMobileBtn2("S", Color3.fromRGB(220, 140, 40), "SlagProcessingGui")
+	createMobileBtn2("F", Color3.fromRGB(80, 200, 60), "FertilizerGui")
+	createMobileBtn2("G", Color3.fromRGB(0, 200, 130), "FactoryBuilderGui")
+	createMobileBtn2("V", Color3.fromRGB(255, 200, 0), "MiningGui")
+	createMobileBtn2("X", Color3.fromRGB(0, 220, 100), "ProductMarketGui")
+	createMobileBtn2("T", Color3.fromRGB(100, 180, 255), "ResearchGui")
+	createMobileBtn2("C", Color3.fromRGB(200, 140, 255), "ProcessControlGui")
 end
 
 print("[MOLGANG] HUDController loaded successfully")

@@ -82,12 +82,22 @@ end
 
 local function getPlayerSlag(userId)
 	if not playerSlagData[userId] then
-		playerSlagData[userId] = {
-			chunk = 0,
-			crushed = 0,
-			ground = 0,
-			powder = 0,
-		}
+		-- Try to load from persistent PlayerDataBridge
+		local persistentData = PlayerDataBridge.GetPlayerData(userId)
+		if persistentData and persistentData.slagInventory then
+			playerSlagData[userId] = persistentData.slagInventory
+		else
+			playerSlagData[userId] = {
+				chunk = 0,
+				crushed = 0,
+				ground = 0,
+				powder = 0,
+			}
+			-- Write back to persistent data so it saves with DataStore
+			if persistentData then
+				persistentData.slagInventory = playerSlagData[userId]
+			end
+		end
 	end
 	return playerSlagData[userId]
 end

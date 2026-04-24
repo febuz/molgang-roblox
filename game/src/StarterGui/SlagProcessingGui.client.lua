@@ -437,6 +437,19 @@ for _, rId in ipairs(reagentOrder) do
 		cardStroke.Color = C.accent
 		selectedReagentLabel.Text = "Selected: " .. r.name .. " (" .. r.formula .. ")"
 		selectedReagentLabel.TextColor3 = r.color
+		-- Update time estimate if size also selected
+		if selectedSize then
+			local mins = SteelSlag.CalculateLeachTime(selectedSize, rId)
+			leachTimeLabel.Text = "Est. time: " .. SteelSlag.FormatLeachTime(mins)
+			leachTimeLabel.TextColor3 = C.text
+			-- Show yield preview
+			local yield = SteelSlag.CalculateYield(selectedSize, rId, 1.0)
+			local yieldStr = ""
+			for j, y in ipairs(yield) do
+				if j <= 5 then yieldStr = yieldStr .. y.oxide .. ":" .. y.atomCount .. " " end
+			end
+			yieldLabel.Text = "Yield: " .. yieldStr
+		end
 	end)
 
 	reagentCards[rId] = {card = rCard, stroke = cardStroke}
