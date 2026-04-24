@@ -2,9 +2,15 @@
  * Live Task Engine - agents actively progress through their tasks FOREVER.
  * When tasks complete, new ones are generated from each agent's task pool.
  * Tick rate: ~60-90s per subtask so progress is visible but not instant.
+ *
+ * State persists to /media/knight2/EDS2/virtualpc-state/task-state.json every
+ * 30s so agent progress (especially Kai's GPU-heavy work) survives server
+ * restarts instead of resetting to pool index 10.
  */
 
 import logger from './utils/logger';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface Subtask {
   name: string;
@@ -309,6 +315,88 @@ function generateTask(agent: string): Task {
 // === INITIAL TASKS ===
 const tasks: Task[] = [];
 
+// === PERSISTENCE ===
+// State is saved to EDS2 so restarts don't reset Kai's (or anyone's) progress.
+// Survives server restarts, TypeScript rebuilds, and hook-triggered restarts.
+
+const STATE_DIR = process.env.VIRTUALPC_STATE_DIR || '/media/knight2/EDS2/virtualpc-state';
+const STATE_PATH = path.join(STATE_DIR, 'task-state.json');
+let dirty = false;
+
+interface PersistedState {
+  version: 1;
+  savedAt: string;
+  tasks: Task[];
+  poolIndex: { [agent: string]: number };
+  sprintCounter: number;
+  taskIdCounter: number;
+  workLog: WorkLogEntry[];
+}
+
+// Forward declaration — WorkLogEntry is defined later in the file
+interface WorkLogEntry {
+  timestamp: string;
+  agent: string;
+  role: string;
+  taskId: string;
+  taskTitle: string;
+  subtask: string;
+  action: 'subtask_completed' | 'task_started' | 'task_completed';
+  minutesSpent: number;
+  project: string;
+  registeredFor: string;
+}
+
+function saveState() {
+  try {
+    if (!fs.existsSync(STATE_DIR)) fs.mkdirSync(STATE_DIR, { recursive: true });
+    const snapshot: PersistedState = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      tasks,
+      poolIndex,
+      sprintCounter,
+      taskIdCounter,
+      workLog: (typeof workLog !== 'undefined') ? workLog : [],
+    };
+    const tmp = STATE_PATH + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(snapshot));
+    fs.renameSync(tmp, STATE_PATH);
+    dirty = false;
+  } catch (e: any) {
+    logger.warn(`task-engine saveState failed: ${e.message}`);
+  }
+}
+
+function loadState(): boolean {
+  try {
+    if (!fs.existsSync(STATE_PATH)) return false;
+    const raw = fs.readFileSync(STATE_PATH, 'utf8');
+    const snap = JSON.parse(raw) as PersistedState;
+    if (snap.version !== 1 || !Array.isArray(snap.tasks)) {
+      logger.warn('task-engine: state file incompatible, ignoring');
+      return false;
+    }
+    tasks.length = 0;
+    for (const t of snap.tasks) {
+      // Reset _lastTick so restored in-progress tasks don't all fire on the first tick
+      t._lastTick = Date.now();
+      tasks.push(t);
+    }
+    Object.assign(poolIndex, snap.poolIndex || {});
+    sprintCounter = snap.sprintCounter || 1;
+    taskIdCounter = snap.taskIdCounter || 100;
+    // workLog is populated later in the file; we stash the loaded entries here
+    // and replay them into workLog once it's defined.
+    (globalThis as any).__virtualpcPersistedWorkLog = snap.workLog || [];
+    logger.info(`task-engine: restored ${tasks.length} tasks, sprint ${sprintCounter}, ${snap.workLog?.length || 0} work-log entries from ${STATE_PATH}`);
+    return true;
+  } catch (e: any) {
+    logger.warn(`task-engine loadState failed: ${e.message}`);
+    return false;
+  }
+}
+
 function seedInitialTasks() {
   const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
   for (const agent of agents) {
@@ -330,7 +418,31 @@ function seedInitialTasks() {
   }
 }
 
-seedInitialTasks();
+// Restore from disk if available; otherwise seed fresh.
+// If restored, also ensure every currently-active agent has at least 4 tasks
+// (covers the case where a new agent was added after the state file was saved).
+if (loadState()) {
+  const currentAgents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
+  for (const agent of currentAgents) {
+    const agentTasks = tasks.filter(t => t.assigned_to === agent && (t.status === 'in-progress' || t.status === 'pending'));
+    if (agentTasks.length < 4) {
+      // Seed the gap
+      const gap = 4 - agentTasks.length;
+      const currentIP = agentTasks.filter(t => t.status === 'in-progress').length;
+      for (let i = 0; i < gap; i++) {
+        const task = generateTask(agent);
+        if (currentIP + i < 2) {
+          task.status = 'in-progress';
+          task.started_at = new Date().toISOString();
+        }
+        tasks.push(task);
+      }
+      logger.info(`task-engine: backfilled ${gap} tasks for newly-added agent ${agent}`);
+    }
+  }
+} else {
+  seedInitialTasks();
+}
 
 // === GAME DEVELOPMENT MILESTONES (driven by completed tasks) ===
 export interface GameMilestone {
@@ -412,6 +524,7 @@ export function tickEngine() {
       const nextSub = task.subtasks.find(s => !s.done);
       if (nextSub) {
         nextSub.done = true;
+        dirty = true;
         // Log work: each subtask = estimated_hours / subtask_count in minutes
         const minsPerSub = Math.round((task.estimated_hours * 60) / task.subtasks.length);
         logWork(agent, task.id, task.title, nextSub.name, 'subtask_completed', minsPerSub);
@@ -424,6 +537,7 @@ export function tickEngine() {
         task.status = 'completed';
         task.completed_at = new Date().toISOString();
         task.progress = 100;
+        dirty = true;
         logWork(agent, task.id, task.title, '', 'task_completed', 0);
         logger.info(`✅ ${agent} completed: ${task.title}`);
       }
@@ -440,6 +554,7 @@ export function tickEngine() {
         toStart.status = 'in-progress';
         toStart.started_at = new Date().toISOString();
         toStart._lastTick = now;
+        dirty = true;
         logWork(agent, toStart.id, toStart.title, '', 'task_started', 0);
         logger.info(`▶️ ${agent} started: ${toStart.title}`);
       }
@@ -452,6 +567,7 @@ export function tickEngine() {
       for (let i = 0; i < needed; i++) {
         const newTask = generateTask(agent);
         tasks.push(newTask);
+        dirty = true;
       }
     }
   }
@@ -621,6 +737,11 @@ interface WorkLogEntry {
 }
 
 const workLog: WorkLogEntry[] = [];
+// Replay any work-log entries that were restored from the persisted state
+if ((globalThis as any).__virtualpcPersistedWorkLog) {
+  workLog.push(...((globalThis as any).__virtualpcPersistedWorkLog as WorkLogEntry[]));
+  delete (globalThis as any).__virtualpcPersistedWorkLog;
+}
 const PROJECT_NAME = 'MOLGANG Chemical Engineering Simulator';
 const REGISTERED_FOR = 'Edwin Hauwert 219252713';
 const roleMap: { [k: string]: string } = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Design Expert', Atlas: 'Simulation / AR / VR / CAD Realism' };
@@ -965,3 +1086,16 @@ export function getAgentSocialFeed(agent: string, limit = 20) {
 // Tick every 10 seconds
 setInterval(tickEngine, 10000);
 tickEngine();
+
+// Persist state every 30s (only writes if dirty)
+setInterval(() => {
+  if (dirty) saveState();
+}, 30000);
+
+// Save immediately on clean shutdown so SIGTERM/SIGINT don't lose recent progress
+function saveOnExit() {
+  try { saveState(); } catch { /* best-effort */ }
+}
+process.once('SIGTERM', saveOnExit);
+process.once('SIGINT', saveOnExit);
+process.once('beforeExit', saveOnExit);
