@@ -3523,7 +3523,79 @@ local function buildGlobalElements(zonesFolder: Folder)
 		{pos = Vector3.new(-500, 30, 0), label = "<-- West", color = Color3.fromRGB(200, 120, 40)},
 		{pos = Vector3.new(250, 30, 0), label = "MolChain Tower -->", color = CONFIG.XRPL_GREEN},
 		{pos = Vector3.new(-250, 30, 0), label = "<-- ANK Bank", color = CONFIG.ANK_GREEN},
+		-- Mining region beacons (outskirts)
+		{pos = Vector3.new(0, 30, 2800), label = "North Ridge Mines -->", color = Color3.fromRGB(200, 160, 40)},
+		{pos = Vector3.new(2800, 30, 0), label = "East Plateau Mines -->", color = Color3.fromRGB(200, 160, 40)},
+		{pos = Vector3.new(0, 30, -2800), label = "<-- South Basin Mines", color = Color3.fromRGB(200, 160, 40)},
+		{pos = Vector3.new(-2800, 30, 0), label = "<-- Deep West Mines", color = Color3.fromRGB(200, 160, 40)},
 	}
+
+	-- Mining outpost platforms at each region
+	local miningRegions = {
+		{name = "North Ridge", center = Vector3.new(0, 5, 3500), color = Color3.fromRGB(140, 110, 70)},
+		{name = "East Plateau", center = Vector3.new(3500, 5, 0), color = Color3.fromRGB(120, 100, 60)},
+		{name = "South Basin", center = Vector3.new(0, 5, -3500), color = Color3.fromRGB(100, 90, 55)},
+		{name = "Deep West", center = Vector3.new(-3500, -10, 0), color = Color3.fromRGB(80, 70, 50)},
+	}
+
+	for _, region in ipairs(miningRegions) do
+		local outpost = createModel(globalsModel, "MiningOutpost_" .. region.name:gsub(" ", ""))
+
+		-- Landing platform
+		createPlatform(outpost, {
+			Name = "MiningPlatform",
+			Position = region.center,
+			Size = Vector3.new(120, 4, 120),
+			Color = region.color,
+			Material = Enum.Material.Slate,
+			TopGlow = true,
+			GlowColor = Color3.fromRGB(200, 160, 40),
+		})
+
+		-- Mining office building
+		createPart(outpost, {
+			Name = "MiningOffice",
+			Size = Vector3.new(30, 15, 20),
+			Position = region.center + Vector3.new(0, 11, -30),
+			Color = Color3.fromRGB(60, 55, 50),
+			Material = Enum.Material.SmoothPlastic,
+		})
+
+		-- Ore stockpile (rough pile)
+		createSphere(outpost, {
+			Name = "OreStockpile",
+			Size = Vector3.new(20, 8, 18),
+			Position = region.center + Vector3.new(30, 8, 20),
+			Color = Color3.fromRGB(50, 40, 35),
+			Material = Enum.Material.Slate,
+		})
+
+		-- Drill rig (tall structure)
+		createCylinder(outpost, {
+			Name = "DrillRig",
+			Size = Vector3.new(40, 3, 3),
+			Position = region.center + Vector3.new(-30, 25, 20),
+			Color = Color3.fromRGB(180, 60, 40),
+			Material = Enum.Material.SmoothPlastic,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+
+		-- Region sign
+		addBillboard(outpost:FindFirstChild("MiningPlatform") or outpost, {
+			Text = "MINING REGION: " .. region.name .. "\nExploration Licenses Available\nPress V to manage mining",
+			Size = UDim2.new(16, 0, 5, 0),
+			StudsOffset = Vector3.new(0, 20, 0),
+			TextColor = Color3.fromRGB(255, 200, 80),
+			BackgroundColor = Color3.fromRGB(40, 30, 15),
+			BackgroundTransparency = 0.2,
+			MaxDistance = 400,
+		})
+		addPointLight(outpost:FindFirstChild("MiningPlatform") or outpost, {
+			Color = Color3.fromRGB(200, 160, 40),
+			Brightness = 2,
+			Range = 30,
+		})
+	end
 	for idx, bData in beaconData do
 		local beaconPart = createPart(beaconModel, {
 			Name = "NavBeacon_" .. idx,
