@@ -274,6 +274,23 @@ RunService.Heartbeat:Connect(function()
 	local isIndoors = player:GetAttribute("IsIndoors")
 	indoorLabel.Visible = isIndoors == true
 
+	-- Show outdoor penalty warning
+	if not isIndoors and currentWeatherId ~= "clear" then
+		local penalties = {cloudy = 5, rain = 20, storm = 40, hail = 60}
+		local penalty = penalties[currentWeatherId] or 0
+		if penalty > 0 then
+			weatherLabel.Text = weatherLabel.Text
+			-- Flash weather panel to warn
+			if frameCount % 120 < 60 then
+				weatherPanel.BackgroundColor3 = Color3.fromRGB(50, 20, 15)
+			else
+				weatherPanel.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
+			end
+		end
+	else
+		weatherPanel.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
+	end
+
 	-- Suppress rain particles when indoor
 	if isIndoors then
 		rainParticles.Rate = 0
