@@ -78,6 +78,11 @@
       <table id="models"><thead><tr><th>model</th><th class="num">calls</th><th class="num">tok in/out</th><th class="num">avg ms</th><th class="num">err</th></tr></thead><tbody></tbody></table>
     </div>
     <div class="card" style="grid-column: span 2">
+      <h2>Disk pressure — relocation candidates</h2>
+      <table id="disk"><thead><tr><th class="num">size</th><th>path</th><th>status</th></tr></thead><tbody></tbody></table>
+      <div class="muted" style="margin-top:8px;font-size:11px">Run <code>scripts/relocate-to-eds2.sh &lt;path&gt;</code> for unflagged dirs. Snap-confined: edit the app's own config. Active service paths: stop the service first.</div>
+    </div>
+    <div class="card" style="grid-column: span 2">
       <h2>History (avg util / max VRAM / top agent-time)</h2>
       <table id="history"><thead><tr><th>window</th><th class="num">n</th><th class="num">gpu0 avg/p95/max</th><th class="num">gpu1 avg/p95/max</th><th class="num">vram avg/max</th><th>top agents (MiB·ticks)</th></tr></thead><tbody></tbody></table>
     </div>
@@ -195,6 +200,16 @@ async function refresh() {
     document.getElementById('models').querySelector('tbody').innerHTML = sortByTokens(stats.by_model).map(([k, v]) =>
       `<tr><td>${k}</td><td class="num">${v.calls}</td><td class="num">${v.tokens_in}/${v.tokens_out}</td><td class="num">${v.avg_latency_ms}</td><td class="num">${(v.error_rate*100).toFixed(0)}%</td></tr>`
     ).join('') || '<tr><td colspan="5" class="muted">no calls in window</td></tr>';
+
+    // Disk candidates (don't fail the whole refresh if this is slow)
+    try {
+      const disk = await getJSON('/api/vitals/disk-candidates?min_mb=100&limit=10');
+      document.getElementById('disk').querySelector('tbody').innerHTML = (disk.candidates || []).map(c => {
+        const statusCls = c.status.includes('ACTIVE') ? 'down' : c.status.includes('snap') ? 'down' : c.status ? '' : 'up';
+        const statusHtml = c.status ? `<span class="pill ${statusCls}">${c.status}</span>` : '<span class="muted">movable</span>';
+        return `<tr><td class="num">${c.size_human}</td><td class="muted">${c.path}</td><td>${statusHtml}</td></tr>`;
+      }).join('') || '<tr><td colspan="3" class="muted">no candidates &gt;100MB on home</td></tr>';
+    } catch (e) { /* don't break the page on slow du */ }
 
     // History
     const hist = await getJSON('/api/vitals/history?windows=1m:60,5m:300,15m:900,1h:3600,24h:86400,all:all');

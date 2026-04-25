@@ -135,6 +135,50 @@ export class VitalsService {
     return out;
   }
 
+  // GET /api/vitals/disk-candidates  — top relocation targets under /home/knight2.
+  // Skips already-symlinked dirs and the active service paths. Read-only.
+  async diskCandidates(opts: { minMb?: number; limit?: number } = {}): Promise<Array<{ path: string; size_mb: number; size_human: string; status: string }>> {
+    const minBytes = (opts.minMb ?? 50) * 1024 * 1024;
+    const limit = opts.limit ?? 20;
+    const fsp = require('fs').promises;
+    const path = require('path');
+    const HOME = '/home/knight2';
+    const candidates: string[] = [];
+
+    const enumerate = async (dir: string) => {
+      try {
+        const entries = await fsp.readdir(dir, { withFileTypes: true });
+        for (const e of entries) {
+          if (!e.isDirectory() || e.isSymbolicLink()) continue;
+          candidates.push(path.join(dir, e.name));
+        }
+      } catch {}
+    };
+
+    await enumerate(HOME);
+    await enumerate(path.join(HOME, '.cache'));
+    await enumerate(path.join(HOME, '.local/share'));
+
+    const results: Array<{ path: string; size_mb: number; size_human: string; status: string }> = [];
+    const { spawnSync } = require('child_process');
+    for (const p of candidates) {
+      // Use bash du --bytes — fast and consistent. exclude=node_modules to keep
+      // virtualpc's actively-mutating dir from blowing the size estimate.
+      const r = spawnSync('du', ['-bs', '--exclude=node_modules', p], { encoding: 'utf8' });
+      const bytes = Number((r.stdout || '0').split(/\s+/)[0]);
+      if (!bytes || bytes < minBytes) continue;
+      let status = '';
+      if (/\/(virtualpc|custom-paperclip)$/.test(p) || /\/.claude$|\/.paperclip$/.test(p))
+        status = 'ACTIVE — service in use';
+      else if (/\/snap(\/|$)/.test(p)) status = 'snap-confined';
+      else if (/\/(molgang-roblox|agents)$/.test(p)) status = 'git repo';
+      const size_mb = Math.round(bytes / (1024 * 1024));
+      const size_human = bytes > 1024**3 ? `${(bytes/1024**3).toFixed(1)}G` : `${size_mb}M`;
+      results.push({ path: p, size_mb, size_human, status });
+    }
+    return results.sort((a, b) => b.size_mb - a.size_mb).slice(0, limit);
+  }
+
   // POST /api/gpu/clean  — force-unload Ollama models.
   async cleanGpu(): Promise<{ before_mib: number; after_mib: number; freed_mib: number; unloaded: string[] }> {
     const script = path.join(SCRIPTS_DIR, 'gpu-clean.sh');

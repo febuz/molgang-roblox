@@ -2255,6 +2255,17 @@ function setupVitalsRoutes(app: express.Express, vitals: VitalsService, audit?: 
   app.post('/api/gpu/enable',  (_req, res) => { vitals.setGpuEnabled(true);  res.json({ success: true, gpu_enabled: true }); });
   app.post('/api/gpu/disable', (_req, res) => { vitals.setGpuEnabled(false); res.json({ success: true, gpu_enabled: false }); });
 
+  app.get('/api/vitals/disk-candidates', async (req, res) => {
+    try {
+      const minMb = req.query.min_mb ? Number(req.query.min_mb) : 50;
+      const limit = req.query.limit ? Number(req.query.limit) : 15;
+      const candidates = await vitals.diskCandidates({ minMb, limit });
+      res.json({ success: true, count: candidates.length, candidates });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   if (audit) {
     app.get('/api/vitals/inference-log', async (req, res) => {
       try {
