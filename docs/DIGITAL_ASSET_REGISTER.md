@@ -161,18 +161,18 @@
 | Categorie | Aantal | Waarde (EUR) | Afschrijving |
 |-----------|--------|-------------|--------------|
 | 3D Modellen | 40 | €4,910 | 3 jaar lineair |
-| Software Code | 83 scripts | €29,920 | 5 jaar lineair |
-| Documentatie | 8 docs | €1,400 | 5 jaar lineair |
+| Software Code | 100 scripts (37,587 LOC) | €36,000 | 5 jaar lineair |
+| Documentatie | 9 docs | €1,600 | 5 jaar lineair |
 | Data Assets | 10 datasets | €2,750 | 5 jaar lineair |
-| Infrastructure | 6 tools | €1,350 | 3 jaar lineair |
+| Infrastructure | 7 tools (CI/CD, GPU scheduler) | €1,550 | 3 jaar lineair |
 | GPU Renders | 40 images | €800 | 3 jaar lineair |
-| New Modules | 11 modules | €3,300 | 5 jaar lineair |
-| **TOTAAL** | **198 assets** | **€44,430** | |
+| Unit Tests | 1 test suite | €200 | 5 jaar lineair |
+| **TOTAAL** | **207 assets** | **€47,810** | |
 
 ### Jaarlijkse Afschrijving
 - 3D Modellen + Renders: €5,710 / 3 = **€1,903/jaar**
-- Software + Modules + Docs + Data: €37,370 / 5 = **€7,474/jaar**
-- Infrastructure: €1,350 / 3 = **€450/jaar**
+- Software + Docs + Data + Tests: €40,550 / 5 = **€8,110/jaar**
+- Infrastructure: €1,550 / 3 = **€517/jaar**
 - **Totale jaarlijkse afschrijving: €7,040/jaar**
 
 ### Boekwaarde per 31-12-2026
