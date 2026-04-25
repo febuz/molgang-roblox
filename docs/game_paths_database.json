@@ -1,0 +1,159 @@
+{
+  "version": "1.0",
+  "created": "2026-04-25T16:24:52.655903",
+  "paths": [
+    {
+      "id": 1,
+      "name": "HSE Responder",
+      "strategy": "Safety incidents",
+      "timestamp": "2026-04-25T16:24:52.655919",
+      "results": {
+        "final_mc": 2701,
+        "atoms_collected": 100,
+        "products_sold": 2,
+        "duration_minutes": 30,
+        "total_inputs": 100
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "EXCELLENT"
+    },
+    {
+      "id": 2,
+      "name": "Optimal Speedrunner",
+      "strategy": "Slag\u2192V2O5\u2192sell, 2 cycles",
+      "timestamp": "2026-04-25T16:24:52.655928",
+      "results": {
+        "final_mc": 1979,
+        "atoms_collected": 125,
+        "products_sold": 4,
+        "duration_minutes": 30,
+        "total_inputs": 130
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "EXCELLENT"
+    },
+    {
+      "id": 3,
+      "name": "Molecule Builder",
+      "strategy": "Collect atoms, build molecules",
+      "timestamp": "2026-04-25T16:24:52.655935",
+      "results": {
+        "final_mc": 1675,
+        "atoms_collected": 94,
+        "products_sold": 8,
+        "duration_minutes": 30,
+        "total_inputs": 110
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "GOOD"
+    },
+    {
+      "id": 4,
+      "name": "The Collector",
+      "strategy": "Walk and collect only",
+      "timestamp": "2026-04-25T16:24:52.655940",
+      "results": {
+        "final_mc": 1398,
+        "atoms_collected": 119,
+        "products_sold": 0,
+        "duration_minutes": 30,
+        "total_inputs": 85
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "GOOD"
+    },
+    {
+      "id": 5,
+      "name": "Entrepreneur",
+      "strategy": "Try factory (can't afford)",
+      "timestamp": "2026-04-25T16:24:52.655945",
+      "results": {
+        "final_mc": 1384,
+        "atoms_collected": 110,
+        "products_sold": 0,
+        "duration_minutes": 30,
+        "total_inputs": 90
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "GOOD"
+    },
+    {
+      "id": 6,
+      "name": "The Trader",
+      "strategy": "Atom trading + bids",
+      "timestamp": "2026-04-25T16:24:52.655950",
+      "results": {
+        "final_mc": 1381,
+        "atoms_collected": 114,
+        "products_sold": 4,
+        "duration_minutes": 30,
+        "total_inputs": 95
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "GOOD"
+    },
+    {
+      "id": 7,
+      "name": "Water Leacher",
+      "strategy": "H2O leach (too slow)",
+      "timestamp": "2026-04-25T16:24:52.655955",
+      "results": {
+        "final_mc": 1098,
+        "atoms_collected": 104,
+        "products_sold": 0,
+        "duration_minutes": 30,
+        "total_inputs": 80
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "MODERATE"
+    },
+    {
+      "id": 8,
+      "name": "Slag Processor",
+      "strategy": "HCl leach, 1 cycle",
+      "timestamp": "2026-04-25T16:24:52.655969",
+      "results": {
+        "final_mc": 988,
+        "atoms_collected": 100,
+        "products_sold": 1,
+        "duration_minutes": 30,
+        "total_inputs": 100
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "MODERATE"
+    },
+    {
+      "id": 9,
+      "name": "Bubble Tea Addict",
+      "strategy": "Buy all teas, wander",
+      "timestamp": "2026-04-25T16:24:52.655974",
+      "results": {
+        "final_mc": 988,
+        "atoms_collected": 110,
+        "products_sold": 0,
+        "duration_minutes": 30,
+        "total_inputs": 75
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "MODERATE"
+    },
+    {
+      "id": 10,
+      "name": "The Miner",
+      "strategy": "Buy 800 MC license",
+      "timestamp": "2026-04-25T16:24:52.655978",
+      "results": {
+        "final_mc": 381,
+        "atoms_collected": 114,
+        "products_sold": 0,
+        "duration_minutes": 30,
+        "total_inputs": 70
+      },
+      "notes": "Simulated from code analysis",
+      "rating": "TERRIBLE"
+    }
+  ],
+  "test_runs": [],
+  "balance_history": [],
+  "last_updated": "2026-04-25T16:24:52.655983"
+}
