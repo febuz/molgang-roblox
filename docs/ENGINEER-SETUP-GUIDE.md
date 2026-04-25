@@ -232,7 +232,48 @@ When Mira or VideoProducer is rendering in Blender Cycles, GPU memory gets tight
 
 ---
 
-## 8. Full Stack (Docker)
+## 8. LiteLLM — unified gateway across all providers
+
+When you've configured cloud keys via the API Keys page (Anthropic, OpenAI, Grok, DeepSeek, Moonshot Kimi, Perplexity, Mistral, Google), LiteLLM lets VirtualPC route to **any** of them through a single OpenAI-compatible endpoint while still preferring local LM Studio for free tasks.
+
+### Bring it up
+
+```bash
+# 1. Stand-alone compose (independent of the main stack)
+docker compose -f deploy/docker-compose.litellm.yml up -d
+
+# 2. Pre-load env vars from VirtualPC's stored credentials so cloud routes have keys
+eval "$(bash scripts/export-credentials-env.sh)"
+docker compose -f deploy/docker-compose.litellm.yml up -d --force-recreate
+
+# 3. Verify
+curl -s http://localhost:4000/v1/models | jq
+```
+
+### Point VirtualPC at it
+
+```bash
+export LITELLM_URL=http://127.0.0.1:4000/v1
+export LITELLM_MASTER_KEY=sk-virtualpc-dev   # or whatever you set in compose
+node dist/index.js
+```
+
+`/api/llm/health` will then show `gateway: "litellm"` instead of `lm-studio`. Every existing route — `/api/llm/chat`, agent profile chat panel, autonomous artifact generation, multi-agent proposals — flows through LiteLLM transparently.
+
+### What LiteLLM gives us
+
+- **One config, all providers.** `deploy/litellm-config.yaml` lists local LM Studio models and every cloud provider in one file.
+- **Provider-side rate limits + retries** without us having to write per-provider clients.
+- **Cost accounting** centrally (configure a Postgres `database_url` to persist).
+- **No-key safety.** Cloud entries that are missing keys fail per-request rather than crashing startup. Local Phi-4 / Gemma / Qwen / Devstral / DeepSeek stay reachable regardless.
+
+### When to skip LiteLLM
+
+For a pure local setup (only LM Studio, no cloud overflow), don't set `LITELLM_URL` and VirtualPC talks to LM Studio directly on port 1234. The watchdog timer (`scripts/install-lmstudio-watchdog.sh`) keeps that path alive automatically.
+
+---
+
+## 9. Full Stack (Docker)
 
 For Neo4j + Redis + Kafka:
 
@@ -248,7 +289,7 @@ This starts:
 
 ---
 
-## 9. Project Structure
+## 10. Project Structure
 
 ```
 virtualpc/

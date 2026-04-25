@@ -1,0 +1,50 @@
+# LiteLLM proxy service for VirtualPC.
+# Stand-alone compose file so it can run independently of the main stack.
+#
+#   docker compose -f deploy/docker-compose.litellm.yml up -d
+#   curl http://localhost:4000/v1/models
+#
+# Reads cloud-provider keys from the environment. The simplest way to
+# populate them: source the keys VirtualPC has stored:
+#
+#   eval "$(jq -r '.providers[] | "export "
+#     + (.provider | ascii_upcase
+#       | sub("KIMI";"MOONSHOT")
+#       | sub("GROK";"XAI")
+#       | sub("PERPLEXITY";"PPLX")
+#       | sub("GOOGLE";"GOOGLE"))
+#     + "_API_KEY=\"" + .api_key + "\""'
+#     /media/knight2/EDS2/virtualpc-state/credentials.json)"
+#
+# Or just `source ~/.virtualpc/llm-keys.env`.
+
+version: "3.9"
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: virtualpc-litellm
+    ports:
+      - "127.0.0.1:4000:4000"   # bind to localhost so it's not exposed externally
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-virtualpc-dev}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      PPLX_API_KEY: ${PPLX_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # allows the container to reach LM Studio on :1234
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health/liveliness >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

@@ -1699,5 +1699,83 @@
     "modules": 6,
     "assets": 102,
     "palette_colors": 26
+  },
+  "rbxl_summary": {
+    "owner": "VirtualV Holding B.V.",
+    "license": "Proprietary - VirtualV Holding B.V. - all rights reserved",
+    "captured_at": "2026-04-25T13:48:30.669886+00:00",
+    "total_rbxl_instances": 213,
+    "files": [
+      {
+        "file": "MOLGANG_Demo.rbxl",
+        "size_bytes": 472369,
+        "header_num_types": 13,
+        "header_num_instances": 121,
+        "class_count": 13,
+        "instance_count_by_class": {
+          "LocalScript": 41,
+          "ModuleScript": 32,
+          "Script": 30,
+          "Folder": 9,
+          "CoreGui": 1,
+          "Lighting": 1,
+          "ReplicatedStorage": 1,
+          "ServerScriptService": 1,
+          "SoundService": 1,
+          "StarterGui": 1,
+          "StarterPlayer": 1,
+          "StarterPlayerScripts": 1,
+          "Workspace": 1
+        },
+        "total_instances": 121,
+        "path": "/home/knight2/molgang-roblox/MOLGANG_Demo.rbxl"
+      },
+      {
+        "file": "MOLGANG.rbxl",
+        "size_bytes": 217056,
+        "header_num_types": 12,
+        "header_num_instances": 55,
+        "class_count": 12,
+        "instance_count_by_class": {
+          "LocalScript": 17,
+          "Script": 17,
+          "ModuleScript": 8,
+          "Folder": 5,
+          "Lighting": 1,
+          "ReplicatedStorage": 1,
+          "ServerScriptService": 1,
+          "SoundService": 1,
+          "StarterGui": 1,
+          "StarterPlayer": 1,
+          "StarterPlayerScripts": 1,
+          "Workspace": 1
+        },
+        "total_instances": 55,
+        "path": "/media/knight2/EDS2/projects/roblox_molgang/MOLGANG.rbxl"
+      },
+      {
+        "file": "MOLGANG.rbxl",
+        "size_bytes": 156596,
+        "header_num_types": 12,
+        "header_num_instances": 37,
+        "class_count": 12,
+        "instance_count_by_class": {
+          "Script": 12,
+          "LocalScript": 7,
+          "Folder": 5,
+          "ModuleScript": 5,
+          "Lighting": 1,
+          "ReplicatedStorage": 1,
+          "ServerScriptService": 1,
+          "SoundService": 1,
+          "StarterGui": 1,
+          "StarterPlayer": 1,
+          "StarterPlayerScripts": 1,
+          "Workspace": 1
+        },
+        "total_instances": 37,
+        "path": "/media/knight2/EDS2/projects/roblox_molgang/game/MOLGANG.rbxl"
+      }
+    ]
   }
 }

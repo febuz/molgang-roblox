@@ -12,7 +12,13 @@
 
 import logger from './utils/logger';
 
-const LM_STUDIO_URL = process.env.LM_STUDIO_URL || 'http://127.0.0.1:1234/v1';
+// Prefer LiteLLM unified gateway when running. LiteLLM exposes the
+// OpenAI-compatible /v1 surface and routes to local LM Studio + every
+// configured cloud provider in one place. Falls back to direct LM Studio
+// when LITELLM_URL is unset.
+const LITELLM_URL = process.env.LITELLM_URL || '';
+const LM_STUDIO_URL = LITELLM_URL || process.env.LM_STUDIO_URL || 'http://127.0.0.1:1234/v1';
+const LITELLM_MASTER_KEY = process.env.LITELLM_MASTER_KEY || 'sk-virtualpc-dev';
 
 // Per-agent / per-task-type model routing. Keys are agent names from the roster.
 // Right-hand side is a substring that must appear in the LM Studio model id.
@@ -94,9 +100,17 @@ const MODEL_CACHE_MS = 15_000;
 async function fetchJson<T>(url: string, init?: RequestInit, timeoutMs = 5000): Promise<T> {
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), timeoutMs);
+  // When routing through LiteLLM, attach the master key as a Bearer token.
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> | undefined) };
+  if (LITELLM_URL && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${LITELLM_MASTER_KEY}`;
+  }
   try {
-    const r = await fetch(url, { ...init, signal: ctrl.signal });
-    if (!r.ok) throw new Error(`LM Studio ${r.status}: ${await r.text()}`);
+    const r = await fetch(url, { ...init, headers, signal: ctrl.signal });
+    if (!r.ok) {
+      const provider = LITELLM_URL ? 'LiteLLM' : 'LM Studio';
+      throw new Error(`${provider} ${r.status}: ${await r.text()}`);
+    }
     return (await r.json()) as T;
   } finally {
     clearTimeout(to);
@@ -119,15 +133,18 @@ export async function getModels(force = false): Promise<LmModel[]> {
 
 export async function healthCheck(): Promise<{
   reachable: boolean;
+  gateway: 'litellm' | 'lm-studio';
   url: string;
   modelsLoaded: number;
   models: string[];
   error?: string;
 }> {
+  const gateway = LITELLM_URL ? 'litellm' : 'lm-studio';
   try {
     const models = await getModels(true);
     return {
       reachable: true,
+      gateway,
       url: LM_STUDIO_URL,
       modelsLoaded: models.length,
       models: models.map(m => m.id),
@@ -135,6 +152,7 @@ export async function healthCheck(): Promise<{
   } catch (e: any) {
     return {
       reachable: false,
+      gateway,
       url: LM_STUDIO_URL,
       modelsLoaded: 0,
       models: [],
