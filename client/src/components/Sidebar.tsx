@@ -14,6 +14,8 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     { id: 'backlog', label: '📋 Backlog', icon: '📋' },
     { id: 'issues', label: '⚠️ Issues', icon: '⚠️' },
     { id: 'memory', label: '🧠 Memory', icon: '🧠' },
+    { id: 'analytics', label: '📈 Analytics', icon: '📈' },
+    { id: 'team', label: '👥 Team', icon: '👥' },
     { id: 'settings', label: '⚙️ Settings', icon: '⚙️' },
   ];
 

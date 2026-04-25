@@ -2270,7 +2270,13 @@ function setupVitalsRoutes(app: express.Express, vitals: VitalsService, audit?: 
         const w = req.query.window;
         const windowSec = (w == null || w === 'all') ? null : Number(w);
         const out = await audit.stats({ windowSec });
-        res.json({ success: true, ...out });
+        const limit = Number(process.env.INFERENCE_PER_CALLER_MAX || 3);
+        res.json({
+          success: true,
+          ...out,
+          inflight: audit.inflightSnapshot(),
+          per_caller_max: limit,
+        });
       } catch (e: any) {
         res.status(500).json({ success: false, error: e.message });
       }

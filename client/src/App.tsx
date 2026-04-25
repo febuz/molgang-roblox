@@ -6,8 +6,10 @@ import Backlog from './pages/Backlog';
 import Issues from './pages/Issues';
 import Memory from './pages/Memory';
 import Settings from './pages/Settings';
+import { AnalyticsDashboard } from './pages/AnalyticsDashboard';
+import { TeamCollaboration } from './pages/TeamCollaboration';
 
-type PageType = 'dashboard' | 'backlog' | 'issues' | 'memory' | 'settings';
+type PageType = 'dashboard' | 'backlog' | 'issues' | 'memory' | 'settings' | 'analytics' | 'team';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
@@ -31,6 +33,10 @@ export default function App() {
         return <Issues />;
       case 'memory':
         return <Memory />;
+      case 'analytics':
+        return <AnalyticsDashboard />;
+      case 'team':
+        return <TeamCollaboration />;
       case 'settings':
         return <Settings />;
       default:

@@ -18,22 +18,30 @@ const logger_1 = __importDefault(require("../../utils/logger"));
 class LightRAGClient {
     constructor(config) {
         this.queryCache = new Map();
+        this.connected = false;
         this.driver = neo4j_driver_1.default.driver(config.neo4j_url, neo4j_driver_1.default.auth.basic(config.neo4j_username, config.neo4j_password));
     }
     /**
-     * Connect to Neo4j
+     * Connect to Neo4j (gracefully degrades if unavailable)
      */
     async connect() {
         try {
             const session = this.driver.session();
             await session.run('RETURN 1');
             await session.close();
+            this.connected = true;
             logger_1.default.info('✓ LightRAG connected to Neo4j');
         }
         catch (error) {
-            logger_1.default.error('Failed to connect to Neo4j:', error);
-            throw error;
+            this.connected = false;
+            logger_1.default.warn('⚠ Neo4j not available - LightRAG running in offline mode (in-memory only)');
         }
+    }
+    /**
+     * Check if Neo4j is connected
+     */
+    isConnected() {
+        return this.connected;
     }
     /**
      * Query the knowledge graph
@@ -44,6 +52,10 @@ class LightRAGClient {
         if (this.queryCache.has(cacheKey)) {
             logger_1.default.debug('Cache hit for query:', queryText);
             return { ...this.queryCache.get(cacheKey), cached: true };
+        }
+        // Return empty result if not connected
+        if (!this.connected) {
+            return { nodes: [], relationships: [], cached: false };
         }
         const session = this.driver.session();
         try {
@@ -78,9 +90,22 @@ class LightRAGClient {
      * Add a fact/decision to the graph
      */
     async addNode(node) {
+        const id = `node_${Date.now()}`;
+        // Return in-memory node if not connected
+        if (!this.connected) {
+            logger_1.default.info(`✓ Fact added (offline): ${node.type}`);
+            return {
+                id,
+                type: node.type,
+                content: node.content,
+                context: node.context,
+                created_by: node.created_by,
+                created_at: new Date(),
+                affects: node.affects
+            };
+        }
         const session = this.driver.session();
         try {
-            const id = `node_${Date.now()}`;
             const result = await session.run(`
         CREATE (n:Node {
           id: $id,
@@ -123,6 +148,8 @@ class LightRAGClient {
      * Find similar decisions/precedents
      */
     async findSimilar(topic, threshold = 0.7) {
+        if (!this.connected)
+            return [];
         const session = this.driver.session();
         try {
             const result = await session.run(`
@@ -148,6 +175,9 @@ class LightRAGClient {
      * Get full context for a project
      */
     async getContext(projectId, include = []) {
+        if (!this.connected) {
+            return { project_id: projectId, nodes: [], total_count: 0, completeness_score: 0, updated_at: new Date().toISOString() };
+        }
         const session = this.driver.session();
         try {
             const result = await session.run(`

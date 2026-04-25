@@ -70,8 +70,8 @@
       <table id="repair"><thead><tr><th>ts</th><th>rule</th><th>sev</th><th>action</th></tr></thead><tbody></tbody></table>
     </div>
     <div class="card">
-      <h2>Top callers (last 1h, by tokens)</h2>
-      <table id="callers"><thead><tr><th>caller</th><th class="num">calls</th><th class="num">tok in/out</th><th class="num">avg ms</th><th class="num">err</th></tr></thead><tbody></tbody></table>
+      <h2>Top callers (last 1h, by tokens) <span class="muted" id="quotaInfo" style="font-size:11px"></span></h2>
+      <table id="callers"><thead><tr><th>caller</th><th class="num">in-flight</th><th class="num">calls</th><th class="num">tok in/out</th><th class="num">avg ms</th><th class="num">err</th></tr></thead><tbody></tbody></table>
     </div>
     <div class="card">
       <h2>Per-model usage (last 1h)</h2>
@@ -184,9 +184,14 @@ async function refresh() {
     // Inference stats by caller + model (last 1h)
     const stats = await getJSON('/api/vitals/inference-stats?window=3600');
     const sortByTokens = (obj) => Object.entries(obj || {}).sort(([,a],[,b]) => b.tokens_total - a.tokens_total).slice(0, 8);
-    document.getElementById('callers').querySelector('tbody').innerHTML = sortByTokens(stats.by_caller).map(([k, v]) =>
-      `<tr><td>${k}</td><td class="num">${v.calls}</td><td class="num">${v.tokens_in}/${v.tokens_out}</td><td class="num">${v.avg_latency_ms}</td><td class="num">${(v.error_rate*100).toFixed(0)}%</td></tr>`
-    ).join('') || '<tr><td colspan="5" class="muted">no calls in window</td></tr>';
+    const inflight = stats.inflight || {};
+    const max = stats.per_caller_max || 0;
+    document.getElementById('quotaInfo').textContent = max ? `quota ${max}/caller` : '';
+    document.getElementById('callers').querySelector('tbody').innerHTML = sortByTokens(stats.by_caller).map(([k, v]) => {
+      const live = inflight[k] || 0;
+      const liveCell = live > 0 ? `<span class="pill ${live >= max ? 'down' : 'up'}">${live}/${max}</span>` : '<span class="muted">0</span>';
+      return `<tr><td>${k}</td><td class="num">${liveCell}</td><td class="num">${v.calls}</td><td class="num">${v.tokens_in}/${v.tokens_out}</td><td class="num">${v.avg_latency_ms}</td><td class="num">${(v.error_rate*100).toFixed(0)}%</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">no calls in window</td></tr>';
     document.getElementById('models').querySelector('tbody').innerHTML = sortByTokens(stats.by_model).map(([k, v]) =>
       `<tr><td>${k}</td><td class="num">${v.calls}</td><td class="num">${v.tokens_in}/${v.tokens_out}</td><td class="num">${v.avg_latency_ms}</td><td class="num">${(v.error_rate*100).toFixed(0)}%</td></tr>`
     ).join('') || '<tr><td colspan="5" class="muted">no calls in window</td></tr>';

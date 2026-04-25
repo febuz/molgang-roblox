@@ -29,10 +29,15 @@ export declare class LightRAGClient {
         neo4j_username: string;
         neo4j_password: string;
     });
+    private connected;
     /**
-     * Connect to Neo4j
+     * Connect to Neo4j (gracefully degrades if unavailable)
      */
     connect(): Promise<void>;
+    /**
+     * Check if Neo4j is connected
+     */
+    isConnected(): boolean;
     /**
      * Query the knowledge graph
      */

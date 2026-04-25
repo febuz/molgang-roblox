@@ -1,31 +1,61 @@
-[sudo] password for knight2: [INFO] 🚀 Custom Paperclip starting... 
+🔴 OpenClaw Kill Switch Initialized
+   Press Ctrl+Q twice (within 1 second) to stop all automation
+[INFO] ✓ Terminal Activity Monitor initialized 
+[INFO] task-engine: restored 4295 tasks, sprint 324, 31527 work-log entries from /media/knight2/EDS2/virtualpc-state/task-state.json 
+[INFO] 🚀 Custom Paperclip starting... 
+[INFO] 🔴 OpenClaw Emergency Kill Switch active (Ctrl+Q+Q to stop) 
+🔴 OpenClaw Kill Switch Initialized
+   Press Ctrl+Q twice (within 1 second) to stop all automation
 [INFO] 📊 Initializing LightRAG... 
-[INFO] ✓ LightRAG connected to Neo4j 
+[WARN] ⚠ Neo4j not available - LightRAG running in offline mode (in-memory only) 
 [INFO] ✓ LightRAG connected 
 [INFO] 📦 Initializing Agent API Wrapper... 
 [INFO] ✓ AgentAPIWrapper initialized 
 [INFO] ✓ Agent API Wrapper ready (caching + rate limiting) 
-[INFO] 🔄 Initializing Kafka... 
-{"level":"WARN","timestamp":"2026-04-09T22:05:28.381Z","logger":"kafkajs","message":"KafkaJS v2.0.0 switched default partitioner. To retain the same partitioning behavior as in previous versions, create the producer with the option \"createPartitioner: Partitioners.LegacyPartitioner\". See the migration guide at https://kafka.js.org/docs/migration-guide-v2.0.0#producer-new-default-partitioner for details. Silence this warning by setting the environment variable \"KAFKAJS_NO_PARTITIONER_WARNING=1\""}
-{"level":"WARN","timestamp":"2026-04-09T22:05:28.381Z","logger":"kafkajs","message":"[Producer] Limiting retries for the idempotent producer may invalidate EoS guarantees"}
-{"level":"ERROR","timestamp":"2026-04-09T22:05:28.433Z","logger":"kafkajs","message":"[Connection] Response CreateTopics(key: 19, version: 3)","broker":"localhost:9092","clientId":"custom-paperclip","error":"Topic creation errors","correlationId":2,"size":412}
-[INFO] ✓ Created 7 topics 
-[INFO] ✓ Kafka connected 
-[INFO] ✓ Kafka connected 
+[INFO] 🔄 Kafka disabled (development mode) - running single-node 
 [INFO] 🤖 Initializing Model Router... 
 [INFO] ✓ Model Router initialized - Multi-tier orchestration ready 
 [INFO] ✓ Model Router ready (multi-tier orchestration enabled) 
 [INFO] 🎯 Registering LightRAG skills... 
 [INFO] ✓ Registered 4 LightRAG skills 
 [INFO] ✓ Skills registered 
+[INFO] 📈 Initializing system managers... 
+[INFO] ✓ Task Facilitator initialized (prevents hanging tasks) 
+[INFO] ✓ System managers initialized (including Task Facilitator) 
+[INFO] 📊 Initializing Numerai + EDB integration... 
+[INFO] ✓ Initialized 4 data sources 
+[INFO] ✓ Loaded 26 eligible assets 
+[INFO] ✓ Numerai components initialized 
+[INFO] 📋 Initializing Autonomous Session Manager... 
+[INFO] ✓ Autonomous Session Manager ready 
+[INFO] 🔐 Initializing Authentication System... 
+[INFO] ✓ Auth system initialized with 5 default users 
+[INFO] ✓ Auth system, middleware, CEO audit logger, and specialist dashboards ready 
+[INFO] 📚 Registering MOLGANG web integration... 
+📚 MOLGANG Web Integration: Registering endpoints
+[INFO] ✅ MOLGANG Web Integration endpoints registered (12 routes) 
+[INFO] ✓ MOLGANG web version integrated (12 endpoints) 
 [INFO] ✓ Routes configured 
+[INFO] ✓ OpenClaw autonomous command execution enabled 
+[INFO] ✓ MOLGANG web version ready for 1M+ students 
+[INFO] ✓ Auth routes configured 
+[INFO] ✓ Audit routes configured 
+[INFO] ✓ Specialist dashboard routes configured 
+[INFO] ✓ WebSocket handlers configured 
+[INFO] VitalsService: GPU_ENABLED=true 
+[INFO] VitalsService: spawned vitals-monitor (pid=511806, 30s) 
+[INFO] SelfRepair: mode=observe  budgets idle=600s disk=92% 
+[INFO] SelfRepair: ticking every 60000ms 
+[INFO] ✓ Vitals/GPU routes wired: /api/vitals, /api/vitals/history, /api/vitals/gpu, /api/vitals/inference-log, /api/vitals/repair-log, POST /api/gpu/{clean,enable,disable}, POST /api/vitals/repair-mode 
 [INFO] 
 ╔════════════════════════════════════════════════╗
-║  Custom Paperclip Ready                        ║
+║  VirtualPC Ready                               ║
 ╠════════════════════════════════════════════════╣
 ║  Status: Running                               ║
 ║  Port: 3100                                 ║
-║  Components: LightRAG, Kafka, Model Router    ║
+║  Web UI: http://localhost:3100             ║
+║  Components: LightRAG, Kafka, Socket.io        ║
 ║  Agents: Ready to execute                      ║
 ╚════════════════════════════════════════════════╝
        
+[INFO] 📨 proposal Analyst → Fill: KPI update (185 tokens) 

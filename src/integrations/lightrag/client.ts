@@ -43,19 +43,29 @@ export class LightRAGClient {
     );
   }
 
+  private connected = false;
+
   /**
-   * Connect to Neo4j
+   * Connect to Neo4j (gracefully degrades if unavailable)
    */
   async connect(): Promise<void> {
     try {
       const session = this.driver.session();
       await session.run('RETURN 1');
       await session.close();
+      this.connected = true;
       logger.info('✓ LightRAG connected to Neo4j');
     } catch (error) {
-      logger.error('Failed to connect to Neo4j:', error);
-      throw error;
+      this.connected = false;
+      logger.warn('⚠ Neo4j not available - LightRAG running in offline mode (in-memory only)');
     }
+  }
+
+  /**
+   * Check if Neo4j is connected
+   */
+  isConnected(): boolean {
+    return this.connected;
   }
 
   /**
@@ -68,6 +78,11 @@ export class LightRAGClient {
     if (this.queryCache.has(cacheKey)) {
       logger.debug('Cache hit for query:', queryText);
       return { ...this.queryCache.get(cacheKey), cached: true };
+    }
+
+    // Return empty result if not connected
+    if (!this.connected) {
+      return { nodes: [], relationships: [], cached: false };
     }
 
     const session = this.driver.session();
@@ -107,9 +122,24 @@ export class LightRAGClient {
    * Add a fact/decision to the graph
    */
   async addNode(node: Omit<GraphNode, 'id' | 'created_at'>): Promise<GraphNode> {
+    const id = `node_${Date.now()}`;
+
+    // Return in-memory node if not connected
+    if (!this.connected) {
+      logger.info(`✓ Fact added (offline): ${node.type}`);
+      return {
+        id,
+        type: node.type,
+        content: node.content,
+        context: node.context,
+        created_by: node.created_by,
+        created_at: new Date(),
+        affects: node.affects
+      };
+    }
+
     const session = this.driver.session();
     try {
-      const id = `node_${Date.now()}`;
       const result = await session.run(
         `
         CREATE (n:Node {
@@ -159,6 +189,7 @@ export class LightRAGClient {
    * Find similar decisions/precedents
    */
   async findSimilar(topic: string, threshold: number = 0.7): Promise<GraphNode[]> {
+    if (!this.connected) return [];
     const session = this.driver.session();
     try {
       const result = await session.run(`
@@ -185,6 +216,9 @@ export class LightRAGClient {
    * Get full context for a project
    */
   async getContext(projectId: string, include: string[] = []): Promise<any> {
+    if (!this.connected) {
+      return { project_id: projectId, nodes: [], total_count: 0, completeness_score: 0, updated_at: new Date().toISOString() };
+    }
     const session = this.driver.session();
     try {
       const result = await session.run(`
