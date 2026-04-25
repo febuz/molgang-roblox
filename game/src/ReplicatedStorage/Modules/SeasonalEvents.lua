@@ -21,9 +21,9 @@ SeasonalEvents.Events = {
 		color = Color3.fromRGB(255, 215, 0),
 	},
 	{
-		id = "atom_shower",
-		name = "Atom Shower",
-		description = "Rare atoms spawn 3x more often! Collect those epic and legendary elements.",
+		id = "rare_ore_shipment",
+		name = "Rare Ore Shipment",
+		description = "Special ore delivery from South Africa — 3x more rare elements in slag batches this week.",
 		schedule = "weekly",
 		duration = 86400,
 		bonuses = {

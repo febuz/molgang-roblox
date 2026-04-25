@@ -16,9 +16,9 @@ PrestigeSystem.Tiers = {
 	{tier = 3, name = "Plant Manager", requirement = {questsCompleted = 15, researchNodes = 20},
 		bonus = {coinMultiplier = 1.5, unlocks = {"hazmat_suit", "double_yield"}}},
 	{tier = 4, name = "Chief Metallurgist", requirement = {allQuestsComplete = true, allResearch = true},
-		bonus = {coinMultiplier = 2.0, unlocks = {"gold_lab_coat", "auto_collect"}}},
+		bonus = {coinMultiplier = 2.0, unlocks = {"gold_lab_coat", "automated_sampling"}}},
 	{tier = 5, name = "Chemical Engineering Master", requirement = {allQuestsComplete = true, allResearch = true, prestigeCount = 1},
-		bonus = {coinMultiplier = 3.0, unlocks = {"platinum_badge", "instant_leach"}}},
+		bonus = {coinMultiplier = 3.0, unlocks = {"platinum_badge", "continuous_flow_reactor"}}},
 }
 
 function PrestigeSystem.CanPrestige(playerData)

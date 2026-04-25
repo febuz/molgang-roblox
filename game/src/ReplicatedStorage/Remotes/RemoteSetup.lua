@@ -141,20 +141,20 @@ local clientToServerEvents = {
 	"RequestCancelBid",      -- {bidId} cancel own bid
 	"RequestMarketBids",     -- {} get active bids
 	"MarketBidsResponse",    -- {bids, myBids} bid data
-	-- Quantum Racing
-	"RequestStartRace",      -- {trackId} start a quantum race
+	-- Plant Commissioning
+	"RequestStartRace",      -- {trackId} start commissioning phase
 	"RaceStarted",           -- {trackId, trackName, timeLimit}
-	"RaceDotCollected",      -- {count}
+	"RaceDotCollected",      -- {count} checklist item completed
 	"RaceFinished",          -- {completed, time, dotsCollected, score, reward}
-	-- Superhero Combat
-	"RequestSelectHero",     -- {heroId} select element hero
-	"RequestStartMission",   -- {missionId} start story mission
-	"RequestUseAbility",     -- {abilityIndex} use hero ability (1-3)
-	"HeroSelected",          -- {heroId, name, abilities}
-	"MissionStarted",        -- {missionId, villainName, villainHealth}
-	"MissionComplete",       -- {victory, reward, time}
-	"AbilityUsed",           -- {abilityName, damage, villainHP}
-	"VillainAttacked",       -- {damage, villainName}
+	-- HSE Incident Response
+	"RequestSelectHero",     -- {roleId} select HSE role
+	"RequestStartMission",   -- {incidentId} start incident response
+	"RequestUseAbility",     -- {actionIndex} use response action (1-3)
+	"HeroSelected",          -- {roleId, name, actions}
+	"MissionStarted",        -- {incidentId, hazardName, hazardSeverity}
+	"MissionComplete",       -- {success, reward, time}
+	"AbilityUsed",           -- {actionName, effect, hazardHP}
+	"VillainAttacked",       -- {damage, hazardName} hazard escalation
 }
 
 -- ══════════════════════════════════════════════
