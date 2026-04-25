@@ -812,6 +812,11 @@ app.get('/game/2d', (req, res) => {
 app.get('/game/rts', (req, res) => {
   res.sendFile(path.resolve(__dirname, '..', 'public', 'game-rts.html'));
 });
+// VirtualV 3D world — WebGPU-capable scene rendering the VirtualV-owned
+// asset manifest captured from the Roblox MOLGANG source.
+app.get('/game/world', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '..', 'public', 'world.html'));
+});
 
 // Health check
 app.get('/health', (req, res) => {
