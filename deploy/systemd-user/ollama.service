@@ -1,0 +1,19 @@
+[Unit]
+Description=Ollama local LLM server (GPU 1, models on EDS2)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/knight2/.local/bin/ollama-serve
+Restart=on-failure
+RestartSec=5s
+
+# Logs
+StandardOutput=append:/home/knight2/virtualpc/logs/ollama.log
+StandardError=append:/home/knight2/virtualpc/logs/ollama.log
+
+# Generous limits for big models
+LimitNOFILE=65536
+
+[Install]
+WantedBy=default.target

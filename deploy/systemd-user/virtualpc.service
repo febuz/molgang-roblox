@@ -1,0 +1,22 @@
+[Unit]
+Description=VirtualPC API + agent system (port 3100)
+After=network.target ollama.service
+Wants=ollama.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/knight2/virtualpc
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=10s
+
+# Logs (append, don't truncate)
+StandardOutput=append:/home/knight2/virtualpc/logs/virtualpc.log
+StandardError=append:/home/knight2/virtualpc/logs/virtualpc.log
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=32768
+
+[Install]
+WantedBy=default.target
