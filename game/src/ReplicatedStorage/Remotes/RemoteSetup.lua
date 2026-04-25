@@ -137,9 +137,24 @@ local clientToServerEvents = {
 	"GuildInfoResponse",     -- {myGuild, allGuilds} response data
 	-- Market Bidding (#88)
 	"RequestPlaceBid",       -- {productId, bidPrice, quantity} place market bid
+	"RequestPlaceSell",      -- {productId, askPrice, quantity} place sell order
 	"RequestCancelBid",      -- {bidId} cancel own bid
 	"RequestMarketBids",     -- {} get active bids
 	"MarketBidsResponse",    -- {bids, myBids} bid data
+	-- Quantum Racing
+	"RequestStartRace",      -- {trackId} start a quantum race
+	"RaceStarted",           -- {trackId, trackName, timeLimit}
+	"RaceDotCollected",      -- {count}
+	"RaceFinished",          -- {completed, time, dotsCollected, score, reward}
+	-- Superhero Combat
+	"RequestSelectHero",     -- {heroId} select element hero
+	"RequestStartMission",   -- {missionId} start story mission
+	"RequestUseAbility",     -- {abilityIndex} use hero ability (1-3)
+	"HeroSelected",          -- {heroId, name, abilities}
+	"MissionStarted",        -- {missionId, villainName, villainHealth}
+	"MissionComplete",       -- {victory, reward, time}
+	"AbilityUsed",           -- {abilityName, damage, villainHP}
+	"VillainAttacked",       -- {damage, villainName}
 }
 
 -- ══════════════════════════════════════════════

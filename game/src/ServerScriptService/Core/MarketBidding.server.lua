@@ -78,12 +78,151 @@ Remotes.RequestPlaceBid.OnServerEvent:Connect(function(player, productId, bidPri
 		rarity = "uncommon",
 	})
 
-	-- Check for matching sell orders (any player selling at or below bid price)
-	-- In this teaser, we auto-fill from NPC market at bid price
-	-- Full implementation would match with other player sell orders
+	-- Order book matching engine: try to fill bid from active sell orders
+	matchBid(bidId, player)
 
 	print("[Market]", player.Name, "bid", quantity, "x", productId, "@", bidPrice, "MC")
 end)
+
+-- ═══════════════════════════════════════════════
+-- SELL ORDERS (player lists products for sale)
+-- ═══════════════════════════════════════════════
+
+local activeSells = {} -- {sellId = {playerId, productId, price, quantity, ...}}
+local sellCounter = 0
+
+Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPrice, quantity)
+	local userId = player.UserId
+	if type(productId) ~= "string" or type(askPrice) ~= "number" or type(quantity) ~= "number" then return end
+	if askPrice < 1 or quantity < 1 or quantity > 100 then return end
+
+	-- Check player has product atoms to sell
+	local pData = PlayerDataBridge.GetPlayerData(userId)
+	if not pData then return end
+
+	sellCounter = sellCounter + 1
+	local sellId = "sell_" .. sellCounter .. "_" .. os.time()
+
+	activeSells[sellId] = {
+		sellId = sellId,
+		playerId = userId,
+		playerName = player.Name,
+		productId = productId,
+		price = askPrice,
+		quantity = quantity,
+		timestamp = os.time(),
+	}
+
+	Remotes.FireClient("ServerAnnounce", player, {
+		message = "Sell order: " .. quantity .. "x " .. productId .. " @ " .. askPrice .. " MC each",
+		rarity = "uncommon",
+	})
+
+	-- Try to match with existing bids
+	matchSell(sellId, player)
+end)
+
+-- ═══════════════════════════════════════════════
+-- ORDER BOOK MATCHING ENGINE
+-- ═══════════════════════════════════════════════
+
+function matchBid(bidId, bidder)
+	local bid = activeBids[bidId]
+	if not bid then return end
+
+	-- Find cheapest sell order for this product at or below bid price
+	local bestSell = nil
+	local bestSellId = nil
+	for sid, sell in pairs(activeSells) do
+		if sell.productId == bid.productId and sell.price <= bid.price and sell.playerId ~= bid.playerId then
+			if not bestSell or sell.price < bestSell.price then
+				bestSell = sell
+				bestSellId = sid
+			end
+		end
+	end
+
+	if bestSell then
+		local fillQty = math.min(bid.quantity, bestSell.quantity)
+		local fillPrice = bestSell.price -- execute at seller's ask price
+
+		-- Transfer: bidder gets product, seller gets payment
+		-- Refund price difference to bidder (bid was escrowed at bid price)
+		local refund = (bid.price - fillPrice) * fillQty
+		if refund > 0 then
+			PlayerDataBridge.AddMolCoins(bid.playerId, refund)
+		end
+		PlayerDataBridge.AddMolCoins(bestSell.playerId, fillPrice * fillQty)
+
+		-- Notify both parties
+		local sellerPlayer = Players:GetPlayerByUserId(bestSell.playerId)
+		if sellerPlayer then
+			Remotes.FireClient("ServerAnnounce", sellerPlayer, {
+				message = "SOLD: " .. fillQty .. "x " .. bid.productId .. " @ " .. fillPrice .. " MC to " .. bid.playerName,
+				rarity = "rare",
+			})
+		end
+		Remotes.FireClient("ServerAnnounce", bidder, {
+			message = "BID FILLED: " .. fillQty .. "x " .. bid.productId .. " @ " .. fillPrice .. " MC from " .. bestSell.playerName,
+			rarity = "rare",
+		})
+
+		-- Update or remove orders
+		bid.quantity = bid.quantity - fillQty
+		bestSell.quantity = bestSell.quantity - fillQty
+
+		if bid.quantity <= 0 then activeBids[bidId] = nil end
+		if bestSell.quantity <= 0 then activeSells[bestSellId] = nil end
+
+		print("[Market] MATCH:", fillQty, "x", bid.productId, "@", fillPrice, "MC")
+	end
+end
+
+function matchSell(sellId, seller)
+	local sell = activeSells[sellId]
+	if not sell then return end
+
+	-- Find highest bid at or above ask price
+	local bestBid = nil
+	local bestBidId = nil
+	for bid_id, bid in pairs(activeBids) do
+		if bid.productId == sell.productId and bid.price >= sell.price and bid.playerId ~= sell.playerId then
+			if not bestBid or bid.price > bestBid.price then
+				bestBid = bid
+				bestBidId = bid_id
+			end
+		end
+	end
+
+	if bestBid then
+		local fillQty = math.min(sell.quantity, bestBid.quantity)
+		local fillPrice = sell.price
+
+		local refund = (bestBid.price - fillPrice) * fillQty
+		if refund > 0 then
+			PlayerDataBridge.AddMolCoins(bestBid.playerId, refund)
+		end
+		PlayerDataBridge.AddMolCoins(sell.playerId, fillPrice * fillQty)
+
+		local bidderPlayer = Players:GetPlayerByUserId(bestBid.playerId)
+		if bidderPlayer then
+			Remotes.FireClient("ServerAnnounce", bidderPlayer, {
+				message = "BID FILLED: " .. fillQty .. "x " .. sell.productId .. " @ " .. fillPrice .. " MC",
+				rarity = "rare",
+			})
+		end
+		Remotes.FireClient("ServerAnnounce", seller, {
+			message = "SOLD: " .. fillQty .. "x " .. sell.productId .. " @ " .. fillPrice .. " MC",
+			rarity = "rare",
+		})
+
+		bestBid.quantity = bestBid.quantity - fillQty
+		sell.quantity = sell.quantity - fillQty
+
+		if bestBid.quantity <= 0 then activeBids[bestBidId] = nil end
+		if sell.quantity <= 0 then activeSells[sellId] = nil end
+	end
+end
 
 -- ═══════════════════════════════════════════════
 -- CANCEL BID
