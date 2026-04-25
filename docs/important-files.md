@@ -29,9 +29,9 @@ These files are load-bearing for the VirtualPC dashboard and the agent system. B
 
 | Path | Why it matters |
 |---|---|
-| `docker-compose.yml` | Dev stack |
-| `docker-compose.gpu.yml` | GPU-enabled production stack |
-| `Dockerfile` / `Dockerfile.gpu` | Build targets |
+| `deploy/docker-compose.yml` | Dev stack |
+| `deploy/docker-compose.gpu.yml` | GPU-enabled production stack |
+| `deploy/Dockerfile` / `deploy/Dockerfile.gpu` | Build targets |
 | `package.json` | Dependency contract |
 | `tsconfig.json` | Compiler contract |
 | `src/auth/**` | Authentication — do not break |

@@ -253,36 +253,52 @@ This starts:
 ```
 virtualpc/
 ├── src/                    # TypeScript backend source
-│   ├── index.ts           # Main Express server + all routes
-│   ├── task-engine.ts     # Live task engine (agents work forever)
-│   ├── agent/             # Agent orchestration
-│   ├── integrations/      # LightRAG, Kafka, Numerai, MOLGANG
-│   ├── orchestration/     # Model router (3-tier)
-│   ├── auth/              # JWT authentication
-│   ├── security/          # Audit logging, kill switch
-│   ├── analytics/         # Performance analytics
-│   ├── game/              # Game systems (seasonal events, PvP)
-│   └── utils/             # Logger, helpers
-├── client/                # React frontend (SPA)
-│   └── src/
-│       ├── App.tsx        # Main app with routing
-│       ├── pages/         # Dashboard, Backlog, Issues, Memory, etc.
-│       └── components/    # Sidebar
-├── public/                # Static files
-│   ├── game.html          # Playable web game demo
-│   └── manifest.json      # PWA manifest
-├── dist/                  # Compiled output
-│   ├── public/
-│   │   ├── index.html     # Dashboard (Paperclip white-label)
-│   │   └── bundle.js      # React frontend bundle
-│   └── *.js               # Compiled backend
-├── docs/                  # Architecture & engine docs
-├── tests/                 # Jest + Selenium tests
-├── package.json
-├── tsconfig.json
-├── webpack.config.js
-├── docker-compose.yml
-├── Dockerfile
+│   ├── index.ts            # Main Express server + all routes
+│   ├── task-engine.ts      # Live task engine (12 agents, persists to EDS2)
+│   ├── lmstudio.ts         # LM Studio (local Gemma/Phi/Qwen) wrapper + retry
+│   ├── token-tracker.ts    # Per-agent token usage (single source: agent-registry)
+│   ├── commits-tracker.ts  # Git commit attribution per agent
+│   ├── timeseries.ts       # CSV → stats / Pearson / z-score anomalies
+│   ├── agent-registry.ts   # The 12-agent canonical roster
+│   ├── auth/, security/, analytics/, integrations/, orchestration/, utils/
+│   └── game/               # Game systems (seasonal events, PvP)
+├── client/                 # React frontend (SPA)
+├── public/                 # Static dashboards + games (served by Express)
+│   ├── world.html          # WebGPU 3D world (VirtualV manifest renderer)
+│   ├── game.html           # 2D zone-based MOLGANG hub
+│   ├── game3d.html         # 3D open-world demo
+│   ├── game-rts.html       # RTS factory builder
+│   ├── logos/              # Cleopatra, Alexander, MoneyGod SVG marks
+│   └── assets/
+│       └── virtualv-manifest.json  # © VirtualV Holding B.V. asset catalog
+├── dist/                   # Compiled backend + dashboard HTML
+│   └── public/index.html   # The VirtualPC dashboard
+├── docs/                   # Architecture, setup, agent charters
+│   ├── VIRTUALPC-ARCHITECTURE.md
+│   ├── ENGINEER-SETUP-GUIDE.md
+│   ├── CHEMICAL-ENGINEERING-GAME-ENGINE.md
+│   ├── GAME-ENGINE-REFERENCES.md
+│   ├── important-files.md
+│   ├── CLEOPATRA-AUTHORITY.md / ALEXANDER-PRINCIPLES.md / ...
+│   └── API-DOCUMENTATION.md / API-ENDPOINTS.md
+├── deploy/                 # All deployment artifacts (since 2026-04-25)
+│   ├── docker-compose.yml / .gpu.yml / .production.yml
+│   ├── Dockerfile / Dockerfile.gpu / Dockerfile.nginx / Dockerfile.production
+│   ├── k8s-deployment.yaml / k8s-molgang-deployment.yaml / k8s-production-manifest.yaml
+│   ├── nginx.conf
+│   ├── prometheus.yml
+│   └── virtualpc.service
+├── scripts/                # Operational scripts
+│   ├── setup.sh / start.sh / stop.sh / quick-start.sh
+│   ├── deploy.sh / deploy-production.sh
+│   ├── lmstudio-watchdog.sh / install-lmstudio-watchdog.sh
+│   ├── run-testplay.sh
+│   ├── capture-roblox-assets.py  # Roblox → VirtualV manifest extractor
+│   └── gpu-clean.sh / health-check.sh / launch-virtualpc.sh / ...
+├── tests/                  # Jest + Selenium tests
+│   └── testplay/           # Playwright agent-driven game playthroughs
+├── package.json / tsconfig.json / jest.config.js / webpack.config.js   # tooling at root
+├── README.md / SECURITY.md
 └── .env
 ```
 

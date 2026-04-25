@@ -32,9 +32,9 @@ VirtualPC Agent System
 
 ```bash
 cd /home/knight2/virtualpc
-./setup.sh              # Install dependencies
+./scripts/setup.sh              # Install dependencies
 docker-compose up -d    # Start infrastructure
-./start.sh             # Start application
+./scripts/start.sh             # Start application
 ./health-check.sh      # Verify all services
 ```
 

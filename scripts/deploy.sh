@@ -68,15 +68,19 @@ echo ""
 # ============================================================
 echo -e "${YELLOW}[2/5] Building Docker images...${NC}"
 
-DOCKERFILE="Dockerfile"
+# Repo layout (post-2026-04-25 reorg): all deployment artifacts live in deploy/
+DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../deploy" && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+DOCKERFILE="$DEPLOY_DIR/Dockerfile"
 if [ "$GPU_ENABLED" = "true" ]; then
-    DOCKERFILE="Dockerfile.gpu"
+    DOCKERFILE="$DEPLOY_DIR/Dockerfile.gpu"
 fi
 
-docker build -f $DOCKERFILE -t virtualpc:latest . > /dev/null 2>&1
+docker build -f "$DOCKERFILE" -t virtualpc:latest "$REPO_ROOT" > /dev/null 2>&1
 echo -e "${GREEN}✓ API image built${NC}"
 
-docker build -f Dockerfile.nginx -t virtualpc-nginx:latest . > /dev/null 2>&1
+docker build -f "$DEPLOY_DIR/Dockerfile.nginx" -t virtualpc-nginx:latest "$REPO_ROOT" > /dev/null 2>&1
 echo -e "${GREEN}✓ Nginx image built${NC}"
 
 echo ""

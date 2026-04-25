@@ -726,7 +726,10 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-title">👥 Team Overview</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div class="card-title" style="margin:0;">👥 Team Overview <span id="team-count" style="font-size:0.75em;color:var(--text-secondary);font-weight:400;margin-left:8px;"></span></div>
+                        <span style="font-size:0.7em;color:var(--text-secondary);">build 2026-04-25</span>
+                    </div>
                     <div class="agent-grid" id="team-overview">
                         <!-- Dynamically populated with per-agent metrics -->
                     </div>
@@ -2009,8 +2012,15 @@
             const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism' };
             const colors = { Fill: '#fbbf24', Kai: '#a78bfa', Zip: '#22c55e', Mira: '#ec4899', Luna: '#06b6d4', Cleopatra: '#f97316', Alexander: '#ef4444', MoneyGod: '#10b981', Analyst: '#8b5cf6', VideoProducer: '#d946ef', Vice: '#e11d48', Atlas: '#0ea5e9' };
 
-            // Build DOM structure once
-            if (!teamBuilt) {
+            // Update the count badge so the user can see the full roster size at a glance.
+            const countBadge = document.getElementById('team-count');
+            if (countBadge) countBadge.textContent = `· ${agents.length} agents`;
+
+            // Build DOM structure when the card count doesn't match the agent list.
+            // This heals stale layouts on cached clients after the roster expanded.
+            const existingCards = container.querySelectorAll('.agent-card').length;
+            const needsRebuild = !teamBuilt || existingCards !== agents.length;
+            if (needsRebuild) {
                 teamBuilt = true;
                 container.innerHTML = '';
                 for (const agent of agents) {
