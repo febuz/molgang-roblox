@@ -127,6 +127,10 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 
 **Subtotaal 24-04 (vervolg): 3 uur 00 minuten**
 
+| 25-04-2026 | 2 | 00 | Top 100 afronden (94/100) + guild/racing/superhero tracks | **S&O kernactiviteit**: Gildesysteem (GuildSystem.lua + GuildServer): 10-leden teams met 4 rangen, 5 gestaffelde bonussen, DataStore persistentie. Competitief biedingssysteem (MarketBidding): escrow, 30min vervaltijd, automatische terugbetaling. Quantum Racing track: 4 circuits (waterstof→vanadium), power-ups, score-systeem. Superhero Adventure: 4 element-helden (Hydrogen Man, Iron Guardian, Gold Phoenix, Vanadium Knight), 4 chemie-schurken, 4 verhaalmissies. Atoomhandel GUI. VR-specifieke tutorial. Chat-integratie. i18n framework (en/nl/de). Storyscreen-systeem met typewriter-effect. FBX upload documentatie. 91 scripts, 35.000+ LOC. |
+
+**Subtotaal 25-04: 2 uur 00 minuten**
+
 ---
 
 ## Totaaloverzicht per week
@@ -139,9 +143,10 @@ Het MOLGANG-project ontwikkelt een **technisch nieuwe Chemical Engineering Simul
 | Week 17 | 22-04-2026 | 4 | 45 | 4:45 |
 | Week 17 | 23/24-04-2026 | 30 | 00 | 30:00 |
 | Week 17 | 24-04-2026 (vervolg) | 3 | 00 | 3:00 |
-| | | | | **56:15** |
+| Week 17 | 25-04-2026 | 2 | 00 | 2:00 |
+| | | | | **58:15** |
 
-**Totaal geregistreerde S&O-uren april 2026: 56 uur en 15 minuten**
+**Totaal geregistreerde S&O-uren april 2026: 58 uur en 15 minuten**
 
 ---
 
