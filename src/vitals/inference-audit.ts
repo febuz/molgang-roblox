@@ -31,6 +31,21 @@ export interface InferenceEvent {
 }
 
 export class InferenceAudit {
+  // Activity map is STATIC — shared across every InferenceAudit instance in
+  // this process. The route layer and the self-repair engine historically
+  // construct their own instances; a per-instance Map would mean markActivity
+  // in one never reaches lastActivityMs in the other, and the idle rule would
+  // race long-running inferences. Static map sidesteps that.
+  private static activity = new Map<string, number>();
+
+  markActivity(model: string): void {
+    InferenceAudit.activity.set(model, Date.now());
+  }
+
+  lastActivityMs(model: string): number | undefined {
+    return InferenceAudit.activity.get(model);
+  }
+
   async record(ev: InferenceEvent): Promise<void> {
     try {
       await fs.mkdir(LOG_DIR, { recursive: true });

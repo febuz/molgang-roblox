@@ -47,6 +47,7 @@ import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
 import * as commitsTracker from './commits-tracker';
 import * as lmstudio from './lmstudio';
+import { analyzeCsv } from './timeseries';
 
 // Load environment
 config();
@@ -140,6 +141,26 @@ app.get('/api/tokens/events', (req, res) => {
   const agent = req.query.agent as string | undefined;
   const limit = parseInt(req.query.limit as string) || 20;
   res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
+});
+
+// Timeseries analyzer — CSV upload, per-column stats, Pearson pairs, z-score anomalies.
+app.post('/api/timeseries/analyze', (req, res) => {
+  const { csv, zThreshold } = req.body || {};
+  if (typeof csv !== 'string' || csv.length < 10) {
+    res.status(400).json({ success: false, error: 'csv (string) required in body' });
+    return;
+  }
+  // Soft size cap — ChemE datasets of 5MB are generous.
+  if (csv.length > 5_000_000) {
+    res.status(413).json({ success: false, error: 'csv too large (max 5 MB)' });
+    return;
+  }
+  try {
+    const result = analyzeCsv(csv, { zThreshold: typeof zThreshold === 'number' ? zThreshold : 3 });
+    res.json({ success: true, ...result });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // Multi-agent proposals (Inbox / Outbox / global)

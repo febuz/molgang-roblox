@@ -50,9 +50,11 @@ export class SelfRepair {
     logger.info(`SelfRepair: mode=${this.mode}  budgets idle=${IDLE_UNLOAD_BUDGET_MS/1000}s disk=${DISK_PRESSURE_PCT}%`);
   }
 
-  start(intervalMs = 60_000) {
+  start(intervalMs?: number) {
     if (this.ticker) return;
-    this.ticker = setInterval(() => this.tick().catch(e => logger.error('SelfRepair tick error', e?.message)), intervalMs);
+    const ms = intervalMs ?? Number(process.env.SELF_REPAIR_TICK_MS || 60_000);
+    this.ticker = setInterval(() => this.tick().catch(e => logger.error('SelfRepair tick error', e?.message)), ms);
+    logger.info(`SelfRepair: ticking every ${ms}ms`);
     // Run once immediately on start.
     this.tick().catch(() => {});
   }
@@ -93,6 +95,7 @@ export class SelfRepair {
     const ts = new Date().toISOString();
     let snap: any = null;
     try { snap = JSON.parse(await fs.readFile(SNAP_PATH, 'utf8')); } catch { /* no snapshot yet */ }
+    if (process.env.SELF_REPAIR_DEBUG) logger.info(`[self-repair tick] mode=${this.mode} snap=${!!snap}`);
 
     // --- Rule 1: Ollama holding a model idle past keep-alive budget ---
     // Cross-reference loaded models against the last inference audit entry.
@@ -120,12 +123,19 @@ export class SelfRepair {
     } catch { return; }
     const models = loaded?.models || [];
     if (!models.length) return;
+    if (process.env.SELF_REPAIR_DEBUG) logger.info(`[idle-ollama] loaded=${models.map((m:any)=>m.name).join(',')}`);
 
     // Most recent audit entry across all models.
     const recent = await this.audit.query({ limit: 50 });
     for (const m of models) {
       const lastHit = recent.filter(e => e.model === m.name || e.model === m.model).pop();
-      const sinceMs = lastHit ? Date.now() - new Date(lastHit.ts).getTime() : Infinity;
+      const lastAuditTs = lastHit ? new Date(lastHit.ts).getTime() : 0;
+      // Also check the in-memory activity marker — a request may be in-flight
+      // with the audit record not yet written.
+      const lastActivityTs = this.audit.lastActivityMs(m.name) || 0;
+      const lastSeenMs = Math.max(lastAuditTs, lastActivityTs);
+      const sinceMs = lastSeenMs ? Date.now() - lastSeenMs : Infinity;
+      if (process.env.SELF_REPAIR_DEBUG) logger.info(`[idle-ollama] ${m.name}: auditTs=${lastAuditTs} activityTs=${lastActivityTs} sinceMs=${sinceMs} budget=${IDLE_UNLOAD_BUDGET_MS}`);
       if (sinceMs > IDLE_UNLOAD_BUDGET_MS) {
         const finding = `Ollama model ${m.name} loaded (${(m.size_vram/(1024**3)).toFixed(1)}GiB) with no inference for ${isFinite(sinceMs) ? Math.round(sinceMs/1000)+'s' : 'ever'}`;
         if (this.mode === 'act') {
