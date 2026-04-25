@@ -129,6 +129,17 @@ local clientToServerEvents = {
 	"RequestProductPrices",  -- {} get current market prices
 	-- Feedback System
 	"RequestSubmitFeedback", -- {type, system, rating, message} submit feedback
+	-- Guild System (#72)
+	"RequestCreateGuild",    -- {guildName} create a new guild
+	"RequestJoinGuild",      -- {guildName} join existing guild
+	"RequestLeaveGuild",     -- {} leave current guild
+	"RequestGuildInfo",      -- {} get guild list + own guild info
+	"GuildInfoResponse",     -- {myGuild, allGuilds} response data
+	-- Market Bidding (#88)
+	"RequestPlaceBid",       -- {productId, bidPrice, quantity} place market bid
+	"RequestCancelBid",      -- {bidId} cancel own bid
+	"RequestMarketBids",     -- {} get active bids
+	"MarketBidsResponse",    -- {bids, myBids} bid data
 }
 
 -- ══════════════════════════════════════════════
