@@ -155,6 +155,13 @@ local clientToServerEvents = {
 	"MissionComplete",       -- {success, reward, time}
 	"AbilityUsed",           -- {actionName, effect, hazardHP}
 	"VillainAttacked",       -- {damage, hazardName} hazard escalation
+	-- Si-28 Purification (endgame)
+	"RequestStartSiliconStage",   -- {stageId} start purification stage
+	"RequestBuildQuantumComputer",-- {} build quantum computer (endgame)
+	"RequestSiliconStatus",       -- {} get purification progress
+	"SiliconStageStarted",        -- {stageId, stageName, duration, purity}
+	"SiliconStageComplete",       -- {stageId, outputProduct, purity, reward}
+	"SiliconStatusResponse",      -- {products, activeStage, completedStages}
 }
 
 -- ══════════════════════════════════════════════
