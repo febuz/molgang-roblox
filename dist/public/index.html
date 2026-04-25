@@ -648,6 +648,10 @@
                     <div class="nav-icon">📝</div>
                     <div>Commits</div>
                 </div>
+                <div class="nav-item" data-page="timeseries">
+                    <div class="nav-icon">📈</div>
+                    <div>Timeseries</div>
+                </div>
                 <div class="nav-item" data-page="social">
                     <div class="nav-icon">👥</div>
                     <div>Agent Profiles</div>
@@ -988,6 +992,25 @@
                 <div class="card"><div class="card-title">👥 Commits by Agent</div><div id="commits-agents"></div></div>
                 <div class="card" style="margin-top:16px"><div class="card-title">📈 Hourly Commits (24h)</div><div id="commits-hourly-chart" style="height:120px;display:flex;align-items:flex-end;gap:2px;padding-top:10px"></div></div>
                 <div class="card" style="margin-top:16px"><div class="card-title">🕐 Recent Commits</div><div id="commits-recent" style="max-height:400px;overflow-y:auto"></div></div>
+            </div>
+
+            <!-- TIMESERIES ANALYZER (ChemE-scoped CSV upload + anomaly detection) -->
+            <div class="content-section" id="timeseries">
+                <div class="page-header">
+                    <div class="page-title">📈 Timeseries Analyzer</div>
+                    <div class="page-subtitle">Upload CSV (reactor temps, NPK, yield, market...) → per-column stats, pair correlations, z-score anomalies</div>
+                </div>
+                <div class="card" style="margin-bottom:16px;">
+                    <div class="card-title">📄 Upload CSV</div>
+                    <textarea id="ts-csv-input" rows="8" placeholder="timestamp,reactor_temp,reactor_pressure,yield_pct&#10;2026-04-24T10:00:00,180.2,145.3,74.1&#10;2026-04-24T10:05:00,181.1,146.0,74.5&#10;..." style="width:100%;padding:10px;background:rgba(10,14,26,0.6);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.85em;resize:vertical;"></textarea>
+                    <div style="display:flex;gap:10px;margin-top:10px;align-items:center;">
+                        <button onclick="analyzeTimeseriesCsv()" style="padding:10px 20px;background:linear-gradient(135deg,var(--primary),#06b6d4);color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;">Analyze</button>
+                        <button onclick="loadSampleTimeseries()" style="padding:10px 16px;background:rgba(30,58,95,0.4);color:var(--primary);border:1px solid var(--primary);border-radius:6px;cursor:pointer;font-size:0.88em;">Load sample (reactor run)</button>
+                        <label style="font-size:0.82em;color:var(--text-secondary);margin-left:auto;">|z| threshold: <input type="number" id="ts-z-threshold" value="3" min="1" max="6" step="0.5" style="width:60px;padding:4px;background:rgba(10,14,26,0.6);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;margin-left:6px;"></label>
+                    </div>
+                    <div id="ts-status" style="margin-top:8px;font-size:0.78em;color:var(--text-secondary);"></div>
+                </div>
+                <div id="ts-results"></div>
             </div>
 
             <!-- AGENT SOCIAL HUB (Facebook/LinkedIn-style) -->
@@ -1412,6 +1435,11 @@
             // Load commits overview
             if (pageId === 'commits') {
                 loadCommitsPage();
+            }
+            // Focus timeseries input when navigated to
+            if (pageId === 'timeseries') {
+                const inp = document.getElementById('ts-csv-input');
+                if (inp && !inp.value) loadSampleTimeseries();
             }
             // Load live resources panel on System Status
             if (pageId === 'system') {
@@ -2551,6 +2579,115 @@
             } finally {
                 input.disabled = false;
                 input.focus();
+            }
+        }
+
+        // === TIMESERIES ANALYZER ===
+        function loadSampleTimeseries() {
+            // Synthetic reactor-run dataset with two embedded anomalies
+            const header = 'timestamp,reactor_temp_c,reactor_pressure_atm,feed_flow_kgh,yield_pct,npk_ratio';
+            const rows = [];
+            const start = Date.parse('2026-04-24T10:00:00');
+            for (let i = 0; i < 60; i++) {
+                const t = new Date(start + i * 5 * 60 * 1000).toISOString();
+                let temp = 180 + Math.sin(i / 8) * 3 + (Math.random() - 0.5) * 1.2;
+                let pres = 145 + Math.sin(i / 10 + 1) * 2.5 + (Math.random() - 0.5) * 0.9;
+                let flow = 1200 + Math.sin(i / 6) * 50 + (Math.random() - 0.5) * 20;
+                let yieldPct = 74 + (temp - 180) * 0.6 + (pres - 145) * 0.3 + (Math.random() - 0.5) * 1.5;
+                let npk = 33.3 + (Math.random() - 0.5) * 0.6;
+                // Inject a temperature spike at i=22 and a pressure dip at i=43
+                if (i === 22) temp += 18;
+                if (i === 43) pres -= 14;
+                rows.push(`${t},${temp.toFixed(2)},${pres.toFixed(2)},${flow.toFixed(1)},${yieldPct.toFixed(2)},${npk.toFixed(2)}`);
+            }
+            document.getElementById('ts-csv-input').value = header + '\n' + rows.join('\n');
+            document.getElementById('ts-status').textContent = 'Sample loaded: 60 rows, 5 numeric columns, 2 injected anomalies.';
+        }
+
+        async function analyzeTimeseriesCsv() {
+            const csv = document.getElementById('ts-csv-input').value.trim();
+            const statusEl = document.getElementById('ts-status');
+            const resEl = document.getElementById('ts-results');
+            if (!csv || csv.split('\n').length < 3) {
+                statusEl.textContent = '⚠ Need at least a header and 2 data rows.';
+                return;
+            }
+            const z = parseFloat(document.getElementById('ts-z-threshold').value) || 3;
+            statusEl.textContent = '⏳ Analyzing...';
+            resEl.innerHTML = '';
+            try {
+                const r = await fetch('/api/timeseries/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ csv, zThreshold: z }),
+                });
+                const d = await r.json();
+                if (!d.success) {
+                    statusEl.textContent = '✗ ' + (d.error || 'Error');
+                    return;
+                }
+                statusEl.textContent = `✓ ${d.rowCount} rows, ${d.columnCount} cols, ${d.processingMs}ms · timestamp col: ${d.timestampColumn || '(none)'}`;
+                const corrColor = (r) => Math.abs(r) > 0.7 ? '#22c55e' : Math.abs(r) > 0.5 ? '#f59e0b' : '#94a3b8';
+                const zColor = (z) => Math.abs(z) > 5 ? '#ef4444' : Math.abs(z) > 3 ? '#f59e0b' : '#94a3b8';
+
+                resEl.innerHTML = `
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="card-title">📊 Per-column stats</div>
+                        <div style="display:grid;grid-template-columns:2fr repeat(5, 90px) 80px;gap:6px;padding:6px 0;font-size:0.72em;color:var(--text-secondary);border-bottom:1px solid var(--border);">
+                            <div>Column</div><div>n</div><div>mean</div><div>std</div><div>min</div><div>max</div><div>anomalies</div>
+                        </div>
+                        ${d.columns.map(c => `
+                            <div style="display:grid;grid-template-columns:2fr repeat(5, 90px) 80px;gap:6px;padding:6px 0;font-size:0.85em;border-bottom:1px solid rgba(148,163,184,0.06);align-items:center;">
+                                <div style="font-weight:600;color:var(--text-primary);">${escapeHtml(c.name)}</div>
+                                <div>${c.count}</div>
+                                <div>${c.mean}</div>
+                                <div>${c.std}</div>
+                                <div>${c.min}</div>
+                                <div>${c.max}</div>
+                                <div style="color:${c.anomalies.length > 0 ? '#f59e0b' : 'var(--text-secondary)'};font-weight:${c.anomalies.length > 0 ? 700 : 400};">${c.anomalies.length}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="card-title">🚨 Top anomalies (|z| > ${z})</div>
+                        ${d.topAnomalies.length === 0 ? '<p style="color:var(--text-secondary);font-size:0.85em;padding:8px 0;">No anomalies above the threshold.</p>' : `
+                            <div style="display:grid;grid-template-columns:2fr 80px 120px 80px 1fr;gap:6px;padding:6px 0;font-size:0.72em;color:var(--text-secondary);border-bottom:1px solid var(--border);">
+                                <div>Column</div><div>row</div><div>value</div><div>z</div><div>timestamp</div>
+                            </div>
+                            ${d.topAnomalies.map(a => `
+                                <div style="display:grid;grid-template-columns:2fr 80px 120px 80px 1fr;gap:6px;padding:5px 0;font-size:0.85em;border-bottom:1px solid rgba(148,163,184,0.05);align-items:center;">
+                                    <div style="color:var(--text-primary);">${escapeHtml(a.column)}</div>
+                                    <div>${a.index}</div>
+                                    <div style="font-family:ui-monospace,monospace;">${a.value}</div>
+                                    <div style="color:${zColor(a.z)};font-weight:700;">${a.z > 0 ? '+' : ''}${a.z}</div>
+                                    <div style="color:var(--text-secondary);font-size:0.8em;">${a.timestamp || ''}</div>
+                                </div>
+                            `).join('')}
+                        `}
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">🔗 Pair correlations (|r| ≥ 0.3)</div>
+                        ${d.correlations.length === 0 ? '<p style="color:var(--text-secondary);font-size:0.85em;padding:8px 0;">No notable correlations.</p>' : `
+                            <div style="display:grid;grid-template-columns:2fr 2fr 100px 80px 1fr;gap:6px;padding:6px 0;font-size:0.72em;color:var(--text-secondary);border-bottom:1px solid var(--border);">
+                                <div>A</div><div>B</div><div>Pearson r</div><div>n</div><div></div>
+                            </div>
+                            ${d.correlations.map(c => {
+                                const pct = Math.min(100, Math.abs(c.pearson) * 100);
+                                return `<div style="display:grid;grid-template-columns:2fr 2fr 100px 80px 1fr;gap:6px;padding:5px 0;font-size:0.85em;border-bottom:1px solid rgba(148,163,184,0.05);align-items:center;">
+                                    <div>${escapeHtml(c.a)}</div>
+                                    <div>${escapeHtml(c.b)}</div>
+                                    <div style="color:${corrColor(c.pearson)};font-weight:700;">${c.pearson}</div>
+                                    <div>${c.n}</div>
+                                    <div><div style="height:6px;background:rgba(30,58,95,0.4);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${corrColor(c.pearson)};"></div></div></div>
+                                </div>`;
+                            }).join('')}
+                        `}
+                    </div>
+                `;
+            } catch (e) {
+                statusEl.textContent = '✗ ' + e.message;
             }
         }
 
