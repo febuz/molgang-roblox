@@ -2,7 +2,7 @@
   "schema": "virtualv-asset-manifest/v1",
   "owner": "VirtualV Holding B.V.",
   "license": "Proprietary - VirtualV Holding B.V. - all rights reserved",
-  "captured_at": "2026-04-25T02:53:59.325088Z",
+  "captured_at": "2026-04-25T07:21:24.401346Z",
   "source_repo": "github.com/febuz/molgang-roblox",
   "global_palette": {
     "SPACE_BG": [
@@ -138,8 +138,215 @@
   },
   "modules": [
     {
+      "module": "ServerScriptService/Core/AtomSpawner.server.lua",
+      "asset_count": 1,
+      "assets": [
+        {
+          "primitive": "sphere",
+          "source_function": "raw_instance",
+          "size": [
+            3.0,
+            3.0,
+            3.0
+          ],
+          "material": "Neon"
+        }
+      ]
+    },
+    {
+      "module": "ServerScriptService/Core/Leaderboards.server.lua",
+      "asset_count": 1,
+      "assets": [
+        {
+          "primitive": "block",
+          "source_function": "raw_instance",
+          "name": "LeaderboardDisplay",
+          "size": [
+            20.0,
+            12.0,
+            1.0
+          ],
+          "position": [
+            30.0,
+            18.0,
+            -10.0
+          ],
+          "material": "SmoothPlastic",
+          "color": [
+            10,
+            20,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "module": "ServerScriptService/Core/NPCSystem.server.lua",
+      "asset_count": 9,
+      "assets": [
+        {
+          "primitive": "model",
+          "source_function": "raw_instance"
+        },
+        {
+          "primitive": "block",
+          "source_function": "raw_instance",
+          "name": "HumanoidRootPart",
+          "size": [
+            2.0,
+            2.0,
+            1.0
+          ],
+          "position": [
+            0.0,
+            3.0,
+            0.0
+          ],
+          "material": "SmoothPlastic"
+        },
+        {
+          "primitive": "sphere",
+          "source_function": "raw_instance",
+          "name": "Head",
+          "size": [
+            1.6,
+            1.6,
+            1.6
+          ],
+          "position": [
+            0.0,
+            4.8,
+            0.0
+          ],
+          "material": "SmoothPlastic"
+        },
+        {
+          "primitive": "block",
+          "source_function": "raw_instance",
+          "name": "LeftLeg",
+          "size": [
+            0.8,
+            2.0,
+            0.8
+          ],
+          "position": [
+            -0.5,
+            1.0,
+            0.0
+          ],
+          "material": "SmoothPlastic"
+        },
+        {
+          "primitive": "block",
+          "source_function": "raw_instance",
+          "name": "RightLeg",
+          "size": [
+            0.8,
+            2.0,
+            0.8
+          ],
+          "position": [
+            0.5,
+            1.0,
+            0.0
+          ],
+          "material": "SmoothPlastic"
+        },
+        {
+          "primitive": "model",
+          "source_function": "raw_instance"
+        },
+        {
+          "primitive": "cylinder",
+          "source_function": "raw_instance",
+          "name": "Pillar",
+          "size": [
+            5.0,
+            2.0,
+            2.0
+          ],
+          "color": [
+            160,
+            80,
+            255
+          ],
+          "material": "Neon"
+        },
+        {
+          "primitive": "sphere",
+          "source_function": "raw_instance",
+          "name": "TopGlow",
+          "size": [
+            3.0,
+            3.0,
+            3.0
+          ],
+          "position": [
+            0.0,
+            6.0,
+            0.0
+          ],
+          "color": [
+            200,
+            120,
+            255
+          ],
+          "material": "Neon",
+          "transparency": 0.2
+        },
+        {
+          "primitive": "block",
+          "source_function": "raw_instance",
+          "name": "ANK_StatusSign",
+          "size": [
+            8.0,
+            3.0,
+            0.5
+          ],
+          "color": [
+            34,
+            139,
+            34
+          ],
+          "material": "Neon"
+        }
+      ]
+    },
+    {
+      "module": "ServerScriptService/Core/QuantumDots.server.lua",
+      "asset_count": 1,
+      "assets": [
+        {
+          "primitive": "sphere",
+          "source_function": "raw_instance",
+          "size": [
+            1.5,
+            1.5,
+            1.5
+          ],
+          "material": "Neon"
+        }
+      ]
+    },
+    {
+      "module": "ServerScriptService/Core/SlakkenspoorMiniGame.server.lua",
+      "asset_count": 1,
+      "assets": [
+        {
+          "primitive": "sphere",
+          "source_function": "raw_instance",
+          "size": [
+            3.0,
+            3.0,
+            3.0
+          ],
+          "material": "Neon"
+        }
+      ]
+    },
+    {
       "module": "ServerScriptService/Core/WorldBuilder.server.lua",
-      "asset_count": 87,
+      "asset_count": 89,
       "assets": [
         {
           "shape": "Cylinder",
@@ -1460,13 +1667,37 @@
           "material": "Neon",
           "primitive": "block",
           "source_function": "createPart"
+        },
+        {
+          "primitive": "block",
+          "source_function": "raw_instance",
+          "size": [
+            4.0,
+            1.0,
+            4.0
+          ],
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "color": [
+            128,
+            128,
+            128
+          ],
+          "material": "SmoothPlastic"
+        },
+        {
+          "primitive": "model",
+          "source_function": "raw_instance"
         }
       ]
     }
   ],
   "totals": {
-    "modules": 1,
-    "assets": 87,
+    "modules": 6,
+    "assets": 102,
     "palette_colors": 26
   }
 }

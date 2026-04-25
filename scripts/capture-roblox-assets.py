@@ -39,6 +39,25 @@ RE_CREATE_FN = re.compile(
     re.DOTALL,
 )
 
+# Match raw `local NAME = Instance.new("Part"|"MeshPart"|"Model")` so we can walk
+# forward through property assignments to that NAME and reconstruct the asset.
+RE_RAW_CREATE = re.compile(
+    r"local\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*Instance\.new\(\"(Part|MeshPart|TrussPart|Model)\"\s*\)"
+)
+# Property assignment lines of the form `varname.Property = value`
+RE_PROP_ASSIGN = re.compile(
+    r"^\s*([A-Za-z_][A-Za-z0-9_]*)\.([A-Z][A-Za-z]*)\s*=\s*(.+?)\s*$",
+    re.MULTILINE,
+)
+# When we see something like `varname.Size = Vector3.new(x,y,z)` extract the values
+RE_VAL_VECTOR3 = re.compile(r"Vector3\.new\(\s*(-?[\d\.]+)\s*,\s*(-?[\d\.]+)\s*,\s*(-?[\d\.]+)\s*\)")
+RE_VAL_COLOR3_RGB = re.compile(r"Color3\.fromRGB\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
+RE_VAL_COLOR3_NAMED = re.compile(r"(?:CONFIG\.)?([A-Z][A-Z0-9_]+)\b")
+RE_VAL_PARTTYPE = re.compile(r"Enum\.PartType\.(\w+)")
+RE_VAL_MATERIAL = re.compile(r"Enum\.Material\.(\w+)")
+RE_VAL_NUMBER = re.compile(r"^-?[\d\.]+$")
+RE_VAL_STRING = re.compile(r"^\"([^\"]*)\"$")
+
 
 def parse_palette(text: str) -> dict[str, list[int]]:
     """Extract the named-color palette from a CONFIG block."""
@@ -90,11 +109,102 @@ def parse_config_block(block: str) -> dict[str, Any]:
     return cfg
 
 
+def parse_property_value(value: str) -> Any:
+    """Parse the right-hand side of `var.Property = ...`."""
+    value = value.strip().rstrip(",")
+    m = RE_VAL_VECTOR3.search(value)
+    if m:
+        return [float(m.group(1)), float(m.group(2)), float(m.group(3))]
+    m = RE_VAL_COLOR3_RGB.search(value)
+    if m:
+        return [int(m.group(1)), int(m.group(2)), int(m.group(3))]
+    m = RE_VAL_PARTTYPE.search(value)
+    if m:
+        return m.group(1)
+    m = RE_VAL_MATERIAL.search(value)
+    if m:
+        return m.group(1)
+    m = RE_VAL_STRING.match(value)
+    if m:
+        return m.group(1)
+    if RE_VAL_NUMBER.match(value):
+        try:
+            return float(value)
+        except ValueError:
+            pass
+    # Color reference like CONFIG.NEON_GREEN
+    m = re.match(r"(?:CONFIG\.)?([A-Z][A-Z0-9_]+)\s*$", value)
+    if m:
+        return {"_ref": m.group(1)}
+    return None
+
+
+def capture_raw_instance_news(text: str) -> list[dict[str, Any]]:
+    """Find `local foo = Instance.new("Part")` and walk forward in the file
+    for property assignments to that variable, building an asset spec."""
+    assets: list[dict[str, Any]] = []
+    # Build a map varname -> {start_offset, kind}
+    found = list(RE_RAW_CREATE.finditer(text))
+    for i, m in enumerate(found):
+        varname = m.group(1)
+        kind = m.group(2)  # Part / MeshPart / TrussPart / Model
+        scan_start = m.end()
+        # Scope: until next `local` declaration, end of function/block, or 600 chars
+        scan_end = min(len(text), scan_start + 1200)
+        # Stop early at next `local NAME = Instance.new("Part"...)` to avoid bleeding
+        next_match_start = found[i + 1].start() if i + 1 < len(found) else scan_end
+        scan_end = min(scan_end, next_match_start)
+        block = text[scan_start:scan_end]
+        cfg: dict[str, Any] = {"primitive": "block", "source_function": "raw_instance"}
+        if kind == "Model":
+            # Models are containers; record but skip primitive geometry mapping
+            cfg["primitive"] = "model"
+
+        for prop_m in RE_PROP_ASSIGN.finditer(block):
+            target_var, prop_name, value = prop_m.group(1), prop_m.group(2), prop_m.group(3)
+            if target_var != varname:
+                continue
+            parsed = parse_property_value(value)
+            if parsed is None:
+                continue
+            # Map Roblox properties to manifest keys
+            if prop_name == "Size" and isinstance(parsed, list):
+                cfg["size"] = parsed
+            elif prop_name == "Position" and isinstance(parsed, list):
+                cfg["position"] = parsed
+            elif prop_name == "Color":
+                if isinstance(parsed, list):
+                    cfg["color"] = parsed
+                elif isinstance(parsed, dict) and "_ref" in parsed:
+                    cfg["color_ref"] = parsed["_ref"]
+            elif prop_name == "Material":
+                cfg["material"] = parsed
+            elif prop_name == "Transparency":
+                if isinstance(parsed, (int, float)):
+                    cfg["transparency"] = parsed
+            elif prop_name == "Shape":
+                # Map Enum.PartType to primitive
+                shape = parsed if isinstance(parsed, str) else None
+                if shape:
+                    cfg["primitive"] = {
+                        "Ball": "sphere", "Cylinder": "cylinder", "Wedge": "wedge",
+                    }.get(shape, "block")
+            elif prop_name == "Name":
+                if isinstance(parsed, str):
+                    cfg["name"] = parsed
+        # Only emit if we got at least size or position — otherwise it's a placeholder
+        if "size" in cfg or "position" in cfg or kind == "Model":
+            assets.append(cfg)
+    return assets
+
+
 def capture_file(path: Path) -> dict[str, Any]:
     """Capture one Lua file's palette + asset specs."""
     text = path.read_text(encoding="utf-8", errors="ignore")
     palette = parse_palette(text)
     assets: list[dict[str, Any]] = []
+
+    # Pass 1: helper-function calls (createPart, createSphere, etc.)
     for fn, block in RE_CREATE_FN.findall(text):
         cfg = parse_config_block(block)
         if not cfg:
@@ -108,6 +218,10 @@ def capture_file(path: Path) -> dict[str, Any]:
         cfg["primitive"] = kind
         cfg["source_function"] = f"create{fn}"
         assets.append(cfg)
+
+    # Pass 2: raw `local x = Instance.new("Part")` walked forward for properties
+    assets.extend(capture_raw_instance_news(text))
+
     return {"palette": palette, "assets": assets}
 
 
