@@ -46,6 +46,28 @@ export class InferenceAudit {
     return InferenceAudit.activity.get(model);
   }
 
+  // Per-caller in-flight counter, also static so route + (future) repair
+  // engine see the same numbers.
+  private static inflight = new Map<string, number>();
+
+  inflightFor(caller: string): number {
+    return InferenceAudit.inflight.get(caller) || 0;
+  }
+
+  startInflight(caller: string): void {
+    InferenceAudit.inflight.set(caller, (InferenceAudit.inflight.get(caller) || 0) + 1);
+  }
+
+  endInflight(caller: string): void {
+    const n = (InferenceAudit.inflight.get(caller) || 0) - 1;
+    if (n <= 0) InferenceAudit.inflight.delete(caller);
+    else InferenceAudit.inflight.set(caller, n);
+  }
+
+  inflightSnapshot(): Record<string, number> {
+    return Object.fromEntries(InferenceAudit.inflight);
+  }
+
   async record(ev: InferenceEvent): Promise<void> {
     try {
       await fs.mkdir(LOG_DIR, { recursive: true });

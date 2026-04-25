@@ -1887,6 +1887,28 @@ function setupRoutes(app: express.Express, components: any) {
     const startTs = Date.now();
     const { model, prompt, max_tokens } = req.body;
     const caller = String(req.header('x-agent-id') || req.header('x-caller') || req.ip || 'anonymous');
+
+    // Per-caller concurrency cap — keeps a misbehaving agent from saturating
+    // the GPU. Bypass with X-Bypass-Quota: 1 (trusted internal callers).
+    const perCallerMax = Number(process.env.INFERENCE_PER_CALLER_MAX || 3);
+    const bypass = req.header('x-bypass-quota') === '1';
+    const inflight = inferenceAudit.inflightFor(caller);
+    if (!bypass && inflight >= perCallerMax) {
+      res.set('Retry-After', '5');
+      await inferenceAudit.record({
+        ts: new Date(startTs).toISOString(), caller, model: String(model || ''),
+        prompt_head: '', prompt_hash: '', max_tokens: Number(max_tokens || 0),
+        tokens_prompt: 0, tokens_completion: 0, latency_ms: 0,
+        triggered_load: false, success: false, error: `quota: ${inflight}/${perCallerMax} in-flight`,
+      });
+      return res.status(429).json({
+        success: false,
+        error: `caller ${caller} has ${inflight} in-flight calls, max ${perCallerMax}`,
+        retry_after_s: 5,
+      });
+    }
+    inferenceAudit.startInflight(caller);
+
     // Record in-memory activity before we fetch — otherwise the self-repair
     // idle rule can race a long inference and unload its model mid-flight.
     inferenceAudit.markActivity(model);
@@ -1954,6 +1976,8 @@ function setupRoutes(app: express.Express, components: any) {
         success: false,
         error: 'Ollama service unavailable'
       });
+    } finally {
+      inferenceAudit.endInflight(caller);
     }
   });
 
