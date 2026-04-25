@@ -1,0 +1,257 @@
+--[[
+	MarketBiddingGui.client.lua
+	MOLGANG — Competitive Market Bidding Interface
+
+	Place bids on products, view active bids, cancel bids.
+	Accessed via Product Exchange (X key) as a sub-tab.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ProductMarket = require(ReplicatedStorage.Modules.ProductMarket)
+
+local C = {
+	bg = Color3.fromRGB(8, 12, 16),
+	panel = Color3.fromRGB(18, 24, 32),
+	accent = Color3.fromRGB(0, 180, 120),
+	green = Color3.fromRGB(0, 200, 100),
+	red = Color3.fromRGB(220, 60, 60),
+	gold = Color3.fromRGB(255, 215, 0),
+	text = Color3.fromRGB(230, 235, 245),
+	textDim = Color3.fromRGB(130, 145, 160),
+}
+
+local function corner(o, r) local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, r or 8); c.Parent = o end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MarketBiddingGui"
+screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 20
+screenGui.Enabled = false
+screenGui.Parent = playerGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 500, 0, 420)
+main.Position = UDim2.new(0.5, -250, 0.5, -210)
+main.BackgroundColor3 = C.bg
+main.BackgroundTransparency = 0.05
+main.Parent = screenGui
+corner(main, 12)
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 38)
+title.BackgroundColor3 = Color3.fromRGB(5, 8, 12)
+title.Text = "MARKET BIDDING"
+title.TextColor3 = C.accent
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.Parent = main
+corner(title, 12)
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 50, 0, 28)
+closeBtn.Position = UDim2.new(1, -58, 0, 5)
+closeBtn.BackgroundColor3 = C.red
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.new(1,1,1)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextScaled = true
+closeBtn.Parent = title
+corner(closeBtn, 6)
+closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+
+-- New bid section
+local newBidLabel = Instance.new("TextLabel")
+newBidLabel.Size = UDim2.new(1, -16, 0, 20)
+newBidLabel.Position = UDim2.new(0, 8, 0, 44)
+newBidLabel.BackgroundTransparency = 1
+newBidLabel.Text = "Place a New Bid"
+newBidLabel.TextColor3 = C.accent
+newBidLabel.TextScaled = true
+newBidLabel.Font = Enum.Font.GothamBold
+newBidLabel.TextXAlignment = Enum.TextXAlignment.Left
+newBidLabel.Parent = main
+
+-- Product selector
+local productBtns = {}
+local selectedProduct = nil
+local productFrame = Instance.new("Frame")
+productFrame.Size = UDim2.new(1, -16, 0, 32)
+productFrame.Position = UDim2.new(0, 8, 0, 66)
+productFrame.BackgroundTransparency = 1
+productFrame.Parent = main
+
+local productNames = {"V2O5", "TiO2", "Fe2O3", "Cr2O3", "MnO2", "Al2O3"}
+for i, pName in ipairs(productNames) do
+	local pb = Instance.new("TextButton")
+	pb.Size = UDim2.new(1/#productNames, -3, 1, 0)
+	pb.Position = UDim2.new((i-1)/#productNames, 1, 0, 0)
+	pb.BackgroundColor3 = C.panel
+	pb.Text = pName
+	pb.TextColor3 = C.text
+	pb.TextScaled = true
+	pb.Font = Enum.Font.GothamBold
+	pb.Parent = productFrame
+	corner(pb, 4)
+	productBtns[pName] = pb
+	pb.MouseButton1Click:Connect(function()
+		selectedProduct = pName
+		for k, b in pairs(productBtns) do
+			b.BackgroundColor3 = k == pName and C.accent or C.panel
+			b.TextColor3 = k == pName and Color3.new(0,0,0) or C.text
+		end
+	end)
+end
+
+-- Price + quantity inputs
+local priceBox = Instance.new("TextBox")
+priceBox.Size = UDim2.new(0.3, -4, 0, 32)
+priceBox.Position = UDim2.new(0, 8, 0, 104)
+priceBox.BackgroundColor3 = C.panel
+priceBox.PlaceholderText = "Price (MC)"
+priceBox.Text = ""
+priceBox.TextColor3 = C.gold
+priceBox.PlaceholderColor3 = C.textDim
+priceBox.TextScaled = true
+priceBox.Font = Enum.Font.Gotham
+priceBox.Parent = main
+corner(priceBox, 6)
+
+local qtyBox = Instance.new("TextBox")
+qtyBox.Size = UDim2.new(0.2, -4, 0, 32)
+qtyBox.Position = UDim2.new(0.32, 4, 0, 104)
+qtyBox.BackgroundColor3 = C.panel
+qtyBox.PlaceholderText = "Qty"
+qtyBox.Text = "1"
+qtyBox.TextColor3 = C.text
+qtyBox.PlaceholderColor3 = C.textDim
+qtyBox.TextScaled = true
+qtyBox.Font = Enum.Font.Gotham
+qtyBox.Parent = main
+corner(qtyBox, 6)
+
+local bidBtn = Instance.new("TextButton")
+bidBtn.Size = UDim2.new(0.44, -8, 0, 32)
+bidBtn.Position = UDim2.new(0.54, 4, 0, 104)
+bidBtn.BackgroundColor3 = C.green
+bidBtn.Text = "PLACE BID"
+bidBtn.TextColor3 = Color3.new(1,1,1)
+bidBtn.TextScaled = true
+bidBtn.Font = Enum.Font.GothamBold
+bidBtn.Parent = main
+corner(bidBtn, 6)
+
+bidBtn.MouseButton1Click:Connect(function()
+	if not selectedProduct then return end
+	local price = tonumber(priceBox.Text)
+	local qty = tonumber(qtyBox.Text) or 1
+	if not price or price < 10 then return end
+	local r = Remotes:FindFirstChild("RequestPlaceBid")
+	if r then r:FireServer(selectedProduct, price, qty) end
+	priceBox.Text = ""
+end)
+
+-- Active bids list
+local bidsLabel = Instance.new("TextLabel")
+bidsLabel.Size = UDim2.new(1, -16, 0, 20)
+bidsLabel.Position = UDim2.new(0, 8, 0, 145)
+bidsLabel.BackgroundTransparency = 1
+bidsLabel.Text = "Active Bids"
+bidsLabel.TextColor3 = C.gold
+bidsLabel.TextScaled = true
+bidsLabel.Font = Enum.Font.GothamBold
+bidsLabel.TextXAlignment = Enum.TextXAlignment.Left
+bidsLabel.Parent = main
+
+local bidsScroll = Instance.new("ScrollingFrame")
+bidsScroll.Size = UDim2.new(1, -16, 0, 220)
+bidsScroll.Position = UDim2.new(0, 8, 0, 168)
+bidsScroll.BackgroundColor3 = C.panel
+bidsScroll.ScrollBarThickness = 4
+bidsScroll.Parent = main
+corner(bidsScroll, 6)
+
+local bidsLayout = Instance.new("UIListLayout")
+bidsLayout.Padding = UDim.new(0, 3)
+bidsLayout.Parent = bidsScroll
+
+-- Handle bid response
+local bidResponseEvent = Remotes:FindFirstChild("MarketBidsResponse")
+if bidResponseEvent then
+	bidResponseEvent.OnClientEvent:Connect(function(data)
+		for _, child in bidsScroll:GetChildren() do
+			if child:IsA("Frame") then child:Destroy() end
+		end
+
+		if data.bids then
+			for _, bid in ipairs(data.bids) do
+				local bf = Instance.new("Frame")
+				bf.Size = UDim2.new(1, -8, 0, 30)
+				bf.BackgroundColor3 = C.bg
+				bf.Parent = bidsScroll
+				corner(bf, 4)
+
+				local bl = Instance.new("TextLabel")
+				bl.Size = UDim2.new(0.7, 0, 1, 0)
+				bl.Position = UDim2.new(0, 6, 0, 0)
+				bl.BackgroundTransparency = 1
+				bl.Text = bid.playerName .. ": " .. bid.quantity .. "x " .. bid.productId .. " @ " .. bid.price .. " MC"
+				bl.TextColor3 = C.text
+				bl.TextScaled = true; bl.Font = Enum.Font.Gotham
+				bl.TextXAlignment = Enum.TextXAlignment.Left
+				bl.Parent = bf
+
+				-- Cancel button for own bids
+				local isMyBid = false
+				if data.myBids then
+					for _, mb in ipairs(data.myBids) do
+						if mb.bidId == bid.bidId then isMyBid = true end
+					end
+				end
+				if isMyBid then
+					local cb = Instance.new("TextButton")
+					cb.Size = UDim2.new(0.2, 0, 0.8, 0)
+					cb.Position = UDim2.new(0.78, 0, 0.1, 0)
+					cb.BackgroundColor3 = C.red
+					cb.Text = "Cancel"
+					cb.TextColor3 = Color3.new(1,1,1)
+					cb.TextScaled = true; cb.Font = Enum.Font.GothamBold
+					cb.Parent = bf
+					corner(cb, 4)
+					cb.MouseButton1Click:Connect(function()
+						local r = Remotes:FindFirstChild("RequestCancelBid")
+						if r then r:FireServer(bid.bidId) end
+					end)
+				end
+			end
+			bidsScroll.CanvasSize = UDim2.new(0, 0, 0, #data.bids * 34)
+		end
+	end)
+end
+
+-- Refresh on open
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if screenGui.Enabled then
+		local r = Remotes:FindFirstChild("RequestMarketBids")
+		if r then r:FireServer() end
+	end
+end)
+
+-- Auto-refresh every 10 seconds while open
+task.spawn(function()
+	while true do
+		task.wait(10)
+		if screenGui.Enabled then
+			local r = Remotes:FindFirstChild("RequestMarketBids")
+			if r then r:FireServer() end
+		end
+	end
+end)
+
+print("[MOLGANG] MarketBiddingGui loaded — competitive product bidding")

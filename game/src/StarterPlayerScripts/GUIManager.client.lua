@@ -42,6 +42,7 @@ local guiStates = {
 	MiningGui = false,
 	ProductMarketGui = false,
 	AtomTradeGui = false,
+	GuildGui = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -213,6 +214,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- . (Period) = Toggle Atom Trading (#71)
 	if input.KeyCode == Enum.KeyCode.Period then
 		toggleGui("AtomTradeGui")
+	end
+
+	-- ; (Semicolon) = Toggle Guild
+	if input.KeyCode == Enum.KeyCode.Semicolon then
+		toggleGui("GuildGui")
 	end
 
 	-- ESC = Close all overlays
