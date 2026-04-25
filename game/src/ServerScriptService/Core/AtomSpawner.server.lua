@@ -112,7 +112,7 @@ local function spawnAtomAt(position, elementZ, zoneName)
 	-- Maak 3D atoom-bol
 	local atom = Instance.new("Part")
 	atom.Shape = Enum.PartType.Ball
-	atom.Size = Vector3.new(3, 3, 3) * (1 + elem.mass / 200)  -- groter bij zwaardere elementen
+	atom.Size = Vector3.new(3, 3, 3) * (1 + elem.mass / 80)  -- groter bij zwaardere elementen
 	atom.Color = elem.color
 	atom.Material = Enum.Material.Neon
 	atom.CFrame = CFrame.new(position)
@@ -397,7 +397,15 @@ end)
 -- MAIN LOOPS
 -- ══════════════════════════════════════════════
 
--- Spawn loop
+-- Initial burst: spawn atoms faster for first 5 minutes so new players find atoms quickly
+task.spawn(function()
+	for _ = 1, 10 do
+		spawnWave()
+		task.wait(3) -- rapid spawn for 30 seconds
+	end
+end)
+
+-- Regular spawn loop
 task.spawn(function()
 	while true do
 		spawnWave()

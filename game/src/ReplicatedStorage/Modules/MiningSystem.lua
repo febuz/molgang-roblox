@@ -27,11 +27,32 @@ local MiningSystem = {}
 MiningSystem.PlotTypes = {
 	{
 		id = "magnetite_low",
+		name = "Practice Outcrop",
+		description = "Surface-level practice deposit. Hand-collect samples for free. Perfect for learning mining basics.",
+		geology = "Weathered outcrop with exposed magnetite veins",
+		composition = {
+			V2O5 = 0.2,
+			Fe3O4 = 30.0,
+			TiO2 = 1.0,
+			Cr2O3 = 0.1,
+			MnO = 0.3,
+			SiO2 = 25.0,
+			Al2O3 = 10.0,
+		},
+		hardness = 3.0,
+		depth = 0,         -- surface level, no drilling needed
+		cost = 200,        -- affordable for new players (from simulation finding)
+		monthlyTax = 0,    -- free maintenance for practice
+		color = Color3.fromRGB(80, 70, 55),
+		rarity = "common",
+	},
+	{
+		id = "magnetite_low",
 		name = "Low-Grade Magnetite",
 		description = "Basic magnetite deposit. Low vanadium but easy to mine. Good for beginners.",
 		geology = "Layered mafic intrusion, disseminated magnetite",
 		composition = {
-			V2O5 = 0.5,   -- weight %
+			V2O5 = 0.5,
 			Fe3O4 = 45.0,
 			TiO2 = 2.0,
 			Cr2O3 = 0.3,
@@ -39,10 +60,10 @@ MiningSystem.PlotTypes = {
 			SiO2 = 20.0,
 			Al2O3 = 8.0,
 		},
-		hardness = 5.5,    -- Mohs scale (affects drill wear)
-		depth = 5,         -- meters to ore (overburden)
-		cost = 5000,       -- MolCoins to buy rights
-		monthlyTax = 200,  -- land tax per game month
+		hardness = 5.5,
+		depth = 5,
+		cost = 5000,
+		monthlyTax = 200,
 		color = Color3.fromRGB(60, 50, 45),
 		rarity = "common",
 	},

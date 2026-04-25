@@ -260,17 +260,23 @@ Remotes.RequestRentFactory.OnServerEvent:Connect(function(player)
 		return
 	end
 
-	local rentCost = FactoryEquipment.FloorConfig.baseRent
+	-- Trial rental: first month is 500 MC, regular is baseRent (2000 MC)
+	local isFirstRent = not factory.hasRentedBefore
+	local rentCost = isFirstRent and 500 or FactoryEquipment.FloorConfig.baseRent
 	local success = PlayerDataBridge.SpendMolCoins(userId, rentCost)
 	if not success then
+		local msg = isFirstRent
+			and "Trial rental: 500 MC for your first month! (You have " .. (PlayerDataBridge.GetPlayerData(userId).molCoins or 0) .. " MC)"
+			or "Factory rent is " .. rentCost .. " MolCoins/month. Not enough funds!"
 		Remotes.FireClient("ServerAnnounce", player, {
-			message = "Factory rent is " .. rentCost .. " MolCoins/month. Not enough funds!",
+			message = msg,
 			rarity = "common",
 		})
 		return
 	end
 
 	factory.rented = true
+	factory.hasRentedBefore = true
 	factory.rentStartTime = tick()
 	factory.monthsPaid = 1
 

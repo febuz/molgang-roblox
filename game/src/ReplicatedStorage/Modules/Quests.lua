@@ -38,6 +38,17 @@ Quests.AllQuests = {
 		requires = "first_atom",
 	},
 
+	first_molecule = {
+		id = "first_molecule",
+		name = "Build Your First Molecule",
+		description = "Open the Recipe Book (R) and combine atoms into H2O, NaCl, or any molecule!",
+		category = "starter",
+		reward = {molCoins = 200},
+		condition = {type = "moleculesBuilt", target = 1},
+		order = 2,
+		requires = "collect_atoms",
+	},
+
 	build_first_mine = {
 		id = "build_first_mine",
 		name = "Build Your First Mine",
@@ -45,8 +56,8 @@ Quests.AllQuests = {
 		category = "starter",
 		reward = {molCoins = 300},
 		condition = {type = "facilitiesBuilt", target = 1},
-		order = 2,
-		requires = "collect_atoms",
+		order = 3,
+		requires = "first_molecule",
 	},
 
 	collect_more_atoms = {
