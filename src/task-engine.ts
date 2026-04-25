@@ -257,13 +257,26 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
     { title: 'Player-to-player trading escrow rules', priority: 'medium', description: 'Rules for the P2P trading escrow: required hold times, scam-detection heuristics, dispute resolution, listing fees.', estimated_hours: 5, subtasks: ['Hold times by item type', 'Scam heuristics', 'Dispute workflow', 'Fee schedule', 'Publish ToS'] },
     { title: 'Battle Pass pricing strategy', priority: 'medium', description: 'Pricing and tier design for the 100-tier Battle Pass. Ensure free track is genuinely rewarding; premium is fair; no pay-to-win leak into chemistry progression.', estimated_hours: 5, subtasks: ['Free-track reward review', 'Premium-track value audit', 'No-P2W gate', 'Price point A/B', 'Publish pricing'] },
   ],
+  Kimi: [
+    // Long-context researcher (Moonshot AI). Reads 200K+ tokens at once and synthesises.
+    { title: 'Whole-codebase architectural review', priority: 'high', description: 'Read every src/*.ts file in one prompt and produce a single architectural review: dependency graph, hotspots, dead code, suggested refactors. Take advantage of 200K+ context.', estimated_hours: 8, subtasks: ['Concatenate all src/ files', 'Single-shot architectural review', 'Dependency hotspot list', 'Dead-code candidates', 'Refactor priorities', 'Brief Kai and Alexander'] },
+    { title: 'Long-form research: ChemE curriculum gap', priority: 'high', description: 'Ingest the Roblox MOLGANG repo + this VirtualPC codebase + Perry\'s Handbook table of contents and produce a single coherent gap analysis between what we simulate vs the reference curriculum.', estimated_hours: 12, subtasks: ['Curriculum corpus assembly', 'Single-pass gap analysis', 'Per-zone coverage map', 'Recommended additions', 'Atlas + Fill briefing'] },
+    { title: 'Roblox-to-Web parity checklist', priority: 'critical', description: 'Read all 95 Roblox .lua scripts and the web/* and dist/public/* in one shot, produce a single parity matrix: every Roblox feature → web status (done/partial/missing). Vice + Zip act on the gaps.', estimated_hours: 10, subtasks: ['Concatenate all Lua', 'Concatenate web frontend', 'Parity matrix', 'Per-feature status', 'Priority ranking', 'Hand off to Zip + Mira'] },
+    { title: 'Documentation reconciliation', priority: 'medium', description: 'Read every doc in docs/ + every CHARTER + every README. Find contradictions, stale references, outdated layouts. Produce a single edits-list for cleanup.', estimated_hours: 6, subtasks: ['Doc corpus assembly', 'Contradiction finder', 'Stale-reference detector', 'Edits list', 'Hand off to Fill'] },
+    { title: 'Cross-agent task pool de-dup', priority: 'medium', description: 'Read every agent\'s task pool (~150 tasks) in one prompt and find duplicates / overlaps / blockers across agents. Produce a single consolidation plan.', estimated_hours: 6, subtasks: ['Task pool aggregation', 'Duplicate detection', 'Overlap analysis', 'Blocker chain map', 'Consolidation proposal'] },
+    { title: 'Kimi CLI integration test suite', priority: 'high', description: 'Validate the Moonshot Kimi API integration: streaming, function-calling parity, context-window stress test (200K+ tokens), cost accounting wired into token-tracker.', estimated_hours: 6, subtasks: ['Streaming test', 'Function-calling parity', '200K context stress test', 'Cost accounting verification', 'Failover to local fallback'] },
+    { title: 'Player-feedback synthesis report', priority: 'medium', description: 'When player feedback accumulates, ingest the entire corpus in one shot and produce themed insights + recommended product changes. Beats stitching small chunks.', estimated_hours: 8, subtasks: ['Feedback corpus prep', 'Theme extraction', 'Sentiment by theme', 'Recommended changes', 'Fill + MoneyGod briefing'] },
+    { title: 'Long-context anomaly correlation across logs', priority: 'high', description: 'Read 7-day rolling window of all service logs at once (LM Studio, virtualpc, vitals, lmstudio-watchdog) and surface cross-service incident patterns Analyst\'s 5-min anomaly detector can\'t see.', estimated_hours: 8, subtasks: ['Log window aggregation', 'Single-pass pattern detection', 'Cross-service correlations', 'Incident hypotheses', 'Hand off to Kai/Alexander'] },
+    { title: 'Long-context monthly board narrative', priority: 'medium', description: 'Read all proposals + artifacts + commits + work logs from a full month and produce a board-ready monthly narrative covering strategy, delivery, risk, opportunity.', estimated_hours: 8, subtasks: ['Monthly corpus assembly', 'Narrative outline', 'Strategy section', 'Delivery section', 'Risk section', 'Opportunity section', 'Cleopatra ratification'] },
+    { title: 'Codebase license audit (deep read)', priority: 'medium', description: 'Single-shot read of every dependency declaration + license + integration code to produce a unified license audit. Required before any commercial release.', estimated_hours: 6, subtasks: ['Deps + licenses corpus', 'License compatibility matrix', 'Restrictive flag list', 'Remediation suggestions', 'Cleopatra sign-off'] },
+  ],
 };
 
 // Track which pool index each agent is at
 // Start at index 10 so the newly-added tasks (from the 2026-04-23 chat backlog:
 // Cleopatra/MoneyGod, GPU symbiosis, RTS factory, agent social profiles, testplay,
 // Gemma chat, 3D equipment alignment, timeseries analysis, etc.) seed first.
-const poolIndex: { [agent: string]: number } = { Fill: 10, Kai: 10, Zip: 10, Mira: 10, Luna: 10, Cleopatra: 0, Alexander: 0, MoneyGod: 0, Analyst: 0, VideoProducer: 0, Vice: 0, Atlas: 0 };
+const poolIndex: { [agent: string]: number } = { Fill: 10, Kai: 10, Zip: 10, Mira: 10, Luna: 10, Cleopatra: 0, Alexander: 0, MoneyGod: 0, Analyst: 0, VideoProducer: 0, Vice: 0, Atlas: 0, Kimi: 0 };
 let taskIdCounter = 100;
 let sprintCounter = 1;
 
@@ -398,7 +411,7 @@ function loadState(): boolean {
 }
 
 function seedInitialTasks() {
-  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
+  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
   for (const agent of agents) {
     // 2 in-progress + 2 pending per agent
     for (let i = 0; i < 4; i++) {
@@ -422,7 +435,7 @@ function seedInitialTasks() {
 // If restored, also ensure every currently-active agent has at least 4 tasks
 // (covers the case where a new agent was added after the state file was saved).
 if (loadState()) {
-  const currentAgents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
+  const currentAgents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
   for (const agent of currentAgents) {
     const agentTasks = tasks.filter(t => t.assigned_to === agent && (t.status === 'in-progress' || t.status === 'pending'));
     if (agentTasks.length < 4) {
@@ -510,7 +523,7 @@ function updateMilestones() {
 // === TICK ENGINE ===
 export function tickEngine() {
   const now = Date.now();
-  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
+  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
 
   for (const agent of agents) {
     const agentTasks = tasks.filter(t => t.assigned_to === agent);
@@ -597,6 +610,7 @@ export function getPerPersonBacklog() {
     VideoProducer: { role: 'Video Producer', avatar: '🎬' },
     Vice: { role: 'Open-World Design Expert', avatar: '🌆' },
     Atlas: { role: 'Simulation / AR / VR / CAD / Realism', avatar: '🥽' },
+    Kimi: { role: 'Long-Context Researcher', avatar: '🌙' },
   };
 
   const result: { [key: string]: any } = {};
@@ -665,7 +679,7 @@ export function getBacklogItems() {
   const pending = tasks.filter(t => t.status === 'pending');
   const visible = [...active, ...pending, ...completed];
 
-  const roleMap: { [k: string]: string } = { Kai: 'CTO', Zip: 'Dev', Mira: 'Artist', Luna: 'Tech Artist', Fill: 'CEO', Cleopatra: 'Exec', Alexander: 'Arbiter', MoneyGod: 'Economy', Analyst: 'Analyst', VideoProducer: 'Video', Vice: 'GTA Expert', Atlas: 'AR/VR/CAD' };
+  const roleMap: { [k: string]: string } = { Kai: 'CTO', Zip: 'Dev', Mira: 'Artist', Luna: 'Tech Artist', Fill: 'CEO', Cleopatra: 'Exec', Alexander: 'Arbiter', MoneyGod: 'Economy', Analyst: 'Analyst', VideoProducer: 'Video', Vice: 'GTA Expert', Atlas: 'AR/VR/CAD', Kimi: 'Researcher' };
   return visible.map(t => ({
     id: t.id,
     title: t.title,
@@ -749,7 +763,7 @@ if ((globalThis as any).__virtualpcPersistedWorkLog) {
 }
 const PROJECT_NAME = 'MOLGANG Chemical Engineering Simulator';
 const REGISTERED_FOR = 'Edwin Hauwert 219252713';
-const roleMap: { [k: string]: string } = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Design Expert', Atlas: 'Simulation / AR / VR / CAD Realism' };
+const roleMap: { [k: string]: string } = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Design Expert', Atlas: 'Simulation / AR / VR / CAD Realism', Kimi: 'Long-Context Researcher' };
 
 export function logWork(agent: string, taskId: string, taskTitle: string, subtask: string, action: WorkLogEntry['action'], minutesSpent: number) {
   workLog.push({
@@ -1122,10 +1136,20 @@ const agentCommands: { [agent: string]: string[] } = {
     '$ cad-exporter freecad-to-gltf --src reactor.FCStd --dst web/assets/reactor.glb',
     '$ python tools/sim-sickness-score.py --session vr-playtest-42.json',
   ],
+  Kimi: [
+    '$ kimi-cli --context-window 200k --file src/**/*.ts --task "architectural review"',
+    '$ cat docs/*.md | kimi-cli synthesize --out memos/doc-reconcile.md',
+    '$ moonshot chat --model moonshot-v1-128k --stream',
+    '$ find . -name "*.lua" -exec cat {} + | kimi-cli analyze --topic "parity gaps"',
+    '$ kimi-cli research --query "ChemE curriculum vs MOLGANG simulator" --depth deep',
+    '$ kimi-cli logs ingest --window 7d --task "cross-service incident detection"',
+    '$ jq -s . tests/testplay/results/*.json | kimi-cli summarize',
+    '$ kimi-cli token-budget --month current --vs gemma-4-26b',
+  ],
 };
 
 const cliSessionLog: { [agent: string]: Array<{ t: number; line: string; level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' }> } = {
-  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [], Cleopatra: [], Alexander: [], MoneyGod: [], Analyst: [], VideoProducer: [], Vice: [], Atlas: [],
+  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [], Cleopatra: [], Alexander: [], MoneyGod: [], Analyst: [], VideoProducer: [], Vice: [], Atlas: [], Kimi: [],
 };
 
 function pushCli(agent: string, line: string, level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' = 'out') {
@@ -1199,6 +1223,7 @@ const socialRoster: SocialAgent[] = [
   { name: 'VideoProducer', handle: '@videoproducer', role: 'Video Producer',         avatar: '🎬', color: '#d946ef', headline: 'Trailers, cinematics, reels',         bio: 'Dual-3090 Blender Cycles rendering, NVENC-accelerated encoding. Produces gameplay trailers, NPC cinematics, distillation walkthroughs, investor reels, social cuts.', specialties: ['Blender', 'Cinema', 'NVENC', 'Storyboards'] },
   { name: 'Vice',      handle: '@vice',            role: 'Open-World Design Expert', avatar: '🌆', color: '#e11d48', headline: 'GTA6-caliber density, screenplays',   bio: 'Expert in open-world gameplay, level design, visual direction, cinematic screenplays. Studies GTA, EVE Online, Entropia Universe, Second Life, Roblox. Files task proposals back to developers every week.', specialties: ['Open World', 'Levels', 'Cinematics', 'Research'] },
   { name: 'Atlas',     handle: '@atlas',           role: 'Simulation / AR / VR / CAD / Realism', avatar: '🥽', color: '#0ea5e9', headline: 'The fidelity ceiling', bio: 'Simulator realism, VR locomotion, AR pass-through, FreeCAD audits against industry standards (TEMA, API). Validates chemistry physics against Perry\'s Handbook and Aspen Plus. ±5% or it doesn\'t ship.', specialties: ['VR', 'AR', 'CAD', 'Realism'] },
+  { name: 'Kimi',      handle: '@kimi',            role: 'Long-Context Researcher',          avatar: '🌙', color: '#7c3aed', headline: '200K context, single-shot synthesis', bio: 'Reads the entire codebase, every doc, the full Roblox source, and a week of logs in one prompt. Where Analyst slices and Vice researches one topic, Kimi ingests the whole corpus and finds connections nobody else can see. Routes via Moonshot Kimi or local long-context fallback.', specialties: ['Long Context', 'Synthesis', 'Codebase Review', 'Research'] },
 ];
 
 export function getSocialRoster() {

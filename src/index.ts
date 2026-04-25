@@ -48,6 +48,7 @@ import * as tokenTracker from './token-tracker';
 import * as commitsTracker from './commits-tracker';
 import * as lmstudio from './lmstudio';
 import { analyzeCsv } from './timeseries';
+import * as credentials from './credentials';
 
 // Load environment
 config();
@@ -141,6 +142,25 @@ app.get('/api/tokens/events', (req, res) => {
   const agent = req.query.agent as string | undefined;
   const limit = parseInt(req.query.limit as string) || 20;
   res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
+});
+
+// Provider credentials (API keys for Anthropic, OpenAI, Grok, DeepSeek, Kimi/Moonshot, Perplexity, ...)
+app.get('/api/credentials', (req, res) => {
+  res.json({ success: true, providers: credentials.listMasked() });
+});
+
+app.post('/api/credentials/:provider', (req, res) => {
+  try {
+    const { email, api_key, base_url, notes } = req.body || {};
+    const result = credentials.setProvider(req.params.provider, { email, api_key, base_url, notes });
+    res.json({ success: true, ...result });
+  } catch (e: any) {
+    res.status(400).json({ success: false, error: e.message });
+  }
+});
+
+app.delete('/api/credentials/:provider', (req, res) => {
+  res.json({ success: true, ...credentials.deleteProvider(req.params.provider) });
 });
 
 // Timeseries analyzer — CSV upload, per-column stats, Pearson pairs, z-score anomalies.

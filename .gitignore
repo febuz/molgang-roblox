@@ -60,3 +60,4 @@ build/
 # Keep safe files
 !.gitkeep
 test-results/
+credentials.json

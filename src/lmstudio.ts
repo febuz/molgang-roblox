@@ -39,6 +39,7 @@ const AGENT_MODEL_ROUTES: { [agent: string]: string } = {
   // Specialists
   Vice:        'phi-4',           // screenplay / narrative (NOT gemma 26b by default)
   Atlas:       'devstral',        // CAD / physics code
+  Kimi:        'phi-4',           // local fallback; routes to Moonshot Kimi via kimi-client when MOONSHOT_API_KEY is set
 };
 
 const TASK_TYPE_ROUTES: { [kind: string]: string } = {

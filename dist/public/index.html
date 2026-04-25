@@ -628,6 +628,10 @@
                     <div class="nav-icon">🥽</div>
                     <div>Atlas (AR/VR)</div>
                 </div>
+                <div class="nav-item" data-page="kimi">
+                    <div class="nav-icon">🌙</div>
+                    <div>Kimi (Research)</div>
+                </div>
             </div>
 
             <div class="nav-section">
@@ -651,6 +655,10 @@
                 <div class="nav-item" data-page="timeseries">
                     <div class="nav-icon">📈</div>
                     <div>Timeseries</div>
+                </div>
+                <div class="nav-item" data-page="credentials">
+                    <div class="nav-icon">🔑</div>
+                    <div>API Keys</div>
                 </div>
                 <div class="nav-item" data-page="social">
                     <div class="nav-icon">👥</div>
@@ -1011,6 +1019,15 @@
                 <div class="card" style="margin-top:16px"><div class="card-title">🕐 Recent Commits</div><div id="commits-recent" style="max-height:400px;overflow-y:auto"></div></div>
             </div>
 
+            <!-- API CREDENTIALS PAGE -->
+            <div class="content-section" id="credentials">
+                <div class="page-header">
+                    <div class="page-title">🔑 API Keys & Provider Credentials</div>
+                    <div class="page-subtitle">Anthropic, OpenAI, xAI, DeepSeek, Moonshot Kimi, Perplexity, Mistral, Google. Stored at <code>/media/knight2/EDS2/virtualpc-state/credentials.json</code> with mode 600 (gitignored).</div>
+                </div>
+                <div id="credentials-list"></div>
+            </div>
+
             <!-- TIMESERIES ANALYZER (ChemE-scoped CSV upload + anomaly detection) -->
             <div class="content-section" id="timeseries">
                 <div class="page-header">
@@ -1135,6 +1152,7 @@
             <div class="content-section" id="videoproducer"><div id="videoproducer-content"></div></div>
             <div class="content-section" id="vice"><div id="vice-content"></div></div>
             <div class="content-section" id="atlas"><div id="atlas-content"></div></div>
+            <div class="content-section" id="kimi"><div id="kimi-content"></div></div>
         </div>
     </div>
 
@@ -1415,6 +1433,26 @@
                     '♿ VR comfort and accessibility'
                 ],
                 specialties: ['VR', 'AR', 'CAD', 'Realism Validation']
+            },
+            kimi: {
+                name: 'Kimi', avatar: '🌙', role: 'Long-Context Researcher',
+                subtitle: '200K context · single-shot synthesis · whole-codebase reviews',
+                color: '#7c3aed',
+                characteristics: [
+                    { label: 'Long Context', value: 98 },
+                    { label: 'Synthesis', value: 95 },
+                    { label: 'Codebase Review', value: 94 },
+                    { label: 'Cross-Source Research', value: 93 },
+                    { label: 'Recall Precision', value: 92 }
+                ],
+                responsibilities: [
+                    '🌙 Whole-codebase architectural reviews',
+                    '📚 Documentation reconciliation (find contradictions)',
+                    '🔁 Roblox-to-Web parity matrix (single-shot)',
+                    '🧮 Cross-agent task pool de-duplication',
+                    '📰 Monthly board narratives from a full month of activity'
+                ],
+                specialties: ['Long Context', 'Synthesis', 'Codebase Review', 'Research']
             }
         };
 
@@ -1457,6 +1495,10 @@
             if (pageId === 'timeseries') {
                 const inp = document.getElementById('ts-csv-input');
                 if (inp && !inp.value) loadSampleTimeseries();
+            }
+            // Load credentials page
+            if (pageId === 'credentials') {
+                loadCredentialsPage();
             }
             // Load live resources panel on System Status
             if (pageId === 'system') {
@@ -2007,10 +2049,10 @@
             const container = document.getElementById('team-overview');
             if (!container) return;
 
-            const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas'];
-            const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽' };
-            const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism' };
-            const colors = { Fill: '#fbbf24', Kai: '#a78bfa', Zip: '#22c55e', Mira: '#ec4899', Luna: '#06b6d4', Cleopatra: '#f97316', Alexander: '#ef4444', MoneyGod: '#10b981', Analyst: '#8b5cf6', VideoProducer: '#d946ef', Vice: '#e11d48', Atlas: '#0ea5e9' };
+            const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
+            const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽', Kimi: '🌙' };
+            const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism', Kimi: 'Long-Context Researcher' };
+            const colors = { Fill: '#fbbf24', Kai: '#a78bfa', Zip: '#22c55e', Mira: '#ec4899', Luna: '#06b6d4', Cleopatra: '#f97316', Alexander: '#ef4444', MoneyGod: '#10b981', Analyst: '#8b5cf6', VideoProducer: '#d946ef', Vice: '#e11d48', Atlas: '#0ea5e9', Kimi: '#7c3aed' };
 
             // Update the count badge so the user can see the full roster size at a glance.
             const countBadge = document.getElementById('team-count');
@@ -2604,6 +2646,94 @@
                 input.disabled = false;
                 input.focus();
             }
+        }
+
+        // === API CREDENTIALS ===
+        async function loadCredentialsPage() {
+            const wrap = document.getElementById('credentials-list');
+            if (!wrap) return;
+            wrap.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85em;padding:8px 0;">Loading...</p>';
+            try {
+                const r = await fetch('/api/credentials');
+                const d = await r.json();
+                const providers = d.providers || [];
+                wrap.innerHTML = providers.map(p => `
+                    <div class="card" style="margin-bottom:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                            <div>
+                                <div class="card-title" style="margin:0;">${escapeHtml(p.label)}</div>
+                                <div style="font-size:0.7em;color:var(--text-secondary);margin-top:2px;">
+                                    env var: <code style="background:rgba(30,58,95,0.3);padding:1px 5px;border-radius:3px;">${p.env_var}</code> ·
+                                    <a href="${p.docs_url}" target="_blank" rel="noopener" style="color:var(--primary);">docs</a>
+                                </div>
+                            </div>
+                            <span style="font-size:0.7em;padding:2px 10px;border-radius:10px;${p.configured ? 'background:rgba(34,197,94,0.15);color:#86efac;' : 'background:rgba(148,163,184,0.15);color:#94a3b8;'}">
+                                ${p.configured ? '✓ configured' : 'not set'}
+                            </span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
+                            <label style="font-size:0.78em;color:var(--text-secondary);">
+                                Email
+                                <input type="email" id="cred-${p.id}-email" value="${escapeHtml(p.email || '')}" placeholder="account@example.com"
+                                    style="width:100%;padding:8px;margin-top:4px;background:rgba(10,14,26,0.6);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-size:0.88em;">
+                            </label>
+                            <label style="font-size:0.78em;color:var(--text-secondary);">
+                                API key ${p.api_key_masked ? `<span style="color:var(--success);">(stored: ${p.api_key_masked})</span>` : ''}
+                                <input type="password" id="cred-${p.id}-key" value="" placeholder="${p.api_key_masked ? 'leave empty to keep current' : 'sk-...'}"
+                                    style="width:100%;padding:8px;margin-top:4px;background:rgba(10,14,26,0.6);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-family:ui-monospace,monospace;font-size:0.88em;">
+                            </label>
+                        </div>
+                        <label style="font-size:0.78em;color:var(--text-secondary);display:block;margin-bottom:8px;">
+                            Base URL <span style="color:var(--text-secondary);">(default: ${p.default_base_url})</span>
+                            <input type="url" id="cred-${p.id}-url" value="${escapeHtml(p.base_url || '')}" placeholder="${p.default_base_url}"
+                                style="width:100%;padding:8px;margin-top:4px;background:rgba(10,14,26,0.6);color:var(--text-primary);border:1px solid var(--border);border-radius:5px;font-size:0.85em;">
+                        </label>
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="saveCredential('${p.id}')" style="padding:8px 16px;background:linear-gradient(135deg,var(--primary),#06b6d4);color:white;border:none;border-radius:5px;cursor:pointer;font-weight:600;font-size:0.85em;">Save</button>
+                            ${p.configured ? `<button onclick="deleteCredential('${p.id}')" style="padding:8px 16px;background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);border-radius:5px;cursor:pointer;font-size:0.85em;">Remove</button>` : ''}
+                            <span id="cred-${p.id}-status" style="margin-left:auto;align-self:center;font-size:0.78em;color:var(--text-secondary);"></span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                wrap.innerHTML = `<p style="color:#ef4444;padding:8px;">Failed to load: ${e.message}</p>`;
+            }
+        }
+
+        async function saveCredential(id) {
+            const status = document.getElementById(`cred-${id}-status`);
+            const email = document.getElementById(`cred-${id}-email`).value.trim();
+            const apiKey = document.getElementById(`cred-${id}-key`).value.trim();
+            const baseUrl = document.getElementById(`cred-${id}-url`).value.trim();
+            const body = { email };
+            if (apiKey) body.api_key = apiKey;
+            if (baseUrl) body.base_url = baseUrl;
+            status.textContent = '⏳ saving...';
+            try {
+                const r = await fetch(`/api/credentials/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const d = await r.json();
+                if (d.success) {
+                    status.textContent = `✓ saved (key=${d.api_key_masked || '—'})`;
+                    setTimeout(() => loadCredentialsPage(), 600);
+                } else {
+                    status.textContent = '✗ ' + (d.error || 'failed');
+                }
+            } catch (e) { status.textContent = '✗ ' + e.message; }
+        }
+
+        async function deleteCredential(id) {
+            if (!confirm(`Remove credentials for ${id}?`)) return;
+            const status = document.getElementById(`cred-${id}-status`);
+            status.textContent = '⏳ removing...';
+            try {
+                const r = await fetch(`/api/credentials/${id}`, { method: 'DELETE' });
+                await r.json();
+                loadCredentialsPage();
+            } catch (e) { status.textContent = '✗ ' + e.message; }
         }
 
         // === TIMESERIES ANALYZER ===

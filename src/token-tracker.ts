@@ -55,6 +55,7 @@ const AGENT_MODELS: { [agent: string]: string[] } = {
   VideoProducer: ['phi-4', 'gemma-4-26b'],
   Vice:          ['phi-4', 'gemma-4-26b'],
   Atlas:         ['devstral', 'deepseek-r1-8b'],
+  Kimi:          ['phi-4', 'gemma-4-26b', 'qwen3.5-27b'],  // local fallbacks; routes to Moonshot Kimi when MOONSHOT_API_KEY is set
 };
 
 // Per-agent model preference by kind (for tier simulation on the dashboard).

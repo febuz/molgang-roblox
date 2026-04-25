@@ -29,6 +29,7 @@ export const AGENT_META: AgentMeta[] = [
   { name: 'VideoProducer', role: 'Video Producer',                   avatar: '🎬', color: '#d946ef', kind: 'resource',   models: ['gemma-4-26b', 'phi-4'] },
   { name: 'Vice',          role: 'Open-World Design Expert',         avatar: '🌆', color: '#e11d48', kind: 'specialist', models: ['gemma-4-26b', 'qwen3.5-27b'] },
   { name: 'Atlas',         role: 'Simulation / AR / VR / CAD Realism', avatar: '🥽', color: '#0ea5e9', kind: 'specialist', models: ['devstral', 'deepseek-r1'] },
+  { name: 'Kimi',          role: 'Long-Context Researcher',          avatar: '🌙', color: '#7c3aed', kind: 'specialist', models: ['kimi', 'moonshot', 'gemma-4-26b', 'qwen3.5-27b'] },
 ];
 
 /** Canonical list of agent names — use this everywhere you need to iterate. */
