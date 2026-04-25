@@ -78,6 +78,74 @@ export class InferenceAudit {
     }
   }
 
+  /**
+   * Roll the audit log up by caller and by model over a time window.
+   * Window is in seconds; null = all time.
+   * Returns counts, total tokens, avg latency, last-seen ts, error rate.
+   */
+  async stats(opts: { windowSec?: number | null } = {}): Promise<{
+    window: string;
+    by_caller: Record<string, any>;
+    by_model: Record<string, any>;
+    total: any;
+  }> {
+    const cutoff = opts.windowSec == null ? 0 : Date.now() - opts.windowSec * 1000;
+    let raw = '';
+    try { raw = await fs.readFile(AUDIT_PATH, 'utf8'); }
+    catch (e: any) { if (e.code === 'ENOENT') return this.emptyStats(opts.windowSec); throw e; }
+
+    type Bucket = { calls: number; tokens_in: number; tokens_out: number; latency_sum: number; errors: number; last_seen: string };
+    const make = (): Bucket => ({ calls: 0, tokens_in: 0, tokens_out: 0, latency_sum: 0, errors: 0, last_seen: '' });
+    const byCaller: Record<string, Bucket> = {};
+    const byModel:  Record<string, Bucket> = {};
+    const total = make();
+
+    for (const line of raw.split('\n')) {
+      if (!line.trim()) continue;
+      let ev: InferenceEvent;
+      try { ev = JSON.parse(line); } catch { continue; }
+      if (cutoff && new Date(ev.ts).getTime() < cutoff) continue;
+      const update = (b: Bucket) => {
+        b.calls += 1;
+        b.tokens_in  += ev.tokens_prompt || 0;
+        b.tokens_out += ev.tokens_completion || 0;
+        b.latency_sum += ev.latency_ms || 0;
+        if (!ev.success) b.errors += 1;
+        if (ev.ts > b.last_seen) b.last_seen = ev.ts;
+      };
+      byCaller[ev.caller] ||= make();
+      byModel[ev.model]   ||= make();
+      update(byCaller[ev.caller]);
+      update(byModel[ev.model]);
+      update(total);
+    }
+    const finalize = (b: Bucket) => ({
+      calls: b.calls,
+      tokens_in: b.tokens_in,
+      tokens_out: b.tokens_out,
+      tokens_total: b.tokens_in + b.tokens_out,
+      avg_latency_ms: b.calls ? Math.round(b.latency_sum / b.calls) : 0,
+      error_rate: b.calls ? b.errors / b.calls : 0,
+      last_seen: b.last_seen,
+    });
+    const win = opts.windowSec == null ? 'all' : `${opts.windowSec}s`;
+    return {
+      window: win,
+      by_caller: Object.fromEntries(Object.entries(byCaller).map(([k, v]) => [k, finalize(v)])),
+      by_model:  Object.fromEntries(Object.entries(byModel).map(([k, v]) => [k, finalize(v)])),
+      total: finalize(total),
+    };
+  }
+
+  private emptyStats(windowSec: number | null | undefined) {
+    return {
+      window: windowSec == null ? 'all' : `${windowSec}s`,
+      by_caller: {},
+      by_model: {},
+      total: { calls: 0, tokens_in: 0, tokens_out: 0, tokens_total: 0, avg_latency_ms: 0, error_rate: 0, last_seen: '' },
+    };
+  }
+
   static hashPrompt(prompt: string): string {
     return crypto.createHash('sha256').update(prompt).digest('hex').slice(0, 16);
   }

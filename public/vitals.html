@@ -69,6 +69,14 @@
       <h2>Self-repair log (latest 8)</h2>
       <table id="repair"><thead><tr><th>ts</th><th>rule</th><th>sev</th><th>action</th></tr></thead><tbody></tbody></table>
     </div>
+    <div class="card">
+      <h2>Top callers (last 1h, by tokens)</h2>
+      <table id="callers"><thead><tr><th>caller</th><th class="num">calls</th><th class="num">tok in/out</th><th class="num">avg ms</th><th class="num">err</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Per-model usage (last 1h)</h2>
+      <table id="models"><thead><tr><th>model</th><th class="num">calls</th><th class="num">tok in/out</th><th class="num">avg ms</th><th class="num">err</th></tr></thead><tbody></tbody></table>
+    </div>
     <div class="card" style="grid-column: span 2">
       <h2>History (avg util / max VRAM / top agent-time)</h2>
       <table id="history"><thead><tr><th>window</th><th class="num">n</th><th class="num">gpu0 avg/p95/max</th><th class="num">gpu1 avg/p95/max</th><th class="num">vram avg/max</th><th>top agents (MiB·ticks)</th></tr></thead><tbody></tbody></table>
@@ -172,6 +180,16 @@ async function refresh() {
     document.getElementById('repair').querySelector('tbody').innerHTML = (rep.events || []).slice().reverse().map(e =>
       `<tr><td class="muted">${e.ts.slice(11,19)}</td><td>${e.rule}</td><td>${e.severity}</td><td>${e.action}</td></tr>`
     ).join('') || '<tr><td colspan="4" class="muted">no repairs</td></tr>';
+
+    // Inference stats by caller + model (last 1h)
+    const stats = await getJSON('/api/vitals/inference-stats?window=3600');
+    const sortByTokens = (obj) => Object.entries(obj || {}).sort(([,a],[,b]) => b.tokens_total - a.tokens_total).slice(0, 8);
+    document.getElementById('callers').querySelector('tbody').innerHTML = sortByTokens(stats.by_caller).map(([k, v]) =>
+      `<tr><td>${k}</td><td class="num">${v.calls}</td><td class="num">${v.tokens_in}/${v.tokens_out}</td><td class="num">${v.avg_latency_ms}</td><td class="num">${(v.error_rate*100).toFixed(0)}%</td></tr>`
+    ).join('') || '<tr><td colspan="5" class="muted">no calls in window</td></tr>';
+    document.getElementById('models').querySelector('tbody').innerHTML = sortByTokens(stats.by_model).map(([k, v]) =>
+      `<tr><td>${k}</td><td class="num">${v.calls}</td><td class="num">${v.tokens_in}/${v.tokens_out}</td><td class="num">${v.avg_latency_ms}</td><td class="num">${(v.error_rate*100).toFixed(0)}%</td></tr>`
+    ).join('') || '<tr><td colspan="5" class="muted">no calls in window</td></tr>';
 
     // History
     const hist = await getJSON('/api/vitals/history?windows=1m:60,5m:300,15m:900,1h:3600,24h:86400,all:all');

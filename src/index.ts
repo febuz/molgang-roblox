@@ -2240,6 +2240,17 @@ function setupVitalsRoutes(app: express.Express, vitals: VitalsService, audit?: 
         res.status(500).json({ success: false, error: e.message });
       }
     });
+
+    app.get('/api/vitals/inference-stats', async (req, res) => {
+      try {
+        const w = req.query.window;
+        const windowSec = (w == null || w === 'all') ? null : Number(w);
+        const out = await audit.stats({ windowSec });
+        res.json({ success: true, ...out });
+      } catch (e: any) {
+        res.status(500).json({ success: false, error: e.message });
+      }
+    });
   }
 
   if (repair) {
