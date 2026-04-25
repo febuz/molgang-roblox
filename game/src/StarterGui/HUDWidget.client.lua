@@ -320,12 +320,32 @@ local function countKeys(t)
 	return n
 end
 
+local lastCoinValue = 0
+
 local function refreshHUD()
 	if not playerData then return end
 
-	-- MolCoins
+	-- MolCoins with pulse animation on change
 	local coins = playerData.molCoins or 0
 	molcoinsLabel.Text = tostring(coins) .. " MolCoins"
+
+	if coins ~= lastCoinValue and lastCoinValue > 0 then
+		-- Pulse green on gain, red on spend
+		local gained = coins > lastCoinValue
+		molcoinsLabel.TextColor3 = gained and Color3.fromRGB(0, 255, 130) or Color3.fromRGB(255, 100, 80)
+		TweenService:Create(molcoinsLabel, TweenInfo.new(0.15), {
+			TextSize = 22,
+		}):Play()
+		task.delay(0.15, function()
+			TweenService:Create(molcoinsLabel, TweenInfo.new(0.3), {
+				TextSize = 18,
+			}):Play()
+			TweenService:Create(molcoinsLabel, TweenInfo.new(0.5), {
+				TextColor3 = COLORS.gold,
+			}):Play()
+		end)
+	end
+	lastCoinValue = coins
 
 	-- Day
 	dayLabel.Text = "Day " .. (playerData.day or 1)

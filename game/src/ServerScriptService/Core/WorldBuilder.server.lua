@@ -43,6 +43,15 @@ local CONFIG = {
 	STEAM_WHITE     = Color3.fromRGB(220, 225, 230),
 	PURPLE_MIST     = Color3.fromRGB(120, 60, 200),
 
+	-- Realistic industrial materials
+	RUST_ORANGE     = Color3.fromRGB(150, 80, 40),    -- weathered steel
+	CONCRETE_GREY   = Color3.fromRGB(140, 138, 132),  -- concrete pads
+	SAFETY_YELLOW   = Color3.fromRGB(255, 200, 0),    -- safety markings
+	PIPE_SILVER     = Color3.fromRGB(170, 175, 180),   -- stainless piping
+	CAUTION_RED     = Color3.fromRGB(200, 40, 40),     -- danger zones
+	WATER_BLUE      = Color3.fromRGB(60, 120, 180),    -- cooling water
+	ACID_GREEN      = Color3.fromRGB(140, 200, 60),    -- acid indicators
+
 	-- Element group colors for Periodic Table Biome
 	ALKALI_RED       = Color3.fromRGB(200, 60, 60),
 	NOBLE_PURPLE     = Color3.fromRGB(140, 80, 200),
@@ -368,16 +377,17 @@ end
 --------------------------------------------------------------------------------
 
 local function setupLighting()
-	-- Base lighting — deep space with bioluminescent glow
-	Lighting.Ambient = Color3.fromRGB(25, 40, 35)
-	Lighting.OutdoorAmbient = Color3.fromRGB(15, 25, 22)
-	Lighting.Brightness = 0.15
-	Lighting.ClockTime = 0           -- midnight for space look
+	-- Base lighting — industrial twilight with warm neon accents
+	Lighting.Ambient = Color3.fromRGB(30, 35, 45)        -- cool blue-grey ambient
+	Lighting.OutdoorAmbient = Color3.fromRGB(20, 28, 35)  -- darker outdoors
+	Lighting.Brightness = 0.2                              -- slightly brighter base
+	Lighting.ClockTime = 5.5                               -- dawn twilight (realistic)
 	Lighting.GlobalShadows = true
 	Lighting.Technology = Enum.Technology.Future
-	Lighting.EnvironmentDiffuseScale = 0.3
-	Lighting.EnvironmentSpecularScale = 0.2
-	Lighting.ExposureCompensation = 0.3  -- slightly brighter neons
+	Lighting.EnvironmentDiffuseScale = 0.35                -- more environment reflection
+	Lighting.EnvironmentSpecularScale = 0.25               -- specular on wet/metal surfaces
+	Lighting.ExposureCompensation = 0.25                   -- balanced exposure
+	Lighting.GeographicLatitude = 52.37                    -- IJmuiden, Netherlands latitude
 
 	-- Remove existing post-processing to prevent duplicates
 	for _, child in Lighting:GetChildren() do
@@ -388,38 +398,44 @@ local function setupLighting()
 		end
 	end
 
-	-- Atmosphere — subtle space haze, not too dense (lets stars through)
+	-- Atmosphere — industrial haze with warm tint near factories
 	local atmosphere = Instance.new("Atmosphere")
-	atmosphere.Density = 0.15        -- lighter than before
-	atmosphere.Color = Color3.fromRGB(120, 180, 220)
-	atmosphere.Decay = Color3.fromRGB(20, 40, 35)
-	atmosphere.Glare = 0.05
-	atmosphere.Haze = 0.5            -- much less haze so stars are visible
-	atmosphere.Offset = 0.25
+	atmosphere.Density = 0.2          -- slightly denser for industrial feel
+	atmosphere.Color = Color3.fromRGB(140, 160, 200)  -- blue-grey industrial haze
+	atmosphere.Decay = Color3.fromRGB(30, 45, 40)     -- warm decay at distance
+	atmosphere.Glare = 0.08           -- slight glare from neon lights
+	atmosphere.Haze = 0.4             -- less haze, more clarity
+	atmosphere.Offset = 0.3           -- atmosphere starts a bit higher
 	atmosphere.Parent = Lighting
 
-	-- Bloom — neon materials glow beautifully
+	-- Bloom — refined glow for neon + molten metal
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 1.8            -- stronger for sci-fi feel
-	bloom.Size = 30                  -- wider bloom radius
-	bloom.Threshold = 0.75           -- catch more neon
+	bloom.Intensity = 1.4             -- toned down from 1.8 (was too blurry)
+	bloom.Size = 24                   -- tighter bloom
+	bloom.Threshold = 0.8             -- only brightest neons bloom
 	bloom.Parent = Lighting
 
-	-- Color Correction — vibrant sci-fi color grading
+	-- Color Correction — cinematic industrial color grading
 	local colorCorrection = Instance.new("ColorCorrectionEffect")
-	colorCorrection.Contrast = 0.2
-	colorCorrection.Saturation = 0.35
-	colorCorrection.Brightness = 0.03
-	colorCorrection.TintColor = Color3.fromRGB(235, 242, 255)  -- cool blue-white
+	colorCorrection.Contrast = 0.15   -- slightly lower contrast for detail
+	colorCorrection.Saturation = 0.25 -- reduced from 0.35 (was too vivid/cartoony)
+	colorCorrection.Brightness = 0.02
+	colorCorrection.TintColor = Color3.fromRGB(240, 238, 250)  -- neutral warm-white
 	colorCorrection.Parent = Lighting
 
-	-- Depth of Field — subtle background blur for depth
+	-- Depth of Field — cinematic focus
 	local dof = Instance.new("DepthOfFieldEffect")
-	dof.FarIntensity = 0.1
-	dof.FocusDistance = 100
-	dof.InFocusRadius = 200
-	dof.NearIntensity = 0
+	dof.FarIntensity = 0.15           -- slightly more blur in far background
+	dof.FocusDistance = 80             -- focus closer to player
+	dof.InFocusRadius = 150           -- tighter focus band
+	dof.NearIntensity = 0.02          -- very subtle near blur
 	dof.Parent = Lighting
+
+	-- Sun Rays — volumetric light from industrial lights
+	local sunRays = Instance.new("SunRaysEffect")
+	sunRays.Intensity = 0.03          -- very subtle, just from bright neons
+	sunRays.Spread = 0.8
+	sunRays.Parent = Lighting
 
 	-- Sky — deep starfield
 	local sky = Instance.new("Sky")
@@ -435,18 +451,43 @@ local function setupLighting()
 	sky.SunAngularSize = 4        -- tiny distant sun
 	sky.Parent = Lighting
 
-	-- Subtle day/night cycle (#46) — very slow rotation for atmosphere
+	-- Realistic day/night cycle — industrial twilight atmosphere
 	task.spawn(function()
 		while true do
-			Lighting.ClockTime = Lighting.ClockTime + 0.002  -- ~1 game day per 2 hours
+			Lighting.ClockTime = Lighting.ClockTime + 0.003
 			if Lighting.ClockTime >= 24 then Lighting.ClockTime = 0 end
-			-- Keep it mostly dark (space theme) by capping brightness
-			if Lighting.ClockTime > 5 and Lighting.ClockTime < 19 then
-				Lighting.Brightness = 0.25  -- slightly brighter during "day"
+
+			local hour = Lighting.ClockTime
+			-- Realistic brightness curve
+			if hour >= 6 and hour < 8 then
+				-- Sunrise: warm golden hour
+				local t = (hour - 6) / 2
+				Lighting.Brightness = 0.2 + t * 0.5
+				Lighting.OutdoorAmbient = Color3.fromRGB(
+					20 + math.floor(t * 40),
+					28 + math.floor(t * 30),
+					35 + math.floor(t * 15)
+				)
+			elseif hour >= 8 and hour < 17 then
+				-- Daytime: bright industrial
+				Lighting.Brightness = 0.7
+				Lighting.OutdoorAmbient = Color3.fromRGB(60, 58, 50)
+			elseif hour >= 17 and hour < 19 then
+				-- Sunset: orange industrial glow
+				local t = (hour - 17) / 2
+				Lighting.Brightness = 0.7 - t * 0.5
+				Lighting.OutdoorAmbient = Color3.fromRGB(
+					60 - math.floor(t * 40),
+					58 - math.floor(t * 30),
+					50 - math.floor(t * 15)
+				)
 			else
-				Lighting.Brightness = 0.15  -- darker during "night"
+				-- Night: factory lights dominate
+				Lighting.Brightness = 0.2
+				Lighting.OutdoorAmbient = Color3.fromRGB(20, 28, 35)
 			end
-			task.wait(5)
+
+			task.wait(4)
 		end
 	end)
 
@@ -1444,6 +1485,76 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		GlowColor = Color3.fromRGB(200, 100, 40),
 	})
 	tagZone(industrialPlatform, "West")
+
+	-- ================================================================
+	-- INDUSTRIAL DETAILS — Safety markings, concrete, pipe runs
+	-- ================================================================
+
+	-- Safety lane markings (yellow stripes on factory floor)
+	for lane = -3, 3 do
+		createPart(zone, {
+			Name = "SafetyLane_" .. lane,
+			Size = Vector3.new(280, 0.1, 1.5),
+			Position = Vector3.new(-2000, 9.1, lane * 25),
+			Color = CONFIG.SAFETY_YELLOW,
+			Material = Enum.Material.Neon,
+			Transparency = 0.5,
+			CanCollide = false,
+		})
+	end
+
+	-- Concrete barriers at zone edges
+	for _, bx in ipairs({-2150, -1850}) do
+		createPart(zone, {
+			Name = "ConcreteBarrier",
+			Size = Vector3.new(4, 3, 200),
+			Position = Vector3.new(bx, 10.5, 0),
+			Color = CONFIG.CONCRETE_GREY,
+			Material = Enum.Material.Concrete,
+		})
+		-- Yellow warning stripe on barrier
+		createPart(zone, {
+			Name = "BarrierStripe",
+			Size = Vector3.new(4.1, 0.5, 200),
+			Position = Vector3.new(bx, 11.5, 0),
+			Color = CONFIG.SAFETY_YELLOW,
+			Material = Enum.Material.SmoothPlastic,
+			CanCollide = false,
+		})
+	end
+
+	-- Overhead pipe rack (industrial piping between buildings)
+	for pipeRow = 1, 4 do
+		createCylinder(zone, {
+			Name = "PipeRack_" .. pipeRow,
+			Size = Vector3.new(260, 1.2, 1.2),
+			Position = Vector3.new(-2000, 45 + pipeRow * 3, -70),
+			Color = CONFIG.PIPE_SILVER,
+			Material = Enum.Material.Metal,
+			Orientation = Vector3.new(0, 90, 0),
+		})
+	end
+
+	-- Pipe rack supports (H-beam columns)
+	for _, sx in ipairs({-2120, -2040, -1960, -1880}) do
+		createPart(zone, {
+			Name = "PipeSupport",
+			Size = Vector3.new(3, 40, 3),
+			Position = Vector3.new(sx, 29, -70),
+			Color = CONFIG.RUST_ORANGE,
+			Material = Enum.Material.CorrodedMetal,
+		})
+	end
+
+	-- Cooling water canal (blue strip)
+	createPart(zone, {
+		Name = "CoolingCanal",
+		Size = Vector3.new(260, 2, 6),
+		Position = Vector3.new(-2000, 8, 80),
+		Color = CONFIG.WATER_BLUE,
+		Material = Enum.Material.Glass,
+		Transparency = 0.3,
+	})
 
 	-- ================================================================
 	-- Building 1: Slak Invoer (BOF Slag Hopper)
