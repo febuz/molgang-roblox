@@ -1,16 +1,16 @@
 --[[
-	SuperheroCombat.server.lua
-	MOLGANG — Superhero Combat System (ability effects + hit detection)
+	IncidentResponse.server.lua (was SuperheroCombat)
+	MOLGANG — HSE Incident Response System (containment + resolution)
 
-	Manages hero selection, mission instances, villain AI,
-	ability cooldowns, damage calculation, and rewards.
+	Manages HSE role selection, incident scenarios, hazard spawning,
+	response action cooldowns, containment progress, and rewards.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
-local SuperheroTrack = require(ReplicatedStorage.Modules.SuperheroTrack)
+local SafetyTrack = require(ReplicatedStorage.Modules.SuperheroTrack) -- module file kept, content is SafetyTrack
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 local playerHeroes = {}    -- {userId = heroId}
@@ -22,7 +22,7 @@ local activeMissions = {}  -- {userId = missionState}
 
 Remotes.RequestSelectHero.OnServerEvent:Connect(function(player, heroId)
 	local userId = player.UserId
-	local hero = SuperheroTrack.GetHero(heroId)
+	local hero = SafetyTrack.GetHero(heroId)
 	if not hero then return end
 
 	-- Check unlock requirement
@@ -129,11 +129,11 @@ Remotes.RequestStartMission.OnServerEvent:Connect(function(player, missionId)
 		return
 	end
 
-	local mission = SuperheroTrack.GetMission(missionId)
+	local mission = SafetyTrack.GetMission(missionId)
 	if not mission then return end
 
 	local villainData = nil
-	for _, v in ipairs(SuperheroTrack.Villains) do
+	for _, v in ipairs(SafetyTrack.Villains) do
 		if v.id == mission.villain then villainData = v; break end
 	end
 	if not villainData then return end
@@ -222,7 +222,7 @@ Remotes.RequestStartMission.OnServerEvent:Connect(function(player, missionId)
 		end
 	end)
 
-	print("[Superhero]", player.Name, "started mission:", mission.name, "as", heroId)
+	print("[HSE]", player.Name, "responding to:", mission.name, "as", heroId)
 end)
 
 -- ═══════════════════════════════════════════════
@@ -236,7 +236,7 @@ Remotes.RequestUseAbility.OnServerEvent:Connect(function(player, abilityIndex)
 
 	if type(abilityIndex) ~= "number" or abilityIndex < 1 or abilityIndex > 3 then return end
 
-	local hero = SuperheroTrack.GetHero(mission.heroId)
+	local hero = SafetyTrack.GetHero(mission.heroId)
 	if not hero then return end
 
 	local ability = hero.abilities[abilityIndex]
@@ -315,7 +315,7 @@ function completeMission(player, userId, victory)
 	local mission = activeMissions[userId]
 	if not mission then return end
 
-	local missionData = SuperheroTrack.GetMission(mission.missionId)
+	local missionData = SafetyTrack.GetMission(mission.missionId)
 	local reward = victory and (missionData and missionData.reward or 0) or 0
 	local elapsed = tick() - mission.startTime
 
@@ -396,4 +396,4 @@ Players.PlayerRemoving:Connect(function(player)
 	playerHeroes[userId] = nil
 end)
 
-print("[MOLGANG] SuperheroCombat initialized — hero abilities + villain AI")
+print("[MOLGANG] IncidentResponse initialized — HSE roles + emergency scenarios")

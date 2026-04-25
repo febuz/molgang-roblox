@@ -1,121 +1,121 @@
 --[[
-	SuperheroTrack.lua
-	MOLGANG — Superhero Adventure Track (#82)
+	SafetyTrack.lua (was SuperheroTrack.lua)
+	MOLGANG — Safety & Emergency Response Track
 
-	Tertiary game track: Players become element-themed superheroes
-	and defend Moleculia from chemical villains.
+	Realistic game track: Players train as HSE (Health, Safety, Environment)
+	officers and respond to real chemical plant incidents.
 
-	Each superhero has abilities based on their element's properties.
-	Missions involve using chemistry knowledge to defeat villains.
+	Each role specializes in different hazard types.
+	Missions involve using chemistry knowledge to contain incidents.
 ]]
 
-local SuperheroTrack = {}
+local SafetyTrack = {}
 
--- Superhero identities (unlocked by collecting specific elements)
-SuperheroTrack.Heroes = {
+-- HSE Roles (realistic plant positions)
+SafetyTrack.Heroes = {
 	{
-		id = "hydrogen_man",
-		name = "Hydrogen Man",
-		element = "H",
-		unlockAtoms = 50,
-		abilities = {
-			{name = "Fusion Blast", description = "Channel hydrogen fusion for massive energy", damage = 100, cooldown = 10},
-			{name = "H2 Shield", description = "Create protective H2 bubble", shield = 50, cooldown = 15},
-			{name = "Acid Rain", description = "Lower pH in target area", areaEffect = true, cooldown = 20},
-		},
-		color = Color3.fromRGB(255, 200, 200),
-		description = "The lightest hero with the biggest punch. Hydrogen fusion powers your attacks!",
-	},
-	{
-		id = "iron_guardian",
-		name = "Iron Guardian",
+		id = "process_engineer",
+		name = "Process Engineer",
 		element = "Fe",
 		unlockAtoms = 30,
 		abilities = {
-			{name = "Magnetic Shield", description = "Ferromagnetic barrier blocks all attacks", shield = 100, cooldown = 12},
-			{name = "Iron Fist", description = "Heavy melee attack with iron strength", damage = 80, cooldown = 5},
-			{name = "Rust Storm", description = "Oxidize enemies, slowing them 50%", debuff = "slow", cooldown = 25},
+			{name = "Emergency Shutdown", description = "Initiate ESD on runaway reactor", damage = 100, cooldown = 10},
+			{name = "Pressure Relief", description = "Open safety valve to prevent BLEVE", shield = 50, cooldown = 15},
+			{name = "Neutralization", description = "Add base to acid spill (or vice versa)", areaEffect = true, cooldown = 20},
 		},
-		color = Color3.fromRGB(180, 60, 40),
-		description = "Defender of Moleculia. Magnetic powers and iron resolve.",
+		color = Color3.fromRGB(0, 100, 200),
+		description = "Controls process parameters. First responder for chemical runaways and pressure events.",
 	},
 	{
-		id = "gold_phoenix",
-		name = "Gold Phoenix",
-		element = "Au",
-		unlockAtoms = 5,
+		id = "safety_officer",
+		name = "HSE Officer",
+		element = "O",
+		unlockAtoms = 20,
 		abilities = {
-			{name = "Noble Strike", description = "Unreactive noble metal pierces all defenses", damage = 150, cooldown = 15},
-			{name = "Golden Aura", description = "Resist all chemical attacks", immunity = true, cooldown = 30},
-			{name = "Catalyst", description = "Boost nearby heroes' abilities by 50%", teamBuff = true, cooldown = 20},
+			{name = "Evacuation Order", description = "Clear personnel from hazard zone", shield = 100, cooldown = 12},
+			{name = "SCBA Deploy", description = "Self-Contained Breathing Apparatus for toxic exposure", damage = 80, cooldown = 5},
+			{name = "Containment Berm", description = "Deploy spill containment around leak", debuff = "slow", cooldown = 25},
 		},
-		color = Color3.fromRGB(255, 215, 0),
-		description = "Rare and powerful. Gold's noble properties make you nearly invincible.",
+		color = Color3.fromRGB(255, 200, 0),
+		description = "Manages safety protocols. Expert in evacuation, PPE, and regulatory compliance.",
 	},
 	{
-		id = "vanadium_knight",
-		name = "Vanadium Knight",
+		id = "environmental_tech",
+		name = "Environmental Technician",
+		element = "Ca",
+		unlockAtoms = 15,
+		abilities = {
+			{name = "pH Adjustment", description = "Lime dosing to neutralize acidic wastewater", damage = 150, cooldown = 15},
+			{name = "Absorbent Deploy", description = "Apply oil-sorb to chemical spill", immunity = true, cooldown = 30},
+			{name = "Air Monitoring", description = "Deploy gas detectors in affected area", teamBuff = true, cooldown = 20},
+		},
+		color = Color3.fromRGB(0, 180, 80),
+		description = "Handles environmental compliance. Specialist in wastewater treatment and emissions.",
+	},
+	{
+		id = "maintenance_lead",
+		name = "Maintenance Lead",
 		element = "V",
 		unlockAtoms = 10,
 		abilities = {
-			{name = "Pentoxide Beam", description = "Channel V2O5 for a devastating beam", damage = 120, cooldown = 8},
-			{name = "Slag Armor", description = "BOF slag coating absorbs damage", shield = 75, cooldown = 10},
-			{name = "Redox Shift", description = "Change oxidation state to adapt attacks", transform = true, cooldown = 15},
+			{name = "Valve Isolation", description = "Close block valves to isolate leaking section", damage = 120, cooldown = 8},
+			{name = "Temporary Repair", description = "Clamp or patch leaking pipe/vessel", shield = 75, cooldown = 10},
+			{name = "Hot Work Permit", description = "Authorize emergency welding with gas-free certificate", transform = true, cooldown = 15},
 		},
-		color = Color3.fromRGB(100, 200, 255),
-		description = "MOLGANG's signature hero. Master of oxidation states and slag chemistry.",
+		color = Color3.fromRGB(200, 100, 50),
+		description = "Mechanical expert. Isolates equipment, performs emergency repairs under pressure.",
 	},
 }
 
--- Villains (chemistry-themed antagonists)
-SuperheroTrack.Villains = {
-	{id = "acid_lord", name = "Acid Lord", element = "HF",
-		description = "Wields hydrofluoric acid. Dissolves everything!",
-		health = 500, attack = 40, weakness = "base"},
-	{id = "toxic_cloud", name = "Toxic Cloud", element = "Cl2",
-		description = "Chlorine gas menace. Area damage over time.",
-		health = 300, attack = 25, weakness = "reduction"},
-	{id = "heavy_metal", name = "Heavy Metal", element = "Pb",
-		description = "Lead contamination villain. Slow but devastating.",
-		health = 800, attack = 60, weakness = "chelation"},
-	{id = "radioactive", name = "Radioactive Rex", element = "U",
-		description = "Uranium-powered villain. Final boss material.",
+-- Incident types (realistic chemical plant emergencies)
+SafetyTrack.Villains = {
+	{id = "acid_spill", name = "H2SO4 Acid Spill", element = "H2SO4",
+		description = "Sulfuric acid tank leak. Corrosive liquid spreading. pH dropping fast.",
+		health = 500, attack = 40, weakness = "neutralization"},
+	{id = "toxic_release", name = "Chlorine Gas Release", element = "Cl2",
+		description = "Chlorine cylinder valve failure. Toxic green cloud forming. Wind direction critical.",
+		health = 300, attack = 25, weakness = "evacuation"},
+	{id = "thermal_runaway", name = "Reactor Thermal Runaway", element = "Exotherm",
+		description = "Exothermic reaction out of control. Temperature rising 5°C/min. BLEVE risk.",
+		health = 800, attack = 60, weakness = "emergency_cooling"},
+	{id = "wastewater_breach", name = "Wastewater Containment Breach", element = "pH",
+		description = "Settling pond overflows after heavy rain. Heavy metals entering waterway.",
 		health = 2000, attack = 100, weakness = "containment"},
 }
 
--- Story missions
-SuperheroTrack.Missions = {
-	{id = "m1", name = "The Chlorine Leak", villain = "toxic_cloud",
-		description = "A chlorine gas leak threatens the Nexus Hub! Neutralize it before it spreads.",
+-- Response missions (realistic scenarios)
+SafetyTrack.Missions = {
+	{id = "m1", name = "Acid Spill in Tank Farm", villain = "acid_spill",
+		description = "A 20% H2SO4 storage tank developed a flange leak. Contain and neutralize before it reaches the storm drain.",
 		reward = 500, difficulty = "easy"},
-	{id = "m2", name = "Acid Rain on the Factory", villain = "acid_lord",
-		description = "Acid Lord attacks the Slakkenspoor factory! Use base chemistry to counter.",
+	{id = "m2", name = "Chlorine Release at Water Treatment", villain = "toxic_release",
+		description = "Chlorine dosing system valve failure. Evacuate downwind, isolate supply, deploy scrubber.",
 		reward = 1000, difficulty = "medium"},
-	{id = "m3", name = "Lead Contamination", villain = "heavy_metal",
-		description = "Heavy Metal is contaminating the mining regions. Use chelation agents!",
+	{id = "m3", name = "Reactor Runaway — Emergency Cooling", villain = "thermal_runaway",
+		description = "Batch reactor exotherm exceeded setpoint. Activate emergency cooling, reduce feed rate, prepare for pressure relief.",
 		reward = 2000, difficulty = "hard"},
-	{id = "m4", name = "Nuclear Meltdown", villain = "radioactive",
-		description = "Radioactive Rex threatens all of Moleculia. Only the strongest heroes can stop him.",
+	{id = "m4", name = "Environmental Crisis — Heavy Metal Discharge", villain = "wastewater_breach",
+		description = "Settling pond #3 overtopped. V, Cr, and Mn detected in river. Regulator notified. Contain at all costs.",
 		reward = 5000, difficulty = "extreme"},
 }
 
-function SuperheroTrack.GetHero(heroId)
-	for _, hero in ipairs(SuperheroTrack.Heroes) do
+function SafetyTrack.GetHero(heroId)
+	for _, hero in ipairs(SafetyTrack.Heroes) do
 		if hero.id == heroId then return hero end
 	end
 	return nil
 end
 
-function SuperheroTrack.CanUnlockHero(hero, playerAtoms)
+function SafetyTrack.CanUnlockHero(hero, playerAtoms)
 	local count = playerAtoms[hero.element] or 0
 	return count >= hero.unlockAtoms
 end
 
-function SuperheroTrack.GetMission(missionId)
-	for _, mission in ipairs(SuperheroTrack.Missions) do
+function SafetyTrack.GetMission(missionId)
+	for _, mission in ipairs(SafetyTrack.Missions) do
 		if mission.id == missionId then return mission end
 	end
 	return nil
 end
 
-return SuperheroTrack
+return SafetyTrack

@@ -1,16 +1,16 @@
 --[[
-	QuantumRacingServer.server.lua
-	MOLGANG — Quantum Racing Server (procedural tunnel + race logic)
+	CommissioningServer.server.lua (was CommissioningServer)
+	MOLGANG — Plant Commissioning Server (procedural checklist course + scoring)
 
-	Generates 3D race tunnels from track data,
-	manages race state, scoring, and rewards.
+	Generates commissioning walkthrough environments,
+	manages commissioning state, checklist completion, and rewards.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
-local QuantumRacing = require(ReplicatedStorage.Modules.QuantumRacing)
+local Commissioning = require(ReplicatedStorage.Modules.QuantumRacing) -- module file kept, content is PlantCommissioning
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 -- Active races
@@ -139,7 +139,7 @@ Remotes.RequestStartRace.OnServerEvent:Connect(function(player, trackId)
 		return
 	end
 
-	local track = QuantumRacing.GetTrack(trackId)
+	local track = Commissioning.GetTrack(trackId)
 	if not track then return end
 
 	-- Check unlock cost
@@ -202,7 +202,7 @@ Remotes.RequestStartRace.OnServerEvent:Connect(function(player, trackId)
 		end
 	end)
 
-	print("[QuantumRacing]", player.Name, "started race:", track.name)
+	print("[Commissioning]", player.Name, "started race:", track.name)
 end)
 
 -- Dot collection (proximity-based)
@@ -228,10 +228,10 @@ function endRace(player, userId, reachedFinish)
 	if not race then return end
 
 	local elapsed = tick() - race.startTime
-	local track = QuantumRacing.GetTrack(race.trackId)
+	local track = Commissioning.GetTrack(race.trackId)
 
-	local score = QuantumRacing.CalculateScore(track, elapsed, race.dotsCollected, race.obstaclesHit)
-	local reward = reachedFinish and QuantumRacing.GetReward(track, score) or 0
+	local score = Commissioning.CalculateScore(track, elapsed, race.dotsCollected, race.obstaclesHit)
+	local reward = reachedFinish and Commissioning.GetReward(track, score) or 0
 
 	if reward > 0 then
 		PlayerDataBridge.AddMolCoins(userId, reward)
@@ -271,7 +271,7 @@ function endRace(player, userId, reachedFinish)
 		rarity = reachedFinish and "epic" or "common",
 	})
 
-	print("[QuantumRacing]", player.Name, "finished race:", reachedFinish, "score:", score)
+	print("[Commissioning]", player.Name, "finished race:", reachedFinish, "score:", score)
 end
 
 -- Finish line detection
@@ -328,4 +328,4 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
-print("[MOLGANG] QuantumRacingServer initialized — procedural tunnel races")
+print("[MOLGANG] CommissioningServer initialized — plant startup procedures")
