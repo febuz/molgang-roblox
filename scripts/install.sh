@@ -56,7 +56,21 @@ docker compose -f deploy/docker-compose.litellm.yml up -d 2>&1 | tail -3 || {
   echo "    docker compose failed — see output above. Continuing without gateway."
 }
 
-# 4. Install systemd user units (only if systemd --user works)
+# 4. Install git post-commit hook so the audit trail keeps growing on every commit.
+echo "==> git post-commit hook"
+HOOK_SRC="$REPO_DIR/scripts/git-hooks/post-commit"
+HOOK_DST="$REPO_DIR/.git/hooks/post-commit"
+if [ -d "$REPO_DIR/.git/hooks" ]; then
+  chmod +x "$HOOK_SRC"
+  if [ -e "$HOOK_DST" ] && [ "$(readlink -f "$HOOK_DST" || echo)" != "$(readlink -f "$HOOK_SRC")" ]; then
+    echo "    note: existing hook at $HOOK_DST — preserving as .pre-virtualpc"
+    mv "$HOOK_DST" "$HOOK_DST.pre-virtualpc"
+  fi
+  ln -sf "$HOOK_SRC" "$HOOK_DST"
+  echo "    linked $HOOK_DST → scripts/git-hooks/post-commit"
+fi
+
+# 5. Install systemd user units (only if systemd --user works)
 if systemctl --user --version >/dev/null 2>&1; then
   echo "==> systemd user units"
   USER_UNITS="$HOME/.config/systemd/user"

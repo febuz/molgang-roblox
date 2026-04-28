@@ -91,6 +91,7 @@ const lmstudio = __importStar(require("./lmstudio"));
 const timeseries_1 = require("./timeseries");
 const credentials = __importStar(require("./credentials"));
 const commercialization = __importStar(require("./commercialization"));
+const commitAudit = __importStar(require("./commit-audit"));
 // Load environment
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
@@ -467,6 +468,43 @@ app.get('/api/commits/hourly', (req, res) => {
 app.get('/api/commits/recent', (req, res) => {
     const limit = parseInt(req.query.limit) || 30;
     res.json({ success: true, commits: commitsTracker.getRecentCommits(limit) });
+});
+// Commit audit trail — every git commit recorded with timestamp, author,
+// agent attribution, and any task-id reference parsed from the subject.
+// Hook source: scripts/git-hooks/post-commit POSTs each commit here so the
+// trail is built going forward without anyone having to remember to log.
+app.post('/api/audit/commit', (req, res) => {
+    const { sha, subject, author, timestamp } = req.body || {};
+    if (!sha || !subject) {
+        res.status(400).json({ success: false, error: 'sha and subject required' });
+        return;
+    }
+    const r = commitAudit.record({ sha, subject, author: author || 'unknown', timestamp, source: 'hook' });
+    if (!r.ok) {
+        // Already-recorded is not a failure for the hook — return 200 so the hook stays quiet.
+        res.json({ success: true, duplicate: true, reason: r.reason });
+        return;
+    }
+    res.json({ success: true, entry: r.entry });
+});
+app.get('/api/audit/commits', (req, res) => {
+    const filter = {};
+    if (req.query.agent)
+        filter.agent = String(req.query.agent);
+    if (req.query.taskRef)
+        filter.taskRef = String(req.query.taskRef);
+    if (req.query.since)
+        filter.sinceTs = String(req.query.since);
+    filter.limit = Math.min(500, parseInt(req.query.limit || '50', 10));
+    res.json({ success: true, entries: commitAudit.list(filter) });
+});
+app.get('/api/audit/summary', (req, res) => {
+    res.json({ success: true, ...commitAudit.summary() });
+});
+// One-shot backfill — useful after first deployment to capture pre-hook history.
+app.post('/api/audit/backfill', (req, res) => {
+    const max = Math.min(5000, Number(req.body?.max || 1000));
+    res.json({ success: true, ...commitAudit.backfillFromGit(max) });
 });
 // Map a task to the GitHub commit(s) that delivered it. Used by the
 // "Completed" view to render a → link badge per completed task.
