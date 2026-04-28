@@ -44,6 +44,8 @@ import setupAuditRoutes from './auth/audit-routes';
 import setupSpecialistRoutes from './auth/specialist-routes';
 import GitHubSync from './automation/github-sync';
 import setupGitHubRoutes from './automation/github-routes';
+import { SecurityDashboard } from './security/securityDashboard';
+import setupSecurityRoutes from './security/security-routes';
 import { activityMonitor } from './terminal-activity-monitor';
 import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
@@ -1045,6 +1047,10 @@ async function initialize() {
         .filter(Boolean),
     });
     setupGitHubRoutes(app, githubSync, authMiddleware);
+
+    // 5g. Security dashboard (CEO composite view of audit + auth signals)
+    const securityDashboard = new SecurityDashboard(authSystem, ceoAuditLogger);
+    setupSecurityRoutes(app, securityDashboard, authMiddleware);
 
     // 5b. Register SPA routes (must be after all API routes!)
     app.get('/', serveSPAFile);
