@@ -42,6 +42,8 @@ import SpecialistDashboards from './auth/specialist-dashboards';
 import setupAuthRoutes from './auth/auth-routes';
 import setupAuditRoutes from './auth/audit-routes';
 import setupSpecialistRoutes from './auth/specialist-routes';
+import GitHubSync from './automation/github-sync';
+import setupGitHubRoutes from './automation/github-routes';
 import { activityMonitor } from './terminal-activity-monitor';
 import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
@@ -142,6 +144,60 @@ app.get('/api/tokens/events', (req, res) => {
   const agent = req.query.agent as string | undefined;
   const limit = parseInt(req.query.limit as string) || 20;
   res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
+});
+
+// GPU symbiosis status — what state the daemon is in (idle / yielded to Blender).
+// The daemon only writes /tmp/gpu-symbiosis-state on a transition, so a fresh
+// daemon that's never had to yield has no state file. Treat that as "idle" if
+// the log has a recent tick; "stale" if the last tick is too old to trust.
+app.get('/api/gpu/symbiosis', (req, res) => {
+  try {
+    const fs = require('fs');
+    const stateFile = fs.existsSync('/tmp/gpu-symbiosis-state')
+      ? fs.readFileSync('/tmp/gpu-symbiosis-state', 'utf8').trim()
+      : '';
+    const disabled = fs.existsSync('/tmp/gpu-symbiosis-disable');
+
+    let lastLog = '';
+    let lastTickAgoS: number | null = null;
+    let blenderMemMb: number | null = null;
+    if (fs.existsSync('/tmp/gpu-symbiosis.log')) {
+      const buf = fs.readFileSync('/tmp/gpu-symbiosis.log', 'utf8');
+      const lines = buf.trim().split('\n');
+      lastLog = lines.slice(-5).join('\n');
+      // Last "blender_gpu_mem=N MiB threshold=M MiB" tick tells us when the
+      // daemon last ran and what it saw.
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const m = lines[i].match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) blender_gpu_mem=(\d+) MiB/);
+        if (m) {
+          lastTickAgoS = Math.max(0, Math.round((Date.now() - new Date(m[1].replace(' ', 'T') + 'Z').getTime()) / 1000));
+          blenderMemMb = parseInt(m[2], 10);
+          break;
+        }
+      }
+    }
+
+    // Resolve effective state for the dashboard.
+    let state: string;
+    if (disabled) state = 'disabled';
+    else if (stateFile.startsWith('yielded')) state = 'yielded';
+    else if (stateFile === 'idle') state = 'idle';
+    else if (lastTickAgoS !== null && lastTickAgoS < 120) state = 'idle'; // daemon ticking, never had to act
+    else if (lastTickAgoS !== null) state = 'stale';
+    else state = 'unknown';
+
+    res.json({
+      success: true,
+      state,
+      disabled,
+      stateFile,
+      lastTickAgoS,
+      blenderMemMb,
+      lastLog,
+    });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // Provider credentials (API keys for Anthropic, OpenAI, Grok, DeepSeek, Kimi/Moonshot, Perplexity, ...)
@@ -976,6 +1032,19 @@ async function initialize() {
     setupAuthRoutes(app, authSystem, authMiddleware);
     setupAuditRoutes(app, ceoAuditLogger, authMiddleware);
     setupSpecialistRoutes(app, specialistDashboards, authMiddleware);
+
+    // 5f. Setup GitHub sync (auto-sync disabled unless GITHUB_SYNC_AUTO=true)
+    const githubSync = new GitHubSync({
+      remoteUrl: process.env.GITHUB_SYNC_REMOTE || '',
+      branch: process.env.GITHUB_SYNC_BRANCH || 'master',
+      autoSync: (process.env.GITHUB_SYNC_AUTO || 'false').toLowerCase() === 'true',
+      syncInterval: parseInt(process.env.GITHUB_SYNC_INTERVAL_MIN || '30'),
+      excludePatterns: (process.env.GITHUB_SYNC_EXCLUDE || '.env,*.key,*.pem,credentials.json')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean),
+    });
+    setupGitHubRoutes(app, githubSync, authMiddleware);
 
     // 5b. Register SPA routes (must be after all API routes!)
     app.get('/', serveSPAFile);
