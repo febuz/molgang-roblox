@@ -1,0 +1,27 @@
+[Unit]
+Description=VirtualPC API + agent system (port 3100)
+After=network.target ollama.service virtualpc-litellm.service
+Wants=ollama.service virtualpc-litellm.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/knight2/virtualpc
+# Route all model calls through LiteLLM gateway
+# (deploy/docker-compose.litellm.yml). Falls back to LM_STUDIO_URL if
+# LITELLM_URL is empty — see src/lmstudio.ts.
+Environment=LITELLM_URL=http://127.0.0.1:4000/v1
+Environment=LITELLM_MASTER_KEY=sk-virtualpc-dev
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=10s
+
+# Logs (append, don't truncate)
+StandardOutput=append:/home/knight2/virtualpc/logs/virtualpc.log
+StandardError=append:/home/knight2/virtualpc/logs/virtualpc.log
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=32768
+
+[Install]
+WantedBy=default.target

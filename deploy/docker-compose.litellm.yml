@@ -18,14 +18,17 @@
 #
 # Or just `source ~/.virtualpc/llm-keys.env`.
 
-version: "3.9"
-
 services:
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: virtualpc-litellm
-    ports:
-      - "127.0.0.1:4000:4000"   # bind to localhost so it's not exposed externally
+    # network_mode: host so the container can reach LM Studio on host
+    # 127.0.0.1:1234 directly. The bridge route doesn't work under
+    # snap-confined Docker — the bridge interface (docker0) stays DOWN
+    # and bridged containers can't reach the host loopback.
+    # Trade-off: `ports:` is ignored in host mode; the litellm proxy binds
+    # 0.0.0.0:4000 directly, so we bind it to 127.0.0.1 via --host below.
+    network_mode: host
     volumes:
       - ./litellm-config.yaml:/app/config.yaml:ro
     environment:
@@ -38,9 +41,7 @@ services:
       PPLX_API_KEY: ${PPLX_API_KEY:-}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"  # allows the container to reach LM Studio on :1234
-    command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "127.0.0.1"]
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:4000/health/liveliness >/dev/null 2>&1 || exit 1"]

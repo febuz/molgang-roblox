@@ -17,27 +17,27 @@ model_list:
   - model_name: phi-4
     litellm_params:
       model: openai/microsoft/phi-4
-      api_base: http://host.docker.internal:1234/v1
+      api_base: http://127.0.0.1:1234/v1
       api_key: lm-studio  # LM Studio ignores the value but the SDK requires one
   - model_name: gemma-4-26b
     litellm_params:
       model: openai/google/gemma-4-26b-a4b
-      api_base: http://host.docker.internal:1234/v1
+      api_base: http://127.0.0.1:1234/v1
       api_key: lm-studio
   - model_name: qwen3.5-27b
     litellm_params:
       model: openai/qwen/qwen3.5-27b
-      api_base: http://host.docker.internal:1234/v1
+      api_base: http://127.0.0.1:1234/v1
       api_key: lm-studio
   - model_name: devstral
     litellm_params:
       model: openai/mistralai/devstral-small-2-2512
-      api_base: http://host.docker.internal:1234/v1
+      api_base: http://127.0.0.1:1234/v1
       api_key: lm-studio
   - model_name: deepseek-r1-local
     litellm_params:
       model: openai/deepseek/deepseek-r1-0528-qwen3-8b
-      api_base: http://host.docker.internal:1234/v1
+      api_base: http://127.0.0.1:1234/v1
       api_key: lm-studio
 
   # ─── Cloud providers (engage when credentials are configured) ────────────
