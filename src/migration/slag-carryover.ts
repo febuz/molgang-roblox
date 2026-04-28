@@ -23,6 +23,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes, createHash } from 'crypto';
 
+// Lazy-required so the module loads even if tesseract.js was never installed
+// (e.g. someone built dist/ without running `npm install`). The submit path
+// degrades to "no extracted_text" rather than crashing.
+let _tesseract: any = null;
+function loadTesseract(): any | null {
+  if (_tesseract) return _tesseract;
+  try { _tesseract = require('tesseract.js'); return _tesseract; }
+  catch { return null; }
+}
+
 const STATE_DIR = process.env.SLAG_STATE_DIR || '/media/knight2/EDS2/virtualpc-state';
 const CLAIMS_FILE = path.join(STATE_DIR, 'slag-claims.json');
 const SCREENSHOT_DIR = path.join(STATE_DIR, 'slag-screenshots');
@@ -46,11 +56,15 @@ export interface SlagClaim {
   reviewed_at?: string;
   review_notes?: string;
   /**
-   * Reserved for future OCR — populated by an enrichment pass once tesseract
-   * lands. Reviewers can already read the value to cross-check the claim
-   * even before the auto-OCR is wired.
+   * OCR-extracted text (full output) and the numeric candidates parsed from
+   * it. Populated asynchronously after submit() returns; reviewers see the
+   * matched/mismatched flag once enrichment finishes.
    */
   extracted_text?: string;
+  extracted_numbers?: number[];
+  /** "match" if claimed_amount appears among extracted_numbers, "mismatch" if numbers were extracted but the claim isn't there, "no_text" if OCR found nothing. */
+  ocr_status?: 'match' | 'mismatch' | 'no_text' | 'pending' | 'failed';
+  ocr_error?: string;
 }
 
 interface ClaimsState {
@@ -145,9 +159,18 @@ export function submit(input: SubmitInput): { ok: true; claim: SlagClaim } | { o
     screenshot_sha256: sha,
     status: 'pending',
     created_at: new Date().toISOString(),
+    ocr_status: 'pending',
   };
   state.claims.push(claim);
   writeState(state);
+
+  // Fire OCR enrichment in the background — submitter doesn't wait for the
+  // multi-second tesseract pass. Errors are written into the claim record,
+  // never throw out of here.
+  enrich(id).catch(err => {
+    process.stderr.write(`slag-carryover enrich(${id}) failed: ${err.message}\n`);
+  });
+
   return { ok: true, claim };
 }
 
@@ -216,6 +239,84 @@ export function summary() {
     per_claim_max: PER_CLAIM_MAX,
     per_user_per_day_max: PER_USER_PER_DAY_MAX,
   };
+}
+
+/**
+ * OCR enrichment — runs tesseract on the screenshot, extracts text + numeric
+ * candidates, and writes them back to the claim record. Async on purpose so
+ * the submit() response isn't blocked by a multi-second OCR pass.
+ *
+ * Status values:
+ *   match     — claimed_amount is one of the numbers tesseract found
+ *   mismatch  — numbers found, but none equal the claim (reviewer should look)
+ *   no_text   — tesseract returned nothing (low-quality image, blank, etc.)
+ *   failed    — tesseract.js not installed or threw mid-recognition
+ *   pending   — set on submit, replaced once enrichment completes
+ */
+export async function enrich(claimId: string): Promise<void> {
+  const state = ensureState();
+  const c = state.claims.find(x => x.id === claimId);
+  if (!c) return;
+
+  const tesseract = loadTesseract();
+  if (!tesseract) {
+    c.ocr_status = 'failed';
+    c.ocr_error = 'tesseract.js not available';
+    writeState(ensureState());
+    return;
+  }
+
+  let text = '';
+  try {
+    if (!fs.existsSync(c.screenshot_path)) {
+      c.ocr_status = 'failed';
+      c.ocr_error = 'screenshot file missing';
+      writeState(ensureState());
+      return;
+    }
+    // tesseract.recognize accepts a path. Default lang 'eng' — Roblox UI is
+    // English, so we don't bundle other language models.
+    const { data } = await tesseract.recognize(c.screenshot_path, 'eng');
+    text = (data?.text || '').trim();
+  } catch (e: any) {
+    // Re-read state — another process may have approved/rejected meanwhile.
+    const fresh = ensureState();
+    const cur = fresh.claims.find(x => x.id === claimId);
+    if (cur) {
+      cur.ocr_status = 'failed';
+      cur.ocr_error = e.message?.slice(0, 200) || 'ocr error';
+      writeState(fresh);
+    }
+    return;
+  }
+
+  // Pull candidate numbers from the text. Roblox often shows formatted counts
+  // like "12,345" or "1.2M" — handle commas; M/K suffixes are best-effort.
+  const numbers: number[] = [];
+  const matches = text.match(/[0-9][0-9,]*(?:\.[0-9]+)?\s*[MmKk]?/g) || [];
+  for (const raw of matches) {
+    const cleaned = raw.replace(/,/g, '').trim();
+    let n = parseFloat(cleaned);
+    if (!Number.isFinite(n)) continue;
+    if (/M$/i.test(cleaned)) n *= 1_000_000;
+    else if (/K$/i.test(cleaned)) n *= 1_000;
+    if (n > 0 && n < 1e10) numbers.push(Math.round(n));
+  }
+  // Dedupe but keep order
+  const seen = new Set<number>();
+  const uniq = numbers.filter(n => seen.has(n) ? false : (seen.add(n), true));
+
+  // Re-read because the claim may have been approved/rejected during OCR.
+  const fresh = ensureState();
+  const cur = fresh.claims.find(x => x.id === claimId);
+  if (!cur) return;
+  cur.extracted_text = text.slice(0, 4000); // cap stored length
+  cur.extracted_numbers = uniq;
+  if (!text) cur.ocr_status = 'no_text';
+  else if (uniq.includes(cur.claimed_amount)) cur.ocr_status = 'match';
+  else cur.ocr_status = 'mismatch';
+  delete cur.ocr_error;
+  writeState(fresh);
 }
 
 /** Read raw bytes of a stored screenshot — used by GET /api/migration/slag/claims/:id/screenshot */
