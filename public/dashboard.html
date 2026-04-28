@@ -559,6 +559,10 @@
                     <div class="nav-icon">🌙</div>
                     <div>Kimi (Research)</div>
                 </div>
+                <div class="nav-item" data-page="croesus">
+                    <div class="nav-icon">💎</div>
+                    <div>Croesus (Commerce)</div>
+                </div>
             </div>
 
             <div class="nav-section">
@@ -1200,10 +1204,10 @@
             try {
                 // Keep this list in sync with dist/public/index.html — both pages
                 // surface the same roster. New agent? Update both files.
-                const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
-                const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽', Kimi: '🌙' };
-                const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Artist', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism', Kimi: 'Long-Context Researcher' };
-                const status = { Fill: 'online', Kai: 'online', Zip: 'online', Mira: 'online', Luna: 'busy', Cleopatra: 'online', Alexander: 'online', MoneyGod: 'online', Analyst: 'online', VideoProducer: 'online', Vice: 'online', Atlas: 'online', Kimi: 'online' };
+                const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi', 'Croesus'];
+                const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽', Kimi: '🌙', Croesus: '💎' };
+                const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Artist', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism', Kimi: 'Long-Context Researcher', Croesus: 'Commercialization Strategist' };
+                const status = { Fill: 'online', Kai: 'online', Zip: 'online', Mira: 'online', Luna: 'busy', Cleopatra: 'online', Alexander: 'online', MoneyGod: 'online', Analyst: 'online', VideoProducer: 'online', Vice: 'online', Atlas: 'online', Kimi: 'online', Croesus: 'online' };
 
                 const container = document.getElementById('team-overview');
                 container.innerHTML = '';

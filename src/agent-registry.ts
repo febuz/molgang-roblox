@@ -30,6 +30,10 @@ export const AGENT_META: AgentMeta[] = [
   { name: 'Vice',          role: 'Open-World Design Expert',         avatar: '🌆', color: '#e11d48', kind: 'specialist', models: ['gemma-4-26b', 'qwen3.5-27b'] },
   { name: 'Atlas',         role: 'Simulation / AR / VR / CAD Realism', avatar: '🥽', color: '#0ea5e9', kind: 'specialist', models: ['devstral', 'deepseek-r1'] },
   { name: 'Kimi',          role: 'Long-Context Researcher',          avatar: '🌙', color: '#7c3aed', kind: 'specialist', models: ['kimi', 'moonshot', 'gemma-4-26b', 'qwen3.5-27b'] },
+  // Commercialization strategist. Files PROPOSALS only — never spends money
+  // directly. See src/commercialization.ts for the budget-bounded approval
+  // queue and the REAL_MONEY=0 default that keeps everything dry-run.
+  { name: 'Croesus',       role: 'Commercialization Strategist',     avatar: '💎', color: '#fde047', kind: 'specialist', models: ['kimi', 'deepseek-r1', 'claude-sonnet'] },
 ];
 
 /** Canonical list of agent names — use this everywhere you need to iterate. */

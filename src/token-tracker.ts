@@ -56,6 +56,7 @@ const AGENT_MODELS: { [agent: string]: string[] } = {
   Vice:          ['phi-4', 'gemma-4-26b'],
   Atlas:         ['devstral', 'deepseek-r1-8b'],
   Kimi:          ['phi-4', 'gemma-4-26b', 'qwen3.5-27b'],  // local fallbacks; routes to Moonshot Kimi when MOONSHOT_API_KEY is set
+  Croesus:       ['phi-4', 'deepseek-r1-8b'],              // local fallbacks; routes to Kimi/DeepSeek for commercial reasoning
 };
 
 // Per-agent model preference by kind (for tier simulation on the dashboard).
@@ -73,7 +74,10 @@ export function recordAgentTokens() {
   for (const agent of agents) {
     // Each agent uses ~1-3 model calls per tick cycle
     const callCount = 1 + Math.floor(Math.random() * 3);
-    const models = AGENT_MODELS[agent];
+    // Defensive default: if a new agent lands in agent-registry before its
+    // model preferences are mapped here, fall back to phi-4 instead of crashing
+    // the whole module on .find().
+    const models = AGENT_MODELS[agent] || ['phi-4'];
 
     for (let i = 0; i < callCount; i++) {
       // 70% chance tier 1 (free), 20% tier 2, 10% tier 3

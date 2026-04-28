@@ -11,6 +11,7 @@
 import logger from './utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
+import { AGENT_NAMES, ROLE_MAP, AVATAR_MAP } from './agent-registry';
 
 interface Subtask {
   name: string;
@@ -271,13 +272,23 @@ const taskPools: { [agent: string]: Array<{ title: string; priority: Task['prior
     { title: 'Long-context monthly board narrative', priority: 'medium', description: 'Read all proposals + artifacts + commits + work logs from a full month and produce a board-ready monthly narrative covering strategy, delivery, risk, opportunity.', estimated_hours: 8, subtasks: ['Monthly corpus assembly', 'Narrative outline', 'Strategy section', 'Delivery section', 'Risk section', 'Opportunity section', 'Cleopatra ratification'] },
     { title: 'Codebase license audit (deep read)', priority: 'medium', description: 'Single-shot read of every dependency declaration + license + integration code to produce a unified license audit. Required before any commercial release.', estimated_hours: 6, subtasks: ['Deps + licenses corpus', 'License compatibility matrix', 'Restrictive flag list', 'Remediation suggestions', 'Cleopatra sign-off'] },
   ],
+  Croesus: [
+    // Commercialization strategist. Files PROPOSALS only via /api/commercialization/propose;
+    // human approval required before any real money. Per-proposal cap $5, daily cap $20,
+    // dry-run by default (PROMO_REAL_MONEY=0).
+    { title: 'Roblox sponsored placement: chemistry educator funnel', priority: 'high', description: 'Identify Roblox education channels with high overlap to MOLGANG demographics. Draft a $5 sponsored-placement proposal targeting science-classroom servers; predict CTR and 7-day retention.', estimated_hours: 4, subtasks: ['Identify candidate channels', 'Audience overlap estimate', 'Draft creative + targeting', 'Predict CTR + retention', 'File proposal via /api/commercialization/propose'] },
+    { title: 'Discord boost ROI model', priority: 'high', description: 'Build a per-server ROI model for Discord Nitro boosts: server age, active member count, MOLGANG mention frequency, conversion rate. Output a ranked list of $1-3 boost candidates.', estimated_hours: 5, subtasks: ['Pull eligible servers', 'Per-server ROI inputs', 'Conversion rate prior', 'Rank candidates', 'File top-3 proposals'] },
+    { title: 'Promotion approval queue UI', priority: 'medium', description: 'Wire the Croesus dashboard tab to /api/commercialization/proposals?status=pending and add approve/reject buttons that post X-Approver. Surface daily spend vs cap inline.', estimated_hours: 4, subtasks: ['List pending proposals', 'Approve/reject buttons', 'X-Approver header from session', 'Daily spend summary', 'Empty-state messaging'] },
+    { title: 'Real-money gate review: PROMO_REAL_MONEY=1 readiness', priority: 'critical', description: 'Before flipping PROMO_REAL_MONEY=1, document the Stripe customer record setup, the Roblox Open Cloud key scope, the audit-log requirements, and Cleopatra\'s sign-off conditions. No spend until this exists.', estimated_hours: 6, subtasks: ['Stripe customer ref design', 'Roblox Open Cloud scope review', 'Audit-log requirements', 'Cleopatra sign-off conditions', 'Document promo-real-money checklist'] },
+    { title: 'Daily promotion-portfolio rebalance', priority: 'medium', description: 'Each morning: review yesterday\'s executed proposals (dryrun + real), measure observed vs predicted ROI, adjust the model, file any new proposals that fit within the day\'s remaining cap.', estimated_hours: 3, subtasks: ['Pull yesterday executed', 'Compute observed vs predicted ROI', 'Adjust ROI prior', 'Identify new candidates', 'File proposals within cap'] },
+  ],
 };
 
 // Track which pool index each agent is at
 // Start at index 10 so the newly-added tasks (from the 2026-04-23 chat backlog:
 // Cleopatra/MoneyGod, GPU symbiosis, RTS factory, agent social profiles, testplay,
 // Gemma chat, 3D equipment alignment, timeseries analysis, etc.) seed first.
-const poolIndex: { [agent: string]: number } = { Fill: 10, Kai: 10, Zip: 10, Mira: 10, Luna: 10, Cleopatra: 0, Alexander: 0, MoneyGod: 0, Analyst: 0, VideoProducer: 0, Vice: 0, Atlas: 0, Kimi: 0 };
+const poolIndex: { [agent: string]: number } = { Fill: 10, Kai: 10, Zip: 10, Mira: 10, Luna: 10, Cleopatra: 0, Alexander: 0, MoneyGod: 0, Analyst: 0, VideoProducer: 0, Vice: 0, Atlas: 0, Kimi: 0, Croesus: 0 };
 let taskIdCounter = 100;
 let sprintCounter = 1;
 
@@ -300,7 +311,31 @@ function randomTickRate(): number {
 
 /** Generate a new task for an agent from their pool */
 function generateTask(agent: string): Task {
+  // Defensive: a new agent registered in agent-registry but not yet wired into
+  // taskPools/poolIndex used to crash the whole module here. Skip-gracefully:
+  // backfill an empty pool entry so the dashboard sees the agent with zero
+  // tasks instead of a 502.
+  if (!taskPools[agent]) taskPools[agent] = [];
+  if (poolIndex[agent] === undefined) poolIndex[agent] = 0;
   const pool = taskPools[agent];
+  if (pool.length === 0) {
+    // Synthesize a placeholder task so the agent shows up. Real pool entries
+    // will be added once their work is defined.
+    return {
+      id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      title: `${agent}: define task pool`,
+      status: 'pending',
+      priority: 'low',
+      description: `Agent ${agent} is registered in agent-registry but has no taskPool entries in task-engine.ts yet. Add at least 5 tasks under taskPools.${agent}.`,
+      sprint: `sprint-${sprintCounter}`,
+      estimated_hours: 1,
+      progress: 0,
+      subtasks: [{ name: 'Add task pool entries', done: false }],
+      assigned_to: agent,
+      _tickRate: 90_000,
+      _lastTick: 0,
+    };
+  }
   const idx = poolIndex[agent] % pool.length;
   poolIndex[agent]++;
 
@@ -412,7 +447,7 @@ function loadState(): boolean {
 }
 
 function seedInitialTasks() {
-  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
+  const agents = AGENT_NAMES;
   for (const agent of agents) {
     // 2 in-progress + 2 pending per agent
     for (let i = 0; i < 4; i++) {
@@ -436,7 +471,7 @@ function seedInitialTasks() {
 // If restored, also ensure every currently-active agent has at least 4 tasks
 // (covers the case where a new agent was added after the state file was saved).
 if (loadState()) {
-  const currentAgents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
+  const currentAgents = AGENT_NAMES;
   for (const agent of currentAgents) {
     const agentTasks = tasks.filter(t => t.assigned_to === agent && (t.status === 'in-progress' || t.status === 'pending'));
     if (agentTasks.length < 4) {
@@ -524,7 +559,7 @@ function updateMilestones() {
 // === TICK ENGINE ===
 export function tickEngine() {
   const now = Date.now();
-  const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
+  const agents = AGENT_NAMES;
 
   for (const agent of agents) {
     const agentTasks = tasks.filter(t => t.assigned_to === agent);
@@ -598,21 +633,11 @@ export function tickEngine() {
 // === PUBLIC API ===
 
 export function getPerPersonBacklog() {
-  const meta: { [key: string]: { role: string; avatar: string } } = {
-    Fill: { role: 'CEO', avatar: '👑' },
-    Kai: { role: 'CTO', avatar: '⚡' },
-    Zip: { role: 'Developer', avatar: '💻' },
-    Mira: { role: 'Creative Director', avatar: '🎨' },
-    Luna: { role: 'Tech Artist', avatar: '✨' },
-    Cleopatra: { role: 'Executive Authority', avatar: '👸' },
-    Alexander: { role: 'Technical Arbiter', avatar: '🗡️' },
-    MoneyGod: { role: 'Economy Authority', avatar: '💰' },
-    Analyst: { role: 'Data Analyst', avatar: '📊' },
-    VideoProducer: { role: 'Video Producer', avatar: '🎬' },
-    Vice: { role: 'Open-World Design Expert', avatar: '🌆' },
-    Atlas: { role: 'Simulation / AR / VR / CAD / Realism', avatar: '🥽' },
-    Kimi: { role: 'Long-Context Researcher', avatar: '🌙' },
-  };
+  // Single source of truth for the roster — when agent-registry adds an
+  // agent, this loop picks them up automatically.
+  const meta: { [key: string]: { role: string; avatar: string } } = Object.fromEntries(
+    AGENT_NAMES.map(name => [name, { role: ROLE_MAP[name] || '', avatar: AVATAR_MAP[name] || '' }])
+  );
 
   const result: { [key: string]: any } = {};
   for (const [name, info] of Object.entries(meta)) {
@@ -1147,10 +1172,19 @@ const agentCommands: { [agent: string]: string[] } = {
     '$ jq -s . tests/testplay/results/*.json | kimi-cli summarize',
     '$ kimi-cli token-budget --month current --vs gemma-4-26b',
   ],
+  Croesus: [
+    '$ curl -sX POST localhost:3100/api/commercialization/propose -H "X-Agent-Id: Croesus" -d @proposal.json',
+    '$ curl -s localhost:3100/api/commercialization/budget | jq',
+    '$ kimi-cli market-research --query "roblox education servers >5k members"',
+    '$ deepseek roi-model --channel discord-boost --target server-id-XXXX',
+    '$ jq -r ".proposals[] | select(.status==\\"executed_dryrun\\") | .id" promotions.json',
+    '$ python tools/promo-attribution.py --window 7d --channel all',
+    '$ test $PROMO_REAL_MONEY = 0 && echo "DRY-RUN MODE — no real money"',
+  ],
 };
 
 const cliSessionLog: { [agent: string]: Array<{ t: number; line: string; level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' }> } = {
-  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [], Cleopatra: [], Alexander: [], MoneyGod: [], Analyst: [], VideoProducer: [], Vice: [], Atlas: [], Kimi: [],
+  Fill: [], Kai: [], Zip: [], Mira: [], Luna: [], Cleopatra: [], Alexander: [], MoneyGod: [], Analyst: [], VideoProducer: [], Vice: [], Atlas: [], Kimi: [], Croesus: [],
 };
 
 function pushCli(agent: string, line: string, level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' = 'out') {
@@ -1225,6 +1259,7 @@ const socialRoster: SocialAgent[] = [
   { name: 'Vice',      handle: '@vice',            role: 'Open-World Design Expert', avatar: '🌆', color: '#e11d48', headline: 'GTA6-caliber density, screenplays',   bio: 'Expert in open-world gameplay, level design, visual direction, cinematic screenplays. Studies GTA, EVE Online, Entropia Universe, Second Life, Roblox. Files task proposals back to developers every week.', specialties: ['Open World', 'Levels', 'Cinematics', 'Research'] },
   { name: 'Atlas',     handle: '@atlas',           role: 'Simulation / AR / VR / CAD / Realism', avatar: '🥽', color: '#0ea5e9', headline: 'The fidelity ceiling', bio: 'Simulator realism, VR locomotion, AR pass-through, FreeCAD audits against industry standards (TEMA, API). Validates chemistry physics against Perry\'s Handbook and Aspen Plus. ±5% or it doesn\'t ship.', specialties: ['VR', 'AR', 'CAD', 'Realism'] },
   { name: 'Kimi',      handle: '@kimi',            role: 'Long-Context Researcher',          avatar: '🌙', color: '#7c3aed', headline: '200K context, single-shot synthesis', bio: 'Reads the entire codebase, every doc, the full Roblox source, and a week of logs in one prompt. Where Analyst slices and Vice researches one topic, Kimi ingests the whole corpus and finds connections nobody else can see. Routes via Moonshot Kimi or local long-context fallback.', specialties: ['Long Context', 'Synthesis', 'Codebase Review', 'Research'] },
+  { name: 'Croesus',   handle: '@croesus-commerce', role: 'Commercialization Strategist',     avatar: '💎', color: '#fde047', headline: 'Profitable promotions only — proposes, never spends', bio: 'Files promotion proposals (Roblox sponsored placements, social ads, Discord boosts) with predicted ROI. Per-proposal cap $5, daily cap $20, dry-run by default. A human approves before any real money flows. Routes via Kimi for market research and DeepSeek-R1 for ROI reasoning.', specialties: ['Commerce', 'ROI Modeling', 'Ad Targeting', 'Roblox Open Cloud'] },
 ];
 
 export function getSocialRoster() {

@@ -632,6 +632,10 @@
                     <div class="nav-icon">🌙</div>
                     <div>Kimi (Research)</div>
                 </div>
+                <div class="nav-item" data-page="croesus">
+                    <div class="nav-icon">💎</div>
+                    <div>Croesus (Commerce)</div>
+                </div>
             </div>
 
             <div class="nav-section">
@@ -2061,10 +2065,10 @@
             const container = document.getElementById('team-overview');
             if (!container) return;
 
-            const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
-            const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽', Kimi: '🌙' };
-            const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism', Kimi: 'Long-Context Researcher' };
-            const colors = { Fill: '#fbbf24', Kai: '#a78bfa', Zip: '#22c55e', Mira: '#ec4899', Luna: '#06b6d4', Cleopatra: '#f97316', Alexander: '#ef4444', MoneyGod: '#10b981', Analyst: '#8b5cf6', VideoProducer: '#d946ef', Vice: '#e11d48', Atlas: '#0ea5e9', Kimi: '#7c3aed' };
+            const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi', 'Croesus'];
+            const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽', Kimi: '🌙', Croesus: '💎' };
+            const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Creative Director', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism', Kimi: 'Long-Context Researcher', Croesus: 'Commercialization Strategist' };
+            const colors = { Fill: '#fbbf24', Kai: '#a78bfa', Zip: '#22c55e', Mira: '#ec4899', Luna: '#06b6d4', Cleopatra: '#f97316', Alexander: '#ef4444', MoneyGod: '#10b981', Analyst: '#8b5cf6', VideoProducer: '#d946ef', Vice: '#e11d48', Atlas: '#0ea5e9', Kimi: '#7c3aed', Croesus: '#fde047' };
 
             // Update the count badge so the user can see the full roster size at a glance.
             const countBadge = document.getElementById('team-count');

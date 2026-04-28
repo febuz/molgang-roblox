@@ -53,6 +53,7 @@ import * as commitsTracker from './commits-tracker';
 import * as lmstudio from './lmstudio';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
+import * as commercialization from './commercialization';
 
 // Load environment
 config();
@@ -164,6 +165,96 @@ app.get('/api/vitals/auto-update', (req, res) => {
   } catch (e: any) {
     res.status(500).json({ success: false, error: e.message });
   }
+});
+
+// Commercialization (Croesus) — propose / approve / execute promotions with
+// hard budget caps. Real-money execution is gated behind PROMO_REAL_MONEY=1
+// and only fires after a human with role ceo|cto|economy approves. See
+// src/commercialization.ts for the guardrails.
+app.post('/api/commercialization/propose', (req, res) => {
+  const sourceAgent = String(req.header('x-agent-id') || req.body?.source_agent || '');
+  // Only Croesus can file proposals from this endpoint — keeps random callers
+  // from spamming the queue. Human-filed proposals go through approve/execute.
+  if (sourceAgent !== 'Croesus') {
+    res.status(403).json({ success: false, error: 'only Croesus may propose; set X-Agent-Id: Croesus' });
+    return;
+  }
+  const result = commercialization.propose({
+    source_agent: 'Croesus',
+    channel: req.body?.channel,
+    budget_usd: Number(req.body?.budget_usd),
+    duration_hours: Number(req.body?.duration_hours || 24),
+    pitch: String(req.body?.pitch || ''),
+    predicted_roi_pct: Number(req.body?.predicted_roi_pct || 0),
+  });
+  if (!result.ok) {
+    res.status(400).json({ success: false, error: result.error });
+    return;
+  }
+  res.json({ success: true, proposal: result.proposal });
+});
+
+app.get('/api/commercialization/proposals', (req, res) => {
+  const status = req.query.status ? (String(req.query.status) as any) : undefined;
+  res.json({ success: true, proposals: commercialization.list({ status }) });
+});
+
+app.get('/api/commercialization/budget', (req, res) => {
+  res.json({ success: true, ...commercialization.budget() });
+});
+
+// Approve / reject / execute — these mutate spend, so they require an
+// authenticated human with one of the privileged roles. AuthMiddleware
+// is wired further down via setupAuthRoutes; until then we accept a
+// development X-Approver header that the dashboard sends along.
+function privilegedActor(req: express.Request): string | null {
+  // TODO: replace with proper authMiddleware.requireRole(['ceo','cto','economy'])
+  // once the routes are reorganized to receive it. For now, trust the header
+  // only when the request is from localhost — same posture as other admin
+  // endpoints in this file.
+  const ip = String(req.ip || '');
+  const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  if (!isLocal) return null;
+  const who = String(req.header('x-approver') || '').trim();
+  return who || null;
+}
+
+app.post('/api/commercialization/:id/approve', (req, res) => {
+  const who = privilegedActor(req);
+  if (!who) {
+    res.status(403).json({ success: false, error: 'approval requires X-Approver header from localhost' });
+    return;
+  }
+  const r = commercialization.approve(req.params.id, who);
+  if (!r.ok) {
+    res.status(400).json({ success: false, error: r.error });
+    return;
+  }
+  res.json({ success: true, proposal: r.proposal });
+});
+
+app.post('/api/commercialization/:id/reject', (req, res) => {
+  const who = privilegedActor(req);
+  if (!who) {
+    res.status(403).json({ success: false, error: 'rejection requires X-Approver header from localhost' });
+    return;
+  }
+  const r = commercialization.reject(req.params.id, who);
+  if (!r.ok) {
+    res.status(400).json({ success: false, error: r.error });
+    return;
+  }
+  res.json({ success: true, proposal: r.proposal });
+});
+
+app.post('/api/commercialization/:id/execute', (req, res) => {
+  const who = privilegedActor(req);
+  if (!who) {
+    res.status(403).json({ success: false, error: 'execute requires X-Approver header from localhost' });
+    return;
+  }
+  const r = commercialization.execute(req.params.id);
+  res.json({ success: r.ok, mode: r.mode, proposal: r.proposal, error: r.error });
 });
 
 // GPU symbiosis status — what state the daemon is in (idle / yielded to Blender).
