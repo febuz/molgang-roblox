@@ -664,6 +664,14 @@
                     <div class="nav-icon">🎓</div>
                     <div>Learning Tracks</div>
                 </div>
+                <div class="nav-item" data-page="migration">
+                    <div class="nav-icon">🪙</div>
+                    <div>Migration</div>
+                </div>
+                <div class="nav-item" data-page="promotions">
+                    <div class="nav-icon">💎</div>
+                    <div>Promotions</div>
+                </div>
                 <div class="nav-item" data-page="credentials">
                     <div class="nav-icon">🔑</div>
                     <div>API Keys</div>
@@ -1053,6 +1061,65 @@
                     <div id="ts-status" style="margin-top:8px;font-size:0.78em;color:var(--text-secondary);"></div>
                 </div>
                 <div id="ts-results"></div>
+            </div>
+
+            <!-- MIGRATION — Roblox→Web slag carry-over claims -->
+            <div class="content-section" id="migration">
+                <div class="page-header">
+                    <div class="page-title">🪙 Roblox → Web migration</div>
+                    <div class="page-subtitle">Slag carry-over claims. OCR runs automatically; reviewer approves once the screenshot looks right.</div>
+                </div>
+                <div class="stats-grid" style="margin-bottom: 16px;">
+                    <div class="stat-card"><div class="stat-label">Pending review</div><div class="stat-value" id="slag-stat-pending">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Approved today</div><div class="stat-value" id="slag-stat-today">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Approved (all time)</div><div class="stat-value" id="slag-stat-total">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Per-user-per-day cap</div><div class="stat-value" id="slag-stat-cap">--</div></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">📋 Claims (newest first)</div>
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                        <select id="slag-filter" onchange="loadMigrationPage()" style="padding:6px 10px;background:rgba(10,14,26,0.6);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;">
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="">All</option>
+                        </select>
+                        <button onclick="loadMigrationPage()" style="padding:6px 12px;background:rgba(30,58,95,0.4);color:var(--primary);border:1px solid var(--primary);border-radius:4px;cursor:pointer;font-size:0.85em;">Refresh</button>
+                        <span id="slag-msg" style="font-size:0.78em;color:var(--text-secondary);"></span>
+                    </div>
+                    <div id="slag-claims-list">Loading…</div>
+                </div>
+            </div>
+
+            <!-- PROMOTIONS — Croesus's commercialization approval queue -->
+            <div class="content-section" id="promotions">
+                <div class="page-header">
+                    <div class="page-title">💎 Promotions (Croesus)</div>
+                    <div class="page-subtitle">Croesus files spend proposals; you approve before any money flows. Real-money mode is gated behind <code>PROMO_REAL_MONEY=1</code>.</div>
+                </div>
+                <div class="stats-grid" style="margin-bottom: 16px;">
+                    <div class="stat-card"><div class="stat-label">Real-money mode</div><div class="stat-value" id="promo-stat-mode">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Spent today (USD)</div><div class="stat-value" id="promo-stat-spent">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Remaining today</div><div class="stat-value" id="promo-stat-remaining">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Per-proposal cap</div><div class="stat-value" id="promo-stat-cap">--</div></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">📋 Proposals (newest first)</div>
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                        <select id="promo-filter" onchange="loadPromotionsPage()" style="padding:6px 10px;background:rgba(10,14,26,0.6);color:var(--text-primary);border:1px solid var(--border);border-radius:4px;">
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="executed_real">Executed (real)</option>
+                            <option value="executed_dryrun">Executed (dry-run)</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="failed">Failed</option>
+                            <option value="">All</option>
+                        </select>
+                        <button onclick="loadPromotionsPage()" style="padding:6px 12px;background:rgba(30,58,95,0.4);color:var(--primary);border:1px solid var(--primary);border-radius:4px;cursor:pointer;font-size:0.85em;">Refresh</button>
+                        <span id="promo-msg" style="font-size:0.78em;color:var(--text-secondary);"></span>
+                    </div>
+                    <div id="promo-list">Loading…</div>
+                </div>
             </div>
 
             <!-- LEARNING TRACKS — domain progression curricula -->
@@ -1532,6 +1599,14 @@
             // Load learning tracks
             if (pageId === 'tracks') {
                 loadTracksPage();
+            }
+            // Load slag carry-over reviewer
+            if (pageId === 'migration') {
+                loadMigrationPage();
+            }
+            // Load Croesus promotion approval queue
+            if (pageId === 'promotions') {
+                loadPromotionsPage();
             }
             // Load live resources panel on System Status
             if (pageId === 'system') {
@@ -2799,6 +2874,183 @@
             } catch (e) {
                 wrap.innerHTML = `<p style="color:var(--danger);">Failed to load tracks: ${e.message}</p>`;
             }
+        }
+
+        // === SLAG CLAIMS REVIEWER ============================================
+        function slagFlash(msg) {
+            const el = document.getElementById('slag-msg');
+            if (el) { el.textContent = msg; setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000); }
+        }
+
+        async function loadMigrationPage() {
+            const list = document.getElementById('slag-claims-list');
+            if (!list) return;
+            list.innerHTML = '<p style="color:var(--text-secondary);">Loading…</p>';
+
+            try {
+                const [s, c] = await Promise.all([
+                    fetch('/api/migration/slag/summary').then(r => r.json()),
+                    fetch('/api/migration/slag/claims?status=' + (document.getElementById('slag-filter')?.value || '')).then(r => r.json()),
+                ]);
+                document.getElementById('slag-stat-pending').textContent = s.counts?.pending ?? '--';
+                document.getElementById('slag-stat-today').textContent = (s.approvedSlagToday ?? 0).toLocaleString();
+                document.getElementById('slag-stat-total').textContent = (s.approvedSlagTotal ?? 0).toLocaleString();
+                document.getElementById('slag-stat-cap').textContent = (s.per_user_per_day_max ?? 0).toLocaleString();
+
+                const claims = c.claims || [];
+                if (!claims.length) { list.innerHTML = '<p style="color:var(--text-secondary);padding:8px 0;">No claims at this filter.</p>'; return; }
+
+                const ocrColors = { match: '#22c55e', mismatch: '#f59e0b', no_text: '#94a3b8', failed: '#ef4444', pending: '#60a5fa' };
+                const statusColors = { pending: '#60a5fa', approved: '#22c55e', rejected: '#94a3b8' };
+
+                list.innerHTML = claims.map(c => {
+                    const oc = ocrColors[c.ocr_status] || '#94a3b8';
+                    const sc = statusColors[c.status] || '#94a3b8';
+                    const numbers = (c.extracted_numbers || []).slice(0, 6).join(', ') || '–';
+                    const textPreview = (c.extracted_text || '').slice(0, 200).replace(/</g, '&lt;') || '<em>(none)</em>';
+                    const actionBtns = c.status === 'pending' ? `
+                        <button onclick="reviewSlagClaim('${c.id}', 'approve')" style="padding:6px 12px;background:#22c55e22;color:#86efac;border:1px solid #22c55e;border-radius:4px;cursor:pointer;font-size:0.82em;font-weight:600;">Approve</button>
+                        <button onclick="reviewSlagClaim('${c.id}', 'reject')" style="padding:6px 12px;background:#ef444422;color:#fca5a5;border:1px solid #ef4444;border-radius:4px;cursor:pointer;font-size:0.82em;font-weight:600;">Reject</button>
+                    ` : `<span style="font-size:0.78em;color:var(--text-secondary);">reviewed by ${c.reviewed_by || '–'} · ${(c.reviewed_at||'').slice(0,19)}</span>`;
+                    return `
+                        <div style="border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;background:rgba(10,14,26,0.4);">
+                            <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+                                <img src="/api/migration/slag/claims/${c.id}/screenshot"
+                                     onerror="this.style.display='none'"
+                                     style="width:160px;height:auto;border-radius:4px;border:1px solid var(--border);background:#0a0e1a;cursor:pointer;"
+                                     onclick="window.open(this.src,'_blank')"
+                                     alt="screenshot ${c.id}">
+                                <div style="flex:1;min-width:280px;">
+                                    <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px;">
+                                        <span style="font-weight:700;font-size:1.1em;">${(c.claimed_amount||0).toLocaleString()}</span>
+                                        <span style="color:var(--text-secondary);font-size:0.82em;">slag</span>
+                                        <span style="font-size:0.7em;padding:2px 8px;border-radius:4px;background:${sc}22;color:${sc};font-weight:600;">${(c.status||'').toUpperCase()}</span>
+                                        <span style="font-size:0.7em;padding:2px 8px;border-radius:4px;background:${oc}22;color:${oc};font-weight:600;" title="OCR ${c.ocr_status}: extracted_numbers=[${numbers}]">OCR ${c.ocr_status || '?'}</span>
+                                    </div>
+                                    <div style="font-size:0.85em;color:var(--text-secondary);margin-bottom:4px;">
+                                        <code>${c.roblox_username}</code> → <code>${c.web_username}</code> · ${(c.created_at||'').slice(0,19)}
+                                    </div>
+                                    <div style="font-size:0.78em;color:var(--text-secondary);margin-bottom:6px;">
+                                        OCR numbers: <code>${numbers}</code>
+                                    </div>
+                                    <details style="margin-bottom:8px;">
+                                        <summary style="font-size:0.78em;color:var(--text-secondary);cursor:pointer;">extracted text</summary>
+                                        <pre style="font-size:0.72em;color:var(--text-secondary);background:#0a0e1a;padding:6px;border-radius:4px;margin:4px 0 0;max-height:120px;overflow:auto;">${textPreview}</pre>
+                                    </details>
+                                    <div style="display:flex;gap:6px;">${actionBtns}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                list.innerHTML = `<p style="color:var(--danger);">load failed: ${e.message}</p>`;
+            }
+        }
+
+        async function reviewSlagClaim(id, action) {
+            const notes = prompt(`${action === 'approve' ? 'Approve' : 'Reject'} ${id}? (optional notes)`, '');
+            if (notes === null) return;
+            try {
+                const r = await fetch(`/api/migration/slag/claims/${id}/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Approver': 'dashboard-user' },
+                    body: JSON.stringify({ notes }),
+                });
+                const data = await r.json();
+                if (data.success) { slagFlash(`${action}d ${id}`); loadMigrationPage(); }
+                else slagFlash(data.error || `${action} failed`);
+            } catch (e) { slagFlash(`network error: ${e.message}`); }
+        }
+
+        // === CROESUS PROMOTION APPROVAL QUEUE ================================
+        function promoFlash(msg) {
+            const el = document.getElementById('promo-msg');
+            if (el) { el.textContent = msg; setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000); }
+        }
+
+        async function loadPromotionsPage() {
+            const list = document.getElementById('promo-list');
+            if (!list) return;
+            list.innerHTML = '<p style="color:var(--text-secondary);">Loading…</p>';
+            try {
+                const [b, p] = await Promise.all([
+                    fetch('/api/commercialization/budget').then(r => r.json()),
+                    fetch('/api/commercialization/proposals?status=' + (document.getElementById('promo-filter')?.value || '')).then(r => r.json()),
+                ]);
+                document.getElementById('promo-stat-mode').textContent = b.real_money_enabled ? '🔴 REAL' : '🟢 DRY-RUN';
+                document.getElementById('promo-stat-mode').style.color = b.real_money_enabled ? '#ef4444' : '#22c55e';
+                document.getElementById('promo-stat-spent').textContent = '$' + (b.spent_today_usd || 0).toFixed(2);
+                document.getElementById('promo-stat-remaining').textContent = '$' + (b.remaining_today_usd || 0).toFixed(2);
+                document.getElementById('promo-stat-cap').textContent = '$' + (b.per_proposal_cap_usd || 0).toFixed(2);
+
+                const proposals = p.proposals || [];
+                if (!proposals.length) { list.innerHTML = '<p style="color:var(--text-secondary);padding:8px 0;">No proposals at this filter.</p>'; return; }
+
+                const stColors = {
+                    pending: '#60a5fa', approved: '#22c55e', rejected: '#94a3b8',
+                    executed_real: '#fbbf24', executed_dryrun: '#a78bfa', failed: '#ef4444',
+                };
+                const channelEmoji = {
+                    'roblox-sponsored': '🎮', 'twitter-ad': '🐦', 'tiktok-ad': '🎵',
+                    'discord-boost': '💬', 'youtube-shorts': '▶️', 'other': '📢',
+                };
+
+                list.innerHTML = proposals.map(p => {
+                    const sc = stColors[p.status] || '#94a3b8';
+                    const ch = channelEmoji[p.channel] || '📢';
+                    const actionBtns = p.status === 'pending' ? `
+                        <button onclick="reviewPromo('${p.id}', 'approve')" style="padding:6px 12px;background:#22c55e22;color:#86efac;border:1px solid #22c55e;border-radius:4px;cursor:pointer;font-size:0.82em;font-weight:600;">Approve</button>
+                        <button onclick="reviewPromo('${p.id}', 'reject')" style="padding:6px 12px;background:#ef444422;color:#fca5a5;border:1px solid #ef4444;border-radius:4px;cursor:pointer;font-size:0.82em;font-weight:600;">Reject</button>
+                    ` : p.status === 'approved' ? `
+                        <button onclick="reviewPromo('${p.id}', 'execute')" style="padding:6px 12px;background:#fbbf2422;color:#fcd34d;border:1px solid #fbbf24;border-radius:4px;cursor:pointer;font-size:0.82em;font-weight:600;">Execute</button>
+                    ` : '';
+                    const reviewer = p.approved_by || p.rejected_by;
+                    const reviewedAt = p.approved_at || p.rejected_at || p.executed_at;
+                    const reviewLine = reviewer ? `<div style="font-size:0.78em;color:var(--text-secondary);">by <code>${reviewer}</code> · ${(reviewedAt||'').slice(0,19)}</div>` : '';
+                    const stripeLine = p.stripe_payment_intent_id ? `
+                        <div style="font-size:0.72em;color:var(--text-secondary);margin-top:4px;">Stripe: <code>${p.stripe_payment_intent_id}</code> · ${p.stripe_status || '?'}</div>
+                    ` : '';
+                    const failLine = p.failure_reason ? `
+                        <div style="font-size:0.78em;color:#fca5a5;margin-top:6px;background:rgba(239,68,68,0.1);padding:6px 8px;border-radius:4px;">⚠ ${p.failure_reason}</div>
+                    ` : '';
+                    return `
+                        <div style="border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px;background:rgba(10,14,26,0.4);">
+                            <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px;">
+                                <span style="font-size:1.2em;">${ch}</span>
+                                <span style="font-weight:700;font-size:1.05em;">$${p.budget_usd}</span>
+                                <span style="color:var(--text-secondary);font-size:0.82em;">${p.channel} · ${p.duration_hours}h · predicted ROI ${p.predicted_roi_pct}%</span>
+                                <span style="font-size:0.7em;padding:2px 8px;border-radius:4px;background:${sc}22;color:${sc};font-weight:600;">${(p.status||'').toUpperCase()}</span>
+                            </div>
+                            <div style="font-size:0.88em;color:var(--text-primary);margin-bottom:6px;">${p.pitch}</div>
+                            <div style="font-size:0.78em;color:var(--text-secondary);">id: <code>${p.id}</code> · proposed ${(p.created_at||'').slice(0,19)} · by <code>${p.source_agent}</code></div>
+                            ${reviewLine}${stripeLine}${failLine}
+                            <div style="margin-top:10px;display:flex;gap:6px;">${actionBtns}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                list.innerHTML = `<p style="color:var(--danger);">load failed: ${e.message}</p>`;
+            }
+        }
+
+        async function reviewPromo(id, action) {
+            const verb = action === 'execute' ? 'Execute (charges card if real-money mode)' : action;
+            if (!confirm(`${verb} ${id}?`)) return;
+            try {
+                const r = await fetch(`/api/commercialization/${id}/${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Approver': 'dashboard-user' },
+                    body: '{}',
+                });
+                const data = await r.json();
+                if (data.success) {
+                    promoFlash(action === 'execute' ? `executed ${id} (${data.mode})` : `${action}d ${id}`);
+                } else {
+                    promoFlash(data.error || `${action} failed`);
+                }
+                loadPromotionsPage();
+            } catch (e) { promoFlash(`network error: ${e.message}`); }
         }
 
         async function loadCredentialsPage() {
