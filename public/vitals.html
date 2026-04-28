@@ -34,6 +34,7 @@
   <div class="controls">
     <span class="pill" id="gpuEnabled">gpu: ?</span>
     <span class="pill" id="repairMode">repair: ?</span>
+    <span class="pill" id="symbiosis" title="GPU symbiosis daemon — yields LM Studio when Blender is rendering">symbiosis: ?</span>
     <button onclick="cleanGpu()">clean gpu</button>
     <button onclick="toggleGpu()" id="toggleGpuBtn">toggle gpu</button>
     <button onclick="toggleRepair()" id="toggleRepairBtn">toggle repair mode</button>
@@ -200,6 +201,16 @@ async function refresh() {
     document.getElementById('models').querySelector('tbody').innerHTML = sortByTokens(stats.by_model).map(([k, v]) =>
       `<tr><td>${k}</td><td class="num">${v.calls}</td><td class="num">${v.tokens_in}/${v.tokens_out}</td><td class="num">${v.avg_latency_ms}</td><td class="num">${(v.error_rate*100).toFixed(0)}%</td></tr>`
     ).join('') || '<tr><td colspan="5" class="muted">no calls in window</td></tr>';
+
+    // GPU symbiosis daemon state (idle / yielded / disabled / stale)
+    try {
+      const sym = await getJSON('/api/gpu/symbiosis');
+      const st = sym.state || 'unknown';
+      const cls = st === 'yielded' ? 'down' : st === 'idle' ? 'up' : st === 'disabled' ? '' : 'down';
+      const blend = sym.blenderMemMb != null ? ` · blender ${sym.blenderMemMb} MiB` : '';
+      const age = sym.lastTickAgoS != null ? ` · ${sym.lastTickAgoS}s ago` : '';
+      pill('symbiosis', 'symbiosis: ' + st + blend + age, cls);
+    } catch (e) { /* daemon optional */ }
 
     // Disk candidates (don't fail the whole refresh if this is slow)
     try {

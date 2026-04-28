@@ -118,8 +118,22 @@ body{background:#000;overflow:hidden;font-family:'Segoe UI',sans-serif;color:#ff
 <div id="wallet"><button class="close-btn" onclick="toggleWallet()">&times;</button><div id="wallet-content"></div></div>
 <div id="toast"></div>
 
-<!-- Three.js from CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r170/three.min.js"></script>
+<!-- Three.js r128 (last UMD build with global THREE namespace).
+     cdnjs only serves up to r128; newer versions are ES-modules only.
+     Pinned to r128 so the existing non-module script keeps working. -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>
+// Defensive load check — if Three.js failed to load from CDN, swap the loading
+// screen to a useful error so the user isn't stuck on a spinner forever.
+if (typeof THREE === 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const loading = document.getElementById('loading') || document.body;
+    loading.innerHTML = '<div style="color:#ef4444;padding:30px;font-family:sans-serif;">' +
+      '<h2>Three.js failed to load.</h2><p>Check your network. Falling back to /game/world (WebGPU shell).</p>' +
+      '<a href="/game/world" style="color:#60a5fa;">Open /game/world →</a></div>';
+  });
+}
+</script>
 <script>
 // ============================================================
 // MOLGANG 3D ENGINE - Three.js + WebGPU-ready + Web3 economy
