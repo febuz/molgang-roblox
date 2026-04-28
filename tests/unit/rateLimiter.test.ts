@@ -1,11 +1,11 @@
 import AdvancedRateLimiter from '../../src/security/rateLimiter';
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 
 describe('AdvancedRateLimiter', () => {
   let limiter: AdvancedRateLimiter;
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
-  let mockNext: NextFunction;
+  let mockNext: jest.Mock;
 
   beforeEach(() => {
     limiter = new AdvancedRateLimiter();
@@ -14,6 +14,7 @@ describe('AdvancedRateLimiter', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn().mockReturnThis(),
       setHeader: jest.fn().mockReturnThis(),
+      locals: {},
     };
     mockNext = jest.fn();
   });
