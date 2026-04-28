@@ -3,6 +3,25 @@
 **Purpose:** Reference engines for building the MOLGANG web-based Chemical Engineering Simulator
 **Strategy:** Study Duke 3D (FPS movement), GTA Vice City (open world), Red Alert (factory/RTS) and build our own hybrid engine.
 
+## Status: cloned
+
+Local mirrors live on EDS2 (off the home volume — see EDS2 relocation policy):
+
+```
+/media/knight2/EDS2/reference-engines/
+├── OpenRA      (GPL-3.0, github.com/OpenRA/OpenRA)
+├── OpenSAGE    (LGPL-3.0, github.com/OpenSAGE/OpenSAGE)
+└── eduke32     (GPL-2.0, voidpoint.io/terminx/eduke32)
+```
+
+`re3` is intentionally **not** mirrored — Take-Two filed a DMCA notice in
+February 2021 and the legal status of forks is contested. For the same
+study goals (open-world streaming, vehicle physics) use `OpenMW`. See the
+README in the reference-engines directory for the full rationale.
+
+Refresh with `git pull --depth=50` per repo. Don't push from here; fork
+upstream if you want to contribute.
+
 ---
 
 ## 1. Open Source Engines to Clone & Study
