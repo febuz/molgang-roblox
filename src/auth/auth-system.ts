@@ -9,7 +9,12 @@
  * - Tech Artist (Performance, shaders, optimization)
  */
 
+import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import logger from '../utils/logger';
+
+const SCRYPT_KEYLEN = 64;
+const SCRYPT_SALT_BYTES = 16;
+const PASSWORD_HASH_PREFIX = 'scrypt$';
 
 export type UserRole = 'ceo' | 'cto' | 'developer' | 'artist' | 'tech_artist';
 
@@ -181,18 +186,28 @@ export class AuthSystem {
   }
 
   /**
-   * Simple password hashing (demo - use bcrypt in production)
+   * Hash a password with scrypt and a fresh random salt.
+   * Format: "scrypt$<salt-b64>$<hash-b64>" — self-contained, no external store.
    */
   private hashPassword(password: string): string {
-    // Demo only - replace with bcrypt in production
-    return Buffer.from(password).toString('base64');
+    const salt = randomBytes(SCRYPT_SALT_BYTES);
+    const derived = scryptSync(password, salt, SCRYPT_KEYLEN);
+    return `${PASSWORD_HASH_PREFIX}${salt.toString('base64')}$${derived.toString('base64')}`;
   }
 
   /**
-   * Verify password
+   * Constant-time verify against a stored scrypt hash. Refuses any other format
+   * so legacy base64 hashes from the previous demo implementation can't pass.
    */
-  private verifyPassword(password: string, hash: string): boolean {
-    return this.hashPassword(password) === hash;
+  private verifyPassword(password: string, stored: string): boolean {
+    if (!stored.startsWith(PASSWORD_HASH_PREFIX)) return false;
+    const [, saltB64, hashB64] = stored.split('$');
+    if (!saltB64 || !hashB64) return false;
+    const salt = Buffer.from(saltB64, 'base64');
+    const expected = Buffer.from(hashB64, 'base64');
+    if (expected.length !== SCRYPT_KEYLEN) return false;
+    const derived = scryptSync(password, salt, SCRYPT_KEYLEN);
+    return timingSafeEqual(derived, expected);
   }
 
   /**

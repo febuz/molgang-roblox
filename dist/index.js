@@ -77,12 +77,15 @@ const specialist_dashboards_1 = __importDefault(require("./auth/specialist-dashb
 const auth_routes_1 = __importDefault(require("./auth/auth-routes"));
 const audit_routes_1 = __importDefault(require("./auth/audit-routes"));
 const specialist_routes_1 = __importDefault(require("./auth/specialist-routes"));
+const github_sync_1 = __importDefault(require("./automation/github-sync"));
+const github_routes_1 = __importDefault(require("./automation/github-routes"));
 const terminal_activity_monitor_1 = require("./terminal-activity-monitor");
 const taskEngine = __importStar(require("./task-engine"));
 const tokenTracker = __importStar(require("./token-tracker"));
 const commitsTracker = __importStar(require("./commits-tracker"));
 const lmstudio = __importStar(require("./lmstudio"));
 const timeseries_1 = require("./timeseries");
+const credentials = __importStar(require("./credentials"));
 // Load environment
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
@@ -163,6 +166,80 @@ app.get('/api/tokens/events', (req, res) => {
     const agent = req.query.agent;
     const limit = parseInt(req.query.limit) || 20;
     res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
+});
+// GPU symbiosis status — what state the daemon is in (idle / yielded to Blender).
+// The daemon only writes /tmp/gpu-symbiosis-state on a transition, so a fresh
+// daemon that's never had to yield has no state file. Treat that as "idle" if
+// the log has a recent tick; "stale" if the last tick is too old to trust.
+app.get('/api/gpu/symbiosis', (req, res) => {
+    try {
+        const fs = require('fs');
+        const stateFile = fs.existsSync('/tmp/gpu-symbiosis-state')
+            ? fs.readFileSync('/tmp/gpu-symbiosis-state', 'utf8').trim()
+            : '';
+        const disabled = fs.existsSync('/tmp/gpu-symbiosis-disable');
+        let lastLog = '';
+        let lastTickAgoS = null;
+        let blenderMemMb = null;
+        if (fs.existsSync('/tmp/gpu-symbiosis.log')) {
+            const buf = fs.readFileSync('/tmp/gpu-symbiosis.log', 'utf8');
+            const lines = buf.trim().split('\n');
+            lastLog = lines.slice(-5).join('\n');
+            // Last "blender_gpu_mem=N MiB threshold=M MiB" tick tells us when the
+            // daemon last ran and what it saw.
+            for (let i = lines.length - 1; i >= 0; i--) {
+                const m = lines[i].match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) blender_gpu_mem=(\d+) MiB/);
+                if (m) {
+                    lastTickAgoS = Math.max(0, Math.round((Date.now() - new Date(m[1].replace(' ', 'T') + 'Z').getTime()) / 1000));
+                    blenderMemMb = parseInt(m[2], 10);
+                    break;
+                }
+            }
+        }
+        // Resolve effective state for the dashboard.
+        let state;
+        if (disabled)
+            state = 'disabled';
+        else if (stateFile.startsWith('yielded'))
+            state = 'yielded';
+        else if (stateFile === 'idle')
+            state = 'idle';
+        else if (lastTickAgoS !== null && lastTickAgoS < 120)
+            state = 'idle'; // daemon ticking, never had to act
+        else if (lastTickAgoS !== null)
+            state = 'stale';
+        else
+            state = 'unknown';
+        res.json({
+            success: true,
+            state,
+            disabled,
+            stateFile,
+            lastTickAgoS,
+            blenderMemMb,
+            lastLog,
+        });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// Provider credentials (API keys for Anthropic, OpenAI, Grok, DeepSeek, Kimi/Moonshot, Perplexity, ...)
+app.get('/api/credentials', (req, res) => {
+    res.json({ success: true, providers: credentials.listMasked() });
+});
+app.post('/api/credentials/:provider', (req, res) => {
+    try {
+        const { email, api_key, base_url, notes } = req.body || {};
+        const result = credentials.setProvider(req.params.provider, { email, api_key, base_url, notes });
+        res.json({ success: true, ...result });
+    }
+    catch (e) {
+        res.status(400).json({ success: false, error: e.message });
+    }
+});
+app.delete('/api/credentials/:provider', (req, res) => {
+    res.json({ success: true, ...credentials.deleteProvider(req.params.provider) });
 });
 // Timeseries analyzer — CSV upload, per-column stats, Pearson pairs, z-score anomalies.
 app.post('/api/timeseries/analyze', (req, res) => {
@@ -802,6 +879,11 @@ app.get('/game/2d', (req, res) => {
 app.get('/game/rts', (req, res) => {
     res.sendFile(path.resolve(__dirname, '..', 'public', 'game-rts.html'));
 });
+// VirtualV 3D world — WebGPU-capable scene rendering the VirtualV-owned
+// asset manifest captured from the Roblox MOLGANG source.
+app.get('/game/world', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '..', 'public', 'world.html'));
+});
 // Health check
 app.get('/health', (req, res) => {
     res.json({
@@ -925,6 +1007,18 @@ async function initialize() {
         (0, auth_routes_1.default)(app, authSystem, authMiddleware);
         (0, audit_routes_1.default)(app, ceoAuditLogger, authMiddleware);
         (0, specialist_routes_1.default)(app, specialistDashboards, authMiddleware);
+        // 5f. Setup GitHub sync (auto-sync disabled unless GITHUB_SYNC_AUTO=true)
+        const githubSync = new github_sync_1.default({
+            remoteUrl: process.env.GITHUB_SYNC_REMOTE || '',
+            branch: process.env.GITHUB_SYNC_BRANCH || 'master',
+            autoSync: (process.env.GITHUB_SYNC_AUTO || 'false').toLowerCase() === 'true',
+            syncInterval: parseInt(process.env.GITHUB_SYNC_INTERVAL_MIN || '30'),
+            excludePatterns: (process.env.GITHUB_SYNC_EXCLUDE || '.env,*.key,*.pem,credentials.json')
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean),
+        });
+        (0, github_routes_1.default)(app, githubSync, authMiddleware);
         // 5b. Register SPA routes (must be after all API routes!)
         app.get('/', serveSPAFile);
         app.all('*', (req, res, next) => {
@@ -2197,6 +2291,17 @@ function setupVitalsRoutes(app, vitals, audit, repair) {
     });
     app.post('/api/gpu/enable', (_req, res) => { vitals.setGpuEnabled(true); res.json({ success: true, gpu_enabled: true }); });
     app.post('/api/gpu/disable', (_req, res) => { vitals.setGpuEnabled(false); res.json({ success: true, gpu_enabled: false }); });
+    app.get('/api/vitals/disk-candidates', async (req, res) => {
+        try {
+            const minMb = req.query.min_mb ? Number(req.query.min_mb) : 50;
+            const limit = req.query.limit ? Number(req.query.limit) : 15;
+            const candidates = await vitals.diskCandidates({ minMb, limit });
+            res.json({ success: true, count: candidates.length, candidates });
+        }
+        catch (e) {
+            res.status(500).json({ success: false, error: e.message });
+        }
+    });
     if (audit) {
         app.get('/api/vitals/inference-log', async (req, res) => {
             try {
