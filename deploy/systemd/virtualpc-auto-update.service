@@ -4,7 +4,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/knight2/virtualpc
-ExecStart=/home/knight2/virtualpc/scripts/auto-update.sh
+WorkingDirectory=%h/virtualpc
+ExecStart=%h/virtualpc/scripts/auto-update.sh
 StandardOutput=append:/tmp/virtualpc-auto-update.log
 StandardError=append:/tmp/virtualpc-auto-update.log

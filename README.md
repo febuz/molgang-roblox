@@ -1,67 +1,105 @@
-# Custom Paperclip - Distributed Agent Organization
+# VirtualPC — distributed agent system for the MOLGANG game stack
 
-[![Build & Test](https://github.com/your-org/virtualpc/workflows/Build%20&%20Test/badge.svg)](https://github.com/your-org/virtualpc/actions/workflows/build-test.yml)
-[![Deploy to Production](https://github.com/your-org/virtualpc/workflows/Deploy%20to%20Production/badge.svg)](https://github.com/your-org/virtualpc/actions/workflows/deploy-production.yml)
-[![Security Audit](https://github.com/your-org/virtualpc/workflows/Security%20Audit/badge.svg)](https://github.com/your-org/virtualpc/actions/workflows/security-audit.yml)
-[![GitHub Pages](https://github.com/your-org/virtualpc/workflows/Deploy%20Status%20Dashboard%20to%20GitHub%20Pages/badge.svg)](https://github.com/your-org/virtualpc/actions/workflows/deploy-pages.yml)
+A multi-agent backend with a 14-agent roster (CEO Fill, CTO Kai, devs, artists,
+researchers, commercialization), a unified LiteLLM gateway in front of local
+LM Studio + cloud providers, a live task engine that streams subtask progress
+to dashboards, and an auto-update path that pulls from GitHub on a 15-min timer.
 
-A sophisticated distributed agent execution system built on **Paperclip OSS** with:
-- **LightRAG**: Neo4j-based shared memory for agents
-- **Kafka 3**: Message queue for decoupled API call orchestration
-- **Model Router**: Intelligent routing to local (fast, free) or cloud (powerful) models
-- **Nginx**: Reverse proxy with TLS, rate limiting, JWT auth
-- **Docker**: Multi-GPU containerization for distributed deployment
+Repository: [github.com/febuz/virtualpc](https://github.com/febuz/virtualpc)
 
-**Status:** MVP-ready with 25 autonomous implementation tasks
+What's in the box:
+- **LiteLLM gateway** at `127.0.0.1:4000` (`deploy/docker-compose.litellm.yml`)
+  routing 13 model entries — 5 local LM Studio + 8 cloud — through one
+  OpenAI-compatible API. virtualpc points at it via `LITELLM_URL`.
+- **Agent registry** (`src/agent-registry.ts`) — single source of truth for
+  the roster. Add a name there, every dashboard picks it up.
+- **Task engine** (`src/task-engine.ts`) — 14 agents, autonomous tick,
+  per-subtask progress, persistent state on EDS2.
+- **Auth** (`src/auth/`) — login, sessions, 2FA-ready, audit log,
+  role-based specialist dashboards.
+- **Vitals dashboard** (`/vitals.html`) — live GPU/services snapshot,
+  symbiosis daemon state, auto-update poll status.
+- **Auto-update** (`scripts/auto-update.sh`) — pulls master, rebuilds and
+  restarts only when needed; refuses to touch dirty/diverged trees.
+- **Commercialization** (`src/commercialization.ts`) — Croesus files
+  bounded promotion proposals; humans approve before any real spend
+  (`PROMO_REAL_MONEY=1` opt-in).
 
 ---
 
-## 🎯 Quick Start
+## 🎯 Quick start (5 minutes)
+
+```bash
+git clone https://github.com/febuz/virtualpc.git ~/virtualpc
+cd ~/virtualpc
+./scripts/install.sh
+```
+
+The installer does everything: `npm ci`, `npm run build`, brings up LiteLLM
+via `docker compose`, and registers three systemd user units
+(`virtualpc.service`, `virtualpc-litellm.service`,
+`virtualpc-auto-update.timer`). Re-runnable.
+
+Then verify:
+
+```bash
+curl -fsS http://localhost:3100/api/health           # virtualpc API
+curl -fsS http://localhost:4000/health/liveliness    # LiteLLM gateway
+curl -fsS http://localhost:3100/api/vitals/auto-update  # auto-updater state
+```
 
 ### Prerequisites
 - Node.js 18+
-- Docker & Docker Compose
-- Python 3.9+
-- 8GB+ RAM, 20GB disk
+- Docker (any flavor — snap, system, Desktop)
+- Git
+- Optional: LM Studio for local models on `127.0.0.1:1234`
+  (`lms server start --bind 0.0.0.0`)
 
-### 1. Clone & Setup
+### Repo layout for systemd
 
-```bash
-git clone https://github.com/your-org/custom-virtualpc.git
-cd custom-virtualpc
-npm install
-cp .env.example .env
-```
+The installed units use `%h/virtualpc` (i.e. `$HOME/virtualpc`). If your
+checkout lives elsewhere, edit `deploy/systemd/*.service` `WorkingDirectory`
+and the `auto-update.sh` `REPO_DIR` env, or symlink your checkout into
+`$HOME/virtualpc`.
 
-### 2. Start Services
-
-```bash
-docker-compose up -d
-```
-
-Services online:
-- **LightRAG**: bolt://localhost:7687 (Neo4j)
-- **Kafka**: localhost:9092-9094
-- **API**: http://localhost:3100
-- **Nginx**: https://localhost:443
-
-### 3. Verify Health
+### Manual bring-up (no systemd)
 
 ```bash
-curl http://localhost:3100/health
+docker compose -f deploy/docker-compose.litellm.yml up -d
+node dist/index.js
 ```
 
-Expected:
-```json
-{
-  "status": "ok",
-  "services": {
-    "lightrag": "connected",
-    "kafka": "3/3 brokers",
-    "models": "ready"
-  }
-}
+---
+
+## 🔌 LiteLLM gateway
+
+`deploy/litellm-config.yaml` registers 13 models. Local LM Studio entries
+work out of the box; cloud entries (claude-sonnet, gpt-4o-mini, grok,
+deepseek-chat, kimi, perplexity, mistral-large, gemini) wait for keys.
+
+To enable cloud routes, drop a key file at `~/.virtualpc/llm-keys.env`:
+
+```bash
+mkdir -p ~/.virtualpc
+cat > ~/.virtualpc/llm-keys.env <<'EOF'
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+# ...etc
+EOF
+systemctl --user restart virtualpc-litellm.service
 ```
+
+Or feed them through the credentials API and re-export:
+
+```bash
+curl -fsS http://localhost:3100/api/credentials | jq
+# add via /api/credentials/:provider, then:
+systemctl --user restart virtualpc-litellm.service
+```
+
+The gateway uses `network_mode: host` so it can reach LM Studio on the
+host's loopback (this fixes a snap-confined Docker quirk where the bridge
+can't reach `127.0.0.1` on the host).
 
 ---
 

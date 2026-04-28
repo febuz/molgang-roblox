@@ -5,14 +5,17 @@ After=network.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/home/knight2/virtualpc
+WorkingDirectory=%h/virtualpc
 # Pull any cloud keys recorded by virtualpc into the env before bringing up
 # the container. Missing keys leave their providers unusable but don't
 # block local LM Studio routing from working.
-EnvironmentFile=-/home/knight2/.virtualpc/llm-keys.env
-# Use /snap/bin/docker (snap-confined). System docker is also at /usr/bin/docker via the snap wrapper.
-ExecStart=/snap/bin/docker compose -f deploy/docker-compose.litellm.yml up -d
-ExecStop=/snap/bin/docker compose -f deploy/docker-compose.litellm.yml down
+EnvironmentFile=-%h/.virtualpc/llm-keys.env
+# /usr/bin/docker exists on most distros; falls back to /snap/bin/docker
+# (Ubuntu snap-confined Docker) automatically because Docker installs the
+# /usr/bin/docker shim. If neither path resolves, edit ExecStart to point
+# at your docker binary.
+ExecStart=/usr/bin/docker compose -f deploy/docker-compose.litellm.yml up -d
+ExecStop=/usr/bin/docker compose -f deploy/docker-compose.litellm.yml down
 
 [Install]
 WantedBy=default.target

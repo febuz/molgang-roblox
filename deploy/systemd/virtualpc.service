@@ -5,8 +5,13 @@ Wants=ollama.service virtualpc-litellm.service
 
 [Service]
 Type=simple
-WorkingDirectory=/home/knight2/virtualpc
-# Route all model calls through LiteLLM gateway
+# %h expands to $HOME at unit-load time, so this works from any user account
+# that has the repo cloned at ~/virtualpc. If your checkout lives elsewhere,
+# set REPO_DIR=/path/to/virtualpc in ~/.config/systemd/user/virtualpc.env
+# and uncomment the EnvironmentFile line below.
+WorkingDirectory=%h/virtualpc
+# EnvironmentFile=-%h/.config/systemd/user/virtualpc.env
+# Route all model calls through the LiteLLM gateway
 # (deploy/docker-compose.litellm.yml). Falls back to LM_STUDIO_URL if
 # LITELLM_URL is empty — see src/lmstudio.ts.
 Environment=LITELLM_URL=http://127.0.0.1:4000/v1
@@ -16,8 +21,8 @@ Restart=on-failure
 RestartSec=10s
 
 # Logs (append, don't truncate)
-StandardOutput=append:/home/knight2/virtualpc/logs/virtualpc.log
-StandardError=append:/home/knight2/virtualpc/logs/virtualpc.log
+StandardOutput=append:%h/virtualpc/logs/virtualpc.log
+StandardError=append:%h/virtualpc/logs/virtualpc.log
 
 # Resource limits
 LimitNOFILE=65536

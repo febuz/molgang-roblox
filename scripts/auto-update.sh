@@ -11,7 +11,8 @@
 
 set -u
 
-REPO=/home/knight2/virtualpc
+# Defaults to ~/virtualpc; override via REPO_DIR=/path/to/virtualpc.
+REPO="${REPO_DIR:-$HOME/virtualpc}"
 REMOTE=virtualpc
 BRANCH=master
 LOG=/tmp/virtualpc-auto-update.log
