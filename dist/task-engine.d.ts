@@ -73,6 +73,10 @@ export declare function getGameStats(): {
     sprintNumber: number;
     tasksCompleted: number;
     tasksInProgress: number;
+    completedLastMinute: number;
+    completedLastHour: number;
+    completedLast24h: number;
+    lastCompletionTs: string | null;
     milestonesCompleted: number;
     milestonesInProgress: number;
     milestonesTotal: number;

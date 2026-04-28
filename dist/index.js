@@ -92,6 +92,7 @@ const timeseries_1 = require("./timeseries");
 const credentials = __importStar(require("./credentials"));
 const commercialization = __importStar(require("./commercialization"));
 const commitAudit = __importStar(require("./commit-audit"));
+const slagCarryover = __importStar(require("./migration/slag-carryover"));
 // Load environment
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
@@ -101,7 +102,9 @@ const io = new socket_io_1.Server(server, {
 });
 const PORT = process.env.PORT || 3100;
 // Middleware
-app.use(express_1.default.json());
+// Bumped from default 100kb so /api/migration/slag/claim can accept a base64-
+// encoded screenshot (~5 MB worst case after the ~33% base64 overhead).
+app.use(express_1.default.json({ limit: '6mb' }));
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
@@ -468,6 +471,90 @@ app.get('/api/commits/hourly', (req, res) => {
 app.get('/api/commits/recent', (req, res) => {
     const limit = parseInt(req.query.limit) || 30;
     res.json({ success: true, commits: commitsTracker.getRecentCommits(limit) });
+});
+// Slag carry-over — Roblox players move their slag stockpile to the web
+// build by submitting a screenshot. Manual review (with caps) until the
+// OCR enrichment pass is wired. See src/migration/slag-carryover.ts.
+app.post('/api/migration/slag/claim', (req, res) => {
+    const r = slagCarryover.submit({
+        roblox_username: String(req.body?.roblox_username || ''),
+        web_username: String(req.body?.web_username || ''),
+        claimed_amount: Number(req.body?.claimed_amount),
+        screenshot_base64: String(req.body?.screenshot_base64 || ''),
+    });
+    if (!r.ok) {
+        res.status(400).json({ success: false, error: r.error });
+        return;
+    }
+    // Don't echo the path on disk — the reviewer dashboard fetches the image
+    // through GET /screenshot. Submitter only needs id + status.
+    const { screenshot_path: _omit, ...safe } = r.claim;
+    res.json({ success: true, claim: safe });
+});
+app.get('/api/migration/slag/claims', (req, res) => {
+    const filter = {};
+    if (req.query.status)
+        filter.status = String(req.query.status);
+    if (req.query.roblox_username)
+        filter.roblox_username = String(req.query.roblox_username);
+    // Trim screenshot_path from the listing response — it's a server-side path.
+    const claims = slagCarryover.list(filter).map(({ screenshot_path: _, ...rest }) => rest);
+    res.json({ success: true, claims });
+});
+app.get('/api/migration/slag/summary', (req, res) => {
+    res.json({ success: true, ...slagCarryover.summary() });
+});
+// Reviewer-only mutations — same X-Approver-from-localhost gate as the
+// commercialization queue. Replace with authMiddleware.requireRole when
+// routes are reorganized.
+function privilegedReviewer(req) {
+    const ip = String(req.ip || '');
+    const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    if (!isLocal)
+        return null;
+    const who = String(req.header('x-approver') || '').trim();
+    return who || null;
+}
+app.post('/api/migration/slag/claims/:id/approve', (req, res) => {
+    const who = privilegedReviewer(req);
+    if (!who) {
+        res.status(403).json({ success: false, error: 'approval requires X-Approver header from localhost' });
+        return;
+    }
+    const r = slagCarryover.approve(req.params.id, who, req.body?.notes);
+    if (!r.ok) {
+        res.status(400).json({ success: false, error: r.error });
+        return;
+    }
+    res.json({ success: true, claim: r.claim });
+});
+app.post('/api/migration/slag/claims/:id/reject', (req, res) => {
+    const who = privilegedReviewer(req);
+    if (!who) {
+        res.status(403).json({ success: false, error: 'rejection requires X-Approver header from localhost' });
+        return;
+    }
+    const r = slagCarryover.reject(req.params.id, who, req.body?.notes);
+    if (!r.ok) {
+        res.status(400).json({ success: false, error: r.error });
+        return;
+    }
+    res.json({ success: true, claim: r.claim });
+});
+// Stream the stored screenshot (PNG) so the reviewer dashboard can show it.
+// Same localhost-only gate as approve/reject.
+app.get('/api/migration/slag/claims/:id/screenshot', (req, res) => {
+    if (!privilegedReviewer(req)) {
+        res.status(403).json({ success: false, error: 'screenshot view requires X-Approver header from localhost' });
+        return;
+    }
+    const r = slagCarryover.readScreenshot(req.params.id);
+    if (!r.ok) {
+        res.status(404).json({ success: false, error: r.error });
+        return;
+    }
+    res.setHeader('Content-Type', 'image/png');
+    res.send(r.bytes);
 });
 // Domain progression tracks (chemical engineering, quantum computing, ...).
 // Content lives in public/assets/tracks/*.json so writers can edit without
