@@ -81,6 +81,8 @@ const github_sync_1 = __importDefault(require("./automation/github-sync"));
 const github_routes_1 = __importDefault(require("./automation/github-routes"));
 const securityDashboard_1 = require("./security/securityDashboard");
 const security_routes_1 = __importDefault(require("./security/security-routes"));
+const qualityDashboard_1 = require("./quality/qualityDashboard");
+const quality_routes_1 = __importDefault(require("./quality/quality-routes"));
 const terminal_activity_monitor_1 = require("./terminal-activity-monitor");
 const taskEngine = __importStar(require("./task-engine"));
 const tokenTracker = __importStar(require("./token-tracker"));
@@ -465,6 +467,29 @@ app.get('/api/commits/hourly', (req, res) => {
 app.get('/api/commits/recent', (req, res) => {
     const limit = parseInt(req.query.limit) || 30;
     res.json({ success: true, commits: commitsTracker.getRecentCommits(limit) });
+});
+// Map a task to the GitHub commit(s) that delivered it. Used by the
+// "Completed" view to render a → link badge per completed task.
+// Single-task: GET /api/tasks/:id/commits?completed_at=ISO
+// Batch:      POST /api/tasks/commits-map { tasks: [{id, completed_at}] }
+app.get('/api/tasks/:id/commits', (req, res) => {
+    const id = req.params.id;
+    const completedAt = req.query.completed_at || undefined;
+    const limit = Math.min(10, parseInt(req.query.limit || '3', 10));
+    res.json({
+        success: true,
+        repoUrl: commitsTracker.getRepoUrl(),
+        commits: commitsTracker.getCommitsForTask(id, completedAt, limit),
+    });
+});
+app.post('/api/tasks/commits-map', (req, res) => {
+    const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks.slice(0, 200) : [];
+    const limit = Math.min(10, Number(req.body?.limit || 3));
+    res.json({
+        success: true,
+        repoUrl: commitsTracker.getRepoUrl(),
+        map: commitsTracker.getCommitsForTasks(tasks, limit),
+    });
 });
 // Agent Social Hub - Facebook/LinkedIn style
 app.get('/api/social/roster', (req, res) => {
@@ -1127,6 +1152,11 @@ async function initialize() {
         // 5g. Security dashboard (CEO composite view of audit + auth signals)
         const securityDashboard = new securityDashboard_1.SecurityDashboard(authSystem, ceoAuditLogger);
         (0, security_routes_1.default)(app, securityDashboard, authMiddleware);
+        // 5h. Quality dashboard (CEO view of QA gate reports — mirrors the
+        // security dashboard pattern but reads molgang-roblox/build/qa/*.json
+        // produced by the four QA tools defined in QUALITY_STANDARDS.md).
+        const qualityDashboard = new qualityDashboard_1.QualityDashboard();
+        (0, quality_routes_1.default)(app, qualityDashboard, authMiddleware);
         // 5b. Register SPA routes (must be after all API routes!)
         app.get('/', serveSPAFile);
         app.all('*', (req, res, next) => {

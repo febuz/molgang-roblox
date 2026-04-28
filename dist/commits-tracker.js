@@ -47,6 +47,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCommitSummary = getCommitSummary;
 exports.getCommitHourly = getCommitHourly;
 exports.getRecentCommits = getRecentCommits;
+exports.getRepoUrl = getRepoUrl;
+exports.getCommitsForTask = getCommitsForTask;
+exports.getCommitsForTasks = getCommitsForTasks;
 const child_process_1 = require("child_process");
 const path = __importStar(require("path"));
 const agent_registry_1 = require("./agent-registry");
@@ -242,5 +245,86 @@ function getRecentCommits(limit = 30) {
         insertions: c.insertions,
         deletions: c.deletions,
     }));
+}
+// === Repo URL (cached) ============================================
+// Used to build commit links in /api/tasks/commits-map and dashboards.
+// Reads `git remote get-url <REMOTE>` once; falls back to the febuz repo.
+let _repoUrlCache = null;
+function getRepoUrl() {
+    if (_repoUrlCache)
+        return _repoUrlCache;
+    // Prefer the "virtualpc" remote, fall back to "origin", fall back to the
+    // hardcoded canonical URL so dashboards always have a usable link.
+    for (const remote of ['virtualpc', 'origin']) {
+        const out = runGit(`remote get-url ${remote}`).trim();
+        if (out) {
+            // Normalise git@github.com:foo/bar.git → https://github.com/foo/bar
+            const ssh = /^git@([^:]+):(.+?)(\.git)?$/.exec(out);
+            if (ssh) {
+                _repoUrlCache = `https://${ssh[1]}/${ssh[2]}`;
+                return _repoUrlCache;
+            }
+            const https = /^https?:\/\/.+?(\.git)?$/.exec(out);
+            if (https) {
+                _repoUrlCache = out.replace(/\.git$/, '');
+                return _repoUrlCache;
+            }
+        }
+    }
+    _repoUrlCache = 'https://github.com/febuz/virtualpc';
+    return _repoUrlCache;
+}
+// === Task → commits attribution ==================================
+// Returns up to `limit` commits that probably delivered the work for `taskId`.
+//
+// Heuristic, in order:
+//   1. Commit subject or body literally contains the task id (strong signal —
+//      the autonomous agent commits include refs like "(backlog 6.5.20)").
+//   2. Commits within ±15 minutes of the task's completed_at timestamp.
+//
+// Each returned object includes a ready-built `url` so the dashboard never has
+// to know the repo URL.
+function getCommitsForTask(taskId, completedAt, limit = 3) {
+    const all = loadCommits();
+    const repoUrl = getRepoUrl();
+    const linkify = (c, matchedBy) => ({
+        sha: c.sha,
+        shortSha: c.shortSha,
+        subject: c.subject,
+        timestamp: new Date(c.timestamp).toISOString(),
+        url: `${repoUrl}/commit/${c.sha}`,
+        matchedBy,
+    });
+    // 1. Literal taskId in subject — load full bodies via git log -G to be sure
+    // (loadCommits stores subject only). Cheap because the task id is unique.
+    const literalMatches = all.filter(c => c.subject.includes(taskId));
+    if (literalMatches.length > 0) {
+        return literalMatches.slice(0, limit).map(c => linkify(c, 'taskid'));
+    }
+    // 2. Time window match
+    if (!completedAt)
+        return [];
+    const completedMs = new Date(completedAt).getTime();
+    if (!Number.isFinite(completedMs))
+        return [];
+    const WINDOW_MS = 15 * 60 * 1000;
+    return all
+        .filter(c => Math.abs(c.timestamp - completedMs) < WINDOW_MS)
+        .slice(0, limit)
+        .map(c => linkify(c, 'time'));
+}
+/**
+ * Batch lookup for the dashboard: given a list of {id, completed_at} pairs,
+ * returns a map id → commits. Single git scan amortised across all requested
+ * tasks (loadCommits is cached anyway).
+ */
+function getCommitsForTasks(tasks, limit = 3) {
+    const out = {};
+    // Warm the cache once
+    loadCommits();
+    for (const t of tasks) {
+        out[t.id] = getCommitsForTask(t.id, t.completed_at, limit);
+    }
+    return out;
 }
 //# sourceMappingURL=commits-tracker.js.map

@@ -49,4 +49,24 @@ export declare function getRecentCommits(limit?: number): Array<{
     insertions: number;
     deletions: number;
 }>;
+export declare function getRepoUrl(): string;
+export declare function getCommitsForTask(taskId: string, completedAt?: string, limit?: number): Array<{
+    sha: string;
+    shortSha: string;
+    subject: string;
+    timestamp: string;
+    url: string;
+    matchedBy: 'taskid' | 'time';
+}>;
+/**
+ * Batch lookup for the dashboard: given a list of {id, completed_at} pairs,
+ * returns a map id → commits. Single git scan amortised across all requested
+ * tasks (loadCommits is cached anyway).
+ */
+export declare function getCommitsForTasks(tasks: Array<{
+    id: string;
+    completed_at?: string;
+}>, limit?: number): {
+    [taskId: string]: ReturnType<typeof getCommitsForTask>;
+};
 //# sourceMappingURL=commits-tracker.d.ts.map

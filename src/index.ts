@@ -463,6 +463,31 @@ app.get('/api/commits/recent', (req, res) => {
   res.json({ success: true, commits: commitsTracker.getRecentCommits(limit) });
 });
 
+// Map a task to the GitHub commit(s) that delivered it. Used by the
+// "Completed" view to render a → link badge per completed task.
+// Single-task: GET /api/tasks/:id/commits?completed_at=ISO
+// Batch:      POST /api/tasks/commits-map { tasks: [{id, completed_at}] }
+app.get('/api/tasks/:id/commits', (req, res) => {
+  const id = req.params.id;
+  const completedAt = (req.query.completed_at as string) || undefined;
+  const limit = Math.min(10, parseInt((req.query.limit as string) || '3', 10));
+  res.json({
+    success: true,
+    repoUrl: commitsTracker.getRepoUrl(),
+    commits: commitsTracker.getCommitsForTask(id, completedAt, limit),
+  });
+});
+
+app.post('/api/tasks/commits-map', (req, res) => {
+  const tasks = Array.isArray(req.body?.tasks) ? req.body.tasks.slice(0, 200) : [];
+  const limit = Math.min(10, Number(req.body?.limit || 3));
+  res.json({
+    success: true,
+    repoUrl: commitsTracker.getRepoUrl(),
+    map: commitsTracker.getCommitsForTasks(tasks, limit),
+  });
+});
+
 // Agent Social Hub - Facebook/LinkedIn style
 app.get('/api/social/roster', (req, res) => {
   res.json({ success: true, agents: taskEngine.getSocialRoster() });

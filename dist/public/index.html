@@ -1789,6 +1789,31 @@
             startAgentLivePolling(profile.name);
         }
 
+        // Cache: taskId → [{shortSha, url, subject, matchedBy}]. Filled by
+        // hydrateCommitLinks() the first time a Completed view is opened.
+        const taskCommitCache = {};
+
+        async function hydrateCommitLinks(tasks) {
+            // Only ask for tasks we don't already have
+            const missing = tasks
+                .filter(t => t.status === 'completed' && t.id && !(t.id in taskCommitCache))
+                .map(t => ({ id: t.id, completed_at: t.completed_at }));
+            if (missing.length === 0) return false;
+            try {
+                const r = await fetch('/api/tasks/commits-map', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tasks: missing, limit: 3 }),
+                });
+                const data = await r.json();
+                Object.assign(taskCommitCache, data.map || {});
+                return true;
+            } catch (e) {
+                console.log('[commits-map] failed:', e.message);
+                return false;
+            }
+        }
+
         function renderAgentTasks(agentId, filter) {
             const listEl = document.getElementById('agent-tasks-list');
             const titleEl = document.getElementById('agent-tasks-title');
@@ -1807,12 +1832,33 @@
                 return;
             }
 
+            // For Completed view: lazily hydrate the commit-link cache, then re-render.
+            if (filter === 'completed') {
+                hydrateCommitLinks(filtered).then(filled => {
+                    if (filled) renderAgentTasks(agentId, filter);
+                });
+            }
+
             listEl.innerHTML = filtered.map(t => {
                 const pColors = { critical: '#ef4444', high: '#f59e0b', medium: '#3b82f6', low: '#22c55e' };
                 const sColors = { 'in-progress': '#f59e0b', 'pending': '#94a3b8', 'completed': '#22c55e' };
                 const pCol = pColors[t.priority] || '#94a3b8';
                 const sCol = sColors[t.status] || '#94a3b8';
                 const hasProgress = t.progress !== undefined && t.status === 'in-progress';
+
+                // Commit-link badge — only on completed tasks where we found a match.
+                // stopPropagation so clicking the link doesn't also open the task drilldown.
+                let commitBadges = '';
+                if (t.status === 'completed' && taskCommitCache[t.id] && taskCommitCache[t.id].length) {
+                    commitBadges = taskCommitCache[t.id].map(c => `
+                        <a href="${c.url}" target="_blank" rel="noopener"
+                           onclick="event.stopPropagation();"
+                           title="${(c.subject || '').replace(/"/g, '&quot;')} (matched by ${c.matchedBy})"
+                           style="font-size:0.7em; padding:2px 8px; border-radius:4px; background:#3b82f622; color:#60a5fa; font-weight:600; text-decoration:none; border:1px solid #3b82f644;">
+                           🔗 ${c.shortSha}
+                        </a>
+                    `).join('');
+                }
 
                 return `
                     <div class="task-row" onclick="openTaskDetail('${t.id || ''}')" style="border-left-color: ${pCol};">
@@ -1825,7 +1871,8 @@
                                 </div>
                             ` : ''}
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink:0;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink:0; flex-wrap: wrap; justify-content: flex-end;">
+                            ${commitBadges}
                             ${hasProgress ? `<span style="font-size:0.75em; color:var(--primary); font-weight:600;">${t.progress}%</span>` : ''}
                             <span style="font-size: 0.7em; padding: 2px 8px; border-radius: 4px; background: ${pCol}22; color: ${pCol}; font-weight:600;">${t.priority.toUpperCase()}</span>
                             <span style="font-size: 0.7em; padding: 2px 8px; border-radius: 4px; background: ${sCol}22; color: ${sCol}; font-weight:600;">${t.status.toUpperCase()}</span>
