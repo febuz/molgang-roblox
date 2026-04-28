@@ -50,6 +50,13 @@ export function setupAuthRoutes(app: express.Express, authSystem: AuthSystem, au
       });
 
       if (!result.success) {
+        if (result.requires2fa && result.challengeId) {
+          return res.status(200).json({
+            success: false,
+            requires2fa: true,
+            challengeId: result.challengeId,
+          });
+        }
         return res.status(401).json({ success: false, error: result.error });
       }
 
@@ -61,6 +68,74 @@ export function setupAuthRoutes(app: express.Express, authSystem: AuthSystem, au
           role: result.token?.role
         }
       });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * Complete a 2FA-required login by submitting the challengeId from the
+   * login response and the 6-digit TOTP code from the user's authenticator.
+   */
+  app.post('/api/auth/2fa/verify', loginLimiter, (req: AuthRequest, res: express.Response) => {
+    try {
+      const { challengeId, code } = req.body;
+      const result = authSystem.verifyTwoFactor(challengeId, code);
+      if (!result.success) {
+        return res.status(401).json({ success: false, error: result.error });
+      }
+      return res.json({
+        success: true,
+        token: result.token?.sessionId,
+        user: { username: result.token?.username, role: result.token?.role },
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * Begin 2FA setup for the logged-in user. Returns a fresh secret + the
+   * otpauth:// URI to render as a QR code on the client. Must be followed
+   * by /api/auth/2fa/enable before 2FA actually arms.
+   */
+  app.post('/api/auth/2fa/setup', mutationLimiter, authMiddleware.verifyToken(), (req: AuthRequest, res: express.Response) => {
+    try {
+      if (!req.user) return res.status(401).json({ success: false, error: 'Not authenticated' });
+      const result = authSystem.setupTotp(req.user.userId);
+      if (!result.success) return res.status(400).json({ success: false, error: result.error });
+      return res.json({ success: true, secret: result.secret, uri: result.uri });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * Confirm 2FA setup by submitting a code from the new secret.
+   */
+  app.post('/api/auth/2fa/enable', mutationLimiter, authMiddleware.verifyToken(), (req: AuthRequest, res: express.Response) => {
+    try {
+      if (!req.user) return res.status(401).json({ success: false, error: 'Not authenticated' });
+      const { code } = req.body;
+      const result = authSystem.enableTotp(req.user.userId, code);
+      if (!result.success) return res.status(400).json({ success: false, error: result.error });
+      return res.json({ success: true });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  /**
+   * Disable 2FA. Requires both the current password and a valid 2FA code so
+   * a stolen session alone cannot turn it off.
+   */
+  app.post('/api/auth/2fa/disable', mutationLimiter, authMiddleware.verifyToken(), (req: AuthRequest, res: express.Response) => {
+    try {
+      if (!req.user) return res.status(401).json({ success: false, error: 'Not authenticated' });
+      const { password, code } = req.body;
+      const result = authSystem.disableTotp(req.user.userId, password, code);
+      if (!result.success) return res.status(400).json({ success: false, error: result.error });
+      return res.json({ success: true });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
     }

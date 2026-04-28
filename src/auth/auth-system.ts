@@ -10,11 +10,14 @@
  */
 
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import { generateSecret, verifyTotp, otpauthUri } from './totp';
 import logger from '../utils/logger';
 
 const SCRYPT_KEYLEN = 64;
 const SCRYPT_SALT_BYTES = 16;
 const PASSWORD_HASH_PREFIX = 'scrypt$';
+const TWO_FA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const TWO_FA_ISSUER = 'VirtualPC';
 
 export type UserRole = 'ceo' | 'cto' | 'developer' | 'artist' | 'tech_artist';
 
@@ -28,6 +31,18 @@ export interface User {
   lastLogin?: Date;
   status: 'active' | 'inactive' | 'suspended';
   metadata?: Record<string, any>;
+  /** TOTP secret in base32. Present even when 2FA is mid-setup. */
+  totpSecret?: string;
+  /** Once true, login requires a valid TOTP code in addition to password. */
+  totpEnabled?: boolean;
+}
+
+interface TwoFactorChallenge {
+  userId: string;
+  expiresAt: Date;
+  ipAddress?: string;
+  deviceId?: string;
+  location?: string;
 }
 
 export interface AuthToken {
@@ -121,6 +136,7 @@ export class AuthSystem {
   private users: Map<string, User> = new Map();
   private sessions: Map<string, AuthToken> = new Map();
   private loginAttempts: Map<string, { count: number; lastAttempt: Date }> = new Map();
+  private twoFactorChallenges: Map<string, TwoFactorChallenge> = new Map();
 
   constructor() {
     this.initializeDefaultUsers();
@@ -211,9 +227,17 @@ export class AuthSystem {
   }
 
   /**
-   * Login user
+   * Login user. If the account has 2FA enabled, the password check passes but
+   * the response carries `requires2fa: true` plus a short-lived `challengeId`
+   * that must be exchanged via verifyTwoFactor() before a session is issued.
    */
-  login(request: LoginRequest): { success: boolean; token?: AuthToken; error?: string } {
+  login(request: LoginRequest): {
+    success: boolean;
+    token?: AuthToken;
+    requires2fa?: boolean;
+    challengeId?: string;
+    error?: string;
+  } {
     const { username, password, ipAddress, deviceId, location } = request;
 
     // Check brute force
@@ -244,26 +268,129 @@ export class AuthSystem {
       return { success: false, error: 'Account is not active' };
     }
 
-    // Create session
+    // Clear failed-attempt counter — password was correct.
+    this.loginAttempts.delete(username);
+
+    // If 2FA is enabled, do not issue a session yet — return a challenge.
+    if (user.totpEnabled && user.totpSecret) {
+      const challengeId = `2fa_${Date.now()}_${randomBytes(12).toString('hex')}`;
+      this.twoFactorChallenges.set(challengeId, {
+        userId: user.id,
+        expiresAt: new Date(Date.now() + TWO_FA_CHALLENGE_TTL_MS),
+        ipAddress,
+        deviceId,
+        location,
+      });
+      logger.info(`🔐 2FA required: ${username} from ${ipAddress}`);
+      return { success: false, requires2fa: true, challengeId };
+    }
+
+    return { success: true, token: this.issueSession(user) };
+  }
+
+  /**
+   * Exchange a 2FA challenge + TOTP code for a real session token.
+   * Single-use: the challenge is consumed whether or not the code matches.
+   */
+  verifyTwoFactor(challengeId: string, code: string): { success: boolean; token?: AuthToken; error?: string } {
+    const challenge = this.twoFactorChallenges.get(challengeId);
+    if (!challenge) {
+      return { success: false, error: 'Invalid or expired 2FA challenge' };
+    }
+    // Always consume — prevents replay/brute-force on the challenge.
+    this.twoFactorChallenges.delete(challengeId);
+
+    if (new Date() > challenge.expiresAt) {
+      return { success: false, error: 'Invalid or expired 2FA challenge' };
+    }
+
+    const user = this.users.get(challenge.userId);
+    if (!user || !user.totpEnabled || !user.totpSecret) {
+      return { success: false, error: 'Invalid 2FA state' };
+    }
+
+    if (!verifyTotp(user.totpSecret, code)) {
+      logger.warn(`❌ 2FA failed for ${user.username} from ${challenge.ipAddress}`);
+      return { success: false, error: 'Invalid 2FA code' };
+    }
+
+    logger.info(`✅ 2FA passed: ${user.username} from ${challenge.ipAddress} [${challenge.deviceId}]`);
+    return { success: true, token: this.issueSession(user) };
+  }
+
+  /**
+   * Begin TOTP setup for a user: generate a secret and otpauth URI. The user
+   * must call enableTotp() with a valid code generated from this secret to
+   * actually arm 2FA. Calling setup again before enable rotates the secret.
+   */
+  setupTotp(userId: string): { success: boolean; secret?: string; uri?: string; error?: string } {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found' };
+
+    const secret = generateSecret();
+    user.totpSecret = secret;
+    user.totpEnabled = false;
+    return {
+      success: true,
+      secret,
+      uri: otpauthUri({ secretBase32: secret, issuer: TWO_FA_ISSUER, accountName: user.email }),
+    };
+  }
+
+  /**
+   * Confirm the authenticator app is wired up by verifying a code, then arm
+   * 2FA on the account. Refuses if setupTotp() has not been called.
+   */
+  enableTotp(userId: string, code: string): { success: boolean; error?: string } {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found' };
+    if (!user.totpSecret) return { success: false, error: 'Run setupTotp first' };
+    if (!verifyTotp(user.totpSecret, code)) {
+      return { success: false, error: 'Invalid 2FA code' };
+    }
+    user.totpEnabled = true;
+    logger.info(`🔐 2FA enabled for ${user.username}`);
+    return { success: true };
+  }
+
+  /**
+   * Disarm 2FA. Requires both the current password (proves session ownership
+   * isn't enough) and a valid TOTP code (proves the authenticator is still
+   * present, defending against a stolen session that was kept open).
+   */
+  disableTotp(userId: string, password: string, code: string): { success: boolean; error?: string } {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found' };
+    if (!this.verifyPassword(password, user.passwordHash)) {
+      return { success: false, error: 'Password incorrect' };
+    }
+    if (!user.totpSecret || !verifyTotp(user.totpSecret, code)) {
+      return { success: false, error: 'Invalid 2FA code' };
+    }
+    user.totpSecret = undefined;
+    user.totpEnabled = false;
+    logger.info(`🔓 2FA disabled for ${user.username}`);
+    return { success: true };
+  }
+
+  /**
+   * Issue a fresh session token for a user. Internal helper shared by the
+   * password-only and 2FA login paths.
+   */
+  private issueSession(user: User): AuthToken {
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const token: AuthToken = {
       userId: user.id,
       username: user.username,
       role: user.role,
       issuedAt: new Date(),
-      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000), // 8 hours
-      sessionId
+      expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000),
+      sessionId,
     };
-
     this.sessions.set(sessionId, token);
     user.lastLogin = new Date();
-
-    // Clear login attempts
-    this.loginAttempts.delete(username);
-
-    logger.info(`✅ Login successful: ${username} (${user.role}) from ${ipAddress} [${deviceId}]`);
-
-    return { success: true, token };
+    logger.info(`✅ Session issued: ${user.username} (${user.role})`);
+    return token;
   }
 
   /**
