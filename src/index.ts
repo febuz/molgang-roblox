@@ -46,6 +46,8 @@ import GitHubSync from './automation/github-sync';
 import setupGitHubRoutes from './automation/github-routes';
 import { SecurityDashboard } from './security/securityDashboard';
 import setupSecurityRoutes from './security/security-routes';
+import { QualityDashboard } from './quality/qualityDashboard';
+import setupQualityRoutes from './quality/quality-routes';
 import { activityMonitor } from './terminal-activity-monitor';
 import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
@@ -1160,6 +1162,12 @@ async function initialize() {
     // 5g. Security dashboard (CEO composite view of audit + auth signals)
     const securityDashboard = new SecurityDashboard(authSystem, ceoAuditLogger);
     setupSecurityRoutes(app, securityDashboard, authMiddleware);
+
+    // 5h. Quality dashboard (CEO view of QA gate reports — mirrors the
+    // security dashboard pattern but reads molgang-roblox/build/qa/*.json
+    // produced by the four QA tools defined in QUALITY_STANDARDS.md).
+    const qualityDashboard = new QualityDashboard();
+    setupQualityRoutes(app, qualityDashboard, authMiddleware);
 
     // 5b. Register SPA routes (must be after all API routes!)
     app.get('/', serveSPAFile);
