@@ -711,16 +711,45 @@ function getGameStats() {
     const milestonesCompleted = gameMilestones.filter(m => m.status === 'completed').length;
     const milestonesInProgress = gameMilestones.filter(m => m.status === 'in-progress').length;
     const overallProgress = Math.round(gameMilestones.reduce((s, m) => s + m.progress, 0) / gameMilestones.length);
+    // Throughput windows — counted from workLog so they reflect *recent* motion
+    // even when the steady-state pending/in-progress counts don't change.
+    // Without this the dashboard's "Queued: 28" looks frozen for hours when the
+    // engine is in fact ticking happily through subtasks.
+    const now = Date.now();
+    const minuteAgo = now - 60000;
+    const hourAgo = now - 3600000;
+    const dayAgo = now - 86400000;
+    let completedLastMinute = 0;
+    let completedLastHour = 0;
+    let completedLast24h = 0;
+    let lastCompletionTs = null;
+    for (const e of workLog) {
+        if (e.action !== 'task_completed')
+            continue;
+        const t = new Date(e.timestamp).getTime();
+        if (t > minuteAgo)
+            completedLastMinute++;
+        if (t > hourAgo)
+            completedLastHour++;
+        if (t > dayAgo)
+            completedLast24h++;
+        if (!lastCompletionTs || e.timestamp > lastCompletionTs)
+            lastCompletionTs = e.timestamp;
+    }
     return {
         sprint: currentSprint(),
         sprintNumber: sprintCounter,
         tasksCompleted: totalCompleted,
         tasksInProgress: totalInProgress,
+        completedLastMinute,
+        completedLastHour,
+        completedLast24h,
+        lastCompletionTs,
         milestonesCompleted,
         milestonesInProgress,
         milestonesTotal: gameMilestones.length,
         overallGameProgress: overallProgress,
-        agentCount: 5,
+        agentCount: agent_registry_1.AGENT_NAMES.length,
         uptime: Math.round((Date.now() - startTime) / 1000),
     };
 }

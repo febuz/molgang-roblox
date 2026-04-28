@@ -469,6 +469,42 @@ app.get('/api/commits/recent', (req, res) => {
     const limit = parseInt(req.query.limit) || 30;
     res.json({ success: true, commits: commitsTracker.getRecentCommits(limit) });
 });
+// Domain progression tracks (chemical engineering, quantum computing, ...).
+// Content lives in public/assets/tracks/*.json so writers can edit without
+// touching code. /api/tracks returns the list; /api/tracks/:id streams one.
+app.get('/api/tracks', (req, res) => {
+    try {
+        const fs = require('fs');
+        const dir = path.resolve(__dirname, '..', 'public', 'assets', 'tracks');
+        if (!fs.existsSync(dir)) {
+            res.json({ success: true, tracks: [] });
+            return;
+        }
+        const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
+        const tracks = files.map((f) => {
+            const t = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+            return { id: t.id, name: t.name, tagline: t.tagline, tier_count: (t.tiers || []).length };
+        });
+        res.json({ success: true, tracks });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/tracks/:id', (req, res) => {
+    try {
+        const fs = require('fs');
+        const file = path.resolve(__dirname, '..', 'public', 'assets', 'tracks', `${req.params.id}.json`);
+        if (!fs.existsSync(file)) {
+            res.status(404).json({ success: false, error: 'track not found' });
+            return;
+        }
+        res.json({ success: true, track: JSON.parse(fs.readFileSync(file, 'utf8')) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
 // Commit audit trail — every git commit recorded with timestamp, author,
 // agent attribution, and any task-id reference parsed from the subject.
 // Hook source: scripts/git-hooks/post-commit POSTs each commit here so the
@@ -788,17 +824,23 @@ app.get('/api/metrics', (req, res) => {
             ]
         },
         agents: {
-            total: 5,
-            active: 5,
-            busy: gameStats.tasksInProgress >= 5 ? 5 : gameStats.tasksInProgress,
-            idle: Math.max(0, 5 - gameStats.tasksInProgress)
+            total: gameStats.agentCount,
+            active: gameStats.agentCount,
+            busy: gameStats.tasksInProgress >= gameStats.agentCount ? gameStats.agentCount : gameStats.tasksInProgress,
+            idle: Math.max(0, gameStats.agentCount - gameStats.tasksInProgress),
         },
         tasks: {
             total: gameStats.tasksCompleted + gameStats.tasksInProgress,
             completed: gameStats.tasksCompleted,
             inProgress: gameStats.tasksInProgress,
             pending,
-            completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
+            completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+            // Throughput windows so the dashboard can prove motion even when the
+            // pending count is at steady-state (14 agents × 2 pending = 28 always).
+            completedLastMinute: gameStats.completedLastMinute,
+            completedLastHour: gameStats.completedLastHour,
+            completedLast24h: gameStats.completedLast24h,
+            lastCompletionTs: gameStats.lastCompletionTs,
         },
         systems: {
             neo4j: { status: 'operational', uptime: '99.9%' },

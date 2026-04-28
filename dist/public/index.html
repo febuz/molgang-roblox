@@ -700,10 +700,10 @@
                         <div class="stat-value" style="color: var(--warning);" id="stat-inprogress">--</div>
                         <div class="stat-change">Active work</div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" title="Engine maintains 2 pending per agent — steady-state by design. Throughput row below proves motion.">
                         <div class="stat-label">Pending</div>
                         <div class="stat-value" id="stat-pending">--</div>
-                        <div class="stat-change">Queued</div>
+                        <div class="stat-change" id="stat-pending-throughput">Queued</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">System Uptime</div>
@@ -2091,6 +2091,15 @@
                 if (el('stat-completed')) el('stat-completed').textContent = tasks.completed;
                 if (el('stat-inprogress')) el('stat-inprogress').textContent = tasks.inProgress;
                 if (el('stat-pending')) el('stat-pending').textContent = tasks.pending;
+                // Surface throughput so steady-state pending doesn't read as "stuck".
+                if (el('stat-pending-throughput')) {
+                    const perHr = tasks.completedLastHour ?? 0;
+                    const perMin = tasks.completedLastMinute ?? 0;
+                    const last = tasks.lastCompletionTs;
+                    const ageS = last ? Math.round((Date.now() - new Date(last).getTime()) / 1000) : null;
+                    const ageStr = ageS == null ? 'never' : ageS < 60 ? `${ageS}s ago` : ageS < 3600 ? `${Math.round(ageS/60)}m ago` : `${Math.round(ageS/3600)}h ago`;
+                    el('stat-pending-throughput').textContent = `+${perHr}/hr · +${perMin}/min · last ${ageStr}`;
+                }
 
                 if (tasks.total > 0) {
                     const percent = Math.round((tasks.completed / tasks.total) * 100);
