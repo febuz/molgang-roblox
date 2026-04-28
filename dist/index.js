@@ -269,13 +269,14 @@ app.post('/api/commercialization/:id/reject', (req, res) => {
     }
     res.json({ success: true, proposal: r.proposal });
 });
-app.post('/api/commercialization/:id/execute', (req, res) => {
+app.post('/api/commercialization/:id/execute', async (req, res) => {
     const who = privilegedActor(req);
     if (!who) {
         res.status(403).json({ success: false, error: 'execute requires X-Approver header from localhost' });
         return;
     }
-    const r = commercialization.execute(req.params.id);
+    // execute() is now async — Stripe paymentIntents.create() is a network call.
+    const r = await commercialization.execute(req.params.id);
     res.json({ success: r.ok, mode: r.mode, proposal: r.proposal, error: r.error });
 });
 // GPU symbiosis status — what state the daemon is in (idle / yielded to Blender).

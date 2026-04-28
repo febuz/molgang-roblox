@@ -35,6 +35,10 @@ export interface PromotionProposal {
     executed_at?: string;
     failure_reason?: string;
     external_ref?: string;
+    /** Stripe PaymentIntent id (pi_...) when status === 'executed_real'. */
+    stripe_payment_intent_id?: string;
+    /** Stripe charge status: succeeded | requires_action | failed — copied from the PI for the dashboard. */
+    stripe_status?: string;
 }
 export interface ProposeInput {
     source_agent: string;
@@ -74,7 +78,7 @@ export interface ExecuteResult {
     proposal: PromotionProposal;
     error?: string;
 }
-export declare function execute(id: string): ExecuteResult;
+export declare function execute(id: string): Promise<ExecuteResult>;
 export declare function budget(): {
     per_proposal_cap_usd: number;
     per_day_cap_usd: number;

@@ -21,12 +21,38 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 
+// Lazy-required so the module loads on a build that skipped `npm install`
+// or in an environment that explicitly sets PROMO_REAL_MONEY=0 and never
+// touches Stripe. The real-money path falls back to "stripe sdk not
+// available" instead of crashing on module load.
+let _stripeModule: any = null;
+let _stripeClient: any = null;
+function getStripe(): any | null {
+  if (_stripeClient) return _stripeClient;
+  if (!_stripeModule) {
+    try { _stripeModule = require('stripe'); } catch { return null; }
+  }
+  const key = process.env.STRIPE_API_KEY;
+  if (!key) return null;
+  // typescript: _stripeModule is the constructor, called with the secret key.
+  _stripeClient = _stripeModule(key, { apiVersion: '2024-06-20' as any, telemetry: false });
+  return _stripeClient;
+}
+
 const STATE_DIR = process.env.PROMO_STATE_DIR || '/media/knight2/EDS2/virtualpc-state';
 const STATE_FILE = path.join(STATE_DIR, 'promotions.json');
 
 const PER_PROPOSAL_CAP_USD = Number(process.env.PROMO_PER_PROPOSAL_CAP || 5);
 const PER_DAY_CAP_USD = Number(process.env.PROMO_PER_DAY_CAP || 20);
 const REAL_MONEY = process.env.PROMO_REAL_MONEY === '1';
+
+// VirtualV Holding B.V. Stripe identifiers — set via env so secrets never
+// land in git. STRIPE_CUSTOMER_ID is the Stripe customer (cus_...) and
+// STRIPE_PAYMENT_METHOD_ID is the saved card (pm_...). Both are required
+// when REAL_MONEY=1.
+const STRIPE_CUSTOMER_ID = process.env.STRIPE_CUSTOMER_ID || '';
+const STRIPE_PAYMENT_METHOD_ID = process.env.STRIPE_PAYMENT_METHOD_ID || '';
+const STRIPE_STATEMENT_DESCRIPTOR = (process.env.STRIPE_STATEMENT_DESCRIPTOR || 'VIRTUALV PROMO').slice(0, 22);
 
 export type PromoChannel =
   | 'roblox-sponsored'
@@ -61,6 +87,10 @@ export interface PromotionProposal {
   executed_at?: string;
   failure_reason?: string;
   external_ref?: string;
+  /** Stripe PaymentIntent id (pi_...) when status === 'executed_real'. */
+  stripe_payment_intent_id?: string;
+  /** Stripe charge status: succeeded | requires_action | failed — copied from the PI for the dashboard. */
+  stripe_status?: string;
 }
 
 interface PromotionsState {
@@ -180,7 +210,7 @@ export interface ExecuteResult {
   error?: string;
 }
 
-export function execute(id: string): ExecuteResult {
+export async function execute(id: string): Promise<ExecuteResult> {
   const s = ensureState();
   const p = s.proposals.find(x => x.id === id);
   if (!p) return { ok: false, mode: 'dryrun', proposal: { id, source_agent: '', channel: 'other', budget_usd: 0, duration_hours: 0, pitch: '', predicted_roi_pct: 0, status: 'failed', created_at: '' }, error: 'proposal not found' };
@@ -203,15 +233,82 @@ export function execute(id: string): ExecuteResult {
     return { ok: true, mode: 'dryrun', proposal: p };
   }
 
-  // Real-money path is intentionally unimplemented. Wiring Stripe / Roblox
-  // Open Cloud requires a separate review of the keys, the customer record,
-  // and the API surface — none of which should ship behind this PR. Surfacing
-  // the gate clearly so this isn't quietly skipped later.
-  p.status = 'failed';
-  p.failure_reason = 'real-money path not wired — implement Stripe/Roblox callout under separate review';
-  p.executed_at = new Date().toISOString();
-  writeState(s);
-  return { ok: false, mode: 'real', proposal: p, error: p.failure_reason };
+  // === Real-money path =====================================================
+  // Charges the VirtualV Holding B.V. Stripe customer for the proposal's
+  // budget, in USD, off-session (the saved card was set up earlier via the
+  // Stripe dashboard or Setup Intent — this code never sees a PAN).
+  //
+  // Idempotency key = proposal id, so accidental double-clicks on /execute
+  // are coalesced to a single charge by Stripe. `confirm: true` plus
+  // off_session: true performs the charge synchronously when the saved card
+  // is exempt from SCA; otherwise Stripe returns requires_action and we
+  // surface that to the reviewer instead of charging.
+  const stripe = getStripe();
+  if (!stripe) {
+    p.status = 'failed';
+    p.failure_reason = 'STRIPE_API_KEY missing or stripe SDK unavailable — set the Stripe credential and restart';
+    p.executed_at = new Date().toISOString();
+    writeState(s);
+    return { ok: false, mode: 'real', proposal: p, error: p.failure_reason };
+  }
+  if (!STRIPE_CUSTOMER_ID || !STRIPE_PAYMENT_METHOD_ID) {
+    p.status = 'failed';
+    p.failure_reason = 'STRIPE_CUSTOMER_ID and STRIPE_PAYMENT_METHOD_ID env vars are required for real-money execution';
+    p.executed_at = new Date().toISOString();
+    writeState(s);
+    return { ok: false, mode: 'real', proposal: p, error: p.failure_reason };
+  }
+
+  try {
+    const intent = await stripe.paymentIntents.create({
+      amount: Math.round(p.budget_usd * 100),  // Stripe takes integer cents
+      currency: 'usd',
+      customer: STRIPE_CUSTOMER_ID,
+      payment_method: STRIPE_PAYMENT_METHOD_ID,
+      off_session: true,
+      confirm: true,
+      statement_descriptor: STRIPE_STATEMENT_DESCRIPTOR,
+      description: `MOLGANG promo ${p.id} · ${p.channel} · ${p.duration_hours}h`,
+      metadata: {
+        proposal_id: p.id,
+        channel: p.channel,
+        approved_by: p.approved_by || '',
+        predicted_roi_pct: String(p.predicted_roi_pct),
+        source_agent: p.source_agent,
+      },
+    }, {
+      idempotencyKey: `promo-${p.id}`,
+    });
+
+    p.stripe_payment_intent_id = intent.id;
+    p.stripe_status = intent.status;
+
+    if (intent.status === 'succeeded') {
+      p.status = 'executed_real';
+      p.external_ref = intent.id;
+      p.executed_at = new Date().toISOString();
+      writeState(s);
+      return { ok: true, mode: 'real', proposal: p };
+    }
+
+    // requires_action / requires_payment_method / processing — keep the
+    // proposal in 'approved' so the reviewer can retry once the upstream
+    // resolves the SCA challenge or fixes the payment method. Recording the
+    // PI id and status so the dashboard surfaces what's holding it up.
+    p.failure_reason = `stripe returned status=${intent.status}; not charged. Resolve in the Stripe dashboard, then re-run /execute.`;
+    writeState(s);
+    return { ok: false, mode: 'real', proposal: p, error: p.failure_reason };
+  } catch (e: any) {
+    // CardError, RateLimitError, etc. Surface the Stripe-provided message so
+    // the reviewer knows whether to retry or escalate.
+    const code = e?.code || e?.type || 'unknown';
+    const msg = (e?.message || 'stripe error').slice(0, 300);
+    p.status = 'failed';
+    p.failure_reason = `stripe ${code}: ${msg}`;
+    p.executed_at = new Date().toISOString();
+    writeState(s);
+    return { ok: false, mode: 'real', proposal: p, error: p.failure_reason };
+  }
 }
 
 export function budget(): {

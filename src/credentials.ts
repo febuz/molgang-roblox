@@ -44,6 +44,9 @@ export const PROVIDER_CATALOG: ProviderMeta[] = [
   { id: 'perplexity', label: 'Perplexity',        default_base_url: 'https://api.perplexity.ai',           env_var: 'PPLX_API_KEY',       docs_url: 'https://docs.perplexity.ai/' },
   { id: 'mistral',    label: 'Mistral',           default_base_url: 'https://api.mistral.ai/v1',           env_var: 'MISTRAL_API_KEY',    docs_url: 'https://docs.mistral.ai/' },
   { id: 'google',     label: 'Google Gemini',     default_base_url: 'https://generativelanguage.googleapis.com', env_var: 'GOOGLE_API_KEY', docs_url: 'https://ai.google.dev/' },
+  // Stripe — for Croesus's commercialization spend. Account is registered
+  // to VirtualV Holding B.V. Use a *restricted* key with charges:write only.
+  { id: 'stripe',     label: 'Stripe (VirtualV Holding B.V.)', default_base_url: 'https://api.stripe.com', env_var: 'STRIPE_API_KEY',   docs_url: 'https://stripe.com/docs/api' },
 ];
 
 let credentials: ProviderRecord[] = [];
