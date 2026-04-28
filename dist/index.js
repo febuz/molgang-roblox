@@ -79,6 +79,8 @@ const audit_routes_1 = __importDefault(require("./auth/audit-routes"));
 const specialist_routes_1 = __importDefault(require("./auth/specialist-routes"));
 const github_sync_1 = __importDefault(require("./automation/github-sync"));
 const github_routes_1 = __importDefault(require("./automation/github-routes"));
+const securityDashboard_1 = require("./security/securityDashboard");
+const security_routes_1 = __importDefault(require("./security/security-routes"));
 const terminal_activity_monitor_1 = require("./terminal-activity-monitor");
 const taskEngine = __importStar(require("./task-engine"));
 const tokenTracker = __importStar(require("./token-tracker"));
@@ -166,6 +168,24 @@ app.get('/api/tokens/events', (req, res) => {
     const agent = req.query.agent;
     const limit = parseInt(req.query.limit) || 20;
     res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
+});
+// Auto-update status — what the last scripts/auto-update.sh tick observed.
+// Returns { status, message, local_sha, remote_sha, checked_at } or
+// { absent: true } before the timer has fired even once.
+app.get('/api/vitals/auto-update', (req, res) => {
+    try {
+        const fs = require('fs');
+        const STATE = '/tmp/virtualpc-auto-update.state';
+        if (!fs.existsSync(STATE)) {
+            res.json({ success: true, absent: true });
+            return;
+        }
+        const raw = fs.readFileSync(STATE, 'utf8');
+        res.json({ success: true, ...JSON.parse(raw) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 // GPU symbiosis status — what state the daemon is in (idle / yielded to Blender).
 // The daemon only writes /tmp/gpu-symbiosis-state on a transition, so a fresh
@@ -1019,6 +1039,9 @@ async function initialize() {
                 .filter(Boolean),
         });
         (0, github_routes_1.default)(app, githubSync, authMiddleware);
+        // 5g. Security dashboard (CEO composite view of audit + auth signals)
+        const securityDashboard = new securityDashboard_1.SecurityDashboard(authSystem, ceoAuditLogger);
+        (0, security_routes_1.default)(app, securityDashboard, authMiddleware);
         // 5b. Register SPA routes (must be after all API routes!)
         app.get('/', serveSPAFile);
         app.all('*', (req, res, next) => {

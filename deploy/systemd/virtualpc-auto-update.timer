@@ -1,0 +1,13 @@
+[Unit]
+Description=Pull virtualpc updates from GitHub every 15 minutes
+
+[Timer]
+# Wait two minutes after login, then every 15 min. Persistent=true catches
+# missed runs if the laptop was asleep.
+OnBootSec=2min
+OnUnitActiveSec=15min
+Persistent=true
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target

@@ -148,6 +148,24 @@ app.get('/api/tokens/events', (req, res) => {
   res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
 });
 
+// Auto-update status — what the last scripts/auto-update.sh tick observed.
+// Returns { status, message, local_sha, remote_sha, checked_at } or
+// { absent: true } before the timer has fired even once.
+app.get('/api/vitals/auto-update', (req, res) => {
+  try {
+    const fs = require('fs');
+    const STATE = '/tmp/virtualpc-auto-update.state';
+    if (!fs.existsSync(STATE)) {
+      res.json({ success: true, absent: true });
+      return;
+    }
+    const raw = fs.readFileSync(STATE, 'utf8');
+    res.json({ success: true, ...JSON.parse(raw) });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // GPU symbiosis status — what state the daemon is in (idle / yielded to Blender).
 // The daemon only writes /tmp/gpu-symbiosis-state on a transition, so a fresh
 // daemon that's never had to yield has no state file. Treat that as "idle" if

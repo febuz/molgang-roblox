@@ -1,0 +1,10 @@
+[Unit]
+Description=Pull latest virtualpc from GitHub, rebuild & restart if needed
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/knight2/virtualpc
+ExecStart=/home/knight2/virtualpc/scripts/auto-update.sh
+StandardOutput=append:/tmp/virtualpc-auto-update.log
+StandardError=append:/tmp/virtualpc-auto-update.log
