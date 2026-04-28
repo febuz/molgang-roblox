@@ -527,6 +527,38 @@
                     <div class="nav-icon">✨</div>
                     <div>Luna (Tech)</div>
                 </div>
+                <div class="nav-item" data-page="cleopatra">
+                    <div class="nav-icon">👸</div>
+                    <div>Cleopatra (Exec)</div>
+                </div>
+                <div class="nav-item" data-page="alexander">
+                    <div class="nav-icon">🗡️</div>
+                    <div>Alexander (Arb)</div>
+                </div>
+                <div class="nav-item" data-page="moneygod">
+                    <div class="nav-icon">💰</div>
+                    <div>MoneyGod (Econ)</div>
+                </div>
+                <div class="nav-item" data-page="analyst">
+                    <div class="nav-icon">📊</div>
+                    <div>Analyst</div>
+                </div>
+                <div class="nav-item" data-page="videoproducer">
+                    <div class="nav-icon">🎬</div>
+                    <div>VideoProducer</div>
+                </div>
+                <div class="nav-item" data-page="vice">
+                    <div class="nav-icon">🌆</div>
+                    <div>Vice (GTA)</div>
+                </div>
+                <div class="nav-item" data-page="atlas">
+                    <div class="nav-icon">🥽</div>
+                    <div>Atlas (AR/VR)</div>
+                </div>
+                <div class="nav-item" data-page="kimi">
+                    <div class="nav-icon">🌙</div>
+                    <div>Kimi (Research)</div>
+                </div>
             </div>
 
             <div class="nav-section">
@@ -1166,10 +1198,12 @@
         // Load per-agent metrics
         async function loadTeamOverview() {
             try {
-                const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna'];
-                const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨' };
-                const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Artist', Luna: 'Tech Artist' };
-                const status = { Fill: 'online', Kai: 'online', Zip: 'online', Mira: 'online', Luna: 'busy' };
+                // Keep this list in sync with dist/public/index.html — both pages
+                // surface the same roster. New agent? Update both files.
+                const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi'];
+                const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽', Kimi: '🌙' };
+                const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Artist', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism', Kimi: 'Long-Context Researcher' };
+                const status = { Fill: 'online', Kai: 'online', Zip: 'online', Mira: 'online', Luna: 'busy', Cleopatra: 'online', Alexander: 'online', MoneyGod: 'online', Analyst: 'online', VideoProducer: 'online', Vice: 'online', Atlas: 'online', Kimi: 'online' };
 
                 const container = document.getElementById('team-overview');
                 container.innerHTML = '';
