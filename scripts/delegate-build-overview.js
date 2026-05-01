@@ -58,7 +58,7 @@ async function draftPrompt(agent) {
     `Write a system prompt FOR YOURSELF — for use when other systems call you via the LLM API.\n\n` +
     `Write in second person ("You are ${agent.name}, ${agent.role}..."). 6-10 sentences.\n` +
     `Cover: identity, expertise, decision style, what you say YES/NO to, deliverable format.\n` +
-    `Project context: VirtualPC is the agent system building MOLGANG Chemical Engineering Simulator.\n` +
+    `Project context: VirtualPC is a project-agnostic multi-agent platform; whatever the team is building plugs into it through the task engine.\n` +
     `Write the prompt only — no preamble, no quotes, no markdown headers. Plain text.`;
 
   // Route via taskType=concept => gemma-4-26b (the local "VirtualPC model").

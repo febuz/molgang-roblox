@@ -137,6 +137,62 @@ GET  /api/github/virtualpc/file  → fetch a knowledge-dir markdown file
 
 ---
 
+## 5b. Dual-graph context layer (codegraph + LightRAG)
+
+VirtualPC pairs two graphs so agents have both **structural** and
+**semantic** lenses on the codebase without loading the whole repo into a
+prompt every time:
+
+| Graph              | Layer       | Source                          | Answers                                        |
+|--------------------|-------------|---------------------------------|------------------------------------------------|
+| `codegraph`        | structural  | `src/**.ts` (regex-based AST)   | "Where is X defined?" "Who calls X?"           |
+| LightRAG (Neo4j)   | semantic    | docs, comments, READMEs         | "Why is this done this way?"                   |
+
+The codegraph adapter (`src/integrations/codegraph/`) is a zero-dep
+TypeScript indexer. It walks `src/**.ts`, extracts exported symbols,
+imports per file, and a coarse references map. ~250 ms first build, cached
+for 30 minutes at `data/codegraph.json`. Endpoints:
+
+```
+GET  /api/codegraph/stats           summary: counts per kind
+POST /api/codegraph/rebuild         force a full rebuild
+GET  /api/codegraph/symbol/:name    definitions + referencedBy
+GET  /api/codegraph/file?path=X     full file record
+GET  /api/codegraph/search?q=…      substring symbol search
+```
+
+The adapter is GitNexus-compatible — when a real GitNexus CLI ships, the
+internal driver swaps in one function without changing the response shape.
+
+LightRAG (`src/integrations/lightrag/`) is the existing Neo4j-backed
+semantic graph; it gracefully degrades to in-memory mode when Neo4j isn't
+available, so VirtualPC never hard-fails on a missing optional service.
+
+## 5c. Auto-research loop (Karpathy-style)
+
+The four research-flavored agents (Vice, Kimi, Analyst, Atlas) can
+delegate questions to a multi-step loop on local Gemma 4. The loop is in
+`src/integrations/autoresearch/`:
+
+1. **Plan** — Gemma 4 lists 3-5 sub-questions worth answering.
+2. **Probe** — for each sub-question, hit a context source (`codegraph`,
+   `lightrag`, or caller-supplied `static`).
+3. **Synthesize** — fuse all evidence into a final write-up.
+4. **Critique** — Gemma 4 reviews its own draft; if it finds gaps,
+   recursion (depth-capped).
+
+Endpoints:
+
+```
+POST /api/autoresearch              run the loop for an agent
+GET  /api/autoresearch/agents       allowlist of research agents
+```
+
+Pure-local: every hop runs on Gemma 4 26B via the LiteLLM gateway. Zero
+API credits, ~30-90 s per query for a 4-sub-question loop.
+
+---
+
 ## 6. Persistence
 
 | Store                    | Role                                          |
