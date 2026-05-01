@@ -88,12 +88,16 @@ app.use((req, res, next) => {
 app.use(express.static('dist/public'));
 app.use(express.static('public'));
 
-// Helper function to serve React frontend
-function serveSPAFile(req: express.Request, res: express.Response) {
-  const indexPath = path.resolve(__dirname, '..', 'dist', 'public', 'index.html');
-  res.type('html').sendFile(indexPath, (err: any) => {
+// Helper function to serve the dashboard. Previously this fell through to a
+// stale snapshot at dist/public/index.html that someone had hand-copied from
+// public/dashboard.html months ago — it drifted and started showing only 5
+// agents instead of the full 14. Serve the live file from public/ so the
+// dashboard can never go out of date again.
+function serveSPAFile(_req: express.Request, res: express.Response) {
+  const dashPath = path.resolve(__dirname, '..', 'public', 'dashboard.html');
+  res.type('html').sendFile(dashPath, (err: any) => {
     if (err) {
-      logger.error('Error serving index.html:', err);
+      logger.error('Error serving dashboard.html:', err);
       res.status(500).send('Error loading dashboard');
     }
   });
