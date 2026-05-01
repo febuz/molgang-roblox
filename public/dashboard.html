@@ -866,6 +866,17 @@
                 </div>
 
                 <div class="card">
+                    <div class="card-title">Tasks <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;" id="ad-tasks-count">— manage status & priority directly</span></div>
+                    <div id="ad-tasks" style="display: flex; flex-direction: column; gap: 8px; max-height: 520px; overflow-y: auto;">Loading…</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">GitHub Authority Docs <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— from <code>febuz/virtualpc</code>, loaded live</span></div>
+                    <div id="ad-gh-docs-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">Loading…</div>
+                    <pre id="ad-gh-docs-viewer" style="display:none; margin-top: 14px; white-space: pre-wrap; word-wrap: break-word; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.82em; line-height: 1.55; color: var(--text-primary); background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px; padding: 14px; max-height: 480px; overflow-y: auto;"></pre>
+                </div>
+
+                <div class="card">
                     <div class="card-title">Recent Activity</div>
                     <div id="ad-activity" style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.8em; color: var(--text-secondary); max-height: 240px; overflow-y: auto;">Loading…</div>
                 </div>
@@ -937,15 +948,17 @@
             document.getElementById('ad-prompt').textContent = 'Loading…';
             document.getElementById('ad-prompt-meta').textContent = '';
             document.getElementById('ad-activity').textContent = 'Loading…';
+            document.getElementById('ad-tasks').textContent = 'Loading…';
             document.getElementById('ad-ask-input').value = '';
             document.getElementById('ad-ask-out').style.display = 'none';
             document.getElementById('ad-ask-out').textContent = '';
 
             try {
-                const [overview, prompt, log] = await Promise.all([
+                const [overview, prompt, log, perPerson] = await Promise.all([
                     fetch('/api/agents/overview').then(r => r.json()),
                     fetch('/api/agents/' + encodeURIComponent(name) + '/prompt').then(r => r.json()),
                     fetch('/api/agents/' + encodeURIComponent(name) + '/cli-log?limit=30').then(r => r.json()),
+                    fetch('/api/backlog/per-person').then(r => r.json()),
                 ]);
 
                 const meta = (overview.agents || []).find(a => a.name === name);
@@ -986,9 +999,121 @@
                                '</div>';
                     }).join('');
                 }
+
+                renderAgentTasks(perPerson && perPerson[name]);
+                loadAgentGitHubDocs(name);
             } catch (err) {
                 document.getElementById('ad-subtitle').textContent = 'Error loading: ' + err.message;
             }
+        }
+
+        async function loadAgentGitHubDocs(name) {
+            const host = document.getElementById('ad-gh-docs-buttons');
+            const viewer = document.getElementById('ad-gh-docs-viewer');
+            host.innerHTML = 'Loading…';
+            viewer.style.display = 'none';
+            viewer.textContent = '';
+            try {
+                const r = await fetch('/api/github/agent-docs/' + encodeURIComponent(name));
+                const j = await r.json();
+                const docs = (j && j.docs) || [];
+                if (!docs.length) {
+                    host.innerHTML = '<em style="color: var(--text-secondary);">No authority docs in <code>febuz/virtualpc</code> yet for this agent.</em>';
+                    return;
+                }
+                host.innerHTML = docs.map(d => {
+                    const label = d.path.split('/').pop().replace('.md', '').replace(/-/g, ' ');
+                    return `<button class="ad-gh-btn" data-path="${d.path}" data-url="${d.html_url}" style="padding: 7px 14px; background: rgba(96,165,250,0.18); color: var(--primary); border: 1px solid var(--primary); border-radius: 6px; cursor: pointer; font-size: 0.85em; font-weight: 600;">📜 ${label}</button>`;
+                }).join('');
+                host.querySelectorAll('.ad-gh-btn').forEach(btn =>
+                    btn.addEventListener('click', () => loadBacklogFileInto(btn.dataset.path, btn.dataset.url, 'ad-gh-docs-viewer')));
+            } catch (e) {
+                host.innerHTML = '<em style="color: var(--danger);">Failed to load docs: ' + e.message + '</em>';
+            }
+        }
+
+        // Renders the Tasks card with status / priority controls wired to
+        // POST /api/backlog/:id/{status,priority}. After every successful
+        // mutation we refresh the panel so counts stay consistent.
+        function renderAgentTasks(personRecord) {
+            const host = document.getElementById('ad-tasks');
+            const countEl = document.getElementById('ad-tasks-count');
+            const tasks = (personRecord && personRecord.tasks) ? personRecord.tasks : [];
+            countEl.textContent = tasks.length
+                ? '— ' + tasks.filter(t => t.status === 'in-progress').length + ' in progress, '
+                  + tasks.filter(t => t.status === 'pending').length + ' pending, '
+                  + tasks.filter(t => t.status === 'completed').length + ' done'
+                : '— no tasks assigned';
+            if (!tasks.length) {
+                host.innerHTML = '<em style="color: var(--text-secondary);">No tasks assigned to this agent.</em>';
+                return;
+            }
+            const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            const STATUS_COLORS = { 'pending': '#94a3b8', 'in-progress': '#22c55e', 'completed': '#60a5fa' };
+            const PRI_COLORS = { 'critical': '#ef4444', 'high': '#f59e0b', 'medium': '#06b6d4', 'low': '#94a3b8' };
+            host.innerHTML = tasks.map(t => `
+                <div class="task-row" data-task-id="${esc(t.id)}" style="padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: rgba(2,6,23,0.4); display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: start;">
+                    <div>
+                        <div style="font-weight: 600; color: var(--text-primary); font-size: 0.95em;">${esc(t.title)}</div>
+                        <div style="color: var(--text-secondary); font-size: 0.78em; margin-top: 4px; line-height: 1.4;">${esc(t.description || '').slice(0, 240)}${(t.description || '').length > 240 ? '…' : ''}</div>
+                        <div style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; font-size: 0.7em;">
+                            <span style="padding: 2px 8px; border-radius: 6px; background: ${STATUS_COLORS[t.status] || '#94a3b8'}33; color: ${STATUS_COLORS[t.status] || '#94a3b8'}; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">${esc(t.status)}</span>
+                            <span style="padding: 2px 8px; border-radius: 6px; background: ${PRI_COLORS[t.priority] || '#94a3b8'}33; color: ${PRI_COLORS[t.priority] || '#94a3b8'}; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">${esc(t.priority)}</span>
+                            ${t.sprint ? `<span style="color: var(--text-secondary);">${esc(t.sprint)}</span>` : ''}
+                            ${t.estimated_hours ? `<span style="color: var(--text-secondary);">${esc(t.estimated_hours)}h</span>` : ''}
+                            ${t.progress != null ? `<span style="color: var(--text-secondary);">${esc(t.progress)}%</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 6px; min-width: 150px;">
+                        <select class="ad-task-status" style="padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-darker); color: var(--text-primary); font-size: 0.78em;">
+                            <option value="pending"${t.status === 'pending' ? ' selected' : ''}>Pending</option>
+                            <option value="in-progress"${t.status === 'in-progress' ? ' selected' : ''}>In Progress</option>
+                            <option value="completed"${t.status === 'completed' ? ' selected' : ''}>Completed</option>
+                        </select>
+                        <select class="ad-task-priority" style="padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-darker); color: var(--text-primary); font-size: 0.78em;">
+                            <option value="critical"${t.priority === 'critical' ? ' selected' : ''}>Critical</option>
+                            <option value="high"${t.priority === 'high' ? ' selected' : ''}>High</option>
+                            <option value="medium"${t.priority === 'medium' ? ' selected' : ''}>Medium</option>
+                            <option value="low"${t.priority === 'low' ? ' selected' : ''}>Low</option>
+                        </select>
+                    </div>
+                </div>
+            `).join('');
+
+            // Wire change handlers — POST to the appropriate endpoint, then refresh.
+            host.querySelectorAll('.task-row').forEach(row => {
+                const id = row.dataset.taskId;
+                row.querySelector('.ad-task-status').addEventListener('change', async (e) => {
+                    e.target.disabled = true;
+                    try {
+                        const r = await fetch('/api/backlog/' + encodeURIComponent(id) + '/status', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ status: e.target.value }),
+                        });
+                        const j = await r.json();
+                        if (!j.success) throw new Error(j.error || 'failed');
+                        if (adCurrentAgent) loadAgentDetail(adCurrentAgent); // refresh
+                    } catch (err) {
+                        alert('Status update failed: ' + err.message);
+                        e.target.disabled = false;
+                    }
+                });
+                row.querySelector('.ad-task-priority').addEventListener('change', async (e) => {
+                    e.target.disabled = true;
+                    try {
+                        const r = await fetch('/api/backlog/' + encodeURIComponent(id) + '/priority', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ priority: e.target.value }),
+                        });
+                        const j = await r.json();
+                        if (!j.success) throw new Error(j.error || 'failed');
+                        if (adCurrentAgent) loadAgentDetail(adCurrentAgent);
+                    } catch (err) {
+                        alert('Priority update failed: ' + err.message);
+                        e.target.disabled = false;
+                    }
+                });
+            });
         }
 
         document.getElementById('ad-ask-form').addEventListener('submit', async (e) => {
@@ -1123,20 +1248,14 @@
                     </div>
 
                     <div class="card">
-                        <div class="card-title">📁 Backlog Files</div>
-                        <p style="color: var(--text-secondary); margin-bottom: 10px;">
-                            View detailed tasks in these backlog files:
-                        </p>
-                        <a href="https://github.com/febuz/molgang-roblox/blob/main/.backlog/high-priority.md"
-                           style="display: inline-block; margin-right: 10px; padding: 8px 16px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none;"
-                           target="_blank">
-                            📋 High Priority Tasks
-                        </a>
-                        <a href="https://github.com/febuz/molgang-roblox/blob/main/.backlog/session-actions.md"
-                           style="display: inline-block; padding: 8px 16px; background: var(--secondary); color: white; border-radius: 6px; text-decoration: none;"
-                           target="_blank">
-                            📝 Session Actions
-                        </a>
+                        <div class="card-title">📁 Backlog Files
+                            <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— from <code>febuz/virtualpc</code> (private; loaded via authenticated proxy)</span>
+                        </div>
+                        <p style="color: var(--text-secondary); margin-bottom: 10px;">Click any file to view it inline:</p>
+                        <div id="backlog-files-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <em style="color: var(--text-secondary);">Loading file list…</em>
+                        </div>
+                        <pre id="backlog-files-viewer" style="display:none; margin-top: 14px; white-space: pre-wrap; word-wrap: break-word; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.82em; line-height: 1.55; color: var(--text-primary); background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px; padding: 14px; max-height: 560px; overflow-y: auto;"></pre>
                     </div>
                 `;
 
@@ -1145,8 +1264,44 @@
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = backlogHtml;
                 container.appendChild(tempDiv);
+                populateBacklogFiles();
             } catch (error) {
                 console.log('Backlog fetch error:', error.message);
+            }
+        }
+
+        // === Backlog Files: list febuz/virtualpc/.backlog/ via authenticated proxy
+        async function populateBacklogFiles() {
+            const host = document.getElementById('backlog-files-buttons');
+            if (!host) return;
+            try {
+                const r = await fetch('/api/github/virtualpc/list?dir=.backlog');
+                const j = await r.json();
+                if (!j.success) throw new Error(j.error || 'list failed');
+                const files = (j.files || []).filter(f => f.type === 'file' && f.name.endsWith('.md'));
+                if (!files.length) { host.innerHTML = '<em style="color: var(--text-secondary);">No backlog files found in .backlog/.</em>'; return; }
+                const COLORS = { 'high-priority.md': '#ef4444', 'medium-priority.md': '#f59e0b', 'low-priority.md': '#06b6d4', 'session-actions.md': '#22c55e' };
+                host.innerHTML = files.map(f => {
+                    const color = COLORS[f.name] || 'var(--primary)';
+                    return `<button class="bf-btn" data-path="${f.path}" data-url="${f.html_url}" style="padding: 8px 16px; background: ${color}; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 600;">📋 ${f.name.replace('.md','').replace(/-/g,' ')}</button>`;
+                }).join('');
+                host.querySelectorAll('.bf-btn').forEach(btn => btn.addEventListener('click', () => loadBacklogFileInto(btn.dataset.path, btn.dataset.url, 'backlog-files-viewer')));
+            } catch (e) {
+                host.innerHTML = '<em style="color: var(--danger);">Could not list .backlog/: ' + e.message + '</em>';
+            }
+        }
+
+        async function loadBacklogFileInto(path, url, viewerId) {
+            const viewer = document.getElementById(viewerId);
+            viewer.style.display = 'block';
+            viewer.textContent = 'Loading ' + path + ' from github.com/febuz/virtualpc …';
+            try {
+                const r = await fetch('/api/github/virtualpc/file?path=' + encodeURIComponent(path));
+                const j = await r.json();
+                if (!j.success) throw new Error(j.error || 'fetch failed');
+                viewer.textContent = j.content + '\n\n' + (url ? '— ' + url : '');
+            } catch (e) {
+                viewer.textContent = 'Error: ' + e.message;
             }
         }
 
