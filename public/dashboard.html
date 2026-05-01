@@ -571,10 +571,6 @@
                     <div class="nav-icon">⚙️</div>
                     <div>Tasks</div>
                 </div>
-                <div class="nav-item" data-page="molgang">
-                    <div class="nav-icon">🎮</div>
-                    <div>MOLGANG</div>
-                </div>
                 <div class="nav-item" data-page="system">
                     <div class="nav-icon">🔧</div>
                     <div>System Status</div>
@@ -739,44 +735,13 @@
                 <div class="card">
                     <div class="card-title">Task Board Link</div>
                     <p style="color: var(--text-secondary); margin-bottom: 15px;">
-                        View detailed tasks in GitHub backlog
+                        View the live virtualpc repo on GitHub
                     </p>
-                    <a href="https://github.com/febuz/molgang-roblox"
+                    <a href="https://github.com/febuz/virtualpc"
                        style="display: inline-block; padding: 10px 20px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none; transition: all 0.3s;"
                        onmouseover="this.style.background='var(--secondary)'"
                        onmouseout="this.style.background='var(--primary)'">
-                        📦 Open GitHub Tasks
-                    </a>
-                </div>
-            </div>
-
-            <!-- MOLGANG PAGE -->
-            <div class="content-section" id="molgang">
-                <div class="page-header">
-                    <div class="page-title">🎮 MOLGANG Game</div>
-                    <div class="page-subtitle">Web version development and integration</div>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">🎯 Game Features</div>
-                    <ul style="list-style: none; color: var(--text-secondary);">
-                        <li style="margin-bottom: 10px;">✅ Quantum Computing Trading System</li>
-                        <li style="margin-bottom: 10px;">✅ Steel Factory Tycoon Gameplay</li>
-                        <li style="margin-bottom: 10px;">✅ GTA6-style Physics & Realism</li>
-                        <li style="margin-bottom: 10px;">✅ Multiplayer Racing Mechanics</li>
-                        <li style="margin-bottom: 10px;">✅ Character Customization (M/F)</li>
-                        <li style="margin-bottom: 10px;">✅ Chemistry Education Track</li>
-                        <li style="margin-bottom: 10px;">✅ Superhero Adventure Path</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">🔗 Quick Links</div>
-                    <a href="http://localhost:3000" style="display: inline-block; margin-right: 10px; padding: 10px 20px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none;">
-                        🎮 Play Game
-                    </a>
-                    <a href="https://github.com/febuz/molgang-web" style="display: inline-block; padding: 10px 20px; background: var(--secondary); color: white; border-radius: 6px; text-decoration: none;">
-                        📦 GitHub Repo
+                        📦 Open virtualpc on GitHub
                     </a>
                 </div>
             </div>
@@ -1165,7 +1130,7 @@
             "📊 <strong>Tip:</strong> The Overview page shows real-time status of all agents and tasks.",
             "🏆 <strong>Tip:</strong> Check the Leaderboard to see top performers and team rankings.",
             "🔗 <strong>Tip:</strong> Click 'Open GitHub Tasks' to manage detailed tasks on GitHub.",
-            "🎮 <strong>Tip:</strong> Visit the MOLGANG page to start the game and track development.",
+            "🐙 <strong>Tip:</strong> Click the GitHub Repo link in the Backlog page to inspect the live virtualpc source.",
             "⚙️ <strong>Tip:</strong> System Status shows all infrastructure components and their health.",
         ];
 
@@ -1308,29 +1273,39 @@
         // Load metrics on page load
         loadBacklog();
 
-        // Populate backlog
-        function populateBacklog() {
-            const backlog = {
-                'Fill (CEO)': ['Strategic planning (2 tasks)', 'Resource allocation (1 task)'],
-                'Kai (CTO)': ['GitHub repo creation', 'OpenClaw integration', 'QWEN API setup', 'Docker optimization'],
-                'Zip (Developer)': ['Real task status endpoint', 'Advanced gameplay', 'Real-time dashboard', 'Monitoring'],
-                'Mira (Artist)': ['VirtualPC Dashboard Design (6-8h in progress)'],
-                'Luna (Tech Artist)': ['MOLGANG sync', 'Advanced gameplay support', 'Performance optimization']
-            };
-
+        // Populate backlog — live data from /api/backlog/per-person, replacing
+        // the previous hardcoded fixture (which named only 5 agents and was
+        // peppered with stale project-specific labels).
+        async function populateBacklog() {
             const container = document.getElementById('backlog-container');
-            container.innerHTML = '';
-
-            for (const [person, tasks] of Object.entries(backlog)) {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-title">${person}</div>
-                    <ul style="list-style: none; color: var(--text-secondary);">
-                        ${tasks.map(task => `<li style="margin-bottom: 8px;">⏳ ${task}</li>`).join('')}
-                    </ul>
-                `;
-                container.appendChild(card);
+            container.innerHTML = '<em style="color: var(--text-secondary);">Loading…</em>';
+            try {
+                const r = await fetch('/api/backlog/per-person');
+                const data = await r.json();
+                container.innerHTML = '';
+                for (const [name, info] of Object.entries(data)) {
+                    const tasks = (info && info.tasks) || [];
+                    if (!tasks.length) continue;
+                    const active = tasks.filter(t => t.status !== 'completed').slice(0, 6);
+                    if (!active.length) continue;
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <div class="card-title">${info.avatar || ''} ${name} <span style="font-weight: normal; color: var(--text-secondary); font-size: 0.85em;">— ${info.role || ''}</span></div>
+                        <ul style="list-style: none; color: var(--text-secondary);">
+                            ${active.map(t => {
+                                const icon = t.status === 'in-progress' ? '🟢' : t.status === 'completed' ? '✅' : '⏳';
+                                return `<li style="margin-bottom: 8px;">${icon} ${t.title}</li>`;
+                            }).join('')}
+                        </ul>
+                    `;
+                    container.appendChild(card);
+                }
+                if (!container.children.length) {
+                    container.innerHTML = '<em style="color: var(--text-secondary);">No active tasks across the roster right now.</em>';
+                }
+            } catch (e) {
+                container.innerHTML = '<em style="color: var(--danger);">Backlog load failed: ' + e.message + '</em>';
             }
         }
 

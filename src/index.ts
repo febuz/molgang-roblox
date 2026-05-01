@@ -32,7 +32,6 @@ import { EntityModel } from './integrations/numerai/entity-model';
 import NumeraiDataFetcher from './integrations/numerai/data-fetcher';
 import OpenClawEDBBridge from './integrations/numerai/openclaw-edb-bridge';
 import { killSwitch } from './openclaw-kill-switch';
-import { molGangIntegration } from './integrations/molgang-web-integration';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
 import AuthSystem from './auth/auth-system';
@@ -1355,22 +1354,6 @@ app.get('/dashboard-static', (req, res) => {
 </body>
 </html>
   `);
-});
-
-// Game pages
-app.get('/game', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '..', 'public', 'game3d.html'));
-});
-app.get('/game/2d', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '..', 'public', 'game.html'));
-});
-app.get('/game/rts', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '..', 'public', 'game-rts.html'));
-});
-// VirtualV 3D world — WebGPU-capable scene rendering the VirtualV-owned
-// asset manifest captured from the Roblox MOLGANG source.
-app.get('/game/world', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '..', 'public', 'world.html'));
 });
 
 // Health check
@@ -2702,14 +2685,8 @@ function setupRoutes(app: express.Express, components: any) {
   // OpenClaw command execution routes (no approval required)
   setupOpenClawRoutes(app);
 
-  // MOLGANG Web Version Integration (Educational Game Support)
-  logger.info('📚 Registering MOLGANG web integration...');
-  molGangIntegration.registerEndpoints(app);
-  logger.info('✓ MOLGANG web version integrated (12 endpoints)');
-
   logger.info('✓ Routes configured');
   logger.info('✓ OpenClaw autonomous command execution enabled');
-  logger.info('✓ MOLGANG web version ready for 1M+ students');
 }
 
 /**

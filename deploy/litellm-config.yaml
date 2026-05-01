@@ -40,6 +40,34 @@ model_list:
       api_base: http://127.0.0.1:1234/v1
       api_key: lm-studio
 
+  # ─── Alexander Symphony+ (Ollama, GPU 1) ────────────────────────────────
+  # Used by /media/knight2/EDS2/projects/alexander. Aliases are intentionally
+  # short (hermes-3-8b not hermes3:8b) so roster.yaml stays readable.
+  - model_name: hermes-3-8b
+    litellm_params:
+      model: ollama_chat/hermes3:8b
+      api_base: http://127.0.0.1:11434
+  - model_name: hermes-3-3b
+    litellm_params:
+      model: ollama_chat/hermes3:3b
+      api_base: http://127.0.0.1:11434
+  - model_name: hermes-3-70b
+    litellm_params:
+      model: ollama_chat/hermes3:70b-llama3.1-q4_K_M
+      api_base: http://127.0.0.1:11434
+  - model_name: deepseek-r1-14b
+    litellm_params:
+      model: ollama_chat/deepseek-r1:14b
+      api_base: http://127.0.0.1:11434
+  - model_name: qwen-coder-14b
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:14b
+      api_base: http://127.0.0.1:11434
+  - model_name: qwen-coder-32b
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:32b
+      api_base: http://127.0.0.1:11434
+
   # ─── Cloud providers (engage when credentials are configured) ────────────
   # Each `os.environ/X` reference reads the env var pushed in by
   # src/credentials.ts on boot. Missing keys leave the model unusable but

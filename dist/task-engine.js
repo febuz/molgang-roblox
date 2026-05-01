@@ -50,6 +50,8 @@ exports.getPerPersonBacklog = getPerPersonBacklog;
 exports.getAgentProgress = getAgentProgress;
 exports.getBacklogItems = getBacklogItems;
 exports.getTaskDetail = getTaskDetail;
+exports.setTaskStatus = setTaskStatus;
+exports.setTaskPriority = setTaskPriority;
 exports.getGameMilestones = getGameMilestones;
 exports.getGameStats = getGameStats;
 exports.logWork = logWork;
@@ -700,6 +702,37 @@ function getTaskDetail(taskId) {
         completed_at: task.completed_at,
         _subtasksDone: doneCount,
     };
+}
+// Mutators for the dashboard's per-agent task panel. Operate on the same
+// `tasks` array that getPerPersonBacklog/getTaskDetail read from, so changes
+// surface immediately in the UI on the next poll.
+function setTaskStatus(taskId, next) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task)
+        return null;
+    const previous = task.status;
+    task.status = next;
+    if (next === 'in-progress' && !task.started_at)
+        task.started_at = new Date().toISOString();
+    if (next === 'completed') {
+        task.completed_at = new Date().toISOString();
+        task.progress = 100;
+        // Mark every subtask done so progress math stays consistent.
+        for (const s of task.subtasks)
+            s.done = true;
+    }
+    else if (previous === 'completed') {
+        // Reverting from completed → pending|in-progress: clear completed_at.
+        task.completed_at = undefined;
+    }
+    return task;
+}
+function setTaskPriority(taskId, next) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task)
+        return null;
+    task.priority = next;
+    return task;
 }
 function getGameMilestones() {
     updateMilestones();

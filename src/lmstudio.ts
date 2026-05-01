@@ -266,7 +266,7 @@ export async function chatAsAgent(
 /** Build a system prompt that grounds the agent in their VirtualPC role. */
 export function systemPromptForAgent(agent: string, role: string, context?: string): string {
   return [
-    `You are ${agent}, ${role}, working inside the VirtualPC agent system that is building the MOLGANG Chemical Engineering Simulator.`,
+    `You are ${agent}, ${role}, an agent inside the VirtualPC multi-agent system.`,
     `Respond in character. Keep answers grounded in VirtualPC context. Be concise unless asked to expand.`,
     context ? `\nCurrent context:\n${context}` : '',
   ].filter(Boolean).join('\n');

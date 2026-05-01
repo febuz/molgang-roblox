@@ -7,6 +7,26 @@
  * 30s so agent progress (especially Kai's GPU-heavy work) survives server
  * restarts instead of resetting to pool index 10.
  */
+interface Subtask {
+    name: string;
+    done: boolean;
+}
+interface Task {
+    id: string;
+    title: string;
+    status: 'completed' | 'in-progress' | 'pending';
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    description: string;
+    sprint: string;
+    estimated_hours: number;
+    progress: number;
+    subtasks: Subtask[];
+    assigned_to: string;
+    started_at?: string;
+    completed_at?: string;
+    _tickRate: number;
+    _lastTick: number;
+}
 interface WorkLogEntry {
     timestamp: string;
     agent: string;
@@ -67,6 +87,8 @@ export declare function getTaskDetail(taskId: string): {
     completed_at: string | undefined;
     _subtasksDone: number;
 } | null;
+export declare function setTaskStatus(taskId: string, next: Task['status']): Task | null;
+export declare function setTaskPriority(taskId: string, next: Task['priority']): Task | null;
 export declare function getGameMilestones(): GameMilestone[];
 export declare function getGameStats(): {
     sprint: string;

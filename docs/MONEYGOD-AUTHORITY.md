@@ -64,7 +64,7 @@ Responsibility: Manage 1M free QWEN tokens/day
 
 Current Usage:
 ├─ Alexander's development: 40%
-├─ MOLGANG features: 35%
+├─ the project features: 35%
 ├─ VirtualPC optimization: 15%
 ├─ Research & testing: 10%
 
@@ -111,7 +111,7 @@ Resources Available:
 
 Money God allocates:
 ├─ Alexander's dev: Enough to work fast
-├─ MOLGANG: Enough for game performance
+├─ the project: Enough for game performance
 ├─ Analytics: Enough for insights
 ├─ Backups: Enough for safety
 
@@ -239,7 +239,7 @@ They work together:
 
 ```
 Stage 1: Cleopatra Proposes
-"We should focus on MOLGANG web version"
+"We should focus on the project web version"
 
 Stage 2: Money God Evaluates
 ├─ Cost estimate: $100k
@@ -253,7 +253,7 @@ Money God: "I can fund it"
 Cleopatra: "Let's proceed"
 
 Stage 4: Alexander Executes
-"Understood. Executing MOLGANG web version."
+"Understood. Executing the project web version."
 
 Result: Resourced strategy, clear execution
 ```
@@ -408,7 +408,7 @@ Result: Money spent only when necessary
 Cleopatra: "We need to change strategy"
 Money God: "What changes to budget?"
 
-Cleopatra: "Shift 40% to MOLGANG, reduce VirtualPC"
+Cleopatra: "Shift 40% to the project, reduce VirtualPC"
 Money God: "That affects 3 team members"
 
 Cleopatra: "Can they transition?"
@@ -546,7 +546,7 @@ They focus its power toward good.
 ```
 Tier 1: Mission Critical
 ├─ VirtualPC development
-├─ MOLGANG educational game
+├─ the project educational game
 ├─ Core team salaries
 ├─ Essential infrastructure
 └─ Status: Fully funded
@@ -582,7 +582,7 @@ Tier 4: Nice to Have
 Through wise stewardship:
 
 Education:
-├─ 1M students learn economics via MOLGANG
+├─ 1M students learn economics via the project
 ├─ Free access (no paywalls)
 ├─ Global reach (all countries)
 └─ Lifetime impact (changed minds)
@@ -613,16 +613,16 @@ This is the impact of wise stewardship.
 FILL wants: "Global prosperity through education & sustainability"
 
 CLEOPATRA translates to strategy:
-"Build MOLGANG to 1M players, fund robotics for distribution"
+"Build the project to 1M players, fund robotics for distribution"
 
 MONEY GOD enables it:
 "We have $500k budget. Allocate:
- ├─ 60% to MOLGANG (education impact)
+ ├─ 60% to the project (education impact)
  ├─ 30% to robotics (distribution system)
  └─ 10% to research (future capability"
 
 ALEXANDER executes:
-"Understood. Focusing on MOLGANG + robotics integration"
+"Understood. Focusing on the project + robotics integration"
 
 RESULT: Aligned, resourced, executed strategy
         Global impact at scale

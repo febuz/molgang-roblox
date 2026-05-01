@@ -67,7 +67,6 @@ const self_repair_1 = __importDefault(require("./vitals/self-repair"));
 const entity_model_1 = require("./integrations/numerai/entity-model");
 const data_fetcher_1 = __importDefault(require("./integrations/numerai/data-fetcher"));
 const openclaw_kill_switch_1 = require("./openclaw-kill-switch");
-const molgang_web_integration_1 = require("./integrations/molgang-web-integration");
 const task_facilitator_1 = __importDefault(require("./agent/task-facilitator"));
 const autonomous_session_manager_1 = __importDefault(require("./automation/autonomous-session-manager"));
 const auth_system_1 = __importDefault(require("./auth/auth-system"));
@@ -88,6 +87,8 @@ const taskEngine = __importStar(require("./task-engine"));
 const tokenTracker = __importStar(require("./token-tracker"));
 const commitsTracker = __importStar(require("./commits-tracker"));
 const lmstudio = __importStar(require("./lmstudio"));
+const agent_registry_1 = require("./agent-registry");
+const fs = __importStar(require("fs"));
 const timeseries_1 = require("./timeseries");
 const credentials = __importStar(require("./credentials"));
 const commercialization = __importStar(require("./commercialization"));
@@ -117,12 +118,16 @@ app.use((req, res, next) => {
 });
 app.use(express_1.default.static('dist/public'));
 app.use(express_1.default.static('public'));
-// Helper function to serve React frontend
-function serveSPAFile(req, res) {
-    const indexPath = path.resolve(__dirname, '..', 'dist', 'public', 'index.html');
-    res.type('html').sendFile(indexPath, (err) => {
+// Helper function to serve the dashboard. Previously this fell through to a
+// stale snapshot at dist/public/index.html that someone had hand-copied from
+// public/dashboard.html months ago — it drifted and started showing only 5
+// agents instead of the full 14. Serve the live file from public/ so the
+// dashboard can never go out of date again.
+function serveSPAFile(_req, res) {
+    const dashPath = path.resolve(__dirname, '..', 'public', 'dashboard.html');
+    res.type('html').sendFile(dashPath, (err) => {
         if (err) {
-            logger_1.default.error('Error serving index.html:', err);
+            logger_1.default.error('Error serving dashboard.html:', err);
             res.status(500).send('Error loading dashboard');
         }
     });
@@ -151,6 +156,114 @@ app.get('/api/terminal/activity', (req, res) => {
 // Per-Person Backlog API - LIVE from task engine
 app.get('/api/backlog/per-person', (req, res) => {
     res.json(taskEngine.getPerPersonBacklog());
+});
+// Per-task mutations used by the dashboard's agent-detail Tasks panel.
+// These operate on the canonical task-engine `tasks` array (same store that
+// drives /api/backlog/per-person), not the separate taskScheduler.
+app.post('/api/backlog/:id/status', (req, res) => {
+    const next = String(req.body?.status || '');
+    if (!['pending', 'in-progress', 'completed'].includes(next)) {
+        res.status(400).json({ success: false, error: 'status must be pending|in-progress|completed' });
+        return;
+    }
+    const updated = taskEngine.setTaskStatus(req.params.id, next);
+    if (!updated) {
+        res.status(404).json({ success: false, error: 'task not found' });
+        return;
+    }
+    res.json({ success: true, task: { id: updated.id, status: updated.status, completed_at: updated.completed_at, progress: updated.progress } });
+});
+app.post('/api/backlog/:id/priority', (req, res) => {
+    const next = String(req.body?.priority || '');
+    if (!['critical', 'high', 'medium', 'low'].includes(next)) {
+        res.status(400).json({ success: false, error: 'priority must be critical|high|medium|low' });
+        return;
+    }
+    const updated = taskEngine.setTaskPriority(req.params.id, next);
+    if (!updated) {
+        res.status(404).json({ success: false, error: 'task not found' });
+        return;
+    }
+    res.json({ success: true, task: { id: updated.id, priority: updated.priority } });
+});
+// ============================================================================
+// GitHub proxy for febuz/virtualpc — read-only access to the knowledge dirs
+// (.backlog, .admin, .creative, .governance, .operations). The repo is private
+// so the dashboard's external <a href> links 404 for unauthenticated visitors.
+// This proxy uses the local `gh` CLI's keyring auth to fetch the file content,
+// so the dashboard can show it inline. Hardcoded allow-list of path prefixes
+// prevents using the proxy as a generic GitHub fetcher.
+// ============================================================================
+const GH_REPO = 'febuz/virtualpc';
+const GH_ALLOWED_DIRS = ['.backlog', '.admin', '.creative', '.governance', '.operations'];
+// Map agent name → known doc paths in the repo. Used by the agent-detail panel.
+const GH_AGENT_DOCS = {
+    Mira: ['.creative/MIRA-CREATIVE-AUTHORITY.md', '.creative/MIRA-DESIGN-BRIEF.md'],
+    Cleopatra: ['.governance/CLEOPATRA-AUTHORITY.md'],
+    MoneyGod: ['.governance/MONEYGOD-AUTHORITY.md'],
+    Alexander: ['.governance/ALEXANDER-PRINCIPLES.md', '.operations/ALEXANDER-COMMAND-INTERFACE.md'],
+};
+function ghPathAllowed(p) {
+    if (p.includes('..') || p.startsWith('/'))
+        return false;
+    return GH_ALLOWED_DIRS.some(d => p === d || p.startsWith(d + '/'));
+}
+function ghApiFetch(repoPath) {
+    return new Promise((resolve, reject) => {
+        const { execFile } = require('child_process');
+        execFile('gh', ['api', `repos/${GH_REPO}/contents/${repoPath}`], { maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+            if (err) {
+                reject(new Error(stderr || err.message));
+                return;
+            }
+            try {
+                const j = JSON.parse(stdout);
+                if (j.encoding === 'base64' && j.content) {
+                    j.content = Buffer.from(j.content, 'base64').toString('utf-8');
+                }
+                resolve(j);
+            }
+            catch (e) {
+                reject(e);
+            }
+        });
+    });
+}
+// List files in an allowed directory.
+app.get('/api/github/virtualpc/list', async (req, res) => {
+    const dir = String(req.query.dir || '');
+    if (!GH_ALLOWED_DIRS.includes(dir)) {
+        res.status(400).json({ success: false, error: `dir must be one of: ${GH_ALLOWED_DIRS.join(', ')}` });
+        return;
+    }
+    try {
+        const j = await ghApiFetch(dir);
+        const items = Array.isArray(j) ? j : [j];
+        res.json({ success: true, dir, files: items.map((x) => ({ name: x.name, path: x.path, size: x.size, type: x.type, html_url: x.html_url })) });
+    }
+    catch (e) {
+        res.status(502).json({ success: false, error: e.message });
+    }
+});
+// Fetch a single file's markdown content.
+app.get('/api/github/virtualpc/file', async (req, res) => {
+    const p = String(req.query.path || '');
+    if (!ghPathAllowed(p)) {
+        res.status(400).json({ success: false, error: `path must start with one of: ${GH_ALLOWED_DIRS.join(', ')}` });
+        return;
+    }
+    try {
+        const j = await ghApiFetch(p);
+        res.json({ success: true, path: j.path, content: j.content, size: j.size, html_url: j.html_url });
+    }
+    catch (e) {
+        res.status(502).json({ success: false, error: e.message });
+    }
+});
+// List the github authority docs known for a given agent.
+app.get('/api/github/agent-docs/:name', async (req, res) => {
+    const docs = GH_AGENT_DOCS[req.params.name] || [];
+    res.json({ success: true, agent: req.params.name, repo: GH_REPO, docs: docs.map(p => ({ path: p, html_url: `https://github.com/${GH_REPO}/blob/main/${p}` })) });
 });
 // Game development milestones - LIVE from task engine
 app.get('/api/game/milestones', (req, res) => {
@@ -406,6 +519,84 @@ app.get('/api/agents/:name/cli-log', (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const lines = taskEngine.getAgentCliLog(req.params.name, limit);
     res.json({ success: true, agent: req.params.name, lines });
+});
+// All-Agents overview — single payload powering /agents.html. Combines:
+//   • the canonical 14-agent registry (src/agent-registry.ts)
+//   • Gemma-4-drafted persona prompts (data/agent-prompts.json)
+//   • live activity from the task engine (current task, completed counts, last action)
+function readAgentPrompts() {
+    try {
+        const p = path.resolve(__dirname, '..', 'data', 'agent-prompts.json');
+        if (!fs.existsSync(p))
+            return {};
+        const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+        const out = {};
+        for (const [name, v] of Object.entries(raw.agents || {})) {
+            const a = v;
+            if (a && a.prompt)
+                out[name] = { prompt: a.prompt, model: a.model, generatedAt: a.generatedAt };
+        }
+        return out;
+    }
+    catch {
+        return {};
+    }
+}
+app.get('/api/agents/overview', (_req, res) => {
+    const prompts = readAgentPrompts();
+    const tail = (s, n) => s.length > n ? s.slice(0, n) + '…' : s;
+    const agents = agent_registry_1.AGENT_META.map(meta => {
+        const prog = taskEngine.getAgentProgress?.(meta.name) || { completed: 0, inProgress: 0, currentTask: null };
+        const cli = taskEngine.getAgentCliLog(meta.name, 1);
+        const lastLine = cli[0];
+        const persona = prompts[meta.name];
+        return {
+            name: meta.name,
+            role: meta.role,
+            avatar: meta.avatar,
+            color: meta.color,
+            kind: meta.kind,
+            models: meta.models,
+            status: prog.inProgress > 0 ? 'working' : (prog.currentTask ? 'queued' : 'idle'),
+            currentTask: prog.currentTask || null,
+            tasksCompleted: prog.completed || 0,
+            tasksInProgress: prog.inProgress || 0,
+            lastAction: lastLine ? { ts: lastLine.ts, line: tail(lastLine.line, 140), level: lastLine.level } : null,
+            promptPreview: persona ? tail(persona.prompt, 220) : null,
+            promptModel: persona?.model || null,
+            promptGeneratedAt: persona?.generatedAt || null,
+            hasPrompt: !!persona,
+        };
+    });
+    res.json({
+        success: true,
+        count: agents.length,
+        agents,
+        promptsAvailable: Object.keys(prompts).length,
+        generatedAt: new Date().toISOString(),
+    });
+});
+// Single-agent zoom-in: full persona prompt + recent activity
+app.get('/api/agents/:name/prompt', (req, res) => {
+    const meta = agent_registry_1.AGENT_META.find(a => a.name === req.params.name);
+    if (!meta) {
+        res.status(404).json({ success: false, error: 'unknown agent' });
+        return;
+    }
+    const prompts = readAgentPrompts();
+    const persona = prompts[meta.name];
+    res.json({
+        success: true,
+        agent: meta.name,
+        role: meta.role,
+        avatar: meta.avatar,
+        color: meta.color,
+        models: meta.models,
+        prompt: persona?.prompt || null,
+        model: persona?.model || null,
+        generatedAt: persona?.generatedAt || null,
+        runtimeSystemPrompt: lmstudio.systemPromptForAgent(meta.name, meta.role),
+    });
 });
 // LM Studio agent-inference endpoints
 app.get('/api/llm/health', async (req, res) => {
@@ -1166,21 +1357,6 @@ app.get('/dashboard-static', (req, res) => {
 </body>
 </html>
   `);
-});
-// Game pages
-app.get('/game', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'public', 'game3d.html'));
-});
-app.get('/game/2d', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'public', 'game.html'));
-});
-app.get('/game/rts', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'public', 'game-rts.html'));
-});
-// VirtualV 3D world — WebGPU-capable scene rendering the VirtualV-owned
-// asset manifest captured from the Roblox MOLGANG source.
-app.get('/game/world', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '..', 'public', 'world.html'));
 });
 // Health check
 app.get('/health', (req, res) => {
@@ -2470,13 +2646,8 @@ function setupRoutes(app, components) {
     });
     // OpenClaw command execution routes (no approval required)
     (0, openclaw_api_1.default)(app);
-    // MOLGANG Web Version Integration (Educational Game Support)
-    logger_1.default.info('📚 Registering MOLGANG web integration...');
-    molgang_web_integration_1.molGangIntegration.registerEndpoints(app);
-    logger_1.default.info('✓ MOLGANG web version integrated (12 endpoints)');
     logger_1.default.info('✓ Routes configured');
     logger_1.default.info('✓ OpenClaw autonomous command execution enabled');
-    logger_1.default.info('✓ MOLGANG web version ready for 1M+ students');
 }
 /**
  * Setup WebSocket handlers for real-time updates

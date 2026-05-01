@@ -1,4 +1,4 @@
-# VirtualPC — distributed agent system for the MOLGANG game stack
+# VirtualPC — distributed multi-agent system
 
 A multi-agent backend with a 14-agent roster (CEO Fill, CTO Kai, devs, artists,
 researchers, commercialization), a unified LiteLLM gateway in front of local
@@ -100,23 +100,6 @@ systemctl --user restart virtualpc-litellm.service
 The gateway uses `network_mode: host` so it can reach LM Studio on the
 host's loopback (this fixes a snap-confined Docker quirk where the bridge
 can't reach `127.0.0.1` on the host).
-
----
-
-## 📊 GitHub Pages Status Dashboard
-
-**Live Dashboard**: [View Status Dashboard](https://github.com/your-org/virtualpc/tree/main/docs)
-
-The status dashboard provides real-time visibility into VirtualPC deployment status and features:
-
-- ✅ System operational status
-- ✅ Feature completion tracking
-- ✅ Performance metrics
-- ✅ Architecture overview
-- ✅ Technology stack
-- ✅ Deployment options
-
-Auto-generated from `VIRTUALPC_COMPLETE_STATUS.md` and deployed on every push.
 
 ---
 
