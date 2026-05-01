@@ -137,7 +137,7 @@ export class OpenClawKillSwitch {
     console.log('');
     console.log('Recovery options:');
     console.log('  • npm run dev (resume normal development)');
-    console.log('  • npm run demo:molgang (restart game demo)');
+    
     console.log('  • npm run demo:interactive (restart VirtualPC demo)');
     console.log('');
 
@@ -155,7 +155,7 @@ export class OpenClawKillSwitch {
 
     const killTargets = [
       'selenium-launcher',
-      'molgang-game-demo',
+      
       'interactive-demo',
       'chrome.*webdriver',
       'firefox.*webdriver',

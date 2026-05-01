@@ -96,6 +96,6 @@ echo -e "${YELLOW}🎮 Next Steps:${NC}"
 echo -e "   1. Open ${BLUE}http://localhost:3100${NC} in your browser"
 echo -e "   2. Create your first task via the UI or API"
 echo -e "   3. Watch agents execute autonomously"
-echo -e "   4. Monitor MOLGANG Phase 5 development\n"
+echo -e "   4. Monitor the project Phase 5 development\n"
 
 echo -e "${GREEN}System ready! 🚀${NC}\n"

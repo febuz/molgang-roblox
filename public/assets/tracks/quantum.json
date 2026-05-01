@@ -1,5 +1,5 @@
 {
-  "schema": "molgang-track/v1",
+  "schema": "virtualpc-track/v1",
   "id": "quantum",
   "name": "Quantum Computing",
   "tagline": "From single-qubit gates to a Shor-style factoring run",

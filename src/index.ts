@@ -58,7 +58,6 @@ import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
 import * as commitAudit from './commit-audit';
-import * as slagCarryover from './migration/slag-carryover';
 
 // Load environment
 config();
@@ -644,84 +643,6 @@ app.get('/api/commits/recent', (req, res) => {
   res.json({ success: true, commits: commitsTracker.getRecentCommits(limit) });
 });
 
-// Slag carry-over — Roblox players move their slag stockpile to the web
-// build by submitting a screenshot. Manual review (with caps) until the
-// OCR enrichment pass is wired. See src/migration/slag-carryover.ts.
-app.post('/api/migration/slag/claim', (req, res) => {
-  const r = slagCarryover.submit({
-    roblox_username: String(req.body?.roblox_username || ''),
-    web_username: String(req.body?.web_username || ''),
-    claimed_amount: Number(req.body?.claimed_amount),
-    screenshot_base64: String(req.body?.screenshot_base64 || ''),
-  });
-  if (!r.ok) {
-    res.status(400).json({ success: false, error: r.error });
-    return;
-  }
-  // Don't echo the path on disk — the reviewer dashboard fetches the image
-  // through GET /screenshot. Submitter only needs id + status.
-  const { screenshot_path: _omit, ...safe } = r.claim;
-  res.json({ success: true, claim: safe });
-});
-
-app.get('/api/migration/slag/claims', (req, res) => {
-  const filter: any = {};
-  if (req.query.status) filter.status = String(req.query.status);
-  if (req.query.roblox_username) filter.roblox_username = String(req.query.roblox_username);
-  // Trim screenshot_path from the listing response — it's a server-side path.
-  const claims = slagCarryover.list(filter).map(({ screenshot_path: _, ...rest }) => rest);
-  res.json({ success: true, claims });
-});
-
-app.get('/api/migration/slag/summary', (req, res) => {
-  res.json({ success: true, ...slagCarryover.summary() });
-});
-
-// Reviewer-only mutations — same X-Approver-from-localhost gate as the
-// commercialization queue. Replace with authMiddleware.requireRole when
-// routes are reorganized.
-function privilegedReviewer(req: express.Request): string | null {
-  const ip = String(req.ip || '');
-  const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
-  if (!isLocal) return null;
-  const who = String(req.header('x-approver') || '').trim();
-  return who || null;
-}
-
-app.post('/api/migration/slag/claims/:id/approve', (req, res) => {
-  const who = privilegedReviewer(req);
-  if (!who) {
-    res.status(403).json({ success: false, error: 'approval requires X-Approver header from localhost' });
-    return;
-  }
-  const r = slagCarryover.approve(req.params.id, who, req.body?.notes);
-  if (!r.ok) { res.status(400).json({ success: false, error: r.error }); return; }
-  res.json({ success: true, claim: r.claim });
-});
-
-app.post('/api/migration/slag/claims/:id/reject', (req, res) => {
-  const who = privilegedReviewer(req);
-  if (!who) {
-    res.status(403).json({ success: false, error: 'rejection requires X-Approver header from localhost' });
-    return;
-  }
-  const r = slagCarryover.reject(req.params.id, who, req.body?.notes);
-  if (!r.ok) { res.status(400).json({ success: false, error: r.error }); return; }
-  res.json({ success: true, claim: r.claim });
-});
-
-// Stream the stored screenshot (PNG) so the reviewer dashboard can show it.
-// Same localhost-only gate as approve/reject.
-app.get('/api/migration/slag/claims/:id/screenshot', (req, res) => {
-  if (!privilegedReviewer(req)) {
-    res.status(403).json({ success: false, error: 'screenshot view requires X-Approver header from localhost' });
-    return;
-  }
-  const r = slagCarryover.readScreenshot(req.params.id);
-  if (!r.ok) { res.status(404).json({ success: false, error: r.error }); return; }
-  res.setHeader('Content-Type', 'image/png');
-  res.send(r.bytes);
-});
 
 // Domain progression tracks (chemical engineering, quantum computing, ...).
 // Content lives in public/assets/tracks/*.json so writers can edit without
@@ -890,9 +811,9 @@ _app.get('/_legacy/backlog/per-person', (req: any, res: any) => {
       role: 'CTO',
       avatar: '⚡',
       tasks: [
-        { id: 'bl-1', title: 'MOLGANG-6.1: Kafka Integration', status: 'in-progress', priority: 'critical', description: 'Full Kafka message queue integration with producer/consumer pipelines. Setting up 7 topics: agent.tasks, agent.results, model.requests, model.responses, lightrag.updates, game.events, system.alerts.', sprint: 'week1', estimated_hours: 8, started_at: new Date(Date.now() - 5400000).toISOString(), progress: 65 },
-        { id: 'bl-2', title: 'MOLGANG-6.2: Redis Clustering', status: 'in-progress', priority: 'high', description: 'Redis cluster configuration for high-availability caching. Configure ioredis with sentinel failover for 99.9% cache availability.', sprint: 'week1', estimated_hours: 6, started_at: new Date(Date.now() - 3600000).toISOString(), progress: 40 },
-        { id: 'bl-3', title: 'MOLGANG-6.3: Kubernetes Deployment', status: 'completed', priority: 'high', description: 'K8s manifests and production deployment pipeline. Multi-stage Docker builds, GPU support, Prometheus monitoring.', sprint: 'week1', estimated_hours: 10, completed_at: new Date(Date.now() - 86400000).toISOString() },
+        { id: 'bl-1', title: 'PLATFORM-6.1: Kafka Integration', status: 'in-progress', priority: 'critical', description: 'Full Kafka message queue integration with producer/consumer pipelines. Setting up 7 topics: agent.tasks, agent.results, model.requests, model.responses, lightrag.updates, game.events, system.alerts.', sprint: 'week1', estimated_hours: 8, started_at: new Date(Date.now() - 5400000).toISOString(), progress: 65 },
+        { id: 'bl-2', title: 'PLATFORM-6.2: Redis Clustering', status: 'in-progress', priority: 'high', description: 'Redis cluster configuration for high-availability caching. Configure ioredis with sentinel failover for 99.9% cache availability.', sprint: 'week1', estimated_hours: 6, started_at: new Date(Date.now() - 3600000).toISOString(), progress: 40 },
+        { id: 'bl-3', title: 'PLATFORM-6.3: Kubernetes Deployment', status: 'completed', priority: 'high', description: 'K8s manifests and production deployment pipeline. Multi-stage Docker builds, GPU support, Prometheus monitoring.', sprint: 'week1', estimated_hours: 10, completed_at: new Date(Date.now() - 86400000).toISOString() },
         { id: 'kai-4', title: 'Neo4j connection pooling', status: 'in-progress', priority: 'medium', description: 'Fix LightRAG connection drops after 30min idle. Implement connection pool with keepalive and auto-reconnect.', sprint: 'week2', estimated_hours: 4, started_at: new Date(Date.now() - 1200000).toISOString(), progress: 25 },
       ],
       completed: 19,
@@ -919,7 +840,7 @@ _app.get('/_legacy/backlog/per-person', (req: any, res: any) => {
         { id: 'bl-5', title: 'Zone Visual Design', status: 'in-progress', priority: 'high', description: 'Visual assets and UI design for all game zones. Deep Ocean (bioluminescent), Crystal Caves (prismatic), Atmosphere (aurora), Upload Zone (digital), Tournament Arena (competitive).', sprint: 'week2', estimated_hours: 16, started_at: new Date(Date.now() - 10800000).toISOString(), progress: 45 },
         { id: 'mira-2', title: 'Agent status card icons (SVG)', status: 'in-progress', priority: 'high', description: 'Design unique SVG icons for each agent: Fill crown, Kai lightning, Zip terminal, Mira palette, Luna star. Animated idle/active/busy states.', sprint: 'week2', estimated_hours: 4, started_at: new Date(Date.now() - 5400000).toISOString(), progress: 70 },
         { id: 'mira-3', title: 'Leaderboard visualization', status: 'pending', priority: 'medium', description: 'Design animated leaderboard with rank transitions, sparkline performance history, and agent avatar integration.', sprint: 'week3', estimated_hours: 6 },
-        { id: 'mira-4', title: 'MOLGANG brand style guide', status: 'pending', priority: 'medium', description: 'Comprehensive brand guide: color palette, typography, iconography, motion principles, accessibility guidelines.', sprint: 'week3', estimated_hours: 8 },
+        { id: 'mira-4', title: 'Platform brand style guide', status: 'pending', priority: 'medium', description: 'Comprehensive brand guide: color palette, typography, iconography, motion principles, accessibility guidelines.', sprint: 'week3', estimated_hours: 8 },
       ],
       completed: 7,
       active: 2,
@@ -949,9 +870,9 @@ app.get('/api/backlog/item/:itemId', (req, res) => {
   const backlogPersonRes = require('http').request({ hostname: 'localhost', port: process.env.PORT || 3100, path: '/api/backlog/per-person', method: 'GET' });
   // Use a simpler static lookup
   const itemDb: { [key: string]: any } = {
-    'bl-1': { id: 'bl-1', title: 'MOLGANG-6.1: Kafka Integration', priority: 'high', assigned_to: 'Kai', status: 'in-progress', sprint: 'week1', description: 'Full Kafka message queue integration with producer/consumer pipelines. Setting up 7 topics for distributed agent communication.', estimated_hours: 8, progress: 65, subtasks: ['Configure KafkaJS client', 'Create producer module', 'Create consumer module', 'Setup orchestrator', 'Test message routing', 'Deploy to staging'] },
-    'bl-2': { id: 'bl-2', title: 'MOLGANG-6.2: Redis Clustering', priority: 'high', assigned_to: 'Kai', status: 'in-progress', sprint: 'week1', description: 'Redis cluster configuration for high-availability caching with sentinel failover.', estimated_hours: 6, progress: 40, subtasks: ['Configure ioredis cluster', 'Setup sentinel nodes', 'Implement cache invalidation', 'Load test cluster'] },
-    'bl-3': { id: 'bl-3', title: 'MOLGANG-6.3: Kubernetes Deployment', priority: 'high', assigned_to: 'Kai', status: 'completed', sprint: 'week1', description: 'K8s manifests and production deployment pipeline with GPU support.', estimated_hours: 10, progress: 100, subtasks: ['Write k8s manifests', 'Multi-stage Dockerfile', 'GPU deployment config', 'Prometheus monitoring', 'Health check probes'] },
+    'bl-1': { id: 'bl-1', title: 'PLATFORM-6.1: Kafka Integration', priority: 'high', assigned_to: 'Kai', status: 'in-progress', sprint: 'week1', description: 'Full Kafka message queue integration with producer/consumer pipelines. Setting up 7 topics for distributed agent communication.', estimated_hours: 8, progress: 65, subtasks: ['Configure KafkaJS client', 'Create producer module', 'Create consumer module', 'Setup orchestrator', 'Test message routing', 'Deploy to staging'] },
+    'bl-2': { id: 'bl-2', title: 'PLATFORM-6.2: Redis Clustering', priority: 'high', assigned_to: 'Kai', status: 'in-progress', sprint: 'week1', description: 'Redis cluster configuration for high-availability caching with sentinel failover.', estimated_hours: 6, progress: 40, subtasks: ['Configure ioredis cluster', 'Setup sentinel nodes', 'Implement cache invalidation', 'Load test cluster'] },
+    'bl-3': { id: 'bl-3', title: 'PLATFORM-6.3: Kubernetes Deployment', priority: 'high', assigned_to: 'Kai', status: 'completed', sprint: 'week1', description: 'K8s manifests and production deployment pipeline with GPU support.', estimated_hours: 10, progress: 100, subtasks: ['Write k8s manifests', 'Multi-stage Dockerfile', 'GPU deployment config', 'Prometheus monitoring', 'Health check probes'] },
     'bl-4': { id: 'bl-4', title: 'Deep Ocean Reactor Zone', priority: 'medium', assigned_to: 'Zip', status: 'in-progress', sprint: 'week2', description: 'Implement Deep Ocean zone: chemistry crafting, underwater physics, reactor chain-reaction mini-game.', estimated_hours: 12, progress: 55, subtasks: ['Zone layout & spawning', 'Chemistry crafting system', 'Underwater physics engine', 'Reactor puzzle logic', 'NPC dialogue system', 'Zone rewards'] },
     'bl-5': { id: 'bl-5', title: 'Zone Visual Design', priority: 'medium', assigned_to: 'Mira', status: 'in-progress', sprint: 'week2', description: 'Visual assets for all 5 game zones: Deep Ocean, Crystal Caves, Atmosphere, Upload Zone, Tournament Arena.', estimated_hours: 16, progress: 45, subtasks: ['Deep Ocean bioluminescent theme', 'Crystal Caves prismatic assets', 'Atmosphere aurora effects', 'Upload Zone digital grid', 'Tournament Arena competitive stage'] },
     'bl-6': { id: 'bl-6', title: 'Weather System', priority: 'medium', assigned_to: 'Luna', status: 'in-progress', sprint: 'week2', description: 'Dynamic weather with particle rain/snow, volumetric fog, day/night cycle, wind physics.', estimated_hours: 10, progress: 50, subtasks: ['Particle system (rain/snow)', 'Volumetric fog shader', 'Day/night cycle', 'Wind physics for vegetation', 'Weather transition blending'] },
@@ -965,7 +886,7 @@ app.get('/api/backlog/item/:itemId', (req, res) => {
     'kai-4': { id: 'kai-4', title: 'Neo4j connection pooling', priority: 'medium', assigned_to: 'Kai', status: 'in-progress', sprint: 'week2', description: 'Fix LightRAG connection drops after 30min idle. Connection pool with keepalive and auto-reconnect.', estimated_hours: 4, progress: 25, subtasks: ['Connection pool config', 'Keepalive heartbeat', 'Auto-reconnect logic', 'Integration test'] },
     'mira-2': { id: 'mira-2', title: 'Agent status card icons (SVG)', priority: 'high', assigned_to: 'Mira', status: 'in-progress', sprint: 'week2', description: 'SVG icons for each agent with animated idle/active/busy states.', estimated_hours: 4, progress: 70, subtasks: ['Fill crown icon', 'Kai lightning icon', 'Zip terminal icon', 'Mira palette icon', 'Luna star icon', 'Animation states'] },
     'mira-3': { id: 'mira-3', title: 'Leaderboard visualization', priority: 'medium', assigned_to: 'Mira', status: 'pending', sprint: 'week3', description: 'Animated leaderboard with rank transitions and sparkline history.', estimated_hours: 6, progress: 0, subtasks: ['Rank transition animations', 'Sparkline charts', 'Avatar integration'] },
-    'mira-4': { id: 'mira-4', title: 'MOLGANG brand style guide', priority: 'medium', assigned_to: 'Mira', status: 'pending', sprint: 'week3', description: 'Color palette, typography, iconography, motion principles, accessibility.', estimated_hours: 8, progress: 0, subtasks: ['Color system', 'Typography scale', 'Icon library', 'Motion principles'] },
+    'mira-4': { id: 'mira-4', title: 'Platform brand style guide', priority: 'medium', assigned_to: 'Mira', status: 'pending', sprint: 'week3', description: 'Color palette, typography, iconography, motion principles, accessibility.', estimated_hours: 8, progress: 0, subtasks: ['Color system', 'Typography scale', 'Icon library', 'Motion principles'] },
     'luna-3': { id: 'luna-3', title: 'Shader library', priority: 'medium', assigned_to: 'Luna', status: 'pending', sprint: 'week3', description: 'Reusable GLSL shaders: water, crystal, energy, holographic, portal. WebGL 2.0 fallback.', estimated_hours: 8, progress: 0, subtasks: ['Water surface shader', 'Crystal refraction', 'Energy flow effect', 'Holographic UI', 'Portal warp'] },
   };
 
@@ -1014,7 +935,7 @@ app.get('/api/progress/:person', (req, res) => {
       total: 22,
       progress: 88,
       focus: 'Kafka integration, Redis clustering, Neo4j pooling',
-      currentTask: 'MOLGANG-6.1: Kafka Integration'
+      currentTask: 'PLATFORM-6.1: Kafka Integration'
     },
     'Zip': {
       completed: 16,
@@ -1119,7 +1040,7 @@ app.get('/api/metrics', (req, res) => {
     systems: {
       neo4j: { status: 'operational', uptime: '99.9%' },
       redis: { status: 'operational', uptime: '99.8%' },
-      molgang: { status: 'operational', endpoints: 12 },
+      
       auth: { status: 'operational', users: 5 }
     }
   };
@@ -1231,7 +1152,7 @@ app.get('/dashboard-static', (req, res) => {
     <div class="container">
         <header>
             <h1>🚀 VirtualPC</h1>
-            <p class="subtitle">Autonomous Agent System - MOLGANG Web Phase 5 Development</p>
+            <p class="subtitle">Autonomous Agent System - VirtualPC Platform</p>
         </header>
 
         <div class="status-grid">
@@ -1324,7 +1245,7 @@ app.get('/dashboard-static', (req, res) => {
         </div>
 
         <div class="footer">
-            <p>VirtualPC Autonomous Agent System • All systems operational • Ready for MOLGANG Phase 5</p>
+            <p>VirtualPC Autonomous Agent System • All systems operational • All systems operational</p>
         </div>
     </div>
 
@@ -1513,7 +1434,7 @@ async function initialize() {
     setupSecurityRoutes(app, securityDashboard, authMiddleware);
 
     // 5h. Quality dashboard (CEO view of QA gate reports — mirrors the
-    // security dashboard pattern but reads molgang-roblox/build/qa/*.json
+    // security dashboard pattern but reads <project>/build/qa/*.json
     // produced by the four QA tools defined in QUALITY_STANDARDS.md).
     const qualityDashboard = new QualityDashboard();
     setupQualityRoutes(app, qualityDashboard, authMiddleware);
@@ -1773,8 +1694,8 @@ function setupRoutes(app: express.Express, components: any) {
       res.json({
         success: true,
         issues: [
-          { id: 'iss-1', title: 'Neo4j connection timeout', description: 'LightRAG connection drops after 30min idle. Need connection pooling or keepalive configuration.', severity: 'high', assigned_to: 'Kai (CTO)', status: 'in_progress', blocking_task: 'MOLGANG-6.1', created_at: now, updated_at: now },
-          { id: 'iss-2', title: 'Kafka topic creation race condition', description: 'When multiple agents try to create the same topic simultaneously, only one succeeds. Need pre-creation or locking.', severity: 'medium', assigned_to: 'Kai (CTO)', status: 'open', blocking_task: 'MOLGANG-6.1', created_at: now, updated_at: now }
+          { id: 'iss-1', title: 'Neo4j connection timeout', description: 'LightRAG connection drops after 30min idle. Need connection pooling or keepalive configuration.', severity: 'high', assigned_to: 'Kai (CTO)', status: 'in_progress', blocking_task: 'PLATFORM-6.1', created_at: now, updated_at: now },
+          { id: 'iss-2', title: 'Kafka topic creation race condition', description: 'When multiple agents try to create the same topic simultaneously, only one succeeds. Need pre-creation or locking.', severity: 'medium', assigned_to: 'Kai (CTO)', status: 'open', blocking_task: 'PLATFORM-6.1', created_at: now, updated_at: now }
         ],
         total: 2,
         open: 1,
@@ -1803,7 +1724,7 @@ function setupRoutes(app: express.Express, components: any) {
         },
         agents: {
           fill: { status: 'idle', tasks_completed: 8, current_task: 'Strategic planning' },
-          kai: { status: 'working', tasks_completed: 18, current_task: 'MOLGANG-6.1: Kafka Integration' },
+          kai: { status: 'working', tasks_completed: 18, current_task: 'PLATFORM-6.1: Kafka Integration' },
           zip: { status: 'working', tasks_completed: 15, current_task: 'Deep Ocean Reactor Zone' },
           mira: { status: 'working', tasks_completed: 6, current_task: 'VirtualPC Dashboard Design' },
           luna: { status: 'idle', tasks_completed: 11, current_task: 'Performance optimization' }
@@ -2708,7 +2629,7 @@ function setupWebSocketHandlers(io: SocketIOServer, components: any) {
           { name: 'Fill', role: 'CEO', status: 'working', currentTask: 'Strategic Planning & WBSO Coordination', tasksCompleted: 12, costUsed: 4.50 },
           { name: 'Kai', role: 'CTO', status: 'working', currentTask: 'Kafka Optimization & Infrastructure', tasksCompleted: 18, costUsed: 8.91 },
           { name: 'Zip', role: 'Developer', status: 'working', currentTask: 'VirtualPC Core Features', tasksCompleted: 15, costUsed: 6.75 },
-          { name: 'Mira', role: 'Artist', status: 'working', currentTask: 'MOLGANG Asset Pipeline & UI Design', tasksCompleted: 8, costUsed: 3.60 },
+          { name: 'Mira', role: 'Artist', status: 'working', currentTask: 'Design system v2', tasksCompleted: 8, costUsed: 3.60 },
           { name: 'Luna', role: 'Tech Artist', status: 'working', currentTask: '3D Optimization & VR/AR Integration', tasksCompleted: 11, costUsed: 5.25 }
         ];
         socket.emit('agent-status-update', agents);

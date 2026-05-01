@@ -3,7 +3,7 @@
  *
  * Controls dual Claude Code terminals:
  * - Terminal A (Primary): VirtualPC development
- * - Terminal B (Secondary): MOLGANG game development
+ * - Terminal B (Secondary): the project game development
  *
  * Features:
  * - Auto-answers approval prompts (selects "yes" by keyboard/mouse)
@@ -28,7 +28,7 @@ interface TerminalConfig {
     id: string;
     name: string;
     type: 'secondary';
-    project: 'MOLGANG Game';
+    project: 'the project Game';
   };
 }
 
@@ -57,7 +57,7 @@ export class OpenClawTerminalController {
         id: 'secondary',
         name: 'Terminal B (Secondary)',
         type: 'secondary',
-        project: 'MOLGANG Game'
+        project: 'the project Game'
       }
     };
 
@@ -75,7 +75,7 @@ export class OpenClawTerminalController {
   public async initialize(): Promise<void> {
     console.log('🎮 OpenClaw Terminal Controller Initialized');
     console.log('   Terminal A (Primary): VirtualPC development');
-    console.log('   Terminal B (Secondary): MOLGANG game development');
+    console.log('   Terminal B (Secondary): the project game development');
     console.log('   Max Instances: 2 (no new instances allowed)');
     console.log('');
 

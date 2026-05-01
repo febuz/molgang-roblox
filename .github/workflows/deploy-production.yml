@@ -61,7 +61,7 @@ jobs:
           mkdir -p deploy-artifact
           cp docker-compose.yml deploy-artifact/
           cp Dockerfile deploy-artifact/
-          cp k8s-molgang-deployment.yaml deploy-artifact/ 2>/dev/null || true
+          cp k8s-deployment.yaml deploy-artifact/ 2>/dev/null || true
           tar czf virtualpc-deployment-${{ github.sha }}.tar.gz deploy-artifact/
 
       - name: Upload deployment artifact

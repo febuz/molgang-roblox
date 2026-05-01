@@ -1,5 +1,5 @@
 {
-  "schema": "molgang-track/v1",
+  "schema": "virtualpc-track/v1",
   "id": "chemeng",
   "name": "Chemical Engineering",
   "tagline": "From hand-balanced reactions to a continuous-flow plant",

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# blender-render — launch the existing MOLGANG Blender batch with dual-GPU access.
+# blender-render — launch the existing the project Blender batch with dual-GPU access.
 #
-# The heavy lifting lives in /home/knight2/molgang-roblox/assets/blender/
+# The heavy lifting lives in $ASSETS_DIR/blender/
 # (batch_render_previews.py, generate_mining_models.py, generate_slag_models.py).
 # This wrapper just picks the right script, ensures the flatpak sandbox can see
 # both 3090s and the assets tree, and logs output to virtualpc/logs.
@@ -14,7 +14,7 @@
 
 set -eu
 
-ASSETS_DIR="/home/knight2/molgang-roblox/assets"
+ASSETS_DIR="${VPC_ASSETS_DIR:-/tmp/virtualpc-assets}"
 SCRIPT_DIR="$ASSETS_DIR/blender"
 LOG_DIR="/home/knight2/virtualpc/logs"
 mkdir -p "$LOG_DIR"

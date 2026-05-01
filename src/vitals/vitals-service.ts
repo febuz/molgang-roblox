@@ -171,7 +171,7 @@ export class VitalsService {
       if (/\/(virtualpc|custom-paperclip)$/.test(p) || /\/.claude$|\/.paperclip$/.test(p))
         status = 'ACTIVE — service in use';
       else if (/\/snap(\/|$)/.test(p)) status = 'snap-confined';
-      else if (/\/(molgang-roblox|agents)$/.test(p)) status = 'git repo';
+      else if (/\/agents$/.test(p)) status = 'git repo';
       const size_mb = Math.round(bytes / (1024 * 1024));
       const size_human = bytes > 1024**3 ? `${(bytes/1024**3).toFixed(1)}G` : `${size_mb}M`;
       results.push({ path: p, size_mb, size_human, status });

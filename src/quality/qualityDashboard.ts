@@ -2,7 +2,7 @@
  * Quality Dashboard
  *
  * Surfaces the latest results of the four QA gate tools defined in
- * molgang-roblox/docs/QUALITY_STANDARDS.md so the CEO panel can see
+ * <project>/docs/QUALITY_STANDARDS.md so the CEO panel can see
  * code/asset/audio/screenshot health in one shape.
  *
  * Each tool writes its JSON report to a known location (configurable via
@@ -46,7 +46,7 @@ export interface QualityDashboardSnapshot {
   };
 }
 
-const REPORT_BASE = process.env.QA_REPORT_DIR || '/home/knight2/molgang-roblox/build/qa';
+const REPORT_BASE = process.env.QA_REPORT_DIR || '/tmp/qa-reports';
 const REPORT_PATHS = {
   cheat_surface: path.join(REPORT_BASE, 'cheat_surface.json'),
   perceptual:    path.join(REPORT_BASE, 'perceptual_diff.json'),
