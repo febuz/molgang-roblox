@@ -56,6 +56,7 @@ import { AGENT_META } from './agent-registry';
 import * as fs from 'fs';
 import * as codegraph from './integrations/codegraph';
 import * as autoresearch from './integrations/autoresearch';
+import * as selfheal from './integrations/selfheal';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
@@ -311,6 +312,44 @@ app.post('/api/autoresearch', async (req, res) => {
 
 app.get('/api/autoresearch/agents', (_req, res) => {
   res.json({ success: true, agents: autoresearch.RESEARCH_AGENTS });
+});
+
+// ============================================================================
+// Self-heal — deterministic crawler that finds broken links / dead endpoints /
+// dangling onclick handlers / orphaned nav-items in the dashboard's static
+// HTML. Runs on demand. Gemma 4 is intentionally NOT in the audit loop —
+// scans are cheap and predictable; reserve LLM hops for the optional /suggest.
+// ============================================================================
+app.post('/api/selfheal/audit', async (_req, res) => {
+  try {
+    const t0 = Date.now();
+    const report = await selfheal.runAndCache(REPO_ROOT);
+    res.json({ success: true, runMs: Date.now() - t0, ...report });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/selfheal/audit', (_req, res) => {
+  const last = selfheal.getLastAudit();
+  if (!last) { res.json({ success: true, fresh: false, message: 'No audit yet — POST to /api/selfheal/audit to run' }); return; }
+  res.json({ success: true, fresh: true, ...last });
+});
+
+app.post('/api/selfheal/suggest', async (req, res) => {
+  // Optional Gemma 4 patch suggestion for a single finding. Cheap, single hop.
+  const finding = req.body?.finding;
+  if (!finding || !finding.detail) { res.status(400).json({ success: false, error: 'finding required' }); return; }
+  try {
+    const r = await lmstudio.chatAsAgent(
+      'Kai',
+      [
+        { role: 'system', content: 'You are Kai, CTO. Given a self-heal finding, propose a one-paragraph fix in plain text. No code blocks. Under 80 words.' },
+        { role: 'user', content: `Finding (${finding.kind}, ${finding.severity}) at ${finding.file}:${finding.line}\n${finding.detail}` },
+      ],
+      { taskType: 'concept', temperature: 0.3, max_tokens: 800 },
+    );
+    if (!r.ok) { res.status(503).json({ success: false, error: r.reason }); return; }
+    res.json({ success: true, suggestion: r.content, model: r.model, latencyMs: r.latencyMs });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // Game development milestones - LIVE from task engine
