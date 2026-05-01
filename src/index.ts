@@ -53,6 +53,8 @@ import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
 import * as commitsTracker from './commits-tracker';
 import * as lmstudio from './lmstudio';
+import { AGENT_META } from './agent-registry';
+import * as fs from 'fs';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
@@ -253,13 +255,14 @@ app.post('/api/commercialization/:id/reject', (req, res) => {
   res.json({ success: true, proposal: r.proposal });
 });
 
-app.post('/api/commercialization/:id/execute', (req, res) => {
+app.post('/api/commercialization/:id/execute', async (req, res) => {
   const who = privilegedActor(req);
   if (!who) {
     res.status(403).json({ success: false, error: 'execute requires X-Approver header from localhost' });
     return;
   }
-  const r = commercialization.execute(req.params.id);
+  // execute() is now async — Stripe paymentIntents.create() is a network call.
+  const r = await commercialization.execute(req.params.id);
   res.json({ success: r.ok, mode: r.mode, proposal: r.proposal, error: r.error });
 });
 
@@ -395,6 +398,79 @@ app.get('/api/agents/:name/cli-log', (req, res) => {
   const limit = parseInt(req.query.limit as string) || 50;
   const lines = taskEngine.getAgentCliLog(req.params.name, limit);
   res.json({ success: true, agent: req.params.name, lines });
+});
+
+// All-Agents overview — single payload powering /agents.html. Combines:
+//   • the canonical 14-agent registry (src/agent-registry.ts)
+//   • Gemma-4-drafted persona prompts (data/agent-prompts.json)
+//   • live activity from the task engine (current task, completed counts, last action)
+function readAgentPrompts(): { [name: string]: { prompt: string; model?: string; generatedAt?: string } } {
+  try {
+    const p = path.resolve(__dirname, '..', 'data', 'agent-prompts.json');
+    if (!fs.existsSync(p)) return {};
+    const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+    const out: any = {};
+    for (const [name, v] of Object.entries(raw.agents || {})) {
+      const a: any = v;
+      if (a && a.prompt) out[name] = { prompt: a.prompt, model: a.model, generatedAt: a.generatedAt };
+    }
+    return out;
+  } catch { return {}; }
+}
+
+app.get('/api/agents/overview', (_req, res) => {
+  const prompts = readAgentPrompts();
+  const tail = (s: string, n: number) => s.length > n ? s.slice(0, n) + '…' : s;
+  const agents = AGENT_META.map(meta => {
+    const prog = (taskEngine as any).getAgentProgress?.(meta.name) || { completed: 0, inProgress: 0, currentTask: null };
+    const cli = taskEngine.getAgentCliLog(meta.name, 1);
+    const lastLine = cli[0];
+    const persona = prompts[meta.name];
+    return {
+      name: meta.name,
+      role: meta.role,
+      avatar: meta.avatar,
+      color: meta.color,
+      kind: meta.kind,
+      models: meta.models,
+      status: prog.inProgress > 0 ? 'working' : (prog.currentTask ? 'queued' : 'idle'),
+      currentTask: prog.currentTask || null,
+      tasksCompleted: prog.completed || 0,
+      tasksInProgress: prog.inProgress || 0,
+      lastAction: lastLine ? { ts: lastLine.ts, line: tail(lastLine.line, 140), level: lastLine.level } : null,
+      promptPreview: persona ? tail(persona.prompt, 220) : null,
+      promptModel: persona?.model || null,
+      promptGeneratedAt: persona?.generatedAt || null,
+      hasPrompt: !!persona,
+    };
+  });
+  res.json({
+    success: true,
+    count: agents.length,
+    agents,
+    promptsAvailable: Object.keys(prompts).length,
+    generatedAt: new Date().toISOString(),
+  });
+});
+
+// Single-agent zoom-in: full persona prompt + recent activity
+app.get('/api/agents/:name/prompt', (req, res) => {
+  const meta = AGENT_META.find(a => a.name === req.params.name);
+  if (!meta) { res.status(404).json({ success: false, error: 'unknown agent' }); return; }
+  const prompts = readAgentPrompts();
+  const persona = prompts[meta.name];
+  res.json({
+    success: true,
+    agent: meta.name,
+    role: meta.role,
+    avatar: meta.avatar,
+    color: meta.color,
+    models: meta.models,
+    prompt: persona?.prompt || null,
+    model: persona?.model || null,
+    generatedAt: persona?.generatedAt || null,
+    runtimeSystemPrompt: lmstudio.systemPromptForAgent(meta.name, meta.role),
+  });
 });
 
 // LM Studio agent-inference endpoints

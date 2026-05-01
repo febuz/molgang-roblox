@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Agents — VirtualPC</title>
+<link rel="stylesheet" href="/mira-dashboard-enhancements.css">
+<style>
+  :root {
+    --primary: #60a5fa; --secondary: #06b6d4;
+    --success: #22c55e; --warning: #f59e0b; --danger: #ef4444;
+    --bg-dark: #0f172a; --bg-darker: #020617;
+    --text-primary: #e2e8f0; --text-secondary: #94a3b8;
+    --border: rgba(148, 163, 184, 0.2);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+    color: var(--text-primary); min-height: 100vh; padding: 24px 32px;
+  }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 24px;
+  }
+  h1 {
+    font-size: 1.6em; font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .meta { color: var(--text-secondary); font-size: 0.9em; display: flex; gap: 16px; align-items: center; }
+  .meta a { color: var(--primary); text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+  }
+  .chip {
+    padding: 6px 12px; border-radius: 999px; font-size: 0.8em; cursor: pointer;
+    background: rgba(148,163,184,0.08); border: 1px solid var(--border); color: var(--text-secondary);
+    user-select: none; transition: all 0.15s;
+  }
+  .chip:hover { color: var(--text-primary); border-color: var(--primary); }
+  .chip.active { background: rgba(96,165,250,0.18); color: var(--primary); border-color: var(--primary); }
+  .grid {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+  .card {
+    background: rgba(15,23,42,0.7); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; cursor: pointer; transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+    display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent, var(--primary)); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: var(--accent, var(--primary));
+  }
+  .card-head { display: flex; align-items: center; gap: 12px; }
+  .avatar { font-size: 2em; line-height: 1; }
+  .card-name { font-weight: 700; font-size: 1.05em; }
+  .card-role { color: var(--text-secondary); font-size: 0.8em; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge {
+    font-size: 0.65em; padding: 2px 8px; border-radius: 6px; text-transform: uppercase;
+    letter-spacing: 0.05em; font-weight: 600;
+  }
+  .badge.kind-core { background: rgba(96,165,250,0.18); color: #93c5fd; }
+  .badge.kind-decision { background: rgba(249,115,22,0.18); color: #fdba74; }
+  .badge.kind-resource { background: rgba(139,92,246,0.18); color: #c4b5fd; }
+  .badge.kind-specialist { background: rgba(14,165,233,0.18); color: #7dd3fc; }
+  .status {
+    font-size: 0.7em; display: inline-flex; align-items: center; gap: 6px;
+    color: var(--text-secondary);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-secondary); }
+  .dot.working { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 1.4s infinite; }
+  .dot.queued { background: var(--warning); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .preview {
+    font-size: 0.78em; color: var(--text-secondary); line-height: 1.45;
+    background: rgba(2,6,23,0.55); border: 1px dashed var(--border); border-radius: 8px;
+    padding: 8px 10px; max-height: 110px; overflow: hidden;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  .preview.empty { color: var(--warning); font-style: italic; font-family: inherit; }
+  .stats { display: flex; gap: 14px; font-size: 0.7em; color: var(--text-secondary); }
+  .stats b { color: var(--text-primary); }
+  .last { font-size: 0.7em; color: var(--text-secondary); font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
+
+  /* Modal */
+  .modal-bg {
+    display: none; position: fixed; inset: 0; background: rgba(2,6,23,0.85); z-index: 100;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--bg-dark); border: 1px solid var(--border); border-radius: 14px;
+    width: min(820px, 100%); max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-head {
+    display: flex; align-items: center; gap: 14px; padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-head .avatar { font-size: 2.4em; }
+  .modal-title { font-size: 1.2em; font-weight: 700; }
+  .modal-role { color: var(--text-secondary); font-size: 0.85em; }
+  .modal-close {
+    margin-left: auto; background: transparent; border: 1px solid var(--border);
+    color: var(--text-primary); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 0.85em;
+  }
+  .modal-close:hover { border-color: var(--danger); color: var(--danger); }
+  .modal-body { padding: 18px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+  .section-title { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-secondary); margin-bottom: 6px; }
+  pre.prompt-box {
+    background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.85em; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word;
+    max-height: 360px; overflow-y: auto;
+  }
+  .prompt-meta { font-size: 0.75em; color: var(--text-secondary); margin-top: 6px; }
+  .activity-list {
+    background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; max-height: 220px; overflow-y: auto;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.78em;
+  }
+  .activity-list .row { padding: 3px 0; color: var(--text-secondary); }
+  .activity-list .row.cmd { color: var(--primary); }
+  .activity-list .row.ok { color: var(--success); }
+  .activity-list .row.err { color: var(--danger); }
+  .empty-state { color: var(--warning); font-size: 0.85em; }
+  .skeleton { color: var(--text-secondary); padding: 40px; text-align: center; }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>👥 All Agents Overview</h1>
+      <div class="meta" id="metaBar">Loading…</div>
+    </div>
+    <div class="meta">
+      <a href="/dashboard.html">← Dashboard</a>
+      <a href="#" id="refreshBtn">↻ Refresh</a>
+    </div>
+  </header>
+
+  <div class="filters" id="filters">
+    <span class="chip active" data-kind="all">All <span id="cnt-all">0</span></span>
+    <span class="chip" data-kind="core">Core <span id="cnt-core">0</span></span>
+    <span class="chip" data-kind="decision">Decision <span id="cnt-decision">0</span></span>
+    <span class="chip" data-kind="resource">Resource <span id="cnt-resource">0</span></span>
+    <span class="chip" data-kind="specialist">Specialist <span id="cnt-specialist">0</span></span>
+  </div>
+
+  <div class="grid" id="grid"><div class="skeleton">Loading agents…</div></div>
+
+  <div class="modal-bg" id="modal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="avatar" id="mAvatar"></span>
+        <div>
+          <div class="modal-title" id="mName"></div>
+          <div class="modal-role" id="mRole"></div>
+        </div>
+        <button class="modal-close" id="mClose">Close ✕</button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <div class="section-title">Persona Prompt (drafted by Gemma 4)</div>
+          <pre class="prompt-box" id="mPrompt">Loading…</pre>
+          <div class="prompt-meta" id="mPromptMeta"></div>
+        </div>
+        <div>
+          <div class="section-title">Runtime System Prompt (used at every LLM call)</div>
+          <pre class="prompt-box" id="mRuntime"></pre>
+        </div>
+        <div>
+          <div class="section-title">Recent Actions</div>
+          <div class="activity-list" id="mActivity">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+let allAgents = [];
+let activeKind = 'all';
+
+async function loadOverview() {
+  const r = await fetch('/api/agents/overview');
+  const j = await r.json();
+  allAgents = j.agents || [];
+  document.getElementById('metaBar').textContent =
+    `${j.count} agents • ${j.promptsAvailable} personas drafted • updated ${new Date(j.generatedAt).toLocaleTimeString()}`;
+  const counts = { all: allAgents.length, core: 0, decision: 0, resource: 0, specialist: 0 };
+  allAgents.forEach(a => counts[a.kind] = (counts[a.kind] || 0) + 1);
+  Object.entries(counts).forEach(([k, v]) => {
+    const el = document.getElementById('cnt-' + k);
+    if (el) el.textContent = v;
+  });
+  render();
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  const list = activeKind === 'all' ? allAgents : allAgents.filter(a => a.kind === activeKind);
+  if (!list.length) { grid.innerHTML = '<div class="skeleton">No agents in this filter.</div>'; return; }
+  grid.innerHTML = list.map(a => `
+    <div class="card" style="--accent: ${a.color}" data-name="${a.name}">
+      <div class="card-head">
+        <span class="avatar">${a.avatar}</span>
+        <div style="flex:1">
+          <div class="card-name">${a.name}</div>
+          <div class="card-role">${a.role}</div>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="badge kind-${a.kind}">${a.kind}</span>
+        <span class="status"><span class="dot ${a.status}"></span>${a.status}</span>
+      </div>
+      <div class="preview ${a.promptPreview ? '' : 'empty'}">${
+        a.promptPreview ? escapeHtml(a.promptPreview) : '⚠ No persona drafted yet — run scripts/delegate-build-overview.js'
+      }</div>
+      <div class="stats">
+        <span><b>${a.tasksCompleted}</b> done</span>
+        <span><b>${a.tasksInProgress}</b> active</span>
+        <span><b>${a.models.length}</b> models</span>
+      </div>
+      ${a.lastAction ? `<div class="last">▸ ${escapeHtml(a.lastAction.line)}</div>` : ''}
+    </div>
+  `).join('');
+  grid.querySelectorAll('.card').forEach(c => c.addEventListener('click', () => openAgent(c.dataset.name)));
+}
+
+async function openAgent(name) {
+  const modal = document.getElementById('modal');
+  const a = allAgents.find(x => x.name === name);
+  if (!a) return;
+  modal.classList.add('open');
+  document.getElementById('mAvatar').textContent = a.avatar;
+  document.getElementById('mName').textContent = a.name;
+  document.getElementById('mRole').textContent = `${a.role} · ${a.kind}`;
+  document.getElementById('mPrompt').textContent = 'Loading…';
+  document.getElementById('mRuntime').textContent = '';
+  document.getElementById('mPromptMeta').textContent = '';
+  document.getElementById('mActivity').innerHTML = 'Loading…';
+
+  const [pr, log] = await Promise.all([
+    fetch('/api/agents/' + encodeURIComponent(name) + '/prompt').then(r => r.json()).catch(() => null),
+    fetch('/api/agents/' + encodeURIComponent(name) + '/cli-log?limit=30').then(r => r.json()).catch(() => null),
+  ]);
+
+  if (pr && pr.success) {
+    document.getElementById('mPrompt').textContent = pr.prompt || '⚠ No persona prompt drafted yet.\nRun: node scripts/delegate-build-overview.js';
+    document.getElementById('mRuntime').textContent = pr.runtimeSystemPrompt || '';
+    if (pr.model || pr.generatedAt) {
+      document.getElementById('mPromptMeta').textContent =
+        `drafted by ${pr.model || '?'} · ${pr.generatedAt ? new Date(pr.generatedAt).toLocaleString() : ''}`;
+    }
+  } else {
+    document.getElementById('mPrompt').textContent = 'Failed to load prompt.';
+  }
+
+  const act = log && log.lines ? log.lines : [];
+  if (!act.length) {
+    document.getElementById('mActivity').innerHTML = '<div class="empty-state">No recent activity.</div>';
+  } else {
+    document.getElementById('mActivity').innerHTML = act.slice().reverse().map(l =>
+      `<div class="row ${l.level || ''}">${new Date(l.ts).toLocaleTimeString()} ${escapeHtml(l.line)}</div>`
+    ).join('');
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.getElementById('filters').addEventListener('click', e => {
+  if (!e.target.matches('.chip')) return;
+  activeKind = e.target.dataset.kind;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.kind === activeKind));
+  render();
+});
+document.getElementById('mClose').addEventListener('click', () => document.getElementById('modal').classList.remove('open'));
+document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') document.getElementById('modal').classList.remove('open'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('modal').classList.remove('open'); });
+document.getElementById('refreshBtn').addEventListener('click', e => { e.preventDefault(); loadOverview(); });
+
+loadOverview();
+setInterval(loadOverview, 15000);
+</script>
+</body>
+</html>

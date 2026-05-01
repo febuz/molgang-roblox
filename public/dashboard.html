@@ -699,9 +699,19 @@
             <div class="content-section" id="agents">
                 <div class="page-header">
                     <div class="page-title">👥 All Agents</div>
-                    <div class="page-subtitle">Complete team overview</div>
+                    <div class="page-subtitle">Complete team overview — all 14 agents, click any card to view persona prompt and recent actions</div>
                 </div>
 
+                <iframe
+                    src="/agents.html"
+                    title="All Agents Overview"
+                    style="width:100%; height: calc(100vh - 200px); min-height: 700px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-darker);"
+                    loading="lazy"
+                ></iframe>
+            </div>
+
+            <!-- Legacy hardcoded agent grid (kept for reference, hidden) -->
+            <div class="content-section" id="agents-legacy" style="display:none">
                 <div class="agent-grid">
                     <div class="agent-card" data-agent="fill">
                         <div class="agent-header">
