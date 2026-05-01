@@ -822,108 +822,52 @@
             </div>
 
             <!-- FILL PAGE -->
-            <div class="content-section" id="fill">
+            <!-- DYNAMIC AGENT DETAIL — used by ALL 14 agent sidebar links.
+                 Replaces the 5 stub pages and the 9 missing pages with a single
+                 panel that fetches /api/agents/:name/{prompt,cli-log} on click. -->
+            <div class="content-section" id="agent-detail">
                 <div class="page-header">
-                    <div class="page-title">👑 Fill - CEO</div>
-                    <div class="page-subtitle">Ultimate authority and strategic direction</div>
+                    <div class="page-title" id="ad-title">Agent</div>
+                    <div class="page-subtitle" id="ad-subtitle">Click an agent in the sidebar.</div>
                 </div>
-                <div class="card">
-                    <div class="card-title">Authority & Responsibilities</div>
-                    <ul style="list-style: none; color: var(--text-secondary);">
-                        <li style="margin-bottom: 10px;">👑 Ultimate decision-making authority</li>
-                        <li style="margin-bottom: 10px;">🎯 Strategic vision for 1M+ students</li>
-                        <li style="margin-bottom: 10px;">💰 Resource allocation & budgeting</li>
-                        <li style="margin-bottom: 10px;">🔐 Override all other decisions</li>
-                        <li style="margin-bottom: 10px;">📊 Performance metrics & KPIs</li>
-                    </ul>
-                </div>
-                <div class="card">
-                    <div class="card-title">Current Focus</div>
-                    <p style="color: var(--text-secondary);">Educating 1M+ students globally through MOLGANG game integration</p>
-                </div>
-            </div>
 
-            <!-- KAI PAGE -->
-            <div class="content-section" id="kai">
-                <div class="page-header">
-                    <div class="page-title">⚡ Kai - CTO</div>
-                    <div class="page-subtitle">Infrastructure and technical systems</div>
-                </div>
-                <div class="card">
-                    <div class="card-title">Backlog (5 Active Tasks)</div>
-                    <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;">✅ GitHub repository creation</p>
-                        <p style="margin-bottom: 8px;">⏳ OpenClaw integration</p>
-                        <p style="margin-bottom: 8px;">⏳ QWEN API integration</p>
-                        <p style="margin-bottom: 8px;">⏳ Docker optimization</p>
-                        <p>⏳ Neo4j scaling</p>
+                <div class="stats-grid" style="margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-label">Status</div>
+                        <div class="stat-value" id="ad-status" style="font-size: 1.4em;">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tasks Completed</div>
+                        <div class="stat-value" id="ad-completed">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Tasks In Progress</div>
+                        <div class="stat-value" id="ad-inprogress">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Preferred Models</div>
+                        <div class="stat-value" id="ad-models" style="font-size: 0.9em;">—</div>
                     </div>
                 </div>
-                <div class="progress-bar" style="margin: 20px 0;">
-                    <div class="progress-fill" style="width: 90%"></div>
-                </div>
-            </div>
 
-            <!-- ZIP PAGE -->
-            <div class="content-section" id="zip">
-                <div class="page-header">
-                    <div class="page-title">💻 Zip - Developer</div>
-                    <div class="page-subtitle">Feature implementation and game mechanics</div>
-                </div>
                 <div class="card">
-                    <div class="card-title">Backlog (4 Active Tasks)</div>
-                    <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;">⏳ Real task status endpoint</p>
-                        <p style="margin-bottom: 8px;">⏳ Advanced gameplay features</p>
-                        <p style="margin-bottom: 8px;">⏳ Real-time dashboard</p>
-                        <p>⏳ Performance monitoring</p>
-                    </div>
+                    <div class="card-title">Persona Prompt <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— drafted by Gemma 4 (local)</span></div>
+                    <pre id="ad-prompt" style="white-space: pre-wrap; word-wrap: break-word; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85em; line-height: 1.55; color: var(--text-secondary); background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px; padding: 12px; max-height: 320px; overflow-y: auto; margin: 0;">Loading…</pre>
+                    <div id="ad-prompt-meta" style="margin-top: 8px; font-size: 0.8em; color: var(--text-secondary);"></div>
                 </div>
-                <div class="progress-bar" style="margin: 20px 0;">
-                    <div class="progress-fill" style="width: 75%"></div>
-                </div>
-            </div>
 
-            <!-- MIRA PAGE -->
-            <div class="content-section" id="mira">
-                <div class="page-header">
-                    <div class="page-title">🎨 Mira - Creative Director</div>
-                    <div class="page-subtitle">All visual, audio, and motion assets (2D-5D)</div>
-                </div>
                 <div class="card">
-                    <div class="card-title">Creative Domains</div>
-                    <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">2D:</strong> UI graphics, buttons, icons, dashboards</p>
-                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">3D:</strong> Character models, environments, props</p>
-                        <p style="margin-bottom: 8px;"><strong style="color: var(--primary);">4D:</strong> Music, SFX, voice acting, audio mixing</p>
-                        <p><strong style="color: var(--primary);">5D:</strong> Animations, motion graphics, VFX</p>
-                    </div>
+                    <div class="card-title">Ask this agent <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— replies in-character via local Gemma 4</span></div>
+                    <form id="ad-ask-form" autocomplete="off" style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <input id="ad-ask-input" type="text" placeholder="Ask a question…" style="flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-darker); color: var(--text-primary); font-size: 0.9em; font-family: inherit;">
+                        <button type="submit" id="ad-ask-btn" style="padding: 9px 18px; border-radius: 8px; border: 1px solid var(--primary); background: rgba(96,165,250,0.18); color: var(--primary); font-weight: 600; cursor: pointer; font-family: inherit;">Ask</button>
+                    </form>
+                    <pre id="ad-ask-out" style="display:none; white-space: pre-wrap; word-wrap: break-word; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85em; line-height: 1.55; color: var(--text-primary); background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px; padding: 12px; max-height: 360px; overflow-y: auto; margin: 0;"></pre>
                 </div>
-                <div class="card">
-                    <div class="card-title">Current Focus</div>
-                    <p style="color: var(--text-secondary);">🎯 VirtualPC Dashboard Design (6-8 hours)</p>
-                </div>
-                <div class="progress-bar" style="margin: 20px 0;">
-                    <div class="progress-fill" style="width: 50%"></div>
-                </div>
-            </div>
 
-            <!-- LUNA PAGE -->
-            <div class="content-section" id="luna">
-                <div class="page-header">
-                    <div class="page-title">✨ Luna - Tech Artist</div>
-                    <div class="page-subtitle">Performance optimization and visual effects</div>
-                </div>
                 <div class="card">
-                    <div class="card-title">Backlog (3 Active Tasks)</div>
-                    <div style="color: var(--text-secondary);">
-                        <p style="margin-bottom: 8px;">⏳ MOLGANG sync & optimization</p>
-                        <p style="margin-bottom: 8px;">⏳ Advanced gameplay features</p>
-                        <p>⏳ Performance optimization</p>
-                    </div>
-                </div>
-                <div class="progress-bar" style="margin: 20px 0;">
-                    <div class="progress-fill" style="width: 73%"></div>
+                    <div class="card-title">Recent Activity</div>
+                    <div id="ad-activity" style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.8em; color: var(--text-secondary); max-height: 240px; overflow-y: auto;">Loading…</div>
                 </div>
             </div>
         </div>
@@ -945,20 +889,148 @@
     </div>
 
     <script>
+        // Map sidebar lowercase data-page → canonical agent name from src/agent-registry.ts.
+        // When the click handler sees one of these, it routes to the dynamic
+        // #agent-detail panel instead of looking for a per-agent content-section
+        // (only Fill/Kai/Zip/Mira/Luna ever had hardcoded sections; the other 9
+        // agents would throw a TypeError on click).
+        const AGENT_NAME_MAP = {
+            fill: 'Fill', kai: 'Kai', zip: 'Zip', mira: 'Mira', luna: 'Luna',
+            cleopatra: 'Cleopatra', alexander: 'Alexander', moneygod: 'MoneyGod',
+            analyst: 'Analyst', videoproducer: 'VideoProducer',
+            vice: 'Vice', atlas: 'Atlas', kimi: 'Kimi', croesus: 'Croesus',
+        };
+
         // Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => {
-                // Remove active from all items
                 document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                // Add active to clicked item
                 item.classList.add('active');
 
-                // Hide all sections
                 document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-                // Show selected section
                 const pageId = item.getAttribute('data-page');
-                document.getElementById(pageId).classList.add('active');
+
+                // Agent pages → load the dynamic detail panel, populated from API.
+                if (AGENT_NAME_MAP[pageId]) {
+                    document.getElementById('agent-detail').classList.add('active');
+                    loadAgentDetail(AGENT_NAME_MAP[pageId]);
+                    return;
+                }
+
+                // Non-agent pages → existing behavior. Defensive null-check so
+                // stray sidebar items (e.g. backlog/leaderboard if they ever go
+                // missing) silently do nothing instead of throwing.
+                const target = document.getElementById(pageId);
+                if (target) target.classList.add('active');
             });
+        });
+
+        // === Dynamic agent-detail panel =====================================
+        let adCurrentAgent = null;
+        let adCurrentPersona = null;
+
+        async function loadAgentDetail(name) {
+            adCurrentAgent = name;
+            adCurrentPersona = null;
+            document.getElementById('ad-title').textContent = '⏳ ' + name;
+            document.getElementById('ad-subtitle').textContent = 'Loading…';
+            document.getElementById('ad-prompt').textContent = 'Loading…';
+            document.getElementById('ad-prompt-meta').textContent = '';
+            document.getElementById('ad-activity').textContent = 'Loading…';
+            document.getElementById('ad-ask-input').value = '';
+            document.getElementById('ad-ask-out').style.display = 'none';
+            document.getElementById('ad-ask-out').textContent = '';
+
+            try {
+                const [overview, prompt, log] = await Promise.all([
+                    fetch('/api/agents/overview').then(r => r.json()),
+                    fetch('/api/agents/' + encodeURIComponent(name) + '/prompt').then(r => r.json()),
+                    fetch('/api/agents/' + encodeURIComponent(name) + '/cli-log?limit=30').then(r => r.json()),
+                ]);
+
+                const meta = (overview.agents || []).find(a => a.name === name);
+                if (meta) {
+                    document.getElementById('ad-title').textContent = meta.avatar + ' ' + meta.name;
+                    document.getElementById('ad-subtitle').textContent = meta.role + ' · ' + meta.kind;
+                    document.getElementById('ad-status').textContent = meta.status;
+                    document.getElementById('ad-completed').textContent = meta.tasksCompleted;
+                    document.getElementById('ad-inprogress').textContent = meta.tasksInProgress;
+                    document.getElementById('ad-models').textContent = (meta.models || []).join(', ') || '—';
+                }
+
+                if (prompt && prompt.success) {
+                    const text = prompt.prompt || '⚠ No persona prompt drafted yet.\nRun: node scripts/delegate-build-overview.js';
+                    document.getElementById('ad-prompt').textContent = text;
+                    adCurrentPersona = prompt.prompt || null;
+                    if (prompt.model || prompt.generatedAt) {
+                        document.getElementById('ad-prompt-meta').textContent =
+                            'drafted by ' + (prompt.model || '?') +
+                            (prompt.generatedAt ? ' · ' + new Date(prompt.generatedAt).toLocaleString() : '');
+                    }
+                } else {
+                    document.getElementById('ad-prompt').textContent = 'Failed to load prompt.';
+                }
+
+                const lines = (log && log.lines) ? log.lines : [];
+                if (!lines.length) {
+                    document.getElementById('ad-activity').innerHTML = '<em>No recent activity.</em>';
+                } else {
+                    document.getElementById('ad-activity').innerHTML = lines.slice().reverse().map(l => {
+                        const cls = l.level === 'cmd' ? 'color: var(--primary);'
+                                : l.level === 'ok'  ? 'color: var(--success);'
+                                : l.level === 'err' ? 'color: var(--danger);'
+                                : '';
+                        const escaped = String(l.line).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                        return '<div style="padding: 3px 0; ' + cls + '">' +
+                               new Date(l.ts).toLocaleTimeString() + ' ' + escaped +
+                               '</div>';
+                    }).join('');
+                }
+            } catch (err) {
+                document.getElementById('ad-subtitle').textContent = 'Error loading: ' + err.message;
+            }
+        }
+
+        document.getElementById('ad-ask-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!adCurrentAgent) return;
+            const q = document.getElementById('ad-ask-input').value.trim();
+            if (!q) return;
+            const btn = document.getElementById('ad-ask-btn');
+            const out = document.getElementById('ad-ask-out');
+            btn.disabled = true; btn.textContent = 'Thinking…';
+            out.style.display = 'block';
+            out.textContent = 'Routing to ' + adCurrentAgent + ' via local Gemma 4 …';
+            try {
+                const t0 = Date.now();
+                const r = await fetch('/api/llm/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agent: adCurrentAgent,
+                        taskType: 'concept',
+                        temperature: 0.6,
+                        max_tokens: 2500,
+                        messages: [
+                            { role: 'system', content: adCurrentPersona || ('You are ' + adCurrentAgent + '.') },
+                            { role: 'user', content: q },
+                        ],
+                    }),
+                });
+                const j = await r.json();
+                const dt = ((Date.now() - t0) / 1000).toFixed(1);
+                if (j.success && j.content) {
+                    out.textContent = j.content + '\n\n— ' + (j.model || '?') + ' · ' + dt + 's';
+                } else if (j.success) {
+                    out.textContent = '(empty response — model used the full thinking budget; try a shorter question)\n\n— ' + dt + 's';
+                } else {
+                    out.textContent = 'Error: ' + (j.reason || j.error || 'unknown');
+                }
+            } catch (err) {
+                out.textContent = 'Network error: ' + err.message;
+            } finally {
+                btn.disabled = false; btn.textContent = 'Ask';
+            }
         });
 
         // Paperclip Tips
