@@ -129,6 +129,18 @@
   .activity-list .row.err { color: var(--danger); }
   .empty-state { color: var(--warning); font-size: 0.85em; }
   .skeleton { color: var(--text-secondary); padding: 40px; text-align: center; }
+  .ask-form { display: flex; gap: 8px; }
+  .ask-form input {
+    flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-darker); color: var(--text-primary); font-size: 0.9em; font-family: inherit;
+  }
+  .ask-form input:focus { outline: none; border-color: var(--primary); }
+  .ask-form button {
+    padding: 9px 18px; border-radius: 8px; border: 1px solid var(--primary);
+    background: rgba(96,165,250,0.18); color: var(--primary); font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .ask-form button:hover:not(:disabled) { background: rgba(96,165,250,0.32); }
+  .ask-form button:disabled { opacity: 0.5; cursor: wait; }
 </style>
 </head>
 <body>
@@ -176,6 +188,14 @@
         <div>
           <div class="section-title">Recent Actions</div>
           <div class="activity-list" id="mActivity">Loading…</div>
+        </div>
+        <div>
+          <div class="section-title">Ask this agent (live, runs on local Gemma 4)</div>
+          <form id="mAskForm" class="ask-form" autocomplete="off">
+            <input id="mAskInput" type="text" placeholder="Ask a question — answered in this agent's voice…" />
+            <button type="submit" id="mAskBtn">Ask</button>
+          </form>
+          <pre class="prompt-box" id="mAskOut" style="display:none"></pre>
         </div>
       </div>
     </div>
@@ -284,6 +304,70 @@ document.getElementById('mClose').addEventListener('click', () => document.getEl
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') document.getElementById('modal').classList.remove('open'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('modal').classList.remove('open'); });
 document.getElementById('refreshBtn').addEventListener('click', e => { e.preventDefault(); loadOverview(); });
+
+// === Ask Agent (live test against the drafted persona) =========================
+let currentAgent = null;
+let currentPersona = null;
+const askForm = document.getElementById('mAskForm');
+const askInput = document.getElementById('mAskInput');
+const askBtn = document.getElementById('mAskBtn');
+const askOut = document.getElementById('mAskOut');
+
+askForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = askInput.value.trim();
+  if (!q || !currentAgent) return;
+  askBtn.disabled = true;
+  askBtn.textContent = 'Thinking…';
+  askOut.style.display = 'block';
+  askOut.textContent = `Routing to ${currentAgent} via local Gemma 4 …`;
+  try {
+    const t0 = Date.now();
+    // Use the drafted persona as the system prompt; force concept route → gemma-4-26b.
+    const r = await fetch('/api/llm/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agent: currentAgent,
+        taskType: 'concept',
+        temperature: 0.6,
+        max_tokens: 2500,
+        messages: [
+          { role: 'system', content: currentPersona || `You are ${currentAgent}.` },
+          { role: 'user', content: q },
+        ],
+      }),
+    });
+    const j = await r.json();
+    const dt = ((Date.now() - t0) / 1000).toFixed(1);
+    if (j.success && j.content) {
+      askOut.textContent = j.content + `\n\n— ${j.model || '?'} · ${dt}s`;
+    } else if (j.success) {
+      askOut.textContent = `(empty response — model ${j.model} used the full thinking budget; try a shorter question)\n\n— ${dt}s`;
+    } else {
+      askOut.textContent = `Error: ${j.reason || j.error || 'unknown'}`;
+    }
+  } catch (err) {
+    askOut.textContent = 'Network error: ' + err.message;
+  } finally {
+    askBtn.disabled = false;
+    askBtn.textContent = 'Ask';
+  }
+});
+
+// Reset the Ask panel each time the modal opens, and capture the active persona.
+const _origOpenAgent = openAgent;
+openAgent = async function (name) {
+  currentAgent = name;
+  askInput.value = '';
+  askOut.style.display = 'none';
+  askOut.textContent = '';
+  await _origOpenAgent(name);
+  // The /api/agents/:name/prompt call inside _origOpenAgent populated #mPrompt;
+  // pull the same value so subsequent Asks use the drafted persona verbatim.
+  const promptText = document.getElementById('mPrompt').textContent;
+  currentPersona = (promptText && !promptText.startsWith('⚠')) ? promptText : null;
+};
 
 loadOverview();
 setInterval(loadOverview, 15000);
