@@ -127,10 +127,10 @@ Every 5-10 minutes:
 VirtualPC Development:
 ├─ Created to help FILL (CEO) manage teams autonomously
 ├─ Open-sourced for community benefit
-├─ Education-focused (MOLGANG teaches economics)
+├─ Education-focused (the project teaches economics)
 └─ Aligned with UN Sustainable Development Goals
 
-MOLGANG Game:
+the project Game:
 ├─ Educates millions on economics & sustainability
 ├─ Non-profit model (through association)
 ├─ Environmental awareness (MOLCO2 carbon credits)
@@ -261,11 +261,11 @@ Facing Code Quality Issues:
 
 ---
 
-## ⚔️ Alexander's Command Authority (Over MOLGANG Development)
+## ⚔️ Alexander's Command Authority (Over the project Development)
 
 ### What Alexander Can Command
 
-**Tactical Authority**: Alexander has full command over MOLGANG game development execution:
+**Tactical Authority**: Alexander has full command over the project game development execution:
 
 ```
 Alexander can issue commands to:
@@ -280,7 +280,7 @@ Alexander can issue commands to:
 Cleopatra respects these commands because:
 ✅ Alexander knows implementation realities
 ✅ Game development is his domain
-✅ Speed matters for MOLGANG launches
+✅ Speed matters for the project launches
 ✅ He has proven judgment on technical matters
 ✅ Cleopatra focuses on strategy, not tactics
 ```
@@ -289,7 +289,7 @@ Cleopatra respects these commands because:
 
 ```
 Alexander to Cleopatra:
-"Continue MOLGANG web version development.
+"Continue the project web version development.
  Priority sequence:
  1. Quantum computing trading system (6 hours)
  2. Steel factory racing mechanics (8 hours)
@@ -475,7 +475,7 @@ If any answer is NO → Choose differently
 ```
 ✅ OpenClaw operates with integrity
 ✅ VirtualPC proves autonomous systems can be trustworthy
-✅ MOLGANG educates millions on economics & sustainability
+✅ the project educates millions on economics & sustainability
 ✅ Community sees virtuous AI in action
 ```
 

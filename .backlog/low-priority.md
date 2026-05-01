@@ -140,7 +140,7 @@
 ## Long-term Vision (2027+)
 
 ### Year 1 Goals (2026)
-- ✅ MVP Launch (Roblox)
+- ✅ MVP Launch (legacy)
 - 🔄 Web version launch
 - 📱 Mobile optimization
 - 👥 250k+ monthly active users

@@ -1,6 +1,6 @@
 # VirtualPC Testplay
 
-Automated testplay scenarios that drive the MOLGANG web game with real mouse/keyboard actions via Playwright (browser) and, later, pyautogui (native).
+Automated testplay scenarios that drive the VirtualPC dashboard with real mouse/keyboard actions via Playwright (browser) and, later, pyautogui (native).
 
 **Owner:** Alexander (technical arbiter) signs off on the testplay tech stack; Zip implements scenarios.
 

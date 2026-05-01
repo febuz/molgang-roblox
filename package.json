@@ -16,8 +16,6 @@
     "test:e2e:firefox": "ts-node tests/e2e/selenium-launcher.ts -- --browser firefox",
     "demo:interactive": "ts-node tests/e2e/interactive-demo.ts",
     "demo:run": "bash run-interactive-demo.sh",
-    "demo:molgang": "ts-node tests/e2e/molgang-game-demo.ts",
-    "demo:molgang:headless": "ts-node tests/e2e/molgang-game-demo.ts -- --headless",
     "setup:selenium": "bash setup-selenium-ubuntu.sh",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts",

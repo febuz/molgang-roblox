@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # VirtualPC Production Deployment Script
-# Deploying MOLGANG Phase 5 to production
+# Deploying VirtualPC to production
 
 set -e
 
@@ -12,7 +12,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║  🚀 MOLGANG Phase 5 - Production Deployment            ║${NC}"
+echo -e "${BLUE}║  🚀 VirtualPC - Production Deployment                  ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════╝${NC}\n"
 
 # Step 1: Build production image
@@ -84,4 +84,4 @@ echo -e "  Dashboard:        https://virtualpc.example.com"
 echo -e "  Monitoring:       https://grafana.virtualpc.example.com"
 echo -e "  Logs:             kubectl logs -f deployment/virtualpc-api -n virtualpc\n"
 
-echo -e "${GREEN}🎮 MOLGANG Phase 5 is now LIVE!${NC}\n"
+echo -e "${GREEN}🚀 VirtualPC is now LIVE!${NC}\n"

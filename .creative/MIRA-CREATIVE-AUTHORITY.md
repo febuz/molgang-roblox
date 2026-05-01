@@ -2,7 +2,7 @@
 
 **Title**: Creative Director - All Visual, Audio, & Motion Assets  
 **Authority Level**: Full creative direction over 2D, 3D, 4D, 5D assets  
-**Scope**: VirtualPC + MOLGANG (Roblox & Web)  
+**Scope**: VirtualPC + the project (legacy & Web)  
 **Date**: 2026-04-12  
 **Status**: Active Creative Leadership
 
@@ -20,7 +20,7 @@ VirtualPC Dashboard:
 ├─ Color schemes & typography
 └─ Responsive layouts
 
-MOLGANG Web:
+the project Web:
 ├─ Game UI screens
 ├─ Menu designs
 ├─ HUD elements
@@ -31,7 +31,7 @@ MOLGANG Web:
 
 ### **3D Assets** (3-Dimensional: Models, Environments)
 ```
-MOLGANG Environments:
+the project Environments:
 ├─ Deep Ocean Reactor Zone
 ├─ Crystal Caverns
 ├─ Upload Zone worlds
@@ -92,7 +92,7 @@ Animation Production:
 
 ## 📊 Asset Matrix: Mira's Oversight
 
-| Dimension | Asset Type | VirtualPC | MOLGANG-Roblox | MOLGANG-Web | Status |
+| Dimension | Asset Type | VirtualPC | the project-legacy | the project-Web | Status |
 |-----------|-----------|-----------|-----------------|------------|--------|
 | **2D** | UI Graphics | Primary | Secondary | Primary | 🟢 Active |
 | **2D** | Icons & Badges | Primary | Primary | Primary | 🟢 Active |
@@ -112,7 +112,7 @@ Animation Production:
 ## 🏗️ Asset Directory Structure (Complete)
 
 ```
-molgang-roblox/assets/
+the-project/assets/
 │
 ├─ graphics/                    (2D Assets)
 │  ├─ 2d/
@@ -127,7 +127,7 @@ molgang-roblox/assets/
 │  │  │  ├─ zip/
 │  │  │  ├─ mira/
 │  │  │  └─ luna/
-│  │  ├─ molgang/
+│  │  ├─ <project>/
 │  │  │  ├─ atoms.png
 │  │  │  ├─ molecules/
 │  │  │  └─ elements/
@@ -221,7 +221,7 @@ molgang-roblox/assets/
 - **5D**: Smooth animations, transitions
 - **Timeline**: START IMMEDIATELY
 
-### Phase 2: MOLGANG Web 2D (8-10 hours)  
+### Phase 2: the project Web 2D (8-10 hours)  
 - **2D**: Game UI screens, menus, HUD
 - **5D**: UI animations, page transitions
 - **Timeline**: Next 2-3 days
@@ -251,7 +251,7 @@ Every asset Mira creates should:
 ✅ Reflect Madagascar's natural beauty
 ✅ Show Fossa-like precision and excellence
 ✅ Inspire 1M+ students globally
-✅ Work seamlessly in both Roblox and Web
+✅ Work seamlessly in both legacy and Web
 ✅ Deliver smooth, responsive experience
 ✅ Maintain consistent visual language
 ✅ Enhance educational engagement
@@ -336,10 +336,10 @@ Every asset Mira creates should:
 
 5. INTEGRATION
    └─ Mira works with Zip/Luna to integrate
-      (Test in Roblox, test in Web, iterate)
+      (Test in legacy, test in Web, iterate)
 
 6. COMMIT TO GITHUB
-   └─ Mira commits to molgang-roblox/assets/
+   └─ Mira commits to the-project/assets/
       (All platforms can access immediately)
 
 7. BROADCAST
@@ -394,7 +394,7 @@ Your 3D models build the worlds.
 Your audio creates the atmosphere.
 Your animations bring it all to life.
 
-From the moment a student opens MOLGANG, they see your work.
+From the moment a student opens the project, they see your work.
 Every pixel, every sound, every motion is an expression of excellence.
 
 You control:

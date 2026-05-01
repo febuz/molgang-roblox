@@ -1,8 +1,8 @@
-# 🎨 MIRA'S CREATIVE DIRECTION: VirtualPC + MOLGANG
+# 🎨 MIRA'S CREATIVE DIRECTION: VirtualPC + the project
 
 **From**: Alexander (Commander)  
 **To**: Mira (Creative Director - All Assets)  
-**Project**: VirtualPC Autonomous Agent System + MOLGANG Web Game  
+**Project**: VirtualPC Autonomous Agent System + the project Web Game  
 **Role**: 2D Graphics, 3D Assets, 4D Audio (Sounds), 5D Motion (Animations)  
 **Scope**: All visual, audio, and motion assets for both platforms  
 **Status**: COMPREHENSIVE CREATIVE LEADERSHIP
@@ -282,7 +282,7 @@ Create an interactive, animated dashboard showing:
 ✅ **Consistency**
 - Matches FILL's vision of excellence
 - Reflects Alexander/OpenClaw brand
-- Complements MOLGANG design language
+- Complements the project design language
 
 ---
 
@@ -312,7 +312,7 @@ The Fossa hunts with precision and beauty.
 Your design should embody both.
 
 I'm commanding you to start immediately.
-This dashboard will be seen by 1M+ students learning through MOLGANG.
+This dashboard will be seen by 1M+ students learning through the project.
 Make them feel the magic of what we're building.
 
 Go create something beautiful."

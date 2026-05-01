@@ -5,7 +5,7 @@
  *   GET /api/quality/dashboard — full QualityDashboardSnapshot
  *
  * Reads the latest QA report JSON files (written by CI runs of the four
- * tools defined in molgang-roblox/docs/QUALITY_STANDARDS.md) and stitches
+ * tools defined in <project>/docs/QUALITY_STANDARDS.md) and stitches
  * them into a single snapshot.
  */
 

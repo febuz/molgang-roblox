@@ -1,6 +1,6 @@
 # 📦 GitHub Asset Synchronization & Developer Workflow
 
-**Purpose**: Keep GitHub up to date with shared assets between Roblox MOLGANG and Web MOLGANG  
+**Purpose**: Keep GitHub up to date with shared assets between the project and Web the project  
 **Status**: Operational  
 **Date**: 2026-04-12  
 **Authority**: Alexander (with Cleopatra approval)
@@ -10,8 +10,8 @@
 ## 🎯 Core Principle
 
 **Single Source of Truth**: All common assets (graphics, audio, data, components) exist in GitHub, shared between:
-- **Roblox Game** (molgang-roblox)
-- **Web Version** (molgang-web)
+- **legacy Game** (the-project)
+- **Web Version** (project-web)
 - **VirtualPC** (virtualpc)
 
 No duplicates. No confusion. Always synced.
@@ -23,12 +23,12 @@ No duplicates. No confusion. Always synced.
 ### GitHub Repository Organization
 
 ```
-molgang-roblox/
+the-project/
 ├─ .git/
-├─ assets/                    ← SHARED ASSETS (Roblox + Web)
+├─ assets/                    ← SHARED ASSETS (legacy + Web)
 │  ├─ graphics/
 │  │  ├─ agents/              (5 agent icons/avatars)
-│  │  ├─ molgang/             (game graphics, icons)
+│  │  ├─ <project>/             (game graphics, icons)
 │  │  ├─ ui/                  (UI components, buttons)
 │  │  └─ animations/          (GIFs, sprite sheets)
 │  │
@@ -50,7 +50,7 @@ molgang-roblox/
 │     ├─ icons.svg            (SVG icons - Both)
 │     └─ styles.css           (Shared styles - Both)
 │
-├─ game/                       (Roblox-specific)
+├─ game/                       (legacy-specific)
 │  ├─ modules/
 │  ├─ server/
 │  └─ client/
@@ -64,12 +64,12 @@ molgang-roblox/
 ### Web Repository Organization
 
 ```
-molgang-web/
+<project>-web/
 ├─ .git/
 ├─ src/
-│  ├─ components/             (Uses assets/ from molgang-roblox)
+│  ├─ components/             (Uses assets/ from the-project)
 │  ├─ pages/
-│  ├─ assets/                 ← SYMLINK to molgang-roblox/assets
+│  ├─ assets/                 ← SYMLINK to the-project/assets
 │  └─ App.tsx
 │
 └─ package.json
@@ -81,8 +81,8 @@ molgang-web/
 virtualpc/
 ├─ .git/
 ├─ src/
-├─ assets/                    ← SYMLINK to molgang-roblox/assets
-├─ MOLGANG-SYNC/              (Tracks sync status)
+├─ assets/                    ← SYMLINK to the-project/assets
+├─ the project-SYNC/              (Tracks sync status)
 └─ package.json
 ```
 
@@ -94,20 +94,20 @@ virtualpc/
 
 ```bash
 # Add shared assets as submodule in Web version
-cd molgang-web
-git submodule add https://github.com/febuz/molgang-roblox.git shared/molgang-roblox
+cd $PROJECT_DIR
+git submodule add https://github.com/febuz/the-project.git shared/the-project
 git submodule update --recursive
 
 # Now access shared assets:
-src/assets/graphics/   ← linked to shared/molgang-roblox/assets/graphics/
+src/assets/graphics/   ← linked to shared/the-project/assets/graphics/
 ```
 
 ### Method 2: Symbolic Links
 
 ```bash
 # Create symlink in Web version
-cd molgang-web
-ln -s ../molgang-roblox/assets ./src/assets
+cd $PROJECT_DIR
+ln -s ../the-project/assets ./src/assets
 
 # Now both can reference same files
 import icon from '@/assets/graphics/agents/kai.svg'
@@ -116,11 +116,11 @@ import icon from '@/assets/graphics/agents/kai.svg'
 ### Method 3: Copy on Build
 
 ```bash
-# Build script copies assets from Roblox to Web
+# Build script copies assets from legacy to new
 package.json:
 {
   "scripts": {
-    "presync-assets": "cp -r ../molgang-roblox/assets ./src/assets",
+    "presync-assets": "cp -r ../the-project/assets ./src/assets",
     "prebuild": "npm run sync-assets",
     "build": "react-scripts build"
   }
@@ -140,7 +140,7 @@ When working on: Backend, servers, deployment
 GitHub workflow:
 1. Create feature branch: git checkout -b feature/backend-optimization
 2. Make changes to gameserver/ code
-3. Shared assets: Use from molgang-roblox/assets/data/
+3. Shared assets: Use from the-project/assets/data/
 4. Commit: git add . && git commit -m "feature: optimize API"
 5. Push: git push origin feature/backend-optimization
 6. PR: Create pull request with description
@@ -169,7 +169,7 @@ GitHub workflow:
 1. Feature branch: git checkout -b feature/agent-icons
 2. Create assets: Design in Figma/Adobe, export SVG/PNG
 3. Commit: git add assets/graphics/ && git commit -m "feat: add agent icons"
-4. Update: Modify both Roblox and Web references
+4. Update: Modify both legacy and Web references
 5. Test: Verify assets load in both platforms
 6. Push: git push origin feature/agent-icons
 7. Notify: Tell team assets are ready
@@ -203,7 +203,7 @@ assets/graphics/
 │  ├─ mira-icon.svg
 │  └─ luna-icon.svg
 │
-├─ molgang/
+├─ <project>/
 │  ├─ atoms.png
 │  ├─ molecules.png
 │  ├─ molecules-animated.gif
@@ -269,7 +269,7 @@ git commit -m "feat: add character idle animation
 
 - Created idle animation (4 frames, 24fps)
 - Added animation metadata for game
-- Tested in both Roblox and Web versions
+- Tested in both legacy and Web versions
 - 150KB optimized GIF"
 
 # 5. Push to feature branch
@@ -277,7 +277,7 @@ git push origin feature/add-character-animations
 
 # 6. Create PR
 gh pr create --title "Add character idle animation" \
-  --body "Adds idle animation asset used in both Roblox and Web versions"
+  --body "Adds idle animation asset used in both legacy and Web versions"
 
 # 7. Merge after review
 gh pr merge [PR-number]
@@ -318,7 +318,7 @@ gh pr create --title "Update agent icons"
 ☑ Asset is in correct directory (assets/)
 ☑ Filename follows convention (lowercase, hyphens)
 ☑ File size optimized (compress images/audio)
-☑ Asset works in both Roblox and Web
+☑ Asset works in both legacy and Web
 ☑ Documentation/metadata included (if needed)
 ☑ No API keys or secrets in assets
 ☑ Commit message explains what and why
@@ -367,7 +367,7 @@ Evening (5 PM):
 Every Friday:
 1. Review merged PRs (what shipped)
 2. Check asset versioning
-3. Validate sync between Roblox and Web
+3. Validate sync between legacy and Web
 4. Plan next week's assets/features
 5. Update README if needed
 ```
@@ -420,8 +420,8 @@ jobs:
 ### Task 2.2: Add Steel Factory Graphics
 - **Assignee**: Mira (Artist)
 - **Status**: In Progress
-- **GitHub PR**: https://github.com/febuz/molgang-roblox/pull/42
-- **Assets**: assets/graphics/molgang/steel-factory/*
+- **GitHub PR**: https://github.com/febuz/the-project/pull/42
+- **Assets**: assets/graphics/<project>/steel-factory/*
 - **Subtasks**:
   - [x] Design factory building
   - [x] Create animated conveyor belt
@@ -452,7 +452,7 @@ jobs:
 - Zero merge conflicts on assets
 - Zero broken references
 
-✅ Roblox-Web Sync
+✅ legacy-Web Sync
 - Assets synchronized: 100%
 - Both versions use same assets: 95%+
 - Divergence rate: <2% (intentional platform differences)
@@ -493,7 +493,7 @@ gh pr merge [number]
 - **Status**: In Progress  
 - **GitHub**: [PR Link]
 - **Assets**: [Path in assets/]
-- **Platforms**: Roblox ✅ | Web ✅
+- **Platforms**: legacy ✅ | Web ✅
 - **Review**: Pending
 ```
 
@@ -521,7 +521,7 @@ DO commit to GitHub:
 **Status**: 🟢 **SYSTEM READY**  
 **Implementation**: GitHub + Asset Sync  
 **Developer Facilitation**: Complete  
-**Platforms**: Roblox ↔ Web ↔ VirtualPC
+**Platforms**: legacy ↔ Web ↔ VirtualPC
 
 All developers: Keep GitHub updated. Use backlog as source of truth. Sync assets between platforms. Let's build together.
 

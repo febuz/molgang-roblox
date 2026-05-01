@@ -39,7 +39,7 @@ listen_for_kill_switch() {
       
       # Kill all automation processes
       pkill -f selenium-launcher
-      pkill -f molgang-game-demo
+      pkill -f virtualpc-demo
       pkill -f interactive-demo
       pkill -f chrome.*webdriver
       pkill -f firefox.*webdriver
@@ -78,7 +78,7 @@ After pressing Ctrl-Q-Q, user can:
 ps aux | grep -E 'selenium|webdriver|demo'
 
 # Manually restart specific component
-npm run demo:molgang
+npm run demo
 
 # Or resume normal workflow
 npm run dev
@@ -148,7 +148,7 @@ OpenClaw must monitor token usage after every 5-10 tool executions and:
 **TERMINAL ASSIGNMENTS:**
 ```
 Terminal A (Primary):  VirtualPC development
-Terminal B (Secondary): MOLGANG game web version development
+Terminal B (Secondary): the project game web version development
 ```
 
 **ACTIVATION RULES:**
@@ -403,10 +403,10 @@ Task: TaskUpdate({status: "in_progress", activeForm: "Phase 2..."})
 **Time: 14:45 - 15:00 (Phase 2)**
 ```
 [Check token usage: 95k - continue freely]
-[Check backlog: MOLGANG feature available]
+[Check backlog: the project feature available]
 
 Terminal A: Continue VirtualPC Phase 2
-Terminal B: Pick up MOLGANG task if 90+ idle threads
+Terminal B: Pick up the project task if 90+ idle threads
 
 [10 minutes work on both terminals]
 

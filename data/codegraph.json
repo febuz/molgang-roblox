@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-05-01T09:19:59.884Z",
+  "generatedAt": "2026-05-01T11:41:07.589Z",
   "rootDir": "/home/knight2/virtualpc",
-  "fileCount": 74,
-  "symbolCount": 317,
+  "fileCount": 75,
+  "symbolCount": 329,
   "files": {
     "src/agent/task-facilitator.ts": {
       "path": "src/agent/task-facilitator.ts",
@@ -763,7 +763,7 @@
     },
     "src/index.ts": {
       "path": "src/index.ts",
-      "loc": 2863,
+      "loc": 2895,
       "symbols": 9,
       "imports": [
         {
@@ -1067,6 +1067,12 @@
           ]
         },
         {
+          "from": "./integrations/autoresearch",
+          "symbols": [
+            "autoresearch"
+          ]
+        },
+        {
           "from": "./timeseries",
           "symbols": [
             "analyzeCsv"
@@ -1092,6 +1098,38 @@
         }
       ],
       "exports": []
+    },
+    "src/integrations/autoresearch/index.ts": {
+      "path": "src/integrations/autoresearch/index.ts",
+      "loc": 215,
+      "symbols": 12,
+      "imports": [
+        {
+          "from": "../../lmstudio",
+          "symbols": [
+            "lmstudio"
+          ]
+        },
+        {
+          "from": "../codegraph",
+          "symbols": [
+            "codegraph"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        }
+      ],
+      "exports": [
+        "AutoResearchOptions",
+        "ResearchTrace",
+        "ResearchResult",
+        "research",
+        "RESEARCH_AGENTS"
+      ]
     },
     "src/integrations/claude-code-skills.ts": {
       "path": "src/integrations/claude-code-skills.ts",
@@ -1432,7 +1470,7 @@
     },
     "src/lmstudio.ts": {
       "path": "src/lmstudio.ts",
-      "loc": 274,
+      "loc": 303,
       "symbols": 6,
       "imports": [
         {
@@ -3228,7 +3266,7 @@
         "name": "serveSPAFile",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 95,
+        "line": 96,
         "exported": false
       }
     ],
@@ -3237,7 +3275,7 @@
         "name": "ghPathAllowed",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 177,
+        "line": 178,
         "exported": false
       }
     ],
@@ -3246,7 +3284,7 @@
         "name": "ghApiFetch",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 182,
+        "line": 183,
         "exported": false
       }
     ],
@@ -3255,7 +3293,7 @@
         "name": "privilegedActor",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 372,
+        "line": 404,
         "exported": false
       }
     ],
@@ -3264,7 +3302,7 @@
         "name": "readAgentPrompts",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 561,
+        "line": 593,
         "exported": false
       }
     ],
@@ -3273,7 +3311,7 @@
         "name": "initialize",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 1378,
+        "line": 1410,
         "exported": false
       }
     ],
@@ -3282,7 +3320,7 @@
         "name": "setupRoutes",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 1545,
+        "line": 1577,
         "exported": false
       }
     ],
@@ -3291,7 +3329,7 @@
         "name": "setupWebSocketHandlers",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 2670,
+        "line": 2702,
         "exported": false
       }
     ],
@@ -3300,8 +3338,116 @@
         "name": "setupVitalsRoutes",
         "kind": "function",
         "file": "src/index.ts",
-        "line": 2731,
+        "line": 2763,
         "exported": false
+      }
+    ],
+    "AutoResearchOptions": [
+      {
+        "name": "AutoResearchOptions",
+        "kind": "interface",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 28,
+        "exported": true
+      }
+    ],
+    "ResearchTrace": [
+      {
+        "name": "ResearchTrace",
+        "kind": "interface",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 43,
+        "exported": true
+      }
+    ],
+    "ResearchResult": [
+      {
+        "name": "ResearchResult",
+        "kind": "interface",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 51,
+        "exported": true
+      }
+    ],
+    "llm": [
+      {
+        "name": "llm",
+        "kind": "function",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 61,
+        "exported": false
+      }
+    ],
+    "planSystemPrompt": [
+      {
+        "name": "planSystemPrompt",
+        "kind": "function",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 71,
+        "exported": false
+      }
+    ],
+    "synthesisSystemPrompt": [
+      {
+        "name": "synthesisSystemPrompt",
+        "kind": "function",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 75,
+        "exported": false
+      }
+    ],
+    "critiqueSystemPrompt": [
+      {
+        "name": "critiqueSystemPrompt",
+        "kind": "function",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 79,
+        "exported": false
+      }
+    ],
+    "probeCodegraph": [
+      {
+        "name": "probeCodegraph",
+        "kind": "function",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 83,
+        "exported": false
+      }
+    ],
+    "probeStatic": [
+      {
+        "name": "probeStatic",
+        "kind": "function",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 107,
+        "exported": false
+      }
+    ],
+    "probe": [
+      {
+        "name": "probe",
+        "kind": "function",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 119,
+        "exported": false
+      }
+    ],
+    "research": [
+      {
+        "name": "research",
+        "kind": "function",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 140,
+        "exported": true
+      }
+    ],
+    "RESEARCH_AGENTS": [
+      {
+        "name": "RESEARCH_AGENTS",
+        "kind": "const",
+        "file": "src/integrations/autoresearch/index.ts",
+        "line": 214,
+        "exported": true
       }
     ],
     "queryTeamMemory": [
@@ -3930,7 +4076,7 @@
         "name": "systemPromptForAgent",
         "kind": "function",
         "file": "src/lmstudio.ts",
-        "line": 267,
+        "line": 296,
         "exported": true
       }
     ],
@@ -5014,6 +5160,7 @@
       "src/commit-audit.ts",
       "src/commits-tracker.ts",
       "src/index.ts",
+      "src/integrations/autoresearch/index.ts",
       "src/integrations/codegraph/index.ts",
       "src/integrations/numerai/entity-model.ts",
       "src/lmstudio.ts",
@@ -5520,20 +5667,37 @@
     "setupVitalsRoutes": [
       "src/index.ts"
     ],
+    "llm": [
+      "src/index.ts",
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "research": [
+      "src/index.ts",
+      "src/integrations/autoresearch/index.ts",
+      "src/orchestration/model-router.ts",
+      "src/task-engine.ts"
+    ],
+    "RESEARCH_AGENTS": [
+      "src/index.ts",
+      "src/integrations/autoresearch/index.ts"
+    ],
     "Codegraph": [
       "src/index.ts",
       "src/integrations/codegraph/index.ts"
     ],
     "getCodegraph": [
       "src/index.ts",
+      "src/integrations/autoresearch/index.ts",
       "src/integrations/codegraph/index.ts"
     ],
     "findSymbol": [
       "src/index.ts",
+      "src/integrations/autoresearch/index.ts",
       "src/integrations/codegraph/index.ts"
     ],
     "findReferences": [
       "src/index.ts",
+      "src/integrations/autoresearch/index.ts",
       "src/integrations/codegraph/index.ts"
     ],
     "summarize": [
@@ -5597,6 +5761,7 @@
     ],
     "chatAsAgent": [
       "src/index.ts",
+      "src/integrations/autoresearch/index.ts",
       "src/lmstudio.ts",
       "src/task-engine.ts"
     ],
@@ -5756,6 +5921,33 @@
     "VitalsService": [
       "src/index.ts",
       "src/vitals/vitals-service.ts"
+    ],
+    "AutoResearchOptions": [
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "ResearchTrace": [
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "ResearchResult": [
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "planSystemPrompt": [
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "synthesisSystemPrompt": [
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "critiqueSystemPrompt": [
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "probeCodegraph": [
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "probeStatic": [
+      "src/integrations/autoresearch/index.ts"
+    ],
+    "probe": [
+      "src/integrations/autoresearch/index.ts"
     ],
     "queryTeamMemory": [
       "src/integrations/claude-code-skills.ts"

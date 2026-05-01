@@ -55,7 +55,7 @@ const STRIPE_PAYMENT_METHOD_ID = process.env.STRIPE_PAYMENT_METHOD_ID || '';
 const STRIPE_STATEMENT_DESCRIPTOR = (process.env.STRIPE_STATEMENT_DESCRIPTOR || 'VIRTUALV PROMO').slice(0, 22);
 
 export type PromoChannel =
-  | 'roblox-sponsored'
+  | 'sponsored-channel-1'
   | 'twitter-ad'
   | 'tiktok-ad'
   | 'discord-boost'

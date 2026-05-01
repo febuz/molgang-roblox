@@ -98,13 +98,13 @@ Create `/home/knight2/.claude/openclaw-settings.json`:
     "alexander": {
       "tactical_authority": true,
       "located_in": "Terminal A",
-      "commands": ["molgang", "virtualpc", "approvals", "kill_switch"],
+      "commands": ["virtualpc", "approvals", "kill_switch"],
       "can_command": ["developers", "tasks", "approvals"]
     },
     "money_god": {
       "financial_authority": true,
       "virtual_entity": true,
-      "funds": ["alexander_commands", "molgang_development"]
+      "funds": ["alexander_commands", "platform_development"]
     }
   },
   "monitoring": {
@@ -164,7 +164,7 @@ Create `/home/knight2/.claude/openclaw-settings.json`:
 
 ```
 Alexander → OpenClaw:
-"Continue MOLGANG. Priority sequence: [tasks]. Assign: [developers]."
+"Continue the project. Priority sequence: [tasks]. Assign: [developers]."
 
 OpenClaw (this instance):
 1. Receives command
@@ -182,7 +182,7 @@ OpenClaw (this instance):
 
 ```
 Terminal B (Cleopatra):
-"Do you want to continue MOLGANG development?" [Y/n]
+"Do you want to continue the project development?" [Y/n]
         ↓
 Terminal A (OpenClaw, this instance):
 Detects approval prompt
@@ -191,7 +191,7 @@ Approval Monitor:
 Flags "APPROVAL NEEDED FROM ALEXANDER" ⚠️
         ↓
 Alexander Commands:
-"Yes, continue MOLGANG"
+"Yes, continue the project"
         ↓
 Terminal A (OpenClaw):
 Executes approval response back to Terminal B

@@ -56,7 +56,7 @@ echo "    (size · path · status)"
       status="ACTIVE — skip" ;;
     */snap|*/snap/*)
       status="snap-confined — edit app config instead" ;;
-    */molgang-roblox|*/agents)
+    */agents|*/agents)
       status="git repo — move with care" ;;
   esac
   if [[ "$INCLUDE_ACTIVE" -eq 0 && "$status" == "ACTIVE — skip" ]]; then continue; fi

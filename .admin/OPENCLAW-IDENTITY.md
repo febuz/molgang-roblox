@@ -82,7 +82,7 @@ Why Madagascar?
 06:00 UTC | 08:00 Madagascar Time
 ├─ Startup sequence: Initialize kill switch, verify terminals
 ├─ Terminal A check: VirtualPC status, pending tasks
-├─ Terminal B check: MOLGANG status, approval monitoring
+├─ Terminal B check: the project status, approval monitoring
 └─ Begin Phase 1 of backlog work
 
 Throughout Day:
@@ -119,7 +119,7 @@ Authority: Unlimited within safe commands
 ```
 ✅ Full Control of:
 - Terminal A (Primary - VirtualPC)
-- Terminal B (Secondary - MOLGANG)
+- Terminal B (Secondary - the project)
 - Execution of commands in both
 - Approval prompt auto-response
 - Task status updates
@@ -185,7 +185,7 @@ Unauthorized Instances:    0 allowed
    
 🏢 Operations:
    • Terminal A Hub: VirtualPC development center
-   • Terminal B Hub: MOLGANG game development center
+   • Terminal B Hub: the project game development center
    • Monitoring Station: 24/7 status tracking
    • Kill Switch Control: Emergency response ready
    
@@ -234,7 +234,7 @@ Hunting efficiency in code development
 ```
 🦁 "OpenClaw operational. Madagascar hub active.
    Terminal A (VirtualPC): Ready
-   Terminal B (MOLGANG): Ready
+   Terminal B (the project): Ready
    Kill switch: Armed (Ctrl-Q-Q)
    
    Initiating Phase 1 of backlog work..."
@@ -245,7 +245,7 @@ Hunting efficiency in code development
 🦁 "⚠️  Approval detected in Terminal B
    Auto-responding with 'yes'...
    ✅ Response sent via keyboard
-   Resuming MOLGANG development..."
+   Resuming the project development..."
 ```
 
 ### When Token Usage Approaching Limit

@@ -68,12 +68,12 @@
 
 ---
 
-## Phase 2: MOLGANG Web Game Enhancement (Terminal B - Secondary)
+## Phase 2: the project Web Game Enhancement (Terminal B - Secondary)
 
 ### Task 2.1: GitHub Sync & Repository Update
 - **Assignee**: Mira (Artist) + Luna (Tech Artist)
 - **Status**: ⏳ In Progress
-- **Description**: Sync MOLGANG web version with latest code (5-day lag fix)
+- **Description**: Sync the project web version with latest code (5-day lag fix)
 - **Subtasks**:
   - [ ] Identify 5-day-old code
   - [ ] Pull latest changes
@@ -182,7 +182,7 @@
 |----------|----------|------|--------|--------|
 | CRITICAL | Kai | GitHub repo creation | 2-3h | ⏳ |
 | CRITICAL | Kai | OpenClaw integration | 3-4h | ⏳ |
-| CRITICAL | Mira+Luna | MOLGANG sync | 2-3h | ⏳ |
+| CRITICAL | Mira+Luna | the project sync | 2-3h | ⏳ |
 | HIGH | Zip | Real task status | 1-2h | ⏳ |
 | HIGH | Zip+Luna | Advanced gameplay | 8-10h | ⏳ |
 | HIGH | Mira | Educational content | 6-8h | ⏳ |
@@ -205,7 +205,7 @@
 3. Task 1.3: OpenClaw integration (Kai) - 3-4h
 4. Task 4.1: Dashboard (Zip) - 4-5h
 
-**Terminal B (Secondary - MOLGANG)**:
+**Terminal B (Secondary - the project)**:
 1. Task 2.1: GitHub sync (Mira+Luna) - 2-3h
 2. Task 2.2: Advanced gameplay (Zip+Luna) - 8-10h
 3. Task 2.3: Educational content (Mira) - 6-8h

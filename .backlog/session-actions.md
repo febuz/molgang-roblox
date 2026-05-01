@@ -65,7 +65,7 @@
 - [x] Neo4j connected and operational
 - [x] Redis cache ready
 - [x] Kafka disabled (development mode)
-- [x] MOLGANG web integration active (12 endpoints)
+- [x] the project web integration active (12 endpoints)
 - [x] Authentication system ready
 - [x] Specialist dashboards configured
 
@@ -163,7 +163,7 @@
 - [ ] Accessibility testing
 - [ ] Performance optimization
 
-### MOLGANG Web Game Enhancement
+### the project Web Game Enhancement
 
 #### Task 2.1: GitHub Sync (5-day lag fix)
 - [ ] Identify outdated code
@@ -236,7 +236,7 @@
 3. **[HIGH]** Create private systems_setup GitHub repo
 4. **[HIGH]** Task 1.2 - Real task status endpoint
 5. **[HIGH]** Task 1.3 - OpenClaw integration
-6. **[MEDIUM]** Task 2.1 - MOLGANG web sync
+6. **[MEDIUM]** Task 2.1 - the project web sync
 7. **[MEDIUM]** Task 3.1 - QWEN integration
 8. **[LOW]** Task 4.1 - Real-time dashboard
 9. **[LOW]** Task 4.2 - Performance optimization

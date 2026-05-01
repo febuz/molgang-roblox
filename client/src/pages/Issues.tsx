@@ -154,7 +154,7 @@ export default function Issues() {
                   type="text"
                   value={formData.blocking_task}
                   onChange={(e) => setFormData({ ...formData, blocking_task: e.target.value })}
-                  placeholder="e.g., MOLGANG-6.1"
+                  placeholder="e.g., TASK-1234"
                 />
               </div>
             </div>

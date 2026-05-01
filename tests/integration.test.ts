@@ -1,9 +1,9 @@
 /**
- * MOLGANG Phase 5 Integration Tests
+ * VirtualPC Integration Tests
  * Validates all systems work together
  */
 
-describe('MOLGANG Phase 5 Integration Suite', () => {
+describe('VirtualPC Integration Suite', () => {
 
   describe('Infrastructure Layer', () => {
     test('Kafka Producer publishes events with <500ms latency', () => {

@@ -67,7 +67,7 @@
 ┌─────────────────────────────────────────────────────────┐
 │              LAYER 5: EXTERNAL SYSTEMS                  │
 │  ┌──────────────┬──────────────┬──────────────┐        │
-│  │  MOLGANG     │  QWEN API    │  Numerai     │        │
+│  │  the project     │  QWEN API    │  Numerai     │        │
 │  │  Game Engine │  LLM Service │  Data Feed   │        │
 │  └──────────────┴──────────────┴──────────────┘        │
 └─────────────────────────────────────────────────────────┘
@@ -232,7 +232,7 @@ LUNA (Tech Artist - Performance)
 │              ↓ ↑                         │
 │  ┌─────────────────────────────────┐   │
 │  │   EXTERNAL INTEGRATIONS         │   │
-│  │  ├─ MOLGANG Game API            │   │
+│  │  ├─ the project Game API            │   │
 │  │  ├─ QWEN LLM Service            │   │
 │  │  ├─ GitHub API                  │   │
 │  │  ├─ Numerai Data Feed           │   │
@@ -346,7 +346,7 @@ VirtualPC → GitHub
 ├─ CI/CD workflows
 └─ Commit tracking
 
-VirtualPC → MOLGANG
+VirtualPC → the project
 ├─ Game API endpoints
 ├─ Asset delivery
 ├─ Leaderboard sync

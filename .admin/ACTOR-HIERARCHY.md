@@ -1,5 +1,5 @@
 # 👥 Complete Actor Hierarchy
-**VirtualPC + MOLGANG Governance Structure**
+**VirtualPC + the project Governance Structure**
 
 ---
 
@@ -106,7 +106,7 @@
   - **3D Assets**: Character models, environments, props, particles
   - **4D Assets**: Music, SFX, voice acting, audio mixing
   - **5D Assets**: Animations, motion graphics, VFX, cutscenes
-  - GitHub asset sync for Roblox/Web versions
+  - GitHub asset sync for legacy/Web versions
   - Design specifications and guidelines
 - **Autonomy**: High (creative direction, Cleopatra's domain)
 - **Task Examples**: "Design dashboard", "Create icons", "Make animations"
@@ -283,7 +283,7 @@ VirtualPC Systems
 
 **Scenario: Add new game feature**
 
-1. **FILL** (as human user): "I want quantum trading in MOLGANG"
+1. **FILL** (as human user): "I want quantum trading in the project"
 2. **CLEOPATRA** (Terminal B): Reviews, approves strategy
 3. **ALEXANDER** (Terminal A): Receives command
 4. **ALEXANDER**: "Zip, implement quantum trading mechanics"

@@ -17,7 +17,7 @@
 Nodes:
 ├─ Agent (FILL, Kai, Zip, Mira, Luna, Alexander, Cleopatra)
 ├─ Task (MIRA-001, TASK-1.2, etc.)
-├─ Project (VirtualPC, MOLGANG, etc.)
+├─ Project (VirtualPC, the project, etc.)
 ├─ Domain (Infrastructure, Features, Assets, etc.)
 ├─ Concept (Architecture, Design, Performance, etc.)
 ├─ Document (Backlog, Design Brief, etc.)
