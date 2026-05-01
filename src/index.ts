@@ -54,6 +54,8 @@ import * as commitsTracker from './commits-tracker';
 import * as lmstudio from './lmstudio';
 import { AGENT_META } from './agent-registry';
 import * as fs from 'fs';
+import * as codegraph from './integrations/codegraph';
+import * as autoresearch from './integrations/autoresearch';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
@@ -225,6 +227,90 @@ app.get('/api/github/virtualpc/file', async (req, res) => {
 app.get('/api/github/agent-docs/:name', async (req, res) => {
   const docs = GH_AGENT_DOCS[req.params.name] || [];
   res.json({ success: true, agent: req.params.name, repo: GH_REPO, docs: docs.map(p => ({ path: p, html_url: `https://github.com/${GH_REPO}/blob/main/${p}` })) });
+});
+
+// ============================================================================
+// Codegraph (GitNexus-compatible) — structural index of src/**.ts so agents
+// don't have to read the whole repo to answer "where is X defined?" or
+// "who calls Y?". Builds on demand, caches to data/codegraph.json (30 min TTL).
+// Pairs with the existing LightRAG integration: codegraph = "how" (structure),
+// LightRAG = "why" (semantics from docs/comments).
+// ============================================================================
+const REPO_ROOT = path.resolve(__dirname, '..');
+
+app.get('/api/codegraph/stats', (_req, res) => {
+  try { res.json({ success: true, ...codegraph.summarize(codegraph.getCodegraph(REPO_ROOT)) }); }
+  catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/codegraph/rebuild', (_req, res) => {
+  try {
+    const t0 = Date.now();
+    const g = codegraph.getCodegraph(REPO_ROOT, true);
+    res.json({ success: true, builtInMs: Date.now() - t0, ...codegraph.summarize(g) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/codegraph/symbol/:name', (req, res) => {
+  try {
+    const g = codegraph.getCodegraph(REPO_ROOT);
+    const defs = codegraph.findSymbol(g, req.params.name);
+    const refs = codegraph.findReferences(g, req.params.name);
+    res.json({ success: true, name: req.params.name, definitions: defs, referencedBy: refs });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/codegraph/file', (req, res) => {
+  try {
+    const rel = String(req.query.path || '');
+    if (!rel || rel.includes('..')) { res.status(400).json({ success: false, error: 'path required' }); return; }
+    const g = codegraph.getCodegraph(REPO_ROOT);
+    const file = g.files[rel];
+    if (!file) { res.status(404).json({ success: false, error: 'file not in graph' }); return; }
+    res.json({ success: true, file });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/codegraph/search', (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) { res.status(400).json({ success: false, error: 'q required' }); return; }
+    const g = codegraph.getCodegraph(REPO_ROOT);
+    const matches = codegraph.findSymbol(g, q);
+    const limited = matches.slice(0, 30);
+    res.json({ success: true, q, matchCount: matches.length, matches: limited });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// Auto-research (Karpathy-style) — reserved for the research-flavored agents
+// (Vice, Kimi, Analyst, Atlas). Plans → probes the codegraph for evidence →
+// synthesizes → self-critiques. Pure-local Gemma 4 calls, zero API credits.
+// ============================================================================
+app.post('/api/autoresearch', async (req, res) => {
+  const agent = String(req.body?.agent || '');
+  const question = String(req.body?.question || '');
+  if (!agent || !question) { res.status(400).json({ success: false, error: 'agent + question required' }); return; }
+  if (!autoresearch.RESEARCH_AGENTS.includes(agent)) {
+    res.status(400).json({ success: false, error: `agent must be one of: ${autoresearch.RESEARCH_AGENTS.join(', ')}` });
+    return;
+  }
+  try {
+    const r = await autoresearch.research({
+      agent,
+      question,
+      sources: Array.isArray(req.body?.sources) ? req.body.sources : ['codegraph'],
+      staticContext: Array.isArray(req.body?.staticContext) ? req.body.staticContext : undefined,
+      maxSubQuestions: Number(req.body?.maxSubQuestions) || undefined,
+      maxDepth: Number(req.body?.maxDepth) || undefined,
+      rootDir: REPO_ROOT,
+    });
+    res.json({ success: true, ...r });
+  } catch (e: any) { res.status(502).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/autoresearch/agents', (_req, res) => {
+  res.json({ success: true, agents: autoresearch.RESEARCH_AGENTS });
 });
 
 // Game development milestones - LIVE from task engine

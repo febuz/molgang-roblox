@@ -236,10 +236,39 @@ export async function chatAsAgent(
       latencyMs: Date.now() - started,
     };
   } catch (e: any) {
-    // If the model failed to load (common when a 26B is requested under memory
-    // pressure), automatically retry once with Phi-4 which is almost always warm.
-    const looksLikeLoadFailure = /Failed to load model|Operation canceled|unload|not yet loaded/i.test(e.message || '');
-    if (looksLikeLoadFailure) {
+    // Two distinct error families the local stack throws under load:
+    //   • VRAM/OOM pressure: gpu out of memory / cuda oom / allocation failed
+    //   • Model not yet loaded: failed to load / operation canceled / unload / not yet loaded
+    //
+    // For OOM we wait briefly (the kernel reaps stale cuda allocs in seconds)
+    // and retry the original model once, since the model the caller asked for
+    // is the one their persona was tuned against. Only after that do we fall
+    // back to phi-4. This keeps the request on its preferred route whenever
+    // VRAM pressure was transient.
+    const msg = e.message || '';
+    const looksLikeOOM = /out of memory|oom|cuda allocator|allocation failed|insufficient memory/i.test(msg);
+    const looksLikeLoadFailure = /Failed to load model|Operation canceled|unload|not yet loaded/i.test(msg);
+
+    if (looksLikeOOM) {
+      const wait = 15000;
+      logger.warn(`LM Studio VRAM pressure on ${model} — waiting ${wait/1000}s, then retrying original model once`);
+      await new Promise(r => setTimeout(r, wait));
+      try {
+        const r = await attemptChat(model);
+        logger.info(`LM Studio retry-after-OOM: ${model} succeeded after wait`);
+        return {
+          ok: true, model, agent,
+          content: r.choices[0]?.message?.content || '',
+          usage: r.usage || null,
+          latencyMs: Date.now() - started,
+        };
+      } catch (e2: any) {
+        // Fall through to the load-failure / fallback path below with the new error.
+        e = e2;
+      }
+    }
+
+    if (looksLikeLoadFailure || looksLikeOOM) {
       const fallbackHint = 'phi-4';
       const fallbackModel = await resolveModel(fallbackHint);
       if (fallbackModel && fallbackModel !== model) {

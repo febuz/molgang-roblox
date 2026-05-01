@@ -1,0 +1,6144 @@
+{
+  "generatedAt": "2026-05-01T09:19:59.884Z",
+  "rootDir": "/home/knight2/virtualpc",
+  "fileCount": 74,
+  "symbolCount": 317,
+  "files": {
+    "src/agent/task-facilitator.ts": {
+      "path": "src/agent/task-facilitator.ts",
+      "loc": 379,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "FacilitatorConfig",
+        "TaskFacilitation",
+        "TaskFacilitator"
+      ]
+    },
+    "src/agent/task-scheduler.ts": {
+      "path": "src/agent/task-scheduler.ts",
+      "loc": 200,
+      "symbols": 1,
+      "imports": [],
+      "exports": [
+        "TaskScheduler"
+      ]
+    },
+    "src/agent-registry.ts": {
+      "path": "src/agent-registry.ts",
+      "loc": 66,
+      "symbols": 8,
+      "imports": [],
+      "exports": [
+        "AgentMeta",
+        "AGENT_META",
+        "AGENT_NAMES",
+        "getAgent",
+        "ROLE_MAP",
+        "AVATAR_MAP",
+        "COLOR_MAP",
+        "AGENT_MODELS"
+      ]
+    },
+    "src/analytics/advanced-analytics.ts": {
+      "path": "src/analytics/advanced-analytics.ts",
+      "loc": 232,
+      "symbols": 1,
+      "imports": [],
+      "exports": [
+        "AdvancedAnalytics"
+      ]
+    },
+    "src/analytics/dashboard.ts": {
+      "path": "src/analytics/dashboard.ts",
+      "loc": 274,
+      "symbols": 0,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "Router",
+            "Request",
+            "Response"
+          ]
+        }
+      ],
+      "exports": []
+    },
+    "src/api/metrics-dashboard.ts": {
+      "path": "src/api/metrics-dashboard.ts",
+      "loc": 210,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        }
+      ],
+      "exports": [
+        "MetricsDashboard"
+      ]
+    },
+    "src/api/monitoring.ts": {
+      "path": "src/api/monitoring.ts",
+      "loc": 183,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        }
+      ],
+      "exports": [
+        "MonitoringService"
+      ]
+    },
+    "src/api-endpoints.ts": {
+      "path": "src/api-endpoints.ts",
+      "loc": 244,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "Express",
+            "express"
+          ]
+        }
+      ],
+      "exports": [
+        "registerGameEndpoints"
+      ]
+    },
+    "src/approval-monitor.ts": {
+      "path": "src/approval-monitor.ts",
+      "loc": 246,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "./utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "ApprovalEvent",
+        "ApprovalMonitor",
+        "approvalMonitor"
+      ]
+    },
+    "src/auth/audit-logger.ts": {
+      "path": "src/auth/audit-logger.ts",
+      "loc": 342,
+      "symbols": 4,
+      "imports": [
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "AuditEventType",
+        "AuditEventSeverity",
+        "AuditEvent",
+        "CEOAuditLogger"
+      ]
+    },
+    "src/auth/audit-routes.ts": {
+      "path": "src/auth/audit-routes.ts",
+      "loc": 194,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "./audit-logger",
+          "symbols": [
+            "CEOAuditLogger"
+          ]
+        },
+        {
+          "from": "./auth-middleware",
+          "symbols": [
+            "AuthRequest"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "setupAuditRoutes"
+      ]
+    },
+    "src/auth/auth-middleware.ts": {
+      "path": "src/auth/auth-middleware.ts",
+      "loc": 123,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "./auth-system",
+          "symbols": [
+            "AuthToken",
+            "AuthSystem"
+          ]
+        }
+      ],
+      "exports": [
+        "AuthRequest",
+        "AuthMiddleware"
+      ]
+    },
+    "src/auth/auth-routes.ts": {
+      "path": "src/auth/auth-routes.ts",
+      "loc": 281,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "./auth-system",
+          "symbols": [
+            "AuthSystem"
+          ]
+        },
+        {
+          "from": "./auth-middleware",
+          "symbols": [
+            "AuthRequest",
+            "AuthMiddleware"
+          ]
+        },
+        {
+          "from": "../security/rateLimiter",
+          "symbols": [
+            "AdvancedRateLimiter"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "setupAuthRoutes"
+      ]
+    },
+    "src/auth/auth-system.ts": {
+      "path": "src/auth/auth-system.ts",
+      "loc": 537,
+      "symbols": 7,
+      "imports": [
+        {
+          "from": "crypto",
+          "symbols": [
+            "randomBytes",
+            "scryptSync",
+            "timingSafeEqual"
+          ]
+        },
+        {
+          "from": "./totp",
+          "symbols": [
+            "generateSecret",
+            "verifyTotp",
+            "otpauthUri"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "UserRole",
+        "User",
+        "AuthToken",
+        "LoginRequest",
+        "RolePermissions",
+        "ROLE_PERMISSIONS",
+        "AuthSystem"
+      ]
+    },
+    "src/auth/specialist-dashboards.ts": {
+      "path": "src/auth/specialist-dashboards.ts",
+      "loc": 221,
+      "symbols": 6,
+      "imports": [
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "CEODashboard",
+        "CTODashboard",
+        "DeveloperDashboard",
+        "ArtistDashboard",
+        "TechArtistDashboard",
+        "SpecialistDashboards"
+      ]
+    },
+    "src/auth/specialist-routes.ts": {
+      "path": "src/auth/specialist-routes.ts",
+      "loc": 93,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "./specialist-dashboards",
+          "symbols": [
+            "SpecialistDashboards"
+          ]
+        },
+        {
+          "from": "./auth-middleware",
+          "symbols": [
+            "AuthRequest"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "setupSpecialistRoutes"
+      ]
+    },
+    "src/auth/totp.ts": {
+      "path": "src/auth/totp.ts",
+      "loc": 137,
+      "symbols": 9,
+      "imports": [
+        {
+          "from": "crypto",
+          "symbols": [
+            "createHmac",
+            "randomBytes",
+            "timingSafeEqual"
+          ]
+        }
+      ],
+      "exports": [
+        "TOTP_PERIOD_SECONDS",
+        "TOTP_DIGITS",
+        "base32Encode",
+        "base32Decode",
+        "generateSecret",
+        "generateTotp",
+        "verifyTotp",
+        "otpauthUri"
+      ]
+    },
+    "src/automation/autonomous-session-manager.ts": {
+      "path": "src/automation/autonomous-session-manager.ts",
+      "loc": 426,
+      "symbols": 7,
+      "imports": [
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "SessionConfig",
+        "WorkSession",
+        "SessionCommit",
+        "SessionTaskUpdate",
+        "SessionProgressReport",
+        "SessionWarning",
+        "AutonomousSessionManager"
+      ]
+    },
+    "src/automation/backup-manager.ts": {
+      "path": "src/automation/backup-manager.ts",
+      "loc": 291,
+      "symbols": 1,
+      "imports": [],
+      "exports": [
+        "BackupManager"
+      ]
+    },
+    "src/automation/deployment-manager.ts": {
+      "path": "src/automation/deployment-manager.ts",
+      "loc": 226,
+      "symbols": 1,
+      "imports": [],
+      "exports": [
+        "DeploymentManager"
+      ]
+    },
+    "src/automation/github-routes.ts": {
+      "path": "src/automation/github-routes.ts",
+      "loc": 102,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "./github-sync",
+          "symbols": [
+            "GitHubSync"
+          ]
+        },
+        {
+          "from": "../auth/auth-middleware",
+          "symbols": [
+            "AuthRequest"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "setupGitHubRoutes"
+      ]
+    },
+    "src/automation/github-sync.ts": {
+      "path": "src/automation/github-sync.ts",
+      "loc": 256,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "child_process",
+          "symbols": [
+            "execSync"
+          ]
+        }
+      ],
+      "exports": [
+        "SyncConfig",
+        "SyncResult",
+        "GitHubSync"
+      ]
+    },
+    "src/bridges/paperclip-bridge.ts": {
+      "path": "src/bridges/paperclip-bridge.ts",
+      "loc": 347,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "Request",
+            "Response",
+            "Router"
+          ]
+        },
+        {
+          "from": "axios",
+          "symbols": [
+            "axios"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "PaperclipTask",
+        "VirtualPCTask",
+        "PaperclipBridge"
+      ]
+    },
+    "src/cache/cacheManager.ts": {
+      "path": "src/cache/cacheManager.ts",
+      "loc": 273,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "ioredis",
+          "symbols": [
+            "Redis"
+          ]
+        }
+      ],
+      "exports": [
+        "CacheManager"
+      ]
+    },
+    "src/cache/middleware.ts": {
+      "path": "src/cache/middleware.ts",
+      "loc": 68,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "Request",
+            "Response",
+            "NextFunction"
+          ]
+        },
+        {
+          "from": "./cacheManager",
+          "symbols": [
+            "CacheManager"
+          ]
+        }
+      ],
+      "exports": [
+        "cacheMiddleware",
+        "invalidateCacheMiddleware",
+        "getCacheStats"
+      ]
+    },
+    "src/collaboration/realtime.ts": {
+      "path": "src/collaboration/realtime.ts",
+      "loc": 204,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "socket.io",
+          "symbols": [
+            "Server as SocketIOServer",
+            "Socket"
+          ]
+        },
+        {
+          "from": "http",
+          "symbols": [
+            "Server as HTTPServer"
+          ]
+        }
+      ],
+      "exports": [
+        "CollaborationManager"
+      ]
+    },
+    "src/collaboration/routes.ts": {
+      "path": "src/collaboration/routes.ts",
+      "loc": 129,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "Router",
+            "Request",
+            "Response"
+          ]
+        },
+        {
+          "from": "./realtime",
+          "symbols": [
+            "CollaborationManager"
+          ]
+        }
+      ],
+      "exports": [
+        "createCollaborationRouter"
+      ]
+    },
+    "src/commercialization.ts": {
+      "path": "src/commercialization.ts",
+      "loc": 331,
+      "symbols": 17,
+      "imports": [
+        {
+          "from": "fs",
+          "symbols": [
+            "fs"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "crypto",
+          "symbols": [
+            "randomBytes"
+          ]
+        }
+      ],
+      "exports": [
+        "PromoChannel",
+        "PromoStatus",
+        "PromotionProposal",
+        "ProposeInput",
+        "propose",
+        "list",
+        "approve",
+        "reject",
+        "ExecuteResult",
+        "execute",
+        "budget"
+      ]
+    },
+    "src/commit-audit.ts": {
+      "path": "src/commit-audit.ts",
+      "loc": 185,
+      "symbols": 12,
+      "imports": [
+        {
+          "from": "fs",
+          "symbols": [
+            "fs"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "child_process",
+          "symbols": [
+            "execSync"
+          ]
+        },
+        {
+          "from": "./agent-registry",
+          "symbols": [
+            "AGENT_NAMES"
+          ]
+        }
+      ],
+      "exports": [
+        "CommitAuditEntry",
+        "record",
+        "list",
+        "summary",
+        "backfillFromGit"
+      ]
+    },
+    "src/commits-tracker.ts": {
+      "path": "src/commits-tracker.ts",
+      "loc": 309,
+      "symbols": 10,
+      "imports": [
+        {
+          "from": "child_process",
+          "symbols": [
+            "execSync"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "./agent-registry",
+          "symbols": [
+            "AGENT_NAMES"
+          ]
+        }
+      ],
+      "exports": [
+        "getCommitSummary",
+        "getCommitHourly",
+        "getRecentCommits",
+        "getRepoUrl",
+        "getCommitsForTask",
+        "getCommitsForTasks"
+      ]
+    },
+    "src/credentials.ts": {
+      "path": "src/credentials.ts",
+      "loc": 144,
+      "symbols": 10,
+      "imports": [
+        {
+          "from": "fs",
+          "symbols": [
+            "fs"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "./utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "ProviderRecord",
+        "ProviderMeta",
+        "PROVIDER_CATALOG",
+        "loadCredentials",
+        "listMasked",
+        "setProvider",
+        "deleteProvider"
+      ]
+    },
+    "src/features/collaboration.ts": {
+      "path": "src/features/collaboration.ts",
+      "loc": 246,
+      "symbols": 1,
+      "imports": [],
+      "exports": [
+        "CollaborationManager"
+      ]
+    },
+    "src/game/seasonal-events.ts": {
+      "path": "src/game/seasonal-events.ts",
+      "loc": 325,
+      "symbols": 1,
+      "imports": [],
+      "exports": [
+        "SeasonalEventsManager"
+      ]
+    },
+    "src/index.ts": {
+      "path": "src/index.ts",
+      "loc": 2863,
+      "symbols": 9,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "dotenv",
+          "symbols": [
+            "config"
+          ]
+        },
+        {
+          "from": "http",
+          "symbols": [
+            "http"
+          ]
+        },
+        {
+          "from": "socket.io",
+          "symbols": [
+            "Server as SocketIOServer"
+          ]
+        },
+        {
+          "from": "./utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "./integrations/kafka/orchestrator",
+          "symbols": [
+            "KafkaOrchestrator"
+          ]
+        },
+        {
+          "from": "./integrations/lightrag/client",
+          "symbols": [
+            "LightRAGClient"
+          ]
+        },
+        {
+          "from": "./integrations/lightrag/agent-api",
+          "symbols": [
+            "AgentAPIWrapper"
+          ]
+        },
+        {
+          "from": "./orchestration/model-router",
+          "symbols": [
+            "ModelRouter"
+          ]
+        },
+        {
+          "from": "./skills/register",
+          "symbols": [
+            "registerSkills"
+          ]
+        },
+        {
+          "from": "./openclaw/openclaw-api",
+          "symbols": [
+            "setupOpenClawRoutes"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "./api/metrics-dashboard",
+          "symbols": [
+            "MetricsDashboard"
+          ]
+        },
+        {
+          "from": "./agent/task-scheduler",
+          "symbols": [
+            "TaskScheduler"
+          ]
+        },
+        {
+          "from": "./game/seasonal-events",
+          "symbols": [
+            "SeasonalEventsManager"
+          ]
+        },
+        {
+          "from": "./automation/deployment-manager",
+          "symbols": [
+            "DeploymentManager"
+          ]
+        },
+        {
+          "from": "./features/collaboration",
+          "symbols": [
+            "CollaborationManager"
+          ]
+        },
+        {
+          "from": "./analytics/advanced-analytics",
+          "symbols": [
+            "AdvancedAnalytics"
+          ]
+        },
+        {
+          "from": "./automation/backup-manager",
+          "symbols": [
+            "BackupManager"
+          ]
+        },
+        {
+          "from": "./security/audit-logger",
+          "symbols": [
+            "AuditLogger"
+          ]
+        },
+        {
+          "from": "./vitals/vitals-service",
+          "symbols": [
+            "VitalsService"
+          ]
+        },
+        {
+          "from": "./vitals/inference-audit",
+          "symbols": [
+            "InferenceAudit"
+          ]
+        },
+        {
+          "from": "./vitals/self-repair",
+          "symbols": [
+            "SelfRepair"
+          ]
+        },
+        {
+          "from": "./integrations/numerai/entity-model",
+          "symbols": [
+            "EntityModel"
+          ]
+        },
+        {
+          "from": "./integrations/numerai/data-fetcher",
+          "symbols": [
+            "NumeraiDataFetcher"
+          ]
+        },
+        {
+          "from": "./integrations/numerai/openclaw-edb-bridge",
+          "symbols": [
+            "OpenClawEDBBridge"
+          ]
+        },
+        {
+          "from": "./openclaw-kill-switch",
+          "symbols": [
+            "killSwitch"
+          ]
+        },
+        {
+          "from": "./agent/task-facilitator",
+          "symbols": [
+            "TaskFacilitator"
+          ]
+        },
+        {
+          "from": "./automation/autonomous-session-manager",
+          "symbols": [
+            "AutonomousSessionManager"
+          ]
+        },
+        {
+          "from": "./auth/auth-system",
+          "symbols": [
+            "AuthSystem"
+          ]
+        },
+        {
+          "from": "./auth/auth-middleware",
+          "symbols": [
+            "AuthMiddleware"
+          ]
+        },
+        {
+          "from": "./auth/audit-logger",
+          "symbols": [
+            "CEOAuditLogger"
+          ]
+        },
+        {
+          "from": "./auth/specialist-dashboards",
+          "symbols": [
+            "SpecialistDashboards"
+          ]
+        },
+        {
+          "from": "./auth/auth-routes",
+          "symbols": [
+            "setupAuthRoutes"
+          ]
+        },
+        {
+          "from": "./auth/audit-routes",
+          "symbols": [
+            "setupAuditRoutes"
+          ]
+        },
+        {
+          "from": "./auth/specialist-routes",
+          "symbols": [
+            "setupSpecialistRoutes"
+          ]
+        },
+        {
+          "from": "./automation/github-sync",
+          "symbols": [
+            "GitHubSync"
+          ]
+        },
+        {
+          "from": "./automation/github-routes",
+          "symbols": [
+            "setupGitHubRoutes"
+          ]
+        },
+        {
+          "from": "./security/securityDashboard",
+          "symbols": [
+            "SecurityDashboard"
+          ]
+        },
+        {
+          "from": "./security/security-routes",
+          "symbols": [
+            "setupSecurityRoutes"
+          ]
+        },
+        {
+          "from": "./quality/qualityDashboard",
+          "symbols": [
+            "QualityDashboard"
+          ]
+        },
+        {
+          "from": "./quality/quality-routes",
+          "symbols": [
+            "setupQualityRoutes"
+          ]
+        },
+        {
+          "from": "./terminal-activity-monitor",
+          "symbols": [
+            "activityMonitor"
+          ]
+        },
+        {
+          "from": "./task-engine",
+          "symbols": [
+            "taskEngine"
+          ]
+        },
+        {
+          "from": "./token-tracker",
+          "symbols": [
+            "tokenTracker"
+          ]
+        },
+        {
+          "from": "./commits-tracker",
+          "symbols": [
+            "commitsTracker"
+          ]
+        },
+        {
+          "from": "./lmstudio",
+          "symbols": [
+            "lmstudio"
+          ]
+        },
+        {
+          "from": "./agent-registry",
+          "symbols": [
+            "AGENT_META"
+          ]
+        },
+        {
+          "from": "fs",
+          "symbols": [
+            "fs"
+          ]
+        },
+        {
+          "from": "./integrations/codegraph",
+          "symbols": [
+            "codegraph"
+          ]
+        },
+        {
+          "from": "./timeseries",
+          "symbols": [
+            "analyzeCsv"
+          ]
+        },
+        {
+          "from": "./credentials",
+          "symbols": [
+            "credentials"
+          ]
+        },
+        {
+          "from": "./commercialization",
+          "symbols": [
+            "commercialization"
+          ]
+        },
+        {
+          "from": "./commit-audit",
+          "symbols": [
+            "commitAudit"
+          ]
+        }
+      ],
+      "exports": []
+    },
+    "src/integrations/claude-code-skills.ts": {
+      "path": "src/integrations/claude-code-skills.ts",
+      "loc": 487,
+      "symbols": 7,
+      "imports": [
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "queryTeamMemory",
+        "findPrecedents",
+        "recordDecision",
+        "getAgentStatus",
+        "checkCostStatus",
+        "accessLearnings",
+        "registerClaudeCodeSkills"
+      ]
+    },
+    "src/integrations/codegraph/index.ts": {
+      "path": "src/integrations/codegraph/index.ts",
+      "loc": 203,
+      "symbols": 11,
+      "imports": [
+        {
+          "from": "fs",
+          "symbols": [
+            "fs"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        }
+      ],
+      "exports": [
+        "CodegraphSymbol",
+        "CodegraphFile",
+        "Codegraph",
+        "buildCodegraph",
+        "getCodegraph",
+        "findSymbol",
+        "findReferences",
+        "summarize"
+      ]
+    },
+    "src/integrations/kafka/consumer.ts": {
+      "path": "src/integrations/kafka/consumer.ts",
+      "loc": 244,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "kafkajs",
+          "symbols": [
+            "Kafka",
+            "Consumer",
+            "ConsumerSubscribeTopics"
+          ]
+        },
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "ConsumerConfig",
+        "MessageHandler",
+        "KafkaConsumer"
+      ]
+    },
+    "src/integrations/kafka/orchestrator.ts": {
+      "path": "src/integrations/kafka/orchestrator.ts",
+      "loc": 223,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "kafkajs",
+          "symbols": [
+            "Kafka",
+            "Producer",
+            "Consumer",
+            "Admin"
+          ]
+        },
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "APIRequest",
+        "KafkaOrchestrator"
+      ]
+    },
+    "src/integrations/kafka/producer.ts": {
+      "path": "src/integrations/kafka/producer.ts",
+      "loc": 368,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "kafkajs",
+          "symbols": [
+            "Kafka",
+            "Producer"
+          ]
+        },
+        {
+          "from": "uuid",
+          "symbols": [
+            "v4 as uuid"
+          ]
+        },
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "ProducerConfig",
+        "KafkaProducer"
+      ]
+    },
+    "src/integrations/lightrag/agent-api.ts": {
+      "path": "src/integrations/lightrag/agent-api.ts",
+      "loc": 369,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "./client",
+          "symbols": [
+            "LightRAGClient"
+          ]
+        },
+        {
+          "from": "./schema",
+          "symbols": [
+            "Decision",
+            "Precedent",
+            "Context"
+          ]
+        },
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "AgentAPIWrapper"
+      ]
+    },
+    "src/integrations/lightrag/client.ts": {
+      "path": "src/integrations/lightrag/client.ts",
+      "loc": 257,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "neo4j-driver",
+          "symbols": [
+            "Driver"
+          ]
+        },
+        {
+          "from": "neo4j-driver",
+          "symbols": [
+            "neo4j"
+          ]
+        },
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "GraphNode",
+        "QueryResult",
+        "LightRAGClient"
+      ]
+    },
+    "src/integrations/lightrag/schema.ts": {
+      "path": "src/integrations/lightrag/schema.ts",
+      "loc": 264,
+      "symbols": 12,
+      "imports": [],
+      "exports": [
+        "Decision",
+        "Risk",
+        "Precedent",
+        "Context",
+        "Node",
+        "INDEXES",
+        "RELATIONSHIPS",
+        "QUERIES",
+        "isDecision",
+        "isRisk",
+        "isPrecedent",
+        "isContext"
+      ]
+    },
+    "src/integrations/local-inference/ollama-client.ts": {
+      "path": "src/integrations/local-inference/ollama-client.ts",
+      "loc": 302,
+      "symbols": 4,
+      "imports": [
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "OllamaModelConfig",
+        "InferenceRequest",
+        "InferenceResponse",
+        "OllamaClient"
+      ]
+    },
+    "src/integrations/local-inference/unified-executor.ts": {
+      "path": "src/integrations/local-inference/unified-executor.ts",
+      "loc": 343,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "./ollama-client",
+          "symbols": [
+            "OllamaClient"
+          ]
+        }
+      ],
+      "exports": [
+        "ExecutionConfig",
+        "ExecutionResult",
+        "UnifiedExecutor"
+      ]
+    },
+    "src/integrations/numerai/data-fetcher.ts": {
+      "path": "src/integrations/numerai/data-fetcher.ts",
+      "loc": 398,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "./entity-model",
+          "symbols": [
+            "EntityModel",
+            "Security",
+            "Signal",
+            "Competition"
+          ]
+        }
+      ],
+      "exports": [
+        "DataSourceConfig",
+        "FetchResult",
+        "NumeraiDataFetcher"
+      ]
+    },
+    "src/integrations/numerai/entity-model.ts": {
+      "path": "src/integrations/numerai/entity-model.ts",
+      "loc": 229,
+      "symbols": 10,
+      "imports": [],
+      "exports": [
+        "Entity",
+        "Security",
+        "Signal",
+        "Feature",
+        "Competition",
+        "Submission",
+        "Portfolio",
+        "EntityRelationship",
+        "NumeraiDailyData",
+        "EntityModel"
+      ]
+    },
+    "src/integrations/numerai/openclaw-edb-bridge.ts": {
+      "path": "src/integrations/numerai/openclaw-edb-bridge.ts",
+      "loc": 286,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "../../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "../../openclaw/openclaw-handler",
+          "symbols": [
+            "OpenClawHandler"
+          ]
+        },
+        {
+          "from": "./entity-model",
+          "symbols": [
+            "EntityModel"
+          ]
+        },
+        {
+          "from": "./data-fetcher",
+          "symbols": [
+            "NumeraiDataFetcher"
+          ]
+        }
+      ],
+      "exports": [
+        "EDBConfig",
+        "EDBCommand",
+        "OpenClawEDBBridge"
+      ]
+    },
+    "src/lmstudio.ts": {
+      "path": "src/lmstudio.ts",
+      "loc": 274,
+      "symbols": 6,
+      "imports": [
+        {
+          "from": "./utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "getModels",
+        "healthCheck",
+        "chatAsAgent",
+        "systemPromptForAgent"
+      ]
+    },
+    "src/middleware/api-interceptor.ts": {
+      "path": "src/middleware/api-interceptor.ts",
+      "loc": 234,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "./caching-layer",
+          "symbols": [
+            "CachingLayer"
+          ]
+        },
+        {
+          "from": "./batching-engine",
+          "symbols": [
+            "BatchingEngine"
+          ]
+        },
+        {
+          "from": "./cost-analyzer",
+          "symbols": [
+            "CostAnalyzer"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "APICallOptions",
+        "APICallResult",
+        "APIInterceptor"
+      ]
+    },
+    "src/middleware/batching-engine.ts": {
+      "path": "src/middleware/batching-engine.ts",
+      "loc": 197,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "uuid",
+          "symbols": [
+            "v4 as uuid"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "BatchRequest",
+        "BatchResponse",
+        "BatchingEngine"
+      ]
+    },
+    "src/middleware/caching-layer.ts": {
+      "path": "src/middleware/caching-layer.ts",
+      "loc": 186,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "crypto",
+          "symbols": [
+            "crypto"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "CachedResponse",
+        "CachingLayer"
+      ]
+    },
+    "src/middleware/cost-analyzer.ts": {
+      "path": "src/middleware/cost-analyzer.ts",
+      "loc": 266,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "CostEvent",
+        "BudgetConfig",
+        "CostAnalyzer"
+      ]
+    },
+    "src/middleware/jwt-validator.ts": {
+      "path": "src/middleware/jwt-validator.ts",
+      "loc": 327,
+      "symbols": 15,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "Request",
+            "Response",
+            "NextFunction"
+          ]
+        },
+        {
+          "from": "jsonwebtoken",
+          "symbols": [
+            "jwt"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "DecodedToken",
+        "AuthRequest",
+        "generateToken",
+        "verifyToken",
+        "refreshToken",
+        "revokeToken",
+        "validateToken",
+        "requirePermission",
+        "requireRole",
+        "validateApiKey",
+        "optionalAuth"
+      ]
+    },
+    "src/openclaw/openclaw-api.ts": {
+      "path": "src/openclaw/openclaw-api.ts",
+      "loc": 93,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "./openclaw-handler",
+          "symbols": [
+            "OpenClawHandler"
+          ]
+        }
+      ],
+      "exports": [
+        "setupOpenClawRoutes"
+      ]
+    },
+    "src/openclaw/openclaw-handler.ts": {
+      "path": "src/openclaw/openclaw-handler.ts",
+      "loc": 199,
+      "symbols": 1,
+      "imports": [],
+      "exports": [
+        "OpenClawHandler"
+      ]
+    },
+    "src/openclaw-kill-switch.ts": {
+      "path": "src/openclaw-kill-switch.ts",
+      "loc": 270,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "child_process",
+          "symbols": [
+            "exec",
+            "execSync"
+          ]
+        },
+        {
+          "from": "os",
+          "symbols": [
+            "os"
+          ]
+        }
+      ],
+      "exports": [
+        "OpenClawKillSwitch",
+        "killSwitch"
+      ]
+    },
+    "src/openclaw-terminal-controller.ts": {
+      "path": "src/openclaw-terminal-controller.ts",
+      "loc": 450,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "child_process",
+          "symbols": [
+            "exec",
+            "execSync"
+          ]
+        },
+        {
+          "from": "os",
+          "symbols": [
+            "os"
+          ]
+        }
+      ],
+      "exports": [
+        "OpenClawTerminalController",
+        "terminalController"
+      ]
+    },
+    "src/orchestration/model-router.ts": {
+      "path": "src/orchestration/model-router.ts",
+      "loc": 348,
+      "symbols": 3,
+      "imports": [
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "RoutingDecision",
+        "ModelProfile",
+        "ModelRouter"
+      ]
+    },
+    "src/quality/quality-routes.ts": {
+      "path": "src/quality/quality-routes.ts",
+      "loc": 39,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "./qualityDashboard",
+          "symbols": [
+            "QualityDashboard"
+          ]
+        },
+        {
+          "from": "../auth/auth-middleware",
+          "symbols": [
+            "AuthRequest"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "setupQualityRoutes"
+      ]
+    },
+    "src/quality/qualityDashboard.ts": {
+      "path": "src/quality/qualityDashboard.ts",
+      "loc": 185,
+      "symbols": 5,
+      "imports": [
+        {
+          "from": "fs",
+          "symbols": [
+            "promises as fs"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "QualityThreat",
+        "QualityDashboardSnapshot",
+        "QualityDashboard"
+      ]
+    },
+    "src/security/audit-logger.ts": {
+      "path": "src/security/audit-logger.ts",
+      "loc": 278,
+      "symbols": 1,
+      "imports": [],
+      "exports": [
+        "AuditLogger"
+      ]
+    },
+    "src/security/rateLimiter.ts": {
+      "path": "src/security/rateLimiter.ts",
+      "loc": 260,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "Request",
+            "Response",
+            "NextFunction"
+          ]
+        }
+      ],
+      "exports": [
+        "AdvancedRateLimiter"
+      ]
+    },
+    "src/security/security-routes.ts": {
+      "path": "src/security/security-routes.ts",
+      "loc": 37,
+      "symbols": 1,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "express"
+          ]
+        },
+        {
+          "from": "./securityDashboard",
+          "symbols": [
+            "SecurityDashboard"
+          ]
+        },
+        {
+          "from": "../auth/auth-middleware",
+          "symbols": [
+            "AuthRequest"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "setupSecurityRoutes"
+      ]
+    },
+    "src/security/securityDashboard.ts": {
+      "path": "src/security/securityDashboard.ts",
+      "loc": 159,
+      "symbols": 5,
+      "imports": [
+        {
+          "from": "../auth/audit-logger",
+          "symbols": [
+            "AuditEvent",
+            "CEOAuditLogger"
+          ]
+        },
+        {
+          "from": "../auth/auth-system",
+          "symbols": [
+            "AuthSystem"
+          ]
+        }
+      ],
+      "exports": [
+        "ThreatIndicator",
+        "SecurityDashboardSnapshot",
+        "SecurityDashboard"
+      ]
+    },
+    "src/security/securityHeaders.ts": {
+      "path": "src/security/securityHeaders.ts",
+      "loc": 69,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "express",
+          "symbols": [
+            "Request",
+            "Response",
+            "NextFunction"
+          ]
+        }
+      ],
+      "exports": [
+        "securityHeaders",
+        "corsHeaders"
+      ]
+    },
+    "src/skills/register.ts": {
+      "path": "src/skills/register.ts",
+      "loc": 132,
+      "symbols": 4,
+      "imports": [
+        {
+          "from": "../integrations/lightrag/client",
+          "symbols": [
+            "LightRAGClient"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "registerSkills",
+        "getSkill",
+        "listSkills",
+        "executeSkill"
+      ]
+    },
+    "src/task-engine.ts": {
+      "path": "src/task-engine.ts",
+      "loc": 1259,
+      "symbols": 38,
+      "imports": [
+        {
+          "from": "./utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "fs",
+          "symbols": [
+            "fs"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "./agent-registry",
+          "symbols": [
+            "AGENT_NAMES",
+            "ROLE_MAP",
+            "AVATAR_MAP"
+          ]
+        }
+      ],
+      "exports": [
+        "GameMilestone",
+        "tickEngine",
+        "getPerPersonBacklog",
+        "getAgentProgress",
+        "getBacklogItems",
+        "getTaskDetail",
+        "setTaskStatus",
+        "setTaskPriority",
+        "getGameMilestones",
+        "getGameStats",
+        "logWork",
+        "getWorkLog",
+        "getWorkSummary",
+        "getAgentArtifacts",
+        "getAllArtifacts",
+        "getAgentInbox",
+        "getAgentOutbox",
+        "getAllProposals",
+        "getAgentInProgressDetail",
+        "getAgentCliLog",
+        "getSocialRoster",
+        "getAgentSocialFeed"
+      ]
+    },
+    "src/terminal-activity-monitor.ts": {
+      "path": "src/terminal-activity-monitor.ts",
+      "loc": 230,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "./utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "TerminalActivityMonitor",
+        "activityMonitor"
+      ]
+    },
+    "src/timeseries.ts": {
+      "path": "src/timeseries.ts",
+      "loc": 197,
+      "symbols": 8,
+      "imports": [],
+      "exports": [
+        "ColumnStats",
+        "PairCorrelation",
+        "AnalysisResult",
+        "parseCsv",
+        "analyzeCsv"
+      ]
+    },
+    "src/token-tracker.ts": {
+      "path": "src/token-tracker.ts",
+      "loc": 257,
+      "symbols": 6,
+      "imports": [
+        {
+          "from": "./utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "./agent-registry",
+          "symbols": [
+            "AGENT_NAMES"
+          ]
+        }
+      ],
+      "exports": [
+        "recordAgentTokens",
+        "getHourlyUsage",
+        "getDailyUsage",
+        "getAgentSummary",
+        "getRecentEvents"
+      ]
+    },
+    "src/utils/logger.ts": {
+      "path": "src/utils/logger.ts",
+      "loc": 40,
+      "symbols": 0,
+      "imports": [],
+      "exports": []
+    },
+    "src/vitals/inference-audit.ts": {
+      "path": "src/vitals/inference-audit.ts",
+      "loc": 198,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "fs",
+          "symbols": [
+            "promises as fs"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "crypto",
+          "symbols": [
+            "crypto"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "InferenceEvent",
+        "InferenceAudit"
+      ]
+    },
+    "src/vitals/self-repair.ts": {
+      "path": "src/vitals/self-repair.ts",
+      "loc": 233,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "fs",
+          "symbols": [
+            "promises as fs"
+          ]
+        },
+        {
+          "from": "child_process",
+          "symbols": [
+            "spawnSync"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        },
+        {
+          "from": "./inference-audit",
+          "symbols": [
+            "InferenceAudit"
+          ]
+        }
+      ],
+      "exports": [
+        "RepairEvent",
+        "SelfRepair"
+      ]
+    },
+    "src/vitals/vitals-service.ts": {
+      "path": "src/vitals/vitals-service.ts",
+      "loc": 197,
+      "symbols": 2,
+      "imports": [
+        {
+          "from": "child_process",
+          "symbols": [
+            "spawn",
+            "spawnSync"
+          ]
+        },
+        {
+          "from": "fs",
+          "symbols": [
+            "promises as fs"
+          ]
+        },
+        {
+          "from": "path",
+          "symbols": [
+            "path"
+          ]
+        },
+        {
+          "from": "../utils/logger",
+          "symbols": [
+            "logger"
+          ]
+        }
+      ],
+      "exports": [
+        "VitalsSnapshot",
+        "VitalsService"
+      ]
+    }
+  },
+  "symbols": {
+    "FacilitatorConfig": [
+      {
+        "name": "FacilitatorConfig",
+        "kind": "interface",
+        "file": "src/agent/task-facilitator.ts",
+        "line": 13,
+        "exported": true
+      }
+    ],
+    "TaskFacilitation": [
+      {
+        "name": "TaskFacilitation",
+        "kind": "interface",
+        "file": "src/agent/task-facilitator.ts",
+        "line": 21,
+        "exported": true
+      }
+    ],
+    "TaskFacilitator": [
+      {
+        "name": "TaskFacilitator",
+        "kind": "class",
+        "file": "src/agent/task-facilitator.ts",
+        "line": 34,
+        "exported": true
+      }
+    ],
+    "TaskScheduler": [
+      {
+        "name": "TaskScheduler",
+        "kind": "class",
+        "file": "src/agent/task-scheduler.ts",
+        "line": 21,
+        "exported": true
+      }
+    ],
+    "AgentMeta": [
+      {
+        "name": "AgentMeta",
+        "kind": "interface",
+        "file": "src/agent-registry.ts",
+        "line": 9,
+        "exported": true
+      }
+    ],
+    "AGENT_META": [
+      {
+        "name": "AGENT_META",
+        "kind": "const",
+        "file": "src/agent-registry.ts",
+        "line": 19,
+        "exported": true
+      }
+    ],
+    "AGENT_NAMES": [
+      {
+        "name": "AGENT_NAMES",
+        "kind": "const",
+        "file": "src/agent-registry.ts",
+        "line": 40,
+        "exported": true
+      }
+    ],
+    "getAgent": [
+      {
+        "name": "getAgent",
+        "kind": "function",
+        "file": "src/agent-registry.ts",
+        "line": 43,
+        "exported": true
+      }
+    ],
+    "ROLE_MAP": [
+      {
+        "name": "ROLE_MAP",
+        "kind": "const",
+        "file": "src/agent-registry.ts",
+        "line": 48,
+        "exported": true
+      }
+    ],
+    "AVATAR_MAP": [
+      {
+        "name": "AVATAR_MAP",
+        "kind": "const",
+        "file": "src/agent-registry.ts",
+        "line": 53,
+        "exported": true
+      }
+    ],
+    "COLOR_MAP": [
+      {
+        "name": "COLOR_MAP",
+        "kind": "const",
+        "file": "src/agent-registry.ts",
+        "line": 58,
+        "exported": true
+      }
+    ],
+    "AGENT_MODELS": [
+      {
+        "name": "AGENT_MODELS",
+        "kind": "const",
+        "file": "src/agent-registry.ts",
+        "line": 63,
+        "exported": true
+      }
+    ],
+    "AdvancedAnalytics": [
+      {
+        "name": "AdvancedAnalytics",
+        "kind": "class",
+        "file": "src/analytics/advanced-analytics.ts",
+        "line": 25,
+        "exported": true
+      }
+    ],
+    "MetricsDashboard": [
+      {
+        "name": "MetricsDashboard",
+        "kind": "class",
+        "file": "src/api/metrics-dashboard.ts",
+        "line": 8,
+        "exported": true
+      }
+    ],
+    "MonitoringService": [
+      {
+        "name": "MonitoringService",
+        "kind": "class",
+        "file": "src/api/monitoring.ts",
+        "line": 26,
+        "exported": true
+      }
+    ],
+    "registerGameEndpoints": [
+      {
+        "name": "registerGameEndpoints",
+        "kind": "function",
+        "file": "src/api-endpoints.ts",
+        "line": 8,
+        "exported": true
+      }
+    ],
+    "ApprovalEvent": [
+      {
+        "name": "ApprovalEvent",
+        "kind": "interface",
+        "file": "src/approval-monitor.ts",
+        "line": 16,
+        "exported": true
+      }
+    ],
+    "ApprovalMonitor": [
+      {
+        "name": "ApprovalMonitor",
+        "kind": "class",
+        "file": "src/approval-monitor.ts",
+        "line": 27,
+        "exported": true
+      }
+    ],
+    "approvalMonitor": [
+      {
+        "name": "approvalMonitor",
+        "kind": "const",
+        "file": "src/approval-monitor.ts",
+        "line": 225,
+        "exported": true
+      }
+    ],
+    "AuditEventType": [
+      {
+        "name": "AuditEventType",
+        "kind": "type",
+        "file": "src/auth/audit-logger.ts",
+        "line": 17,
+        "exported": true
+      }
+    ],
+    "AuditEventSeverity": [
+      {
+        "name": "AuditEventSeverity",
+        "kind": "type",
+        "file": "src/auth/audit-logger.ts",
+        "line": 25,
+        "exported": true
+      }
+    ],
+    "AuditEvent": [
+      {
+        "name": "AuditEvent",
+        "kind": "interface",
+        "file": "src/auth/audit-logger.ts",
+        "line": 27,
+        "exported": true
+      }
+    ],
+    "CEOAuditLogger": [
+      {
+        "name": "CEOAuditLogger",
+        "kind": "class",
+        "file": "src/auth/audit-logger.ts",
+        "line": 46,
+        "exported": true
+      }
+    ],
+    "setupAuditRoutes": [
+      {
+        "name": "setupAuditRoutes",
+        "kind": "function",
+        "file": "src/auth/audit-routes.ts",
+        "line": 11,
+        "exported": true
+      }
+    ],
+    "AuthRequest": [
+      {
+        "name": "AuthRequest",
+        "kind": "interface",
+        "file": "src/auth/auth-middleware.ts",
+        "line": 10,
+        "exported": true
+      },
+      {
+        "name": "AuthRequest",
+        "kind": "interface",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 24,
+        "exported": true
+      }
+    ],
+    "AuthMiddleware": [
+      {
+        "name": "AuthMiddleware",
+        "kind": "class",
+        "file": "src/auth/auth-middleware.ts",
+        "line": 16,
+        "exported": true
+      }
+    ],
+    "setupAuthRoutes": [
+      {
+        "name": "setupAuthRoutes",
+        "kind": "function",
+        "file": "src/auth/auth-routes.ts",
+        "line": 12,
+        "exported": true
+      }
+    ],
+    "UserRole": [
+      {
+        "name": "UserRole",
+        "kind": "type",
+        "file": "src/auth/auth-system.ts",
+        "line": 22,
+        "exported": true
+      }
+    ],
+    "User": [
+      {
+        "name": "User",
+        "kind": "interface",
+        "file": "src/auth/auth-system.ts",
+        "line": 24,
+        "exported": true
+      }
+    ],
+    "AuthToken": [
+      {
+        "name": "AuthToken",
+        "kind": "interface",
+        "file": "src/auth/auth-system.ts",
+        "line": 48,
+        "exported": true
+      }
+    ],
+    "LoginRequest": [
+      {
+        "name": "LoginRequest",
+        "kind": "interface",
+        "file": "src/auth/auth-system.ts",
+        "line": 57,
+        "exported": true
+      }
+    ],
+    "RolePermissions": [
+      {
+        "name": "RolePermissions",
+        "kind": "interface",
+        "file": "src/auth/auth-system.ts",
+        "line": 65,
+        "exported": true
+      }
+    ],
+    "ROLE_PERMISSIONS": [
+      {
+        "name": "ROLE_PERMISSIONS",
+        "kind": "const",
+        "file": "src/auth/auth-system.ts",
+        "line": 77,
+        "exported": true
+      }
+    ],
+    "AuthSystem": [
+      {
+        "name": "AuthSystem",
+        "kind": "class",
+        "file": "src/auth/auth-system.ts",
+        "line": 135,
+        "exported": true
+      }
+    ],
+    "CEODashboard": [
+      {
+        "name": "CEODashboard",
+        "kind": "interface",
+        "file": "src/auth/specialist-dashboards.ts",
+        "line": 14,
+        "exported": true
+      }
+    ],
+    "CTODashboard": [
+      {
+        "name": "CTODashboard",
+        "kind": "interface",
+        "file": "src/auth/specialist-dashboards.ts",
+        "line": 25,
+        "exported": true
+      }
+    ],
+    "DeveloperDashboard": [
+      {
+        "name": "DeveloperDashboard",
+        "kind": "interface",
+        "file": "src/auth/specialist-dashboards.ts",
+        "line": 45,
+        "exported": true
+      }
+    ],
+    "ArtistDashboard": [
+      {
+        "name": "ArtistDashboard",
+        "kind": "interface",
+        "file": "src/auth/specialist-dashboards.ts",
+        "line": 55,
+        "exported": true
+      }
+    ],
+    "TechArtistDashboard": [
+      {
+        "name": "TechArtistDashboard",
+        "kind": "interface",
+        "file": "src/auth/specialist-dashboards.ts",
+        "line": 64,
+        "exported": true
+      }
+    ],
+    "SpecialistDashboards": [
+      {
+        "name": "SpecialistDashboards",
+        "kind": "class",
+        "file": "src/auth/specialist-dashboards.ts",
+        "line": 77,
+        "exported": true
+      }
+    ],
+    "setupSpecialistRoutes": [
+      {
+        "name": "setupSpecialistRoutes",
+        "kind": "function",
+        "file": "src/auth/specialist-routes.ts",
+        "line": 11,
+        "exported": true
+      }
+    ],
+    "TOTP_PERIOD_SECONDS": [
+      {
+        "name": "TOTP_PERIOD_SECONDS",
+        "kind": "const",
+        "file": "src/auth/totp.ts",
+        "line": 13,
+        "exported": true
+      }
+    ],
+    "TOTP_DIGITS": [
+      {
+        "name": "TOTP_DIGITS",
+        "kind": "const",
+        "file": "src/auth/totp.ts",
+        "line": 14,
+        "exported": true
+      }
+    ],
+    "base32Encode": [
+      {
+        "name": "base32Encode",
+        "kind": "function",
+        "file": "src/auth/totp.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "base32Decode": [
+      {
+        "name": "base32Decode",
+        "kind": "function",
+        "file": "src/auth/totp.ts",
+        "line": 40,
+        "exported": true
+      }
+    ],
+    "generateSecret": [
+      {
+        "name": "generateSecret",
+        "kind": "function",
+        "file": "src/auth/totp.ts",
+        "line": 62,
+        "exported": true
+      }
+    ],
+    "hotp": [
+      {
+        "name": "hotp",
+        "kind": "function",
+        "file": "src/auth/totp.ts",
+        "line": 70,
+        "exported": false
+      }
+    ],
+    "generateTotp": [
+      {
+        "name": "generateTotp",
+        "kind": "function",
+        "file": "src/auth/totp.ts",
+        "line": 89,
+        "exported": true
+      }
+    ],
+    "verifyTotp": [
+      {
+        "name": "verifyTotp",
+        "kind": "function",
+        "file": "src/auth/totp.ts",
+        "line": 100,
+        "exported": true
+      }
+    ],
+    "otpauthUri": [
+      {
+        "name": "otpauthUri",
+        "kind": "function",
+        "file": "src/auth/totp.ts",
+        "line": 122,
+        "exported": true
+      }
+    ],
+    "SessionConfig": [
+      {
+        "name": "SessionConfig",
+        "kind": "interface",
+        "file": "src/automation/autonomous-session-manager.ts",
+        "line": 10,
+        "exported": true
+      }
+    ],
+    "WorkSession": [
+      {
+        "name": "WorkSession",
+        "kind": "interface",
+        "file": "src/automation/autonomous-session-manager.ts",
+        "line": 21,
+        "exported": true
+      }
+    ],
+    "SessionCommit": [
+      {
+        "name": "SessionCommit",
+        "kind": "interface",
+        "file": "src/automation/autonomous-session-manager.ts",
+        "line": 34,
+        "exported": true
+      }
+    ],
+    "SessionTaskUpdate": [
+      {
+        "name": "SessionTaskUpdate",
+        "kind": "interface",
+        "file": "src/automation/autonomous-session-manager.ts",
+        "line": 42,
+        "exported": true
+      }
+    ],
+    "SessionProgressReport": [
+      {
+        "name": "SessionProgressReport",
+        "kind": "interface",
+        "file": "src/automation/autonomous-session-manager.ts",
+        "line": 49,
+        "exported": true
+      }
+    ],
+    "SessionWarning": [
+      {
+        "name": "SessionWarning",
+        "kind": "interface",
+        "file": "src/automation/autonomous-session-manager.ts",
+        "line": 59,
+        "exported": true
+      }
+    ],
+    "AutonomousSessionManager": [
+      {
+        "name": "AutonomousSessionManager",
+        "kind": "class",
+        "file": "src/automation/autonomous-session-manager.ts",
+        "line": 67,
+        "exported": true
+      }
+    ],
+    "BackupManager": [
+      {
+        "name": "BackupManager",
+        "kind": "class",
+        "file": "src/automation/backup-manager.ts",
+        "line": 29,
+        "exported": true
+      }
+    ],
+    "DeploymentManager": [
+      {
+        "name": "DeploymentManager",
+        "kind": "class",
+        "file": "src/automation/deployment-manager.ts",
+        "line": 30,
+        "exported": true
+      }
+    ],
+    "setupGitHubRoutes": [
+      {
+        "name": "setupGitHubRoutes",
+        "kind": "function",
+        "file": "src/automation/github-routes.ts",
+        "line": 22,
+        "exported": true
+      }
+    ],
+    "SyncConfig": [
+      {
+        "name": "SyncConfig",
+        "kind": "interface",
+        "file": "src/automation/github-sync.ts",
+        "line": 11,
+        "exported": true
+      }
+    ],
+    "SyncResult": [
+      {
+        "name": "SyncResult",
+        "kind": "interface",
+        "file": "src/automation/github-sync.ts",
+        "line": 19,
+        "exported": true
+      }
+    ],
+    "GitHubSync": [
+      {
+        "name": "GitHubSync",
+        "kind": "class",
+        "file": "src/automation/github-sync.ts",
+        "line": 33,
+        "exported": true
+      }
+    ],
+    "PaperclipTask": [
+      {
+        "name": "PaperclipTask",
+        "kind": "interface",
+        "file": "src/bridges/paperclip-bridge.ts",
+        "line": 19,
+        "exported": true
+      }
+    ],
+    "VirtualPCTask": [
+      {
+        "name": "VirtualPCTask",
+        "kind": "interface",
+        "file": "src/bridges/paperclip-bridge.ts",
+        "line": 30,
+        "exported": true
+      }
+    ],
+    "PaperclipBridge": [
+      {
+        "name": "PaperclipBridge",
+        "kind": "class",
+        "file": "src/bridges/paperclip-bridge.ts",
+        "line": 41,
+        "exported": true
+      }
+    ],
+    "CacheManager": [
+      {
+        "name": "CacheManager",
+        "kind": "class",
+        "file": "src/cache/cacheManager.ts",
+        "line": 16,
+        "exported": true
+      }
+    ],
+    "cacheMiddleware": [
+      {
+        "name": "cacheMiddleware",
+        "kind": "const",
+        "file": "src/cache/middleware.ts",
+        "line": 9,
+        "exported": true
+      }
+    ],
+    "invalidateCacheMiddleware": [
+      {
+        "name": "invalidateCacheMiddleware",
+        "kind": "const",
+        "file": "src/cache/middleware.ts",
+        "line": 41,
+        "exported": true
+      }
+    ],
+    "getCacheStats": [
+      {
+        "name": "getCacheStats",
+        "kind": "const",
+        "file": "src/cache/middleware.ts",
+        "line": 59,
+        "exported": true
+      }
+    ],
+    "CollaborationManager": [
+      {
+        "name": "CollaborationManager",
+        "kind": "class",
+        "file": "src/collaboration/realtime.ts",
+        "line": 28,
+        "exported": true
+      },
+      {
+        "name": "CollaborationManager",
+        "kind": "class",
+        "file": "src/features/collaboration.ts",
+        "line": 46,
+        "exported": true
+      }
+    ],
+    "createCollaborationRouter": [
+      {
+        "name": "createCollaborationRouter",
+        "kind": "const",
+        "file": "src/collaboration/routes.ts",
+        "line": 4,
+        "exported": true
+      }
+    ],
+    "getStripe": [
+      {
+        "name": "getStripe",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 30,
+        "exported": false
+      }
+    ],
+    "PromoChannel": [
+      {
+        "name": "PromoChannel",
+        "kind": "type",
+        "file": "src/commercialization.ts",
+        "line": 57,
+        "exported": true
+      }
+    ],
+    "PromoStatus": [
+      {
+        "name": "PromoStatus",
+        "kind": "type",
+        "file": "src/commercialization.ts",
+        "line": 65,
+        "exported": true
+      }
+    ],
+    "PromotionProposal": [
+      {
+        "name": "PromotionProposal",
+        "kind": "interface",
+        "file": "src/commercialization.ts",
+        "line": 73,
+        "exported": true
+      }
+    ],
+    "ensureState": [
+      {
+        "name": "ensureState",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 100,
+        "exported": false
+      }
+    ],
+    "writeState": [
+      {
+        "name": "writeState",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 114,
+        "exported": false
+      }
+    ],
+    "newId": [
+      {
+        "name": "newId",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 120,
+        "exported": false
+      }
+    ],
+    "startOfDayUtc": [
+      {
+        "name": "startOfDayUtc",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 124,
+        "exported": false
+      }
+    ],
+    "spentToday": [
+      {
+        "name": "spentToday",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 129,
+        "exported": false
+      }
+    ],
+    "ProposeInput": [
+      {
+        "name": "ProposeInput",
+        "kind": "interface",
+        "file": "src/commercialization.ts",
+        "line": 136,
+        "exported": true
+      }
+    ],
+    "propose": [
+      {
+        "name": "propose",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 145,
+        "exported": true
+      }
+    ],
+    "list": [
+      {
+        "name": "list",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 176,
+        "exported": true
+      },
+      {
+        "name": "list",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 107,
+        "exported": true
+      }
+    ],
+    "approve": [
+      {
+        "name": "approve",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 182,
+        "exported": true
+      }
+    ],
+    "reject": [
+      {
+        "name": "reject",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 194,
+        "exported": true
+      }
+    ],
+    "ExecuteResult": [
+      {
+        "name": "ExecuteResult",
+        "kind": "interface",
+        "file": "src/commercialization.ts",
+        "line": 206,
+        "exported": true
+      }
+    ],
+    "execute": [
+      {
+        "name": "execute",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 213,
+        "exported": true
+      }
+    ],
+    "budget": [
+      {
+        "name": "budget",
+        "kind": "function",
+        "file": "src/commercialization.ts",
+        "line": 314,
+        "exported": true
+      }
+    ],
+    "CommitAuditEntry": [
+      {
+        "name": "CommitAuditEntry",
+        "kind": "interface",
+        "file": "src/commit-audit.ts",
+        "line": 23,
+        "exported": true
+      }
+    ],
+    "ensureDir": [
+      {
+        "name": "ensureDir",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 35,
+        "exported": false
+      },
+      {
+        "name": "ensureDir",
+        "kind": "function",
+        "file": "src/credentials.ts",
+        "line": 54,
+        "exported": false
+      }
+    ],
+    "attributeAgent": [
+      {
+        "name": "attributeAgent",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 40,
+        "exported": false
+      }
+    ],
+    "extractTaskRef": [
+      {
+        "name": "extractTaskRef",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 51,
+        "exported": false
+      }
+    ],
+    "readAll": [
+      {
+        "name": "readAll",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 60,
+        "exported": false
+      }
+    ],
+    "appendOne": [
+      {
+        "name": "appendOne",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 72,
+        "exported": false
+      }
+    ],
+    "hasSha": [
+      {
+        "name": "hasSha",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 78,
+        "exported": false
+      }
+    ],
+    "loadShaCache": [
+      {
+        "name": "loadShaCache",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 82,
+        "exported": false
+      }
+    ],
+    "record": [
+      {
+        "name": "record",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 86,
+        "exported": true
+      }
+    ],
+    "summary": [
+      {
+        "name": "summary",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 120,
+        "exported": true
+      }
+    ],
+    "backfillFromGit": [
+      {
+        "name": "backfillFromGit",
+        "kind": "function",
+        "file": "src/commit-audit.ts",
+        "line": 147,
+        "exported": true
+      }
+    ],
+    "runGit": [
+      {
+        "name": "runGit",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 38,
+        "exported": false
+      }
+    ],
+    "attribute": [
+      {
+        "name": "attribute",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 46,
+        "exported": false
+      }
+    ],
+    "parseNumstat": [
+      {
+        "name": "parseNumstat",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 79,
+        "exported": false
+      }
+    ],
+    "loadCommits": [
+      {
+        "name": "loadCommits",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 92,
+        "exported": false
+      }
+    ],
+    "getCommitSummary": [
+      {
+        "name": "getCommitSummary",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 127,
+        "exported": true
+      }
+    ],
+    "getCommitHourly": [
+      {
+        "name": "getCommitHourly",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 174,
+        "exported": true
+      }
+    ],
+    "getRecentCommits": [
+      {
+        "name": "getRecentCommits",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 202,
+        "exported": true
+      }
+    ],
+    "getRepoUrl": [
+      {
+        "name": "getRepoUrl",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 229,
+        "exported": true
+      }
+    ],
+    "getCommitsForTask": [
+      {
+        "name": "getCommitsForTask",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 257,
+        "exported": true
+      }
+    ],
+    "getCommitsForTasks": [
+      {
+        "name": "getCommitsForTasks",
+        "kind": "function",
+        "file": "src/commits-tracker.ts",
+        "line": 297,
+        "exported": true
+      }
+    ],
+    "ProviderRecord": [
+      {
+        "name": "ProviderRecord",
+        "kind": "interface",
+        "file": "src/credentials.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "ProviderMeta": [
+      {
+        "name": "ProviderMeta",
+        "kind": "interface",
+        "file": "src/credentials.ts",
+        "line": 29,
+        "exported": true
+      }
+    ],
+    "PROVIDER_CATALOG": [
+      {
+        "name": "PROVIDER_CATALOG",
+        "kind": "const",
+        "file": "src/credentials.ts",
+        "line": 38,
+        "exported": true
+      }
+    ],
+    "loadCredentials": [
+      {
+        "name": "loadCredentials",
+        "kind": "function",
+        "file": "src/credentials.ts",
+        "line": 58,
+        "exported": true
+      }
+    ],
+    "saveCredentials": [
+      {
+        "name": "saveCredentials",
+        "kind": "function",
+        "file": "src/credentials.ts",
+        "line": 81,
+        "exported": false
+      }
+    ],
+    "maskKey": [
+      {
+        "name": "maskKey",
+        "kind": "function",
+        "file": "src/credentials.ts",
+        "line": 89,
+        "exported": false
+      }
+    ],
+    "listMasked": [
+      {
+        "name": "listMasked",
+        "kind": "function",
+        "file": "src/credentials.ts",
+        "line": 95,
+        "exported": true
+      }
+    ],
+    "setProvider": [
+      {
+        "name": "setProvider",
+        "kind": "function",
+        "file": "src/credentials.ts",
+        "line": 110,
+        "exported": true
+      }
+    ],
+    "deleteProvider": [
+      {
+        "name": "deleteProvider",
+        "kind": "function",
+        "file": "src/credentials.ts",
+        "line": 133,
+        "exported": true
+      }
+    ],
+    "SeasonalEventsManager": [
+      {
+        "name": "SeasonalEventsManager",
+        "kind": "class",
+        "file": "src/game/seasonal-events.ts",
+        "line": 44,
+        "exported": true
+      }
+    ],
+    "serveSPAFile": [
+      {
+        "name": "serveSPAFile",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 95,
+        "exported": false
+      }
+    ],
+    "ghPathAllowed": [
+      {
+        "name": "ghPathAllowed",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 177,
+        "exported": false
+      }
+    ],
+    "ghApiFetch": [
+      {
+        "name": "ghApiFetch",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 182,
+        "exported": false
+      }
+    ],
+    "privilegedActor": [
+      {
+        "name": "privilegedActor",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 372,
+        "exported": false
+      }
+    ],
+    "readAgentPrompts": [
+      {
+        "name": "readAgentPrompts",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 561,
+        "exported": false
+      }
+    ],
+    "initialize": [
+      {
+        "name": "initialize",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 1378,
+        "exported": false
+      }
+    ],
+    "setupRoutes": [
+      {
+        "name": "setupRoutes",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 1545,
+        "exported": false
+      }
+    ],
+    "setupWebSocketHandlers": [
+      {
+        "name": "setupWebSocketHandlers",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 2670,
+        "exported": false
+      }
+    ],
+    "setupVitalsRoutes": [
+      {
+        "name": "setupVitalsRoutes",
+        "kind": "function",
+        "file": "src/index.ts",
+        "line": 2731,
+        "exported": false
+      }
+    ],
+    "queryTeamMemory": [
+      {
+        "name": "queryTeamMemory",
+        "kind": "function",
+        "file": "src/integrations/claude-code-skills.ts",
+        "line": 31,
+        "exported": true
+      }
+    ],
+    "findPrecedents": [
+      {
+        "name": "findPrecedents",
+        "kind": "function",
+        "file": "src/integrations/claude-code-skills.ts",
+        "line": 93,
+        "exported": true
+      }
+    ],
+    "recordDecision": [
+      {
+        "name": "recordDecision",
+        "kind": "function",
+        "file": "src/integrations/claude-code-skills.ts",
+        "line": 165,
+        "exported": true
+      }
+    ],
+    "getAgentStatus": [
+      {
+        "name": "getAgentStatus",
+        "kind": "function",
+        "file": "src/integrations/claude-code-skills.ts",
+        "line": 207,
+        "exported": true
+      }
+    ],
+    "checkCostStatus": [
+      {
+        "name": "checkCostStatus",
+        "kind": "function",
+        "file": "src/integrations/claude-code-skills.ts",
+        "line": 271,
+        "exported": true
+      }
+    ],
+    "accessLearnings": [
+      {
+        "name": "accessLearnings",
+        "kind": "function",
+        "file": "src/integrations/claude-code-skills.ts",
+        "line": 324,
+        "exported": true
+      }
+    ],
+    "registerClaudeCodeSkills": [
+      {
+        "name": "registerClaudeCodeSkills",
+        "kind": "function",
+        "file": "src/integrations/claude-code-skills.ts",
+        "line": 385,
+        "exported": true
+      }
+    ],
+    "CodegraphSymbol": [
+      {
+        "name": "CodegraphSymbol",
+        "kind": "interface",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "CodegraphFile": [
+      {
+        "name": "CodegraphFile",
+        "kind": "interface",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 28,
+        "exported": true
+      }
+    ],
+    "Codegraph": [
+      {
+        "name": "Codegraph",
+        "kind": "interface",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 36,
+        "exported": true
+      }
+    ],
+    "walk": [
+      {
+        "name": "walk",
+        "kind": "function",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 49,
+        "exported": false
+      }
+    ],
+    "indexFile": [
+      {
+        "name": "indexFile",
+        "kind": "function",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 72,
+        "exported": false
+      }
+    ],
+    "buildReferences": [
+      {
+        "name": "buildReferences",
+        "kind": "function",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 104,
+        "exported": false
+      }
+    ],
+    "buildCodegraph": [
+      {
+        "name": "buildCodegraph",
+        "kind": "function",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 120,
+        "exported": true
+      }
+    ],
+    "getCodegraph": [
+      {
+        "name": "getCodegraph",
+        "kind": "function",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 151,
+        "exported": true
+      }
+    ],
+    "findSymbol": [
+      {
+        "name": "findSymbol",
+        "kind": "function",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 170,
+        "exported": true
+      }
+    ],
+    "findReferences": [
+      {
+        "name": "findReferences",
+        "kind": "function",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 184,
+        "exported": true
+      }
+    ],
+    "summarize": [
+      {
+        "name": "summarize",
+        "kind": "function",
+        "file": "src/integrations/codegraph/index.ts",
+        "line": 188,
+        "exported": true
+      }
+    ],
+    "ConsumerConfig": [
+      {
+        "name": "ConsumerConfig",
+        "kind": "interface",
+        "file": "src/integrations/kafka/consumer.ts",
+        "line": 14,
+        "exported": true
+      }
+    ],
+    "MessageHandler": [
+      {
+        "name": "MessageHandler",
+        "kind": "interface",
+        "file": "src/integrations/kafka/consumer.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "KafkaConsumer": [
+      {
+        "name": "KafkaConsumer",
+        "kind": "class",
+        "file": "src/integrations/kafka/consumer.ts",
+        "line": 24,
+        "exported": true
+      }
+    ],
+    "APIRequest": [
+      {
+        "name": "APIRequest",
+        "kind": "interface",
+        "file": "src/integrations/kafka/orchestrator.ts",
+        "line": 14,
+        "exported": true
+      }
+    ],
+    "KafkaOrchestrator": [
+      {
+        "name": "KafkaOrchestrator",
+        "kind": "class",
+        "file": "src/integrations/kafka/orchestrator.ts",
+        "line": 24,
+        "exported": true
+      }
+    ],
+    "ProducerConfig": [
+      {
+        "name": "ProducerConfig",
+        "kind": "interface",
+        "file": "src/integrations/kafka/producer.ts",
+        "line": 16,
+        "exported": true
+      }
+    ],
+    "KafkaProducer": [
+      {
+        "name": "KafkaProducer",
+        "kind": "class",
+        "file": "src/integrations/kafka/producer.ts",
+        "line": 21,
+        "exported": true
+      }
+    ],
+    "AgentAPIWrapper": [
+      {
+        "name": "AgentAPIWrapper",
+        "kind": "class",
+        "file": "src/integrations/lightrag/agent-api.ts",
+        "line": 46,
+        "exported": true
+      }
+    ],
+    "GraphNode": [
+      {
+        "name": "GraphNode",
+        "kind": "interface",
+        "file": "src/integrations/lightrag/client.ts",
+        "line": 15,
+        "exported": true
+      }
+    ],
+    "QueryResult": [
+      {
+        "name": "QueryResult",
+        "kind": "interface",
+        "file": "src/integrations/lightrag/client.ts",
+        "line": 25,
+        "exported": true
+      }
+    ],
+    "LightRAGClient": [
+      {
+        "name": "LightRAGClient",
+        "kind": "class",
+        "file": "src/integrations/lightrag/client.ts",
+        "line": 31,
+        "exported": true
+      }
+    ],
+    "Decision": [
+      {
+        "name": "Decision",
+        "kind": "interface",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 8,
+        "exported": true
+      }
+    ],
+    "Risk": [
+      {
+        "name": "Risk",
+        "kind": "interface",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 19,
+        "exported": true
+      }
+    ],
+    "Precedent": [
+      {
+        "name": "Precedent",
+        "kind": "interface",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 28,
+        "exported": true
+      }
+    ],
+    "Context": [
+      {
+        "name": "Context",
+        "kind": "interface",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 37,
+        "exported": true
+      }
+    ],
+    "Node": [
+      {
+        "name": "Node",
+        "kind": "interface",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 49,
+        "exported": true
+      }
+    ],
+    "INDEXES": [
+      {
+        "name": "INDEXES",
+        "kind": "const",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 64,
+        "exported": true
+      }
+    ],
+    "RELATIONSHIPS": [
+      {
+        "name": "RELATIONSHIPS",
+        "kind": "const",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 93,
+        "exported": true
+      }
+    ],
+    "QUERIES": [
+      {
+        "name": "QUERIES",
+        "kind": "const",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 107,
+        "exported": true
+      }
+    ],
+    "isDecision": [
+      {
+        "name": "isDecision",
+        "kind": "function",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 249,
+        "exported": true
+      }
+    ],
+    "isRisk": [
+      {
+        "name": "isRisk",
+        "kind": "function",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 253,
+        "exported": true
+      }
+    ],
+    "isPrecedent": [
+      {
+        "name": "isPrecedent",
+        "kind": "function",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 257,
+        "exported": true
+      }
+    ],
+    "isContext": [
+      {
+        "name": "isContext",
+        "kind": "function",
+        "file": "src/integrations/lightrag/schema.ts",
+        "line": 261,
+        "exported": true
+      }
+    ],
+    "OllamaModelConfig": [
+      {
+        "name": "OllamaModelConfig",
+        "kind": "interface",
+        "file": "src/integrations/local-inference/ollama-client.ts",
+        "line": 10,
+        "exported": true
+      }
+    ],
+    "InferenceRequest": [
+      {
+        "name": "InferenceRequest",
+        "kind": "interface",
+        "file": "src/integrations/local-inference/ollama-client.ts",
+        "line": 19,
+        "exported": true
+      }
+    ],
+    "InferenceResponse": [
+      {
+        "name": "InferenceResponse",
+        "kind": "interface",
+        "file": "src/integrations/local-inference/ollama-client.ts",
+        "line": 27,
+        "exported": true
+      }
+    ],
+    "OllamaClient": [
+      {
+        "name": "OllamaClient",
+        "kind": "class",
+        "file": "src/integrations/local-inference/ollama-client.ts",
+        "line": 39,
+        "exported": true
+      }
+    ],
+    "ExecutionConfig": [
+      {
+        "name": "ExecutionConfig",
+        "kind": "interface",
+        "file": "src/integrations/local-inference/unified-executor.ts",
+        "line": 14,
+        "exported": true
+      }
+    ],
+    "ExecutionResult": [
+      {
+        "name": "ExecutionResult",
+        "kind": "interface",
+        "file": "src/integrations/local-inference/unified-executor.ts",
+        "line": 21,
+        "exported": true
+      }
+    ],
+    "UnifiedExecutor": [
+      {
+        "name": "UnifiedExecutor",
+        "kind": "class",
+        "file": "src/integrations/local-inference/unified-executor.ts",
+        "line": 38,
+        "exported": true
+      }
+    ],
+    "DataSourceConfig": [
+      {
+        "name": "DataSourceConfig",
+        "kind": "interface",
+        "file": "src/integrations/numerai/data-fetcher.ts",
+        "line": 11,
+        "exported": true
+      }
+    ],
+    "FetchResult": [
+      {
+        "name": "FetchResult",
+        "kind": "interface",
+        "file": "src/integrations/numerai/data-fetcher.ts",
+        "line": 19,
+        "exported": true
+      }
+    ],
+    "NumeraiDataFetcher": [
+      {
+        "name": "NumeraiDataFetcher",
+        "kind": "class",
+        "file": "src/integrations/numerai/data-fetcher.ts",
+        "line": 33,
+        "exported": true
+      }
+    ],
+    "Entity": [
+      {
+        "name": "Entity",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 12,
+        "exported": true
+      }
+    ],
+    "Security": [
+      {
+        "name": "Security",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "Signal": [
+      {
+        "name": "Signal",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 35,
+        "exported": true
+      }
+    ],
+    "Feature": [
+      {
+        "name": "Feature",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 48,
+        "exported": true
+      }
+    ],
+    "Competition": [
+      {
+        "name": "Competition",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 58,
+        "exported": true
+      }
+    ],
+    "Submission": [
+      {
+        "name": "Submission",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 71,
+        "exported": true
+      }
+    ],
+    "Portfolio": [
+      {
+        "name": "Portfolio",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 82,
+        "exported": true
+      }
+    ],
+    "EntityRelationship": [
+      {
+        "name": "EntityRelationship",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 96,
+        "exported": true
+      }
+    ],
+    "NumeraiDailyData": [
+      {
+        "name": "NumeraiDailyData",
+        "kind": "interface",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 106,
+        "exported": true
+      }
+    ],
+    "EntityModel": [
+      {
+        "name": "EntityModel",
+        "kind": "class",
+        "file": "src/integrations/numerai/entity-model.ts",
+        "line": 121,
+        "exported": true
+      }
+    ],
+    "EDBConfig": [
+      {
+        "name": "EDBConfig",
+        "kind": "interface",
+        "file": "src/integrations/numerai/openclaw-edb-bridge.ts",
+        "line": 13,
+        "exported": true
+      }
+    ],
+    "EDBCommand": [
+      {
+        "name": "EDBCommand",
+        "kind": "interface",
+        "file": "src/integrations/numerai/openclaw-edb-bridge.ts",
+        "line": 22,
+        "exported": true
+      }
+    ],
+    "OpenClawEDBBridge": [
+      {
+        "name": "OpenClawEDBBridge",
+        "kind": "class",
+        "file": "src/integrations/numerai/openclaw-edb-bridge.ts",
+        "line": 30,
+        "exported": true
+      }
+    ],
+    "fetchJson": [
+      {
+        "name": "fetchJson",
+        "kind": "function",
+        "file": "src/lmstudio.ts",
+        "line": 100,
+        "exported": false
+      }
+    ],
+    "getModels": [
+      {
+        "name": "getModels",
+        "kind": "function",
+        "file": "src/lmstudio.ts",
+        "line": 120,
+        "exported": true
+      }
+    ],
+    "healthCheck": [
+      {
+        "name": "healthCheck",
+        "kind": "function",
+        "file": "src/lmstudio.ts",
+        "line": 134,
+        "exported": true
+      }
+    ],
+    "resolveModel": [
+      {
+        "name": "resolveModel",
+        "kind": "function",
+        "file": "src/lmstudio.ts",
+        "line": 168,
+        "exported": false
+      }
+    ],
+    "chatAsAgent": [
+      {
+        "name": "chatAsAgent",
+        "kind": "function",
+        "file": "src/lmstudio.ts",
+        "line": 185,
+        "exported": true
+      }
+    ],
+    "systemPromptForAgent": [
+      {
+        "name": "systemPromptForAgent",
+        "kind": "function",
+        "file": "src/lmstudio.ts",
+        "line": 267,
+        "exported": true
+      }
+    ],
+    "APICallOptions": [
+      {
+        "name": "APICallOptions",
+        "kind": "interface",
+        "file": "src/middleware/api-interceptor.ts",
+        "line": 22,
+        "exported": true
+      }
+    ],
+    "APICallResult": [
+      {
+        "name": "APICallResult",
+        "kind": "interface",
+        "file": "src/middleware/api-interceptor.ts",
+        "line": 31,
+        "exported": true
+      }
+    ],
+    "APIInterceptor": [
+      {
+        "name": "APIInterceptor",
+        "kind": "class",
+        "file": "src/middleware/api-interceptor.ts",
+        "line": 42,
+        "exported": true
+      }
+    ],
+    "BatchRequest": [
+      {
+        "name": "BatchRequest",
+        "kind": "interface",
+        "file": "src/middleware/batching-engine.ts",
+        "line": 13,
+        "exported": true
+      }
+    ],
+    "BatchResponse": [
+      {
+        "name": "BatchResponse",
+        "kind": "interface",
+        "file": "src/middleware/batching-engine.ts",
+        "line": 21,
+        "exported": true
+      }
+    ],
+    "BatchingEngine": [
+      {
+        "name": "BatchingEngine",
+        "kind": "class",
+        "file": "src/middleware/batching-engine.ts",
+        "line": 33,
+        "exported": true
+      }
+    ],
+    "CachedResponse": [
+      {
+        "name": "CachedResponse",
+        "kind": "interface",
+        "file": "src/middleware/caching-layer.ts",
+        "line": 14,
+        "exported": true
+      }
+    ],
+    "CachingLayer": [
+      {
+        "name": "CachingLayer",
+        "kind": "class",
+        "file": "src/middleware/caching-layer.ts",
+        "line": 26,
+        "exported": true
+      }
+    ],
+    "CostEvent": [
+      {
+        "name": "CostEvent",
+        "kind": "interface",
+        "file": "src/middleware/cost-analyzer.ts",
+        "line": 14,
+        "exported": true
+      }
+    ],
+    "BudgetConfig": [
+      {
+        "name": "BudgetConfig",
+        "kind": "interface",
+        "file": "src/middleware/cost-analyzer.ts",
+        "line": 25,
+        "exported": true
+      }
+    ],
+    "CostAnalyzer": [
+      {
+        "name": "CostAnalyzer",
+        "kind": "class",
+        "file": "src/middleware/cost-analyzer.ts",
+        "line": 30,
+        "exported": true
+      }
+    ],
+    "DecodedToken": [
+      {
+        "name": "DecodedToken",
+        "kind": "interface",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 15,
+        "exported": true
+      }
+    ],
+    "generateToken": [
+      {
+        "name": "generateToken",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 44,
+        "exported": true
+      }
+    ],
+    "verifyToken": [
+      {
+        "name": "verifyToken",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 75,
+        "exported": true
+      }
+    ],
+    "refreshToken": [
+      {
+        "name": "refreshToken",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 98,
+        "exported": true
+      }
+    ],
+    "revokeToken": [
+      {
+        "name": "revokeToken",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 129,
+        "exported": true
+      }
+    ],
+    "validateToken": [
+      {
+        "name": "validateToken",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 137,
+        "exported": true
+      }
+    ],
+    "requirePermission": [
+      {
+        "name": "requirePermission",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 166,
+        "exported": true
+      }
+    ],
+    "requireRole": [
+      {
+        "name": "requireRole",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 187,
+        "exported": true
+      }
+    ],
+    "validateApiKey": [
+      {
+        "name": "validateApiKey",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 206,
+        "exported": true
+      }
+    ],
+    "optionalAuth": [
+      {
+        "name": "optionalAuth",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 227,
+        "exported": true
+      }
+    ],
+    "extractToken": [
+      {
+        "name": "extractToken",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 249,
+        "exported": false
+      }
+    ],
+    "getPermissionsByRole": [
+      {
+        "name": "getPermissionsByRole",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 274,
+        "exported": false
+      }
+    ],
+    "isValidApiKey": [
+      {
+        "name": "isValidApiKey",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 293,
+        "exported": false
+      }
+    ],
+    "getAgentByApiKey": [
+      {
+        "name": "getAgentByApiKey",
+        "kind": "function",
+        "file": "src/middleware/jwt-validator.ts",
+        "line": 299,
+        "exported": false
+      }
+    ],
+    "setupOpenClawRoutes": [
+      {
+        "name": "setupOpenClawRoutes",
+        "kind": "function",
+        "file": "src/openclaw/openclaw-api.ts",
+        "line": 11,
+        "exported": true
+      }
+    ],
+    "OpenClawHandler": [
+      {
+        "name": "OpenClawHandler",
+        "kind": "class",
+        "file": "src/openclaw/openclaw-handler.ts",
+        "line": 17,
+        "exported": true
+      }
+    ],
+    "OpenClawKillSwitch": [
+      {
+        "name": "OpenClawKillSwitch",
+        "kind": "class",
+        "file": "src/openclaw-kill-switch.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "killSwitch": [
+      {
+        "name": "killSwitch",
+        "kind": "const",
+        "file": "src/openclaw-kill-switch.ts",
+        "line": 244,
+        "exported": true
+      }
+    ],
+    "OpenClawTerminalController": [
+      {
+        "name": "OpenClawTerminalController",
+        "kind": "class",
+        "file": "src/openclaw-terminal-controller.ts",
+        "line": 42,
+        "exported": true
+      }
+    ],
+    "terminalController": [
+      {
+        "name": "terminalController",
+        "kind": "const",
+        "file": "src/openclaw-terminal-controller.ts",
+        "line": 431,
+        "exported": true
+      }
+    ],
+    "RoutingDecision": [
+      {
+        "name": "RoutingDecision",
+        "kind": "interface",
+        "file": "src/orchestration/model-router.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "ModelProfile": [
+      {
+        "name": "ModelProfile",
+        "kind": "interface",
+        "file": "src/orchestration/model-router.ts",
+        "line": 28,
+        "exported": true
+      }
+    ],
+    "ModelRouter": [
+      {
+        "name": "ModelRouter",
+        "kind": "class",
+        "file": "src/orchestration/model-router.ts",
+        "line": 37,
+        "exported": true
+      }
+    ],
+    "setupQualityRoutes": [
+      {
+        "name": "setupQualityRoutes",
+        "kind": "function",
+        "file": "src/quality/quality-routes.ts",
+        "line": 17,
+        "exported": true
+      }
+    ],
+    "QualityThreat": [
+      {
+        "name": "QualityThreat",
+        "kind": "interface",
+        "file": "src/quality/qualityDashboard.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "QualityDashboardSnapshot": [
+      {
+        "name": "QualityDashboardSnapshot",
+        "kind": "interface",
+        "file": "src/quality/qualityDashboard.ts",
+        "line": 27,
+        "exported": true
+      }
+    ],
+    "readJsonIfExists": [
+      {
+        "name": "readJsonIfExists",
+        "kind": "function",
+        "file": "src/quality/qualityDashboard.ts",
+        "line": 57,
+        "exported": false
+      }
+    ],
+    "gradeFromScore": [
+      {
+        "name": "gradeFromScore",
+        "kind": "function",
+        "file": "src/quality/qualityDashboard.ts",
+        "line": 67,
+        "exported": false
+      },
+      {
+        "name": "gradeFromScore",
+        "kind": "function",
+        "file": "src/security/securityDashboard.ts",
+        "line": 150,
+        "exported": false
+      }
+    ],
+    "QualityDashboard": [
+      {
+        "name": "QualityDashboard",
+        "kind": "class",
+        "file": "src/quality/qualityDashboard.ts",
+        "line": 75,
+        "exported": true
+      }
+    ],
+    "AuditLogger": [
+      {
+        "name": "AuditLogger",
+        "kind": "class",
+        "file": "src/security/audit-logger.ts",
+        "line": 29,
+        "exported": true
+      }
+    ],
+    "AdvancedRateLimiter": [
+      {
+        "name": "AdvancedRateLimiter",
+        "kind": "class",
+        "file": "src/security/rateLimiter.ts",
+        "line": 25,
+        "exported": true
+      }
+    ],
+    "setupSecurityRoutes": [
+      {
+        "name": "setupSecurityRoutes",
+        "kind": "function",
+        "file": "src/security/security-routes.ts",
+        "line": 16,
+        "exported": true
+      }
+    ],
+    "ThreatIndicator": [
+      {
+        "name": "ThreatIndicator",
+        "kind": "interface",
+        "file": "src/security/securityDashboard.ts",
+        "line": 16,
+        "exported": true
+      }
+    ],
+    "SecurityDashboardSnapshot": [
+      {
+        "name": "SecurityDashboardSnapshot",
+        "kind": "interface",
+        "file": "src/security/securityDashboard.ts",
+        "line": 23,
+        "exported": true
+      }
+    ],
+    "SecurityDashboard": [
+      {
+        "name": "SecurityDashboard",
+        "kind": "class",
+        "file": "src/security/securityDashboard.ts",
+        "line": 47,
+        "exported": true
+      }
+    ],
+    "countByIp": [
+      {
+        "name": "countByIp",
+        "kind": "function",
+        "file": "src/security/securityDashboard.ts",
+        "line": 144,
+        "exported": false
+      }
+    ],
+    "securityHeaders": [
+      {
+        "name": "securityHeaders",
+        "kind": "const",
+        "file": "src/security/securityHeaders.ts",
+        "line": 3,
+        "exported": true
+      }
+    ],
+    "corsHeaders": [
+      {
+        "name": "corsHeaders",
+        "kind": "const",
+        "file": "src/security/securityHeaders.ts",
+        "line": 38,
+        "exported": true
+      }
+    ],
+    "registerSkills": [
+      {
+        "name": "registerSkills",
+        "kind": "function",
+        "file": "src/skills/register.ts",
+        "line": 19,
+        "exported": true
+      }
+    ],
+    "getSkill": [
+      {
+        "name": "getSkill",
+        "kind": "function",
+        "file": "src/skills/register.ts",
+        "line": 117,
+        "exported": true
+      }
+    ],
+    "listSkills": [
+      {
+        "name": "listSkills",
+        "kind": "function",
+        "file": "src/skills/register.ts",
+        "line": 121,
+        "exported": true
+      }
+    ],
+    "executeSkill": [
+      {
+        "name": "executeSkill",
+        "kind": "function",
+        "file": "src/skills/register.ts",
+        "line": 125,
+        "exported": true
+      }
+    ],
+    "nextTaskId": [
+      {
+        "name": "nextTaskId",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 159,
+        "exported": false
+      }
+    ],
+    "currentSprint": [
+      {
+        "name": "currentSprint",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 163,
+        "exported": false
+      }
+    ],
+    "makeSubtasks": [
+      {
+        "name": "makeSubtasks",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 167,
+        "exported": false
+      }
+    ],
+    "randomTickRate": [
+      {
+        "name": "randomTickRate",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 172,
+        "exported": false
+      }
+    ],
+    "generateTask": [
+      {
+        "name": "generateTask",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 177,
+        "exported": false
+      }
+    ],
+    "saveState": [
+      {
+        "name": "saveState",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 263,
+        "exported": false
+      }
+    ],
+    "loadState": [
+      {
+        "name": "loadState",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 284,
+        "exported": false
+      }
+    ],
+    "seedInitialTasks": [
+      {
+        "name": "seedInitialTasks",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 313,
+        "exported": false
+      }
+    ],
+    "GameMilestone": [
+      {
+        "name": "GameMilestone",
+        "kind": "interface",
+        "file": "src/task-engine.ts",
+        "line": 361,
+        "exported": true
+      }
+    ],
+    "updateMilestones": [
+      {
+        "name": "updateMilestones",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 406,
+        "exported": false
+      }
+    ],
+    "tickEngine": [
+      {
+        "name": "tickEngine",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 422,
+        "exported": true
+      }
+    ],
+    "getPerPersonBacklog": [
+      {
+        "name": "getPerPersonBacklog",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 497,
+        "exported": true
+      }
+    ],
+    "getAgentProgress": [
+      {
+        "name": "getAgentProgress",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 541,
+        "exported": true
+      }
+    ],
+    "getBacklogItems": [
+      {
+        "name": "getBacklogItems",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 563,
+        "exported": true
+      }
+    ],
+    "getTaskDetail": [
+      {
+        "name": "getTaskDetail",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 583,
+        "exported": true
+      }
+    ],
+    "setTaskStatus": [
+      {
+        "name": "setTaskStatus",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 607,
+        "exported": true
+      }
+    ],
+    "setTaskPriority": [
+      {
+        "name": "setTaskPriority",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 625,
+        "exported": true
+      }
+    ],
+    "getGameMilestones": [
+      {
+        "name": "getGameMilestones",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 632,
+        "exported": true
+      }
+    ],
+    "getGameStats": [
+      {
+        "name": "getGameStats",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 637,
+        "exported": true
+      }
+    ],
+    "logWork": [
+      {
+        "name": "logWork",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 709,
+        "exported": true
+      }
+    ],
+    "getWorkLog": [
+      {
+        "name": "getWorkLog",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 724,
+        "exported": true
+      }
+    ],
+    "getWorkSummary": [
+      {
+        "name": "getWorkSummary",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 730,
+        "exported": true
+      }
+    ],
+    "artifactPromptFor": [
+      {
+        "name": "artifactPromptFor",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 769,
+        "exported": false
+      }
+    ],
+    "generateArtifactForCompletedTask": [
+      {
+        "name": "generateArtifactForCompletedTask",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 781,
+        "exported": false
+      }
+    ],
+    "getAgentArtifacts": [
+      {
+        "name": "getAgentArtifacts",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 815,
+        "exported": true
+      }
+    ],
+    "getAllArtifacts": [
+      {
+        "name": "getAllArtifacts",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 819,
+        "exported": true
+      }
+    ],
+    "pickProposalLane": [
+      {
+        "name": "pickProposalLane",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 868,
+        "exported": false
+      }
+    ],
+    "generateProposal": [
+      {
+        "name": "generateProposal",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 872,
+        "exported": false
+      }
+    ],
+    "getAgentInbox": [
+      {
+        "name": "getAgentInbox",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 916,
+        "exported": true
+      }
+    ],
+    "getAgentOutbox": [
+      {
+        "name": "getAgentOutbox",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 920,
+        "exported": true
+      }
+    ],
+    "getAllProposals": [
+      {
+        "name": "getAllProposals",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 924,
+        "exported": true
+      }
+    ],
+    "getAgentInProgressDetail": [
+      {
+        "name": "getAgentInProgressDetail",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 929,
+        "exported": true
+      }
+    ],
+    "pushCli": [
+      {
+        "name": "pushCli",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 1105,
+        "exported": false
+      }
+    ],
+    "tickCli": [
+      {
+        "name": "tickCli",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 1113,
+        "exported": false
+      }
+    ],
+    "getAgentCliLog": [
+      {
+        "name": "getAgentCliLog",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 1132,
+        "exported": true
+      }
+    ],
+    "getSocialRoster": [
+      {
+        "name": "getSocialRoster",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 1180,
+        "exported": true
+      }
+    ],
+    "getAgentSocialFeed": [
+      {
+        "name": "getAgentSocialFeed",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 1193,
+        "exported": true
+      }
+    ],
+    "saveOnExit": [
+      {
+        "name": "saveOnExit",
+        "kind": "function",
+        "file": "src/task-engine.ts",
+        "line": 1253,
+        "exported": false
+      }
+    ],
+    "TerminalActivityMonitor": [
+      {
+        "name": "TerminalActivityMonitor",
+        "kind": "class",
+        "file": "src/terminal-activity-monitor.ts",
+        "line": 31,
+        "exported": true
+      }
+    ],
+    "activityMonitor": [
+      {
+        "name": "activityMonitor",
+        "kind": "const",
+        "file": "src/terminal-activity-monitor.ts",
+        "line": 229,
+        "exported": true
+      }
+    ],
+    "ColumnStats": [
+      {
+        "name": "ColumnStats",
+        "kind": "interface",
+        "file": "src/timeseries.ts",
+        "line": 9,
+        "exported": true
+      }
+    ],
+    "PairCorrelation": [
+      {
+        "name": "PairCorrelation",
+        "kind": "interface",
+        "file": "src/timeseries.ts",
+        "line": 20,
+        "exported": true
+      }
+    ],
+    "AnalysisResult": [
+      {
+        "name": "AnalysisResult",
+        "kind": "interface",
+        "file": "src/timeseries.ts",
+        "line": 27,
+        "exported": true
+      }
+    ],
+    "parseCsv": [
+      {
+        "name": "parseCsv",
+        "kind": "function",
+        "file": "src/timeseries.ts",
+        "line": 38,
+        "exported": true
+      }
+    ],
+    "findTimestampColumn": [
+      {
+        "name": "findTimestampColumn",
+        "kind": "function",
+        "file": "src/timeseries.ts",
+        "line": 49,
+        "exported": false
+      }
+    ],
+    "computeColumnStats": [
+      {
+        "name": "computeColumnStats",
+        "kind": "function",
+        "file": "src/timeseries.ts",
+        "line": 63,
+        "exported": false
+      }
+    ],
+    "pearson": [
+      {
+        "name": "pearson",
+        "kind": "function",
+        "file": "src/timeseries.ts",
+        "line": 108,
+        "exported": false
+      }
+    ],
+    "analyzeCsv": [
+      {
+        "name": "analyzeCsv",
+        "kind": "function",
+        "file": "src/timeseries.ts",
+        "line": 124,
+        "exported": true
+      }
+    ],
+    "recordAgentTokens": [
+      {
+        "name": "recordAgentTokens",
+        "kind": "function",
+        "file": "src/token-tracker.ts",
+        "line": 70,
+        "exported": true
+      }
+    ],
+    "filterByTime": [
+      {
+        "name": "filterByTime",
+        "kind": "function",
+        "file": "src/token-tracker.ts",
+        "line": 130,
+        "exported": false
+      }
+    ],
+    "getHourlyUsage": [
+      {
+        "name": "getHourlyUsage",
+        "kind": "function",
+        "file": "src/token-tracker.ts",
+        "line": 134,
+        "exported": true
+      }
+    ],
+    "getDailyUsage": [
+      {
+        "name": "getDailyUsage",
+        "kind": "function",
+        "file": "src/token-tracker.ts",
+        "line": 160,
+        "exported": true
+      }
+    ],
+    "getAgentSummary": [
+      {
+        "name": "getAgentSummary",
+        "kind": "function",
+        "file": "src/token-tracker.ts",
+        "line": 183,
+        "exported": true
+      }
+    ],
+    "getRecentEvents": [
+      {
+        "name": "getRecentEvents",
+        "kind": "function",
+        "file": "src/token-tracker.ts",
+        "line": 240,
+        "exported": true
+      }
+    ],
+    "InferenceEvent": [
+      {
+        "name": "InferenceEvent",
+        "kind": "interface",
+        "file": "src/vitals/inference-audit.ts",
+        "line": 18,
+        "exported": true
+      }
+    ],
+    "InferenceAudit": [
+      {
+        "name": "InferenceAudit",
+        "kind": "class",
+        "file": "src/vitals/inference-audit.ts",
+        "line": 33,
+        "exported": true
+      }
+    ],
+    "RepairEvent": [
+      {
+        "name": "RepairEvent",
+        "kind": "interface",
+        "file": "src/vitals/self-repair.ts",
+        "line": 26,
+        "exported": true
+      }
+    ],
+    "SelfRepair": [
+      {
+        "name": "SelfRepair",
+        "kind": "class",
+        "file": "src/vitals/self-repair.ts",
+        "line": 40,
+        "exported": true
+      }
+    ],
+    "VitalsSnapshot": [
+      {
+        "name": "VitalsSnapshot",
+        "kind": "interface",
+        "file": "src/vitals/vitals-service.ts",
+        "line": 23,
+        "exported": true
+      }
+    ],
+    "VitalsService": [
+      {
+        "name": "VitalsService",
+        "kind": "class",
+        "file": "src/vitals/vitals-service.ts",
+        "line": 35,
+        "exported": true
+      }
+    ]
+  },
+  "references": {
+    "FacilitatorConfig": [
+      "src/agent/task-facilitator.ts"
+    ],
+    "TaskFacilitation": [
+      "src/agent/task-facilitator.ts"
+    ],
+    "TaskFacilitator": [
+      "src/agent/task-facilitator.ts",
+      "src/index.ts"
+    ],
+    "TaskScheduler": [
+      "src/agent/task-scheduler.ts",
+      "src/index.ts"
+    ],
+    "AgentMeta": [
+      "src/agent-registry.ts"
+    ],
+    "AGENT_META": [
+      "src/agent-registry.ts",
+      "src/index.ts"
+    ],
+    "AGENT_NAMES": [
+      "src/agent-registry.ts",
+      "src/commit-audit.ts",
+      "src/commits-tracker.ts",
+      "src/task-engine.ts",
+      "src/token-tracker.ts"
+    ],
+    "getAgent": [
+      "src/agent-registry.ts"
+    ],
+    "ROLE_MAP": [
+      "src/agent-registry.ts",
+      "src/task-engine.ts"
+    ],
+    "AVATAR_MAP": [
+      "src/agent-registry.ts",
+      "src/task-engine.ts"
+    ],
+    "COLOR_MAP": [
+      "src/agent-registry.ts"
+    ],
+    "AGENT_MODELS": [
+      "src/agent-registry.ts",
+      "src/token-tracker.ts"
+    ],
+    "list": [
+      "src/agent-registry.ts",
+      "src/collaboration/realtime.ts",
+      "src/collaboration/routes.ts",
+      "src/commercialization.ts",
+      "src/commit-audit.ts",
+      "src/commits-tracker.ts",
+      "src/index.ts",
+      "src/integrations/codegraph/index.ts",
+      "src/integrations/numerai/entity-model.ts",
+      "src/lmstudio.ts",
+      "src/task-engine.ts"
+    ],
+    "budget": [
+      "src/agent-registry.ts",
+      "src/commercialization.ts",
+      "src/commits-tracker.ts",
+      "src/index.ts",
+      "src/integrations/claude-code-skills.ts",
+      "src/middleware/api-interceptor.ts",
+      "src/middleware/cost-analyzer.ts",
+      "src/quality/qualityDashboard.ts",
+      "src/task-engine.ts",
+      "src/token-tracker.ts",
+      "src/vitals/self-repair.ts"
+    ],
+    "Context": [
+      "src/agent-registry.ts",
+      "src/automation/autonomous-session-manager.ts",
+      "src/index.ts",
+      "src/integrations/lightrag/agent-api.ts",
+      "src/integrations/lightrag/schema.ts",
+      "src/task-engine.ts"
+    ],
+    "AdvancedAnalytics": [
+      "src/analytics/advanced-analytics.ts",
+      "src/index.ts"
+    ],
+    "summary": [
+      "src/analytics/dashboard.ts",
+      "src/api/monitoring.ts",
+      "src/bridges/paperclip-bridge.ts",
+      "src/commit-audit.ts",
+      "src/features/collaboration.ts",
+      "src/index.ts",
+      "src/middleware/cost-analyzer.ts",
+      "src/task-engine.ts",
+      "src/terminal-activity-monitor.ts"
+    ],
+    "MetricsDashboard": [
+      "src/api/metrics-dashboard.ts",
+      "src/index.ts"
+    ],
+    "MonitoringService": [
+      "src/api/monitoring.ts"
+    ],
+    "registerGameEndpoints": [
+      "src/api-endpoints.ts"
+    ],
+    "record": [
+      "src/api-endpoints.ts",
+      "src/commit-audit.ts",
+      "src/credentials.ts",
+      "src/index.ts",
+      "src/integrations/claude-code-skills.ts",
+      "src/integrations/lightrag/client.ts",
+      "src/task-engine.ts",
+      "src/vitals/inference-audit.ts",
+      "src/vitals/self-repair.ts"
+    ],
+    "ApprovalEvent": [
+      "src/approval-monitor.ts"
+    ],
+    "ApprovalMonitor": [
+      "src/approval-monitor.ts"
+    ],
+    "approvalMonitor": [
+      "src/approval-monitor.ts"
+    ],
+    "approve": [
+      "src/approval-monitor.ts",
+      "src/commercialization.ts",
+      "src/index.ts",
+      "src/openclaw-terminal-controller.ts",
+      "src/task-engine.ts"
+    ],
+    "reject": [
+      "src/approval-monitor.ts",
+      "src/commercialization.ts",
+      "src/index.ts"
+    ],
+    "Decision": [
+      "src/approval-monitor.ts",
+      "src/integrations/claude-code-skills.ts",
+      "src/integrations/lightrag/agent-api.ts",
+      "src/integrations/lightrag/schema.ts",
+      "src/lmstudio.ts",
+      "src/task-engine.ts"
+    ],
+    "AuditEventType": [
+      "src/auth/audit-logger.ts"
+    ],
+    "AuditEventSeverity": [
+      "src/auth/audit-logger.ts"
+    ],
+    "AuditEvent": [
+      "src/auth/audit-logger.ts",
+      "src/security/audit-logger.ts",
+      "src/security/securityDashboard.ts"
+    ],
+    "CEOAuditLogger": [
+      "src/auth/audit-logger.ts",
+      "src/auth/audit-routes.ts",
+      "src/index.ts",
+      "src/security/securityDashboard.ts"
+    ],
+    "User": [
+      "src/auth/audit-logger.ts",
+      "src/auth/auth-routes.ts",
+      "src/auth/auth-system.ts",
+      "src/collaboration/realtime.ts",
+      "src/integrations/numerai/data-fetcher.ts",
+      "src/openclaw-terminal-controller.ts",
+      "src/task-engine.ts"
+    ],
+    "setupAuditRoutes": [
+      "src/auth/audit-routes.ts",
+      "src/index.ts"
+    ],
+    "AuthRequest": [
+      "src/auth/audit-routes.ts",
+      "src/auth/auth-middleware.ts",
+      "src/auth/auth-routes.ts",
+      "src/auth/specialist-routes.ts",
+      "src/automation/github-routes.ts",
+      "src/middleware/jwt-validator.ts",
+      "src/quality/quality-routes.ts",
+      "src/security/security-routes.ts"
+    ],
+    "requireRole": [
+      "src/auth/audit-routes.ts",
+      "src/auth/auth-middleware.ts",
+      "src/auth/auth-routes.ts",
+      "src/auth/specialist-routes.ts",
+      "src/automation/github-routes.ts",
+      "src/index.ts",
+      "src/middleware/jwt-validator.ts",
+      "src/quality/quality-routes.ts",
+      "src/security/security-routes.ts"
+    ],
+    "AuthMiddleware": [
+      "src/auth/auth-middleware.ts",
+      "src/auth/auth-routes.ts",
+      "src/index.ts"
+    ],
+    "AuthToken": [
+      "src/auth/auth-middleware.ts",
+      "src/auth/auth-system.ts"
+    ],
+    "AuthSystem": [
+      "src/auth/auth-middleware.ts",
+      "src/auth/auth-routes.ts",
+      "src/auth/auth-system.ts",
+      "src/index.ts",
+      "src/security/securityDashboard.ts"
+    ],
+    "verifyToken": [
+      "src/auth/auth-middleware.ts",
+      "src/auth/auth-routes.ts",
+      "src/auth/auth-system.ts",
+      "src/auth/specialist-routes.ts",
+      "src/automation/github-routes.ts",
+      "src/middleware/jwt-validator.ts"
+    ],
+    "requirePermission": [
+      "src/auth/auth-middleware.ts",
+      "src/middleware/jwt-validator.ts"
+    ],
+    "setupAuthRoutes": [
+      "src/auth/auth-routes.ts",
+      "src/index.ts"
+    ],
+    "AdvancedRateLimiter": [
+      "src/auth/auth-routes.ts",
+      "src/security/rateLimiter.ts"
+    ],
+    "UserRole": [
+      "src/auth/auth-system.ts"
+    ],
+    "LoginRequest": [
+      "src/auth/auth-system.ts"
+    ],
+    "RolePermissions": [
+      "src/auth/auth-system.ts"
+    ],
+    "ROLE_PERMISSIONS": [
+      "src/auth/auth-system.ts"
+    ],
+    "generateSecret": [
+      "src/auth/auth-system.ts",
+      "src/auth/totp.ts"
+    ],
+    "verifyTotp": [
+      "src/auth/auth-system.ts",
+      "src/auth/totp.ts"
+    ],
+    "otpauthUri": [
+      "src/auth/auth-system.ts",
+      "src/auth/totp.ts"
+    ],
+    "Feature": [
+      "src/auth/auth-system.ts",
+      "src/integrations/numerai/entity-model.ts",
+      "src/task-engine.ts"
+    ],
+    "CEODashboard": [
+      "src/auth/specialist-dashboards.ts"
+    ],
+    "CTODashboard": [
+      "src/auth/specialist-dashboards.ts"
+    ],
+    "DeveloperDashboard": [
+      "src/auth/specialist-dashboards.ts"
+    ],
+    "ArtistDashboard": [
+      "src/auth/specialist-dashboards.ts"
+    ],
+    "TechArtistDashboard": [
+      "src/auth/specialist-dashboards.ts"
+    ],
+    "SpecialistDashboards": [
+      "src/auth/specialist-dashboards.ts",
+      "src/auth/specialist-routes.ts",
+      "src/index.ts"
+    ],
+    "setupSpecialistRoutes": [
+      "src/auth/specialist-routes.ts",
+      "src/index.ts"
+    ],
+    "TOTP_PERIOD_SECONDS": [
+      "src/auth/totp.ts"
+    ],
+    "TOTP_DIGITS": [
+      "src/auth/totp.ts"
+    ],
+    "base32Encode": [
+      "src/auth/totp.ts"
+    ],
+    "base32Decode": [
+      "src/auth/totp.ts"
+    ],
+    "hotp": [
+      "src/auth/totp.ts"
+    ],
+    "generateTotp": [
+      "src/auth/totp.ts"
+    ],
+    "SessionConfig": [
+      "src/automation/autonomous-session-manager.ts"
+    ],
+    "WorkSession": [
+      "src/automation/autonomous-session-manager.ts"
+    ],
+    "SessionCommit": [
+      "src/automation/autonomous-session-manager.ts"
+    ],
+    "SessionTaskUpdate": [
+      "src/automation/autonomous-session-manager.ts"
+    ],
+    "SessionProgressReport": [
+      "src/automation/autonomous-session-manager.ts"
+    ],
+    "SessionWarning": [
+      "src/automation/autonomous-session-manager.ts"
+    ],
+    "AutonomousSessionManager": [
+      "src/automation/autonomous-session-manager.ts",
+      "src/index.ts"
+    ],
+    "BackupManager": [
+      "src/automation/backup-manager.ts",
+      "src/index.ts"
+    ],
+    "DeploymentManager": [
+      "src/automation/deployment-manager.ts",
+      "src/index.ts"
+    ],
+    "getRecentCommits": [
+      "src/automation/deployment-manager.ts",
+      "src/commits-tracker.ts",
+      "src/index.ts"
+    ],
+    "setupGitHubRoutes": [
+      "src/automation/github-routes.ts",
+      "src/index.ts"
+    ],
+    "SyncResult": [
+      "src/automation/github-routes.ts",
+      "src/automation/github-sync.ts"
+    ],
+    "GitHubSync": [
+      "src/automation/github-routes.ts",
+      "src/automation/github-sync.ts",
+      "src/index.ts"
+    ],
+    "SyncConfig": [
+      "src/automation/github-sync.ts"
+    ],
+    "PaperclipTask": [
+      "src/bridges/paperclip-bridge.ts"
+    ],
+    "VirtualPCTask": [
+      "src/bridges/paperclip-bridge.ts"
+    ],
+    "PaperclipBridge": [
+      "src/bridges/paperclip-bridge.ts"
+    ],
+    "CacheManager": [
+      "src/cache/cacheManager.ts",
+      "src/cache/middleware.ts"
+    ],
+    "cacheMiddleware": [
+      "src/cache/middleware.ts"
+    ],
+    "invalidateCacheMiddleware": [
+      "src/cache/middleware.ts"
+    ],
+    "getCacheStats": [
+      "src/cache/middleware.ts",
+      "src/index.ts",
+      "src/integrations/lightrag/agent-api.ts"
+    ],
+    "CollaborationManager": [
+      "src/collaboration/realtime.ts",
+      "src/collaboration/routes.ts",
+      "src/features/collaboration.ts",
+      "src/index.ts"
+    ],
+    "createCollaborationRouter": [
+      "src/collaboration/routes.ts"
+    ],
+    "getStripe": [
+      "src/commercialization.ts"
+    ],
+    "PromoChannel": [
+      "src/commercialization.ts"
+    ],
+    "PromoStatus": [
+      "src/commercialization.ts"
+    ],
+    "PromotionProposal": [
+      "src/commercialization.ts"
+    ],
+    "ensureState": [
+      "src/commercialization.ts"
+    ],
+    "writeState": [
+      "src/commercialization.ts"
+    ],
+    "newId": [
+      "src/commercialization.ts"
+    ],
+    "startOfDayUtc": [
+      "src/commercialization.ts"
+    ],
+    "spentToday": [
+      "src/commercialization.ts"
+    ],
+    "ProposeInput": [
+      "src/commercialization.ts"
+    ],
+    "propose": [
+      "src/commercialization.ts",
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "ExecuteResult": [
+      "src/commercialization.ts"
+    ],
+    "execute": [
+      "src/commercialization.ts",
+      "src/index.ts",
+      "src/integrations/local-inference/unified-executor.ts",
+      "src/middleware/jwt-validator.ts",
+      "src/openclaw/openclaw-handler.ts",
+      "src/openclaw-terminal-controller.ts",
+      "src/skills/register.ts",
+      "src/task-engine.ts",
+      "src/vitals/self-repair.ts"
+    ],
+    "CommitAuditEntry": [
+      "src/commit-audit.ts"
+    ],
+    "ensureDir": [
+      "src/commit-audit.ts",
+      "src/credentials.ts"
+    ],
+    "attributeAgent": [
+      "src/commit-audit.ts"
+    ],
+    "extractTaskRef": [
+      "src/commit-audit.ts"
+    ],
+    "readAll": [
+      "src/commit-audit.ts"
+    ],
+    "appendOne": [
+      "src/commit-audit.ts"
+    ],
+    "hasSha": [
+      "src/commit-audit.ts"
+    ],
+    "loadShaCache": [
+      "src/commit-audit.ts"
+    ],
+    "backfillFromGit": [
+      "src/commit-audit.ts",
+      "src/index.ts"
+    ],
+    "runGit": [
+      "src/commits-tracker.ts"
+    ],
+    "attribute": [
+      "src/commits-tracker.ts"
+    ],
+    "parseNumstat": [
+      "src/commits-tracker.ts"
+    ],
+    "loadCommits": [
+      "src/commits-tracker.ts"
+    ],
+    "getCommitSummary": [
+      "src/commits-tracker.ts",
+      "src/index.ts"
+    ],
+    "getCommitHourly": [
+      "src/commits-tracker.ts",
+      "src/index.ts"
+    ],
+    "getRepoUrl": [
+      "src/commits-tracker.ts",
+      "src/index.ts"
+    ],
+    "getCommitsForTask": [
+      "src/commits-tracker.ts",
+      "src/index.ts"
+    ],
+    "getCommitsForTasks": [
+      "src/commits-tracker.ts",
+      "src/index.ts"
+    ],
+    "ProviderRecord": [
+      "src/credentials.ts"
+    ],
+    "ProviderMeta": [
+      "src/credentials.ts"
+    ],
+    "PROVIDER_CATALOG": [
+      "src/credentials.ts"
+    ],
+    "loadCredentials": [
+      "src/credentials.ts"
+    ],
+    "saveCredentials": [
+      "src/credentials.ts"
+    ],
+    "maskKey": [
+      "src/credentials.ts"
+    ],
+    "listMasked": [
+      "src/credentials.ts",
+      "src/index.ts"
+    ],
+    "setProvider": [
+      "src/credentials.ts",
+      "src/index.ts"
+    ],
+    "deleteProvider": [
+      "src/credentials.ts",
+      "src/index.ts"
+    ],
+    "SeasonalEventsManager": [
+      "src/game/seasonal-events.ts",
+      "src/index.ts"
+    ],
+    "serveSPAFile": [
+      "src/index.ts"
+    ],
+    "ghPathAllowed": [
+      "src/index.ts"
+    ],
+    "ghApiFetch": [
+      "src/index.ts"
+    ],
+    "privilegedActor": [
+      "src/index.ts"
+    ],
+    "readAgentPrompts": [
+      "src/index.ts"
+    ],
+    "initialize": [
+      "src/index.ts",
+      "src/openclaw-kill-switch.ts",
+      "src/openclaw-terminal-controller.ts"
+    ],
+    "setupRoutes": [
+      "src/index.ts"
+    ],
+    "setupWebSocketHandlers": [
+      "src/index.ts"
+    ],
+    "setupVitalsRoutes": [
+      "src/index.ts"
+    ],
+    "Codegraph": [
+      "src/index.ts",
+      "src/integrations/codegraph/index.ts"
+    ],
+    "getCodegraph": [
+      "src/index.ts",
+      "src/integrations/codegraph/index.ts"
+    ],
+    "findSymbol": [
+      "src/index.ts",
+      "src/integrations/codegraph/index.ts"
+    ],
+    "findReferences": [
+      "src/index.ts",
+      "src/integrations/codegraph/index.ts"
+    ],
+    "summarize": [
+      "src/index.ts",
+      "src/integrations/codegraph/index.ts",
+      "src/task-engine.ts"
+    ],
+    "KafkaOrchestrator": [
+      "src/index.ts",
+      "src/integrations/kafka/orchestrator.ts"
+    ],
+    "AgentAPIWrapper": [
+      "src/index.ts",
+      "src/integrations/lightrag/agent-api.ts"
+    ],
+    "LightRAGClient": [
+      "src/index.ts",
+      "src/integrations/lightrag/agent-api.ts",
+      "src/integrations/lightrag/client.ts",
+      "src/skills/register.ts"
+    ],
+    "Risk": [
+      "src/index.ts",
+      "src/integrations/lightrag/agent-api.ts",
+      "src/integrations/lightrag/schema.ts",
+      "src/task-engine.ts"
+    ],
+    "NumeraiDataFetcher": [
+      "src/index.ts",
+      "src/integrations/numerai/data-fetcher.ts",
+      "src/integrations/numerai/openclaw-edb-bridge.ts"
+    ],
+    "Security": [
+      "src/index.ts",
+      "src/integrations/numerai/data-fetcher.ts",
+      "src/integrations/numerai/entity-model.ts",
+      "src/security/audit-logger.ts",
+      "src/security/security-routes.ts",
+      "src/security/securityDashboard.ts",
+      "src/security/securityHeaders.ts",
+      "src/task-engine.ts"
+    ],
+    "EntityModel": [
+      "src/index.ts",
+      "src/integrations/numerai/data-fetcher.ts",
+      "src/integrations/numerai/entity-model.ts",
+      "src/integrations/numerai/openclaw-edb-bridge.ts"
+    ],
+    "OpenClawEDBBridge": [
+      "src/index.ts",
+      "src/integrations/numerai/openclaw-edb-bridge.ts"
+    ],
+    "getModels": [
+      "src/index.ts",
+      "src/lmstudio.ts"
+    ],
+    "healthCheck": [
+      "src/index.ts",
+      "src/integrations/local-inference/ollama-client.ts",
+      "src/lmstudio.ts"
+    ],
+    "chatAsAgent": [
+      "src/index.ts",
+      "src/lmstudio.ts",
+      "src/task-engine.ts"
+    ],
+    "systemPromptForAgent": [
+      "src/index.ts",
+      "src/lmstudio.ts",
+      "src/task-engine.ts"
+    ],
+    "setupOpenClawRoutes": [
+      "src/index.ts",
+      "src/openclaw/openclaw-api.ts"
+    ],
+    "killSwitch": [
+      "src/index.ts",
+      "src/openclaw-kill-switch.ts"
+    ],
+    "ModelRouter": [
+      "src/index.ts",
+      "src/orchestration/model-router.ts"
+    ],
+    "setupQualityRoutes": [
+      "src/index.ts",
+      "src/quality/quality-routes.ts"
+    ],
+    "QualityDashboard": [
+      "src/index.ts",
+      "src/quality/quality-routes.ts",
+      "src/quality/qualityDashboard.ts"
+    ],
+    "AuditLogger": [
+      "src/index.ts",
+      "src/security/audit-logger.ts"
+    ],
+    "setupSecurityRoutes": [
+      "src/index.ts",
+      "src/security/security-routes.ts"
+    ],
+    "SecurityDashboard": [
+      "src/index.ts",
+      "src/quality/qualityDashboard.ts",
+      "src/security/security-routes.ts",
+      "src/security/securityDashboard.ts"
+    ],
+    "registerSkills": [
+      "src/index.ts",
+      "src/skills/register.ts"
+    ],
+    "getPerPersonBacklog": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAgentProgress": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getBacklogItems": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getTaskDetail": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "setTaskStatus": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "setTaskPriority": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getGameMilestones": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getGameStats": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getWorkLog": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getWorkSummary": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAgentArtifacts": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAllArtifacts": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAgentInbox": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAgentOutbox": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAllProposals": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAgentInProgressDetail": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAgentCliLog": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getSocialRoster": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "getAgentSocialFeed": [
+      "src/index.ts",
+      "src/task-engine.ts"
+    ],
+    "activityMonitor": [
+      "src/index.ts",
+      "src/terminal-activity-monitor.ts"
+    ],
+    "analyzeCsv": [
+      "src/index.ts",
+      "src/timeseries.ts"
+    ],
+    "getHourlyUsage": [
+      "src/index.ts",
+      "src/token-tracker.ts"
+    ],
+    "getDailyUsage": [
+      "src/index.ts",
+      "src/token-tracker.ts"
+    ],
+    "getAgentSummary": [
+      "src/index.ts",
+      "src/token-tracker.ts"
+    ],
+    "getRecentEvents": [
+      "src/index.ts",
+      "src/token-tracker.ts"
+    ],
+    "InferenceAudit": [
+      "src/index.ts",
+      "src/vitals/inference-audit.ts",
+      "src/vitals/self-repair.ts"
+    ],
+    "SelfRepair": [
+      "src/index.ts",
+      "src/vitals/self-repair.ts"
+    ],
+    "VitalsService": [
+      "src/index.ts",
+      "src/vitals/vitals-service.ts"
+    ],
+    "queryTeamMemory": [
+      "src/integrations/claude-code-skills.ts"
+    ],
+    "findPrecedents": [
+      "src/integrations/claude-code-skills.ts"
+    ],
+    "recordDecision": [
+      "src/integrations/claude-code-skills.ts"
+    ],
+    "getAgentStatus": [
+      "src/integrations/claude-code-skills.ts"
+    ],
+    "checkCostStatus": [
+      "src/integrations/claude-code-skills.ts"
+    ],
+    "accessLearnings": [
+      "src/integrations/claude-code-skills.ts"
+    ],
+    "registerClaudeCodeSkills": [
+      "src/integrations/claude-code-skills.ts"
+    ],
+    "CodegraphSymbol": [
+      "src/integrations/codegraph/index.ts"
+    ],
+    "CodegraphFile": [
+      "src/integrations/codegraph/index.ts"
+    ],
+    "walk": [
+      "src/integrations/codegraph/index.ts"
+    ],
+    "indexFile": [
+      "src/integrations/codegraph/index.ts"
+    ],
+    "buildReferences": [
+      "src/integrations/codegraph/index.ts"
+    ],
+    "buildCodegraph": [
+      "src/integrations/codegraph/index.ts"
+    ],
+    "ConsumerConfig": [
+      "src/integrations/kafka/consumer.ts"
+    ],
+    "MessageHandler": [
+      "src/integrations/kafka/consumer.ts"
+    ],
+    "KafkaConsumer": [
+      "src/integrations/kafka/consumer.ts"
+    ],
+    "APIRequest": [
+      "src/integrations/kafka/orchestrator.ts"
+    ],
+    "ProducerConfig": [
+      "src/integrations/kafka/producer.ts"
+    ],
+    "KafkaProducer": [
+      "src/integrations/kafka/producer.ts"
+    ],
+    "QueryResult": [
+      "src/integrations/lightrag/agent-api.ts",
+      "src/integrations/lightrag/client.ts"
+    ],
+    "Precedent": [
+      "src/integrations/lightrag/agent-api.ts",
+      "src/integrations/lightrag/schema.ts"
+    ],
+    "GraphNode": [
+      "src/integrations/lightrag/client.ts"
+    ],
+    "Node": [
+      "src/integrations/lightrag/client.ts",
+      "src/integrations/lightrag/schema.ts",
+      "src/openclaw-kill-switch.ts",
+      "src/vitals/self-repair.ts"
+    ],
+    "INDEXES": [
+      "src/integrations/lightrag/schema.ts"
+    ],
+    "RELATIONSHIPS": [
+      "src/integrations/lightrag/schema.ts"
+    ],
+    "QUERIES": [
+      "src/integrations/lightrag/schema.ts"
+    ],
+    "isDecision": [
+      "src/integrations/lightrag/schema.ts"
+    ],
+    "isRisk": [
+      "src/integrations/lightrag/schema.ts"
+    ],
+    "isPrecedent": [
+      "src/integrations/lightrag/schema.ts"
+    ],
+    "isContext": [
+      "src/integrations/lightrag/schema.ts"
+    ],
+    "OllamaModelConfig": [
+      "src/integrations/local-inference/ollama-client.ts"
+    ],
+    "InferenceRequest": [
+      "src/integrations/local-inference/ollama-client.ts"
+    ],
+    "InferenceResponse": [
+      "src/integrations/local-inference/ollama-client.ts"
+    ],
+    "OllamaClient": [
+      "src/integrations/local-inference/ollama-client.ts",
+      "src/integrations/local-inference/unified-executor.ts"
+    ],
+    "UnifiedExecutor": [
+      "src/integrations/local-inference/ollama-client.ts",
+      "src/integrations/local-inference/unified-executor.ts"
+    ],
+    "ExecutionConfig": [
+      "src/integrations/local-inference/unified-executor.ts"
+    ],
+    "ExecutionResult": [
+      "src/integrations/local-inference/unified-executor.ts"
+    ],
+    "DataSourceConfig": [
+      "src/integrations/numerai/data-fetcher.ts"
+    ],
+    "FetchResult": [
+      "src/integrations/numerai/data-fetcher.ts"
+    ],
+    "Signal": [
+      "src/integrations/numerai/data-fetcher.ts",
+      "src/integrations/numerai/entity-model.ts"
+    ],
+    "Competition": [
+      "src/integrations/numerai/data-fetcher.ts",
+      "src/integrations/numerai/entity-model.ts"
+    ],
+    "Entity": [
+      "src/integrations/numerai/entity-model.ts"
+    ],
+    "Submission": [
+      "src/integrations/numerai/entity-model.ts"
+    ],
+    "Portfolio": [
+      "src/integrations/numerai/entity-model.ts"
+    ],
+    "EntityRelationship": [
+      "src/integrations/numerai/entity-model.ts"
+    ],
+    "NumeraiDailyData": [
+      "src/integrations/numerai/entity-model.ts"
+    ],
+    "EDBConfig": [
+      "src/integrations/numerai/openclaw-edb-bridge.ts"
+    ],
+    "EDBCommand": [
+      "src/integrations/numerai/openclaw-edb-bridge.ts"
+    ],
+    "OpenClawHandler": [
+      "src/integrations/numerai/openclaw-edb-bridge.ts",
+      "src/openclaw/openclaw-api.ts",
+      "src/openclaw/openclaw-handler.ts"
+    ],
+    "fetchJson": [
+      "src/lmstudio.ts"
+    ],
+    "resolveModel": [
+      "src/lmstudio.ts"
+    ],
+    "APICallOptions": [
+      "src/middleware/api-interceptor.ts"
+    ],
+    "APICallResult": [
+      "src/middleware/api-interceptor.ts"
+    ],
+    "APIInterceptor": [
+      "src/middleware/api-interceptor.ts"
+    ],
+    "BatchingEngine": [
+      "src/middleware/api-interceptor.ts",
+      "src/middleware/batching-engine.ts"
+    ],
+    "CachingLayer": [
+      "src/middleware/api-interceptor.ts",
+      "src/middleware/caching-layer.ts"
+    ],
+    "CostAnalyzer": [
+      "src/middleware/api-interceptor.ts",
+      "src/middleware/cost-analyzer.ts"
+    ],
+    "BatchRequest": [
+      "src/middleware/batching-engine.ts"
+    ],
+    "BatchResponse": [
+      "src/middleware/batching-engine.ts"
+    ],
+    "CachedResponse": [
+      "src/middleware/caching-layer.ts"
+    ],
+    "CostEvent": [
+      "src/middleware/cost-analyzer.ts"
+    ],
+    "BudgetConfig": [
+      "src/middleware/cost-analyzer.ts"
+    ],
+    "DecodedToken": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "generateToken": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "refreshToken": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "revokeToken": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "validateToken": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "validateApiKey": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "optionalAuth": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "extractToken": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "getPermissionsByRole": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "isValidApiKey": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "getAgentByApiKey": [
+      "src/middleware/jwt-validator.ts"
+    ],
+    "OpenClawKillSwitch": [
+      "src/openclaw-kill-switch.ts"
+    ],
+    "OpenClawTerminalController": [
+      "src/openclaw-terminal-controller.ts"
+    ],
+    "terminalController": [
+      "src/openclaw-terminal-controller.ts"
+    ],
+    "RoutingDecision": [
+      "src/orchestration/model-router.ts"
+    ],
+    "ModelProfile": [
+      "src/orchestration/model-router.ts"
+    ],
+    "QualityDashboardSnapshot": [
+      "src/quality/quality-routes.ts",
+      "src/quality/qualityDashboard.ts"
+    ],
+    "QualityThreat": [
+      "src/quality/qualityDashboard.ts"
+    ],
+    "readJsonIfExists": [
+      "src/quality/qualityDashboard.ts"
+    ],
+    "gradeFromScore": [
+      "src/quality/qualityDashboard.ts",
+      "src/security/securityDashboard.ts"
+    ],
+    "SecurityDashboardSnapshot": [
+      "src/security/security-routes.ts",
+      "src/security/securityDashboard.ts"
+    ],
+    "ThreatIndicator": [
+      "src/security/securityDashboard.ts"
+    ],
+    "countByIp": [
+      "src/security/securityDashboard.ts"
+    ],
+    "securityHeaders": [
+      "src/security/securityHeaders.ts"
+    ],
+    "corsHeaders": [
+      "src/security/securityHeaders.ts"
+    ],
+    "getSkill": [
+      "src/skills/register.ts"
+    ],
+    "listSkills": [
+      "src/skills/register.ts"
+    ],
+    "executeSkill": [
+      "src/skills/register.ts"
+    ],
+    "nextTaskId": [
+      "src/task-engine.ts"
+    ],
+    "currentSprint": [
+      "src/task-engine.ts"
+    ],
+    "makeSubtasks": [
+      "src/task-engine.ts"
+    ],
+    "randomTickRate": [
+      "src/task-engine.ts"
+    ],
+    "generateTask": [
+      "src/task-engine.ts"
+    ],
+    "saveState": [
+      "src/task-engine.ts"
+    ],
+    "loadState": [
+      "src/task-engine.ts"
+    ],
+    "seedInitialTasks": [
+      "src/task-engine.ts"
+    ],
+    "GameMilestone": [
+      "src/task-engine.ts"
+    ],
+    "updateMilestones": [
+      "src/task-engine.ts"
+    ],
+    "tickEngine": [
+      "src/task-engine.ts"
+    ],
+    "logWork": [
+      "src/task-engine.ts"
+    ],
+    "artifactPromptFor": [
+      "src/task-engine.ts"
+    ],
+    "generateArtifactForCompletedTask": [
+      "src/task-engine.ts"
+    ],
+    "pickProposalLane": [
+      "src/task-engine.ts"
+    ],
+    "generateProposal": [
+      "src/task-engine.ts"
+    ],
+    "pushCli": [
+      "src/task-engine.ts"
+    ],
+    "tickCli": [
+      "src/task-engine.ts"
+    ],
+    "saveOnExit": [
+      "src/task-engine.ts"
+    ],
+    "TerminalActivityMonitor": [
+      "src/terminal-activity-monitor.ts"
+    ],
+    "ColumnStats": [
+      "src/timeseries.ts"
+    ],
+    "PairCorrelation": [
+      "src/timeseries.ts"
+    ],
+    "AnalysisResult": [
+      "src/timeseries.ts"
+    ],
+    "parseCsv": [
+      "src/timeseries.ts"
+    ],
+    "findTimestampColumn": [
+      "src/timeseries.ts"
+    ],
+    "computeColumnStats": [
+      "src/timeseries.ts"
+    ],
+    "pearson": [
+      "src/timeseries.ts"
+    ],
+    "recordAgentTokens": [
+      "src/token-tracker.ts"
+    ],
+    "filterByTime": [
+      "src/token-tracker.ts"
+    ],
+    "InferenceEvent": [
+      "src/vitals/inference-audit.ts"
+    ],
+    "RepairEvent": [
+      "src/vitals/self-repair.ts"
+    ],
+    "VitalsSnapshot": [
+      "src/vitals/vitals-service.ts"
+    ]
+  }
+}
