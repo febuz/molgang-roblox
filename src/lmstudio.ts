@@ -106,6 +106,95 @@ async function chatViaKimiCli(
   });
 }
 
+// ─── Claude CLI bridge (for designer agents) ─────────────────────────────
+// Shells out to `claude --bare --print -p <prompt>` so Mira (Creative
+// Director) and Luna (Tech Artist) can route their design-flavored work
+// to Claude rather than local Phi-4. Same shell-out pattern as Kimi.
+//
+// Auth: --bare requires ANTHROPIC_API_KEY in env (no keychain / OAuth
+// reads). Without that key the helper returns null and the caller falls
+// through to LM Studio so the call still completes — never silently
+// downgrades quality without leaving a log breadcrumb.
+//
+// Cost model: ~$3/1M prompt + $15/1M completion at Sonnet pricing.
+// Recorded via token-tracker at tier 3 so the cost dashboard can flag
+// design-spend separately from local tier-1 inference.
+const CLAUDE_CLI_PATH = process.env.CLAUDE_CLI_PATH || 'claude';
+const CLAUDE_TIMEOUT_MS = parseInt(process.env.CLAUDE_TIMEOUT_MS || '120000');
+const CLAUDE_MODEL_TAG = process.env.CLAUDE_MODEL_TAG || 'claude-sonnet';
+let _claudeAuthChecked = false;
+let _claudeAuthOk = false;
+
+function claudeAuthLikelyOk(): boolean {
+  // Cheap precheck — avoid invoking the CLI if there's clearly no auth
+  // path. Caches the result so repeat calls don't shell out per check.
+  if (_claudeAuthChecked) return _claudeAuthOk;
+  _claudeAuthChecked = true;
+  _claudeAuthOk = !!process.env.ANTHROPIC_API_KEY;
+  if (!_claudeAuthOk) {
+    logger.warn('Claude CLI: ANTHROPIC_API_KEY not set in virtualpc env — designer-agent calls will fall back to LM Studio. Set the key + restart to enable Claude routing.');
+  }
+  return _claudeAuthOk;
+}
+
+async function chatViaClaudeCli(
+  messages: { role: string; content: string }[],
+  opts: { temperature?: number; max_tokens?: number } = {},
+): Promise<{ ok: true; model: string; agent: string; content: string; usage: any; latencyMs: number } | null> {
+  if (!claudeAuthLikelyOk()) return null;
+
+  // Split system messages → --append-system-prompt (claude has its own
+  // built-in system prompt and concatenates this on the end). Pass the
+  // user turn as the actual prompt argument.
+  const sys = messages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+  const userTurn = messages.filter(m => m.role !== 'system').map(m =>
+    m.role === 'user' ? m.content : `[ASSISTANT EARLIER]\n${m.content}`).join('\n\n');
+
+  const args = ['--bare', '--print', '-p', userTurn];
+  if (sys) args.push('--append-system-prompt', sys);
+
+  const started = Date.now();
+  return new Promise((resolve) => {
+    execFile(CLAUDE_CLI_PATH, args, { maxBuffer: 8 * 1024 * 1024, timeout: CLAUDE_TIMEOUT_MS },
+      (err, stdout, stderr) => {
+        if (err) {
+          const code = (err as any).code;
+          if (code === 'ENOENT') {
+            logger.warn(`Claude CLI not found at ${CLAUDE_CLI_PATH} — falling back to LM Studio`);
+          } else {
+            logger.warn(`Claude CLI error (code=${code}): ${(stderr || err.message).slice(0, 200)}`);
+          }
+          resolve(null);
+          return;
+        }
+        const cleaned = stdout.trim();
+        if (!cleaned || /not logged in|please run \/login/i.test(cleaned)) {
+          logger.warn('Claude CLI returned an auth-required message — falling back. Run `claude /login` interactively or export ANTHROPIC_API_KEY.');
+          _claudeAuthOk = false;     // poison the cache so we stop asking
+          resolve(null);
+          return;
+        }
+        // Estimate token counts (claude --print doesn't emit usage stats
+        // by default). 1 token ≈ 4 chars. Marked source so callers can
+        // tell estimated vs metered.
+        const promptText = sys + '\n' + userTurn;
+        const promptTokens = Math.round(promptText.length / 4);
+        const completionTokens = Math.round(cleaned.length / 4);
+        resolve({
+          ok: true,
+          model: CLAUDE_MODEL_TAG,
+          agent: '',     // filled in by caller
+          content: cleaned,
+          usage: { prompt_tokens: promptTokens, completion_tokens: completionTokens, total_tokens: promptTokens + completionTokens, source: 'claude-cli-estimate' },
+          latencyMs: Date.now() - started,
+        });
+      },
+    );
+  });
+}
+
+const DESIGNER_AGENTS = new Set(['Mira', 'Luna']);
+
 // Prefer LiteLLM unified gateway when running. LiteLLM exposes the
 // OpenAI-compatible /v1 surface and routes to local LM Studio + every
 // configured cloud provider in one place. Falls back to direct LM Studio
@@ -153,6 +242,10 @@ const TASK_TYPE_ROUTES: { [kind: string]: string } = {
   // long-context or larger capacity (governance audits, lengthy screenplays).
   deep:         'qwen3.5-27b',
   concept:      'gemma-4-26b',
+  // Designer-agent route: visual brief / brand / UX work. Mira + Luna
+  // shell out to the local `claude --bare --print` CLI (Anthropic Sonnet
+  // by default). Credit cost is real — gated by ANTHROPIC_API_KEY auth.
+  design:       'claude-sonnet',
 };
 
 interface LmModel {
@@ -296,9 +389,34 @@ export async function chatAsAgent(
     }
   }
 
-  const hint = opts.taskType
-    ? (TASK_TYPE_ROUTES[opts.taskType] || AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b')
-    : (AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b');
+  // Designer agents (Mira, Luna) route through Claude CLI when:
+  //   • taskType === 'design' (explicit opt-in by the caller), OR
+  //   • CLAUDE_FOR_DESIGNERS=1 in the env (always-on policy)
+  // Falls through to LM Studio if Claude auth isn't configured. Default
+  // chat / code paths stay on local models — the user's stated "save
+  // credits" preference applies unless design quality is explicitly
+  // requested.
+  let designerFallthroughHint: string | null = null;
+  if (DESIGNER_AGENTS.has(agent) && (opts.taskType === 'design' || process.env.CLAUDE_FOR_DESIGNERS === '1')) {
+    const r = await chatViaClaudeCli(messages, opts);
+    if (r) {
+      recordThroughput(agent, r.model, r.usage, r.latencyMs);
+      return { ...r, agent };
+    }
+    // null → claude auth missing or call failed. The taskType=design hint
+    // would normally map to 'claude-sonnet' which doesn't resolve against
+    // any locally-loaded LM Studio model, so we'd 500 with "No model
+    // loaded matching claude-sonnet". Override the hint to a sensible
+    // local default so the call still completes (degraded but functional).
+    designerFallthroughHint = AGENT_MODEL_ROUTES[agent] || 'phi-4';
+    logger.info(`Claude CLI unavailable — designer ${agent} falling back to ${designerFallthroughHint}`);
+  }
+
+  const hint = designerFallthroughHint
+    ? designerFallthroughHint
+    : opts.taskType
+      ? (TASK_TYPE_ROUTES[opts.taskType] || AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b')
+      : (AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b');
 
   const model = await resolveModel(hint);
   if (!model) {

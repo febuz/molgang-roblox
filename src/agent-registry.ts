@@ -20,8 +20,11 @@ export const AGENT_META: AgentMeta[] = [
   { name: 'Fill',          role: 'CEO',                              avatar: '👑', color: '#fbbf24', kind: 'core',       models: ['gemma-4-26b', 'claude-opus', 'qwen3.5-27b'] },
   { name: 'Kai',           role: 'CTO',                              avatar: '⚡', color: '#a78bfa', kind: 'core',       models: ['devstral', 'claude-opus', 'qwen3.5-27b'] },
   { name: 'Zip',           role: 'Developer',                        avatar: '💻', color: '#22c55e', kind: 'core',       models: ['devstral', 'claude-sonnet', 'phi-4'] },
-  { name: 'Mira',          role: 'Creative Director',                avatar: '🎨', color: '#ec4899', kind: 'core',       models: ['gemma-4-26b', 'claude-sonnet', 'phi-4'] },
-  { name: 'Luna',          role: 'Tech Artist',                      avatar: '✨', color: '#06b6d4', kind: 'core',       models: ['devstral', 'deepseek-r1', 'phi-4'] },
+  // Mira + Luna are the designer agents — preferred model is claude-sonnet
+  // for design-flavored tasks (taskType: 'design' shells to the local
+  // `claude --bare --print` CLI). Local fallbacks listed for non-design work.
+  { name: 'Mira',          role: 'Creative Director',                avatar: '🎨', color: '#ec4899', kind: 'core',       models: ['claude-sonnet', 'gemma-4-26b', 'phi-4'] },
+  { name: 'Luna',          role: 'Tech Artist',                      avatar: '✨', color: '#06b6d4', kind: 'core',       models: ['claude-sonnet', 'devstral', 'deepseek-r1', 'phi-4'] },
   { name: 'Cleopatra',     role: 'Executive Authority',              avatar: '👸', color: '#f97316', kind: 'decision',   models: ['qwen3.5-27b', 'claude-opus'] },
   { name: 'Alexander',     role: 'Technical Arbiter',                avatar: '🗡️', color: '#ef4444', kind: 'decision',   models: ['qwen3.5-27b', 'deepseek-r1'] },
   { name: 'MoneyGod',      role: 'Economy Authority',                avatar: '💰', color: '#10b981', kind: 'decision',   models: ['qwen3.5-27b', 'claude-sonnet'] },

@@ -50,8 +50,8 @@ const AGENT_MODELS: { [agent: string]: string[] } = {
   Fill:          ['phi-4', 'gemma-4-26b'],
   Kai:           ['devstral', 'phi-4', 'qwen3.5-27b'],
   Zip:           ['devstral', 'phi-4'],
-  Mira:          ['phi-4', 'gemma-4-26b'],
-  Luna:          ['devstral', 'phi-4', 'deepseek-r1-8b'],
+  Mira:          ['claude-sonnet', 'phi-4', 'gemma-4-26b'],   // designer agent, primary on Anthropic for taskType:'design'
+  Luna:          ['claude-sonnet', 'devstral', 'phi-4', 'deepseek-r1-8b'],
   Cleopatra:     ['deepseek-r1-8b', 'qwen3.5-27b'],
   Alexander:     ['deepseek-r1-8b', 'qwen3.5-27b'],
   MoneyGod:      ['deepseek-r1-8b', 'qwen3.5-27b'],
