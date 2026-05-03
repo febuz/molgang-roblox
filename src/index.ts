@@ -1535,17 +1535,49 @@ app.get('/dashboard-static', (req, res) => {
 // production wire in May 2026: chatAsAgent and addTask now best-effort-
 // publish events to model.responses, agent.tasks, agent.results.
 import { ensureSharedProducer as _ensureSharedKafka, isKafkaConnected as _kafkaConnected, getKafkaBrokers as _kafkaBrokers } from './integrations/kafka/shared';
+import { startAuditConsumer as _startAudit, getCostState as _kafkaCost, readAuditTail as _kafkaAuditTail, isAuditConsumerRunning as _auditRunning } from './integrations/kafka/audit-consumer';
 _ensureSharedKafka().catch(() => { /* logged in shared module */ });
+// Boot the audit + cost consumer. Idempotent; if Kafka is offline it
+// logs a warning and stays dormant — next service restart re-attempts.
+_startAudit().catch(() => { /* logged in module */ });
 
 app.get('/api/kafka/health', (_req, res) => {
   res.json({
     success: true,
-    connected: _kafkaConnected(),
+    producer_connected: _kafkaConnected(),
+    audit_consumer_running: _auditRunning(),
     brokers: _kafkaBrokers(),
     note: _kafkaConnected()
       ? 'Producer connected. chatAsAgent + addTask + setTaskStatus(completed) publish events to model.responses / agent.tasks / agent.results.'
       : 'Producer not connected. Bring brokers up via: docker compose -f deploy/docker-compose.yml up -d zookeeper kafka',
   });
+});
+
+// Cost dashboard fed by the audit consumer subscribing to model.responses.
+// Returns running totals (lifetime + today + per-agent + per-model + per-pair).
+app.get('/api/kafka/cost', (_req, res) => {
+  const s = _kafkaCost();
+  // Sort the agent + model maps by spend descending so the dashboard
+  // doesn't have to do that work client-side.
+  const sortByCost = (m: Record<string, any>) =>
+    Object.entries(m).sort((a, b) => b[1].cost_usd - a[1].cost_usd)
+      .map(([k, v]) => ({ key: k, ...v }));
+  res.json({
+    success: true,
+    total: s.total,
+    by_agent: sortByCost(s.byAgent),
+    by_model: sortByCost(s.byModel),
+    by_pair:  sortByCost(s.byPair).slice(0, 50),
+    by_day:   Object.entries(s.byDay).sort().map(([d, v]) => ({ date: d, ...v })),
+    last_flushed: s.lastFlushed,
+  });
+});
+
+// Live tail of the audit JSONL — every event the producer emitted across
+// every topic. Useful for debugging "did my publish actually fire?".
+app.get('/api/kafka/audit', (req, res) => {
+  const limit = Math.min(500, parseInt(String(req.query.limit || '50')) || 50);
+  res.json({ success: true, count: limit, tail: _kafkaAuditTail(limit) });
 });
 
 // Health check

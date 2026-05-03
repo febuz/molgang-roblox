@@ -24,7 +24,7 @@ import { AGENT_NAMES } from './agent-registry';
 // Cost per 1K tokens.
 // All-local Gemma / Phi / Qwen / Devstral / DeepSeek (LM Studio on EDS2 RTX 3090) are
 // tier-1 free. Paid fallbacks kept for when a cloud call is genuinely needed.
-const MODEL_COSTS: { [model: string]: { prompt: number; completion: number; tier: 1|2|3 } } = {
+export const MODEL_COSTS: { [model: string]: { prompt: number; completion: number; tier: 1|2|3 } } = {
   'gemma-4-26b':    { prompt: 0, completion: 0, tier: 1 },
   'qwen3.5-27b':    { prompt: 0, completion: 0, tier: 1 },
   'devstral':       { prompt: 0, completion: 0, tier: 1 },

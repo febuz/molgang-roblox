@@ -48,14 +48,17 @@ function recordThroughput(agent: string, model: string, usage: any, latencyMs: n
   // Publish to Kafka topics for downstream consumers (audit log, cost
   // dashboard, distributed analytics). Fire-and-forget — never blocks the
   // chat response. shared.bestEffortPublish handles broker-down gracefully.
+  // The downstream cost consumer reads .agent + .model + .tokens_* fields,
+  // so they must be present on every event for the by-agent rollup to work.
   bestEffortPublish(async (p) => {
     await p.publishModelResponse({
       request_id: `${agent}-${Date.now()}`,
+      agent,             // explicit field for cost-by-agent aggregation
       model,
-      completion: '',     // payload intentionally elided — content is sensitive
+      completion: '',    // payload intentionally elided — content is sensitive
       tokens_prompt: prompt,
       tokens_completion: completion,
-      cost_usd: 0,        // computed by downstream cost.tracking consumer
+      cost_usd: 0,       // computed by downstream cost.tracking consumer
       latency_ms: latencyMs,
     });
   });
