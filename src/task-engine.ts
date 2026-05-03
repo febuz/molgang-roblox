@@ -619,6 +619,7 @@ export function setTaskStatus(taskId: string, next: Task['status']): Task | null
     // Reverting from completed → pending|in-progress: clear completed_at.
     task.completed_at = undefined;
   }
+  dirty = true;   // trigger persistence on next save tick
   return task;
 }
 
@@ -626,6 +627,7 @@ export function setTaskPriority(taskId: string, next: Task['priority']): Task | 
   const task = tasks.find(t => t.id === taskId);
   if (!task) return null;
   task.priority = next;
+  dirty = true;
   return task;
 }
 
@@ -660,6 +662,12 @@ export function addTask(input: {
     _lastTick: Date.now(),
   };
   tasks.push(t);
+  // Without this dirty flag the next saveState() tick wouldn't include
+  // newly-injected tasks, so a virtualpc restart between the inject and
+  // the next periodic save would lose them. Observed live: the May-3
+  // roadmap-delegation push got wiped by the 16:00 deploy because addTask
+  // didn't mark dirty.
+  dirty = true;
   return t;
 }
 
@@ -1283,10 +1291,15 @@ export function getAgentSocialFeed(agent: string, limit = 20) {
 setInterval(tickEngine, 10000);
 tickEngine();
 
-// Persist state every 30s (only writes if dirty)
+// Persist state every 5s (only writes if dirty). Was 30s — reduced after
+// the May-3 roadmap-delegation push was wiped by a systemd restart that
+// fired SIGKILL after the SIGTERM exit handler timed out (the 68 MB
+// snapshot takes ~500 ms to write and was hitting the systemd timeout).
+// 5s narrows the loss window without overwhelming disk; the saveState fn
+// uses tmp + rename for atomic writes so partial-write corruption stays out.
 setInterval(() => {
   if (dirty) saveState();
-}, 30000);
+}, 5000);
 
 // Save immediately on clean shutdown so SIGTERM/SIGINT don't lose recent progress
 function saveOnExit() {

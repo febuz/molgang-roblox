@@ -41,6 +41,8 @@ export interface Codegraph {
   files: { [relPath: string]: CodegraphFile };
   symbols: { [name: string]: CodegraphSymbol[] }; // multi-map (overloads, name reuse)
   references: { [name: string]: string[] };       // symbol → list of files that mention it
+  dependencies: { [filePath: string]: string[] }; // file → resolved files it imports from
+  importedBy:  { [filePath: string]: string[] };  // file → files that import it (inverse)
 }
 
 const SCAN_DIRS = ['src'];
@@ -117,6 +119,19 @@ function buildReferences(fileMap: { [k: string]: CodegraphFile }, symbolNames: S
   return refs;
 }
 
+// Resolve an `import './foo'` from rel-file to its absolute index entry.
+// Walks the relative path + tries .ts / .tsx / /index.ts. Returns the
+// matching file path if found, else null. Pure path math — no fs calls.
+function resolveImport(fromFile: string, importPath: string, files: Set<string>): string | null {
+  if (!importPath.startsWith('.')) return null;       // skip node_modules / aliases
+  const dir = path.posix.dirname(fromFile);
+  const target = path.posix.normalize(path.posix.join(dir, importPath));
+  for (const ext of ['.ts', '.tsx', '/index.ts', '/index.tsx', '']) {
+    if (files.has(target + ext)) return target + ext;
+  }
+  return null;
+}
+
 export function buildCodegraph(rootDir: string): Codegraph {
   const files: string[] = [];
   for (const sub of SCAN_DIRS) walk(path.join(rootDir, sub), rootDir, files);
@@ -134,6 +149,25 @@ export function buildCodegraph(rootDir: string): Codegraph {
   const symbolNames = new Set(Object.keys(symbols));
   const references = buildReferences(fileMap, symbolNames, rootDir);
 
+  // Cross-file dependency graph: file → [files it imports from] (resolved
+  // to actual project files, not raw "./foo" strings). Plus the inverse
+  // (importedBy) so callers can ask both "what does X depend on?" and
+  // "what depends on X?". Same pattern GitNexus surfaces.
+  const fileSet = new Set(files);
+  const dependencies: { [k: string]: string[] } = {};
+  const importedBy: { [k: string]: string[] } = {};
+  for (const rel of files) {
+    const deps = new Set<string>();
+    for (const imp of fileMap[rel].imports) {
+      const resolved = resolveImport(rel, imp.from, fileSet);
+      if (resolved && resolved !== rel) deps.add(resolved);
+    }
+    dependencies[rel] = [...deps];
+    for (const dep of deps) {
+      (importedBy[dep] = importedBy[dep] || []).push(rel);
+    }
+  }
+
   return {
     generatedAt: new Date().toISOString(),
     rootDir,
@@ -142,6 +176,8 @@ export function buildCodegraph(rootDir: string): Codegraph {
     files: fileMap,
     symbols,
     references,
+    dependencies,        // file → files it imports
+    importedBy,          // file → files that import it
   };
 }
 

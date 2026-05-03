@@ -292,7 +292,43 @@ app.get('/api/codegraph/file', (req, res) => {
     const g = codegraph.getCodegraph(REPO_ROOT);
     const file = g.files[rel];
     if (!file) { res.status(404).json({ success: false, error: 'file not in graph' }); return; }
-    res.json({ success: true, file });
+    res.json({
+      success: true,
+      file,
+      dependencies: g.dependencies?.[rel] || [],
+      importedBy:   g.importedBy?.[rel] || [],
+    });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// Cross-file dependency view — borrowed from GitNexus. Lets agents ask
+// "what does file X depend on?" and "what depends on X?" without parsing
+// the whole graph client-side.
+app.get('/api/codegraph/dependencies', (req, res) => {
+  try {
+    const rel = req.query.path ? String(req.query.path) : null;
+    const g = codegraph.getCodegraph(REPO_ROOT);
+    if (rel) {
+      if (rel.includes('..')) { res.status(400).json({ success: false, error: 'path traversal' }); return; }
+      res.json({
+        success: true,
+        path: rel,
+        imports: g.dependencies?.[rel] || [],
+        importedBy: g.importedBy?.[rel] || [],
+      });
+    } else {
+      // Fan-in / fan-out summary across the whole graph
+      const fanIn  = Object.entries(g.importedBy || {}).map(([p, arr]) => ({ path: p, count: arr.length }));
+      const fanOut = Object.entries(g.dependencies || {}).map(([p, arr]) => ({ path: p, count: arr.length }));
+      fanIn.sort((a, b) => b.count - a.count);
+      fanOut.sort((a, b) => b.count - a.count);
+      res.json({
+        success: true,
+        topImported: fanIn.slice(0, 20),
+        topImporters: fanOut.slice(0, 20),
+        totalEdges: Object.values(g.dependencies || {}).reduce((s, a) => s + a.length, 0),
+      });
+    }
   } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
 });
 
