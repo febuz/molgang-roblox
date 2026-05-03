@@ -157,6 +157,30 @@ app.post('/api/backlog/:id/priority', (req, res) => {
   res.json({ success: true, task: { id: updated.id, priority: updated.priority } });
 });
 
+// External delegators inject roadmap items here. Validates agent name
+// against the canonical roster so a typo can't create an orphan task.
+app.post('/api/backlog/items', (req, res) => {
+  const b = req.body || {};
+  if (!b.title || !b.description || !b.assigned_to) {
+    res.status(400).json({ success: false, error: 'title, description, assigned_to required' });
+    return;
+  }
+  const t = taskEngine.addTask({
+    title: String(b.title),
+    description: String(b.description),
+    priority: b.priority,
+    assigned_to: String(b.assigned_to),
+    estimated_hours: typeof b.estimated_hours === 'number' ? b.estimated_hours : undefined,
+    subtasks: Array.isArray(b.subtasks) ? b.subtasks.map(String) : undefined,
+    sprint: b.sprint ? String(b.sprint) : undefined,
+  });
+  if (!t) {
+    res.status(400).json({ success: false, error: `unknown agent '${b.assigned_to}' — must be in the canonical roster` });
+    return;
+  }
+  res.json({ success: true, task: { id: t.id, title: t.title, assigned_to: t.assigned_to, priority: t.priority, status: t.status } });
+});
+
 // ============================================================================
 // GitHub proxy for febuz/virtualpc — read-only access to the knowledge dirs
 // (.backlog, .admin, .creative, .governance, .operations). The repo is private

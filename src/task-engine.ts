@@ -629,6 +629,40 @@ export function setTaskPriority(taskId: string, next: Task['priority']): Task | 
   return task;
 }
 
+// Inject a brand-new task into the live engine. Used by external delegators
+// (e.g. external roadmap pushes via POST /api/backlog/items) so that the
+// roster's per-agent queues and the dashboard's per-person backlog include
+// items that didn't come from the seed pool. Validates the agent name
+// against the canonical roster so a typo can't create an orphan task.
+export function addTask(input: {
+  title: string;
+  description: string;
+  priority?: Task['priority'];
+  assigned_to: string;
+  estimated_hours?: number;
+  subtasks?: string[];
+  sprint?: string;
+}): Task | null {
+  if (!AGENT_NAMES.includes(input.assigned_to)) return null;
+  const id = `task-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const t: Task = {
+    id,
+    title: input.title,
+    description: input.description,
+    priority: input.priority || 'medium',
+    status: 'pending',
+    assigned_to: input.assigned_to,
+    estimated_hours: input.estimated_hours ?? 4,
+    subtasks: (input.subtasks || []).map(s => ({ name: s, done: false })),
+    progress: 0,
+    sprint: input.sprint || 'roadmap',
+    _tickRate: 1,
+    _lastTick: Date.now(),
+  };
+  tasks.push(t);
+  return t;
+}
+
 export function getGameMilestones(): GameMilestone[] {
   updateMilestones();
   return gameMilestones;
