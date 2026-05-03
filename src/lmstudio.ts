@@ -12,6 +12,7 @@
 
 import logger from './utils/logger';
 import { execFile } from 'child_process';
+import { bestEffortPublish } from './integrations/kafka/shared';
 
 // Lazy-imported to avoid the chicken-and-egg between token-tracker (also
 // imports from agent-registry like this module does). Re-imported inside
@@ -43,6 +44,21 @@ function recordThroughput(agent: string, model: string, usage: any, latencyMs: n
       tt.recordRealEvent({ agent, model, promptTokens: prompt, completionTokens: completion });
     }
   } catch { /* tracker unavailable — ignore */ }
+
+  // Publish to Kafka topics for downstream consumers (audit log, cost
+  // dashboard, distributed analytics). Fire-and-forget — never blocks the
+  // chat response. shared.bestEffortPublish handles broker-down gracefully.
+  bestEffortPublish(async (p) => {
+    await p.publishModelResponse({
+      request_id: `${agent}-${Date.now()}`,
+      model,
+      completion: '',     // payload intentionally elided — content is sensitive
+      tokens_prompt: prompt,
+      tokens_completion: completion,
+      cost_usd: 0,        // computed by downstream cost.tracking consumer
+      latency_ms: latencyMs,
+    });
+  });
 }
 
 // ─── Kimi CLI bridge ──────────────────────────────────────────────────────

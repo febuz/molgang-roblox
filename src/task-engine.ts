@@ -620,6 +620,18 @@ export function setTaskStatus(taskId: string, next: Task['status']): Task | null
     task.completed_at = undefined;
   }
   dirty = true;   // trigger persistence on next save tick
+  // Publish to Kafka agent.results when a task completes — downstream
+  // subscribers (audit, cost dashboard, LightRAG sync) pick it up.
+  // Lazy-required to avoid the build-time module cycle with kafka/shared.
+  if (next === 'completed' && previous !== 'completed') {
+    try {
+      const { bestEffortPublish } = require('./integrations/kafka/shared');
+      bestEffortPublish((p: any) => p.publishResult(task.id, task.assigned_to, {
+        status: 'success', title: task.title, sprint: task.sprint,
+        tokens_used: 0, execution_time_ms: 0,
+      }));
+    } catch { /* shared module unavailable — ignore */ }
+  }
   return task;
 }
 
@@ -668,6 +680,15 @@ export function addTask(input: {
   // roadmap-delegation push got wiped by the 16:00 deploy because addTask
   // didn't mark dirty.
   dirty = true;
+  // Publish the new task to Kafka agent.tasks for downstream consumers.
+  try {
+    const { bestEffortPublish } = require('./integrations/kafka/shared');
+    bestEffortPublish((p: any) => p.publishTask(input.assigned_to, {
+      task_type: 'delegated',
+      priority: t.priority,
+      payload: { id: t.id, title: t.title, sprint: t.sprint, estimated_hours: t.estimated_hours },
+    }));
+  } catch { /* shared module unavailable — ignore */ }
   return t;
 }
 
