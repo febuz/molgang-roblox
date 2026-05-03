@@ -83,13 +83,20 @@ export function recordAgentTokens() {
       // 70% chance tier 1 (free), 20% tier 2, 10% tier 3
       const roll = Math.random();
       let model: string;
-      if (roll < 0.70) {
-        model = models.find(m => MODEL_COSTS[m]?.tier === 1) || models[0];
-      } else if (roll < 0.90) {
-        model = models.find(m => MODEL_COSTS[m]?.tier === 2) || models[0];
-      } else {
-        model = models.find(m => MODEL_COSTS[m]?.tier === 3) || models[0];
-      }
+      // Pick UNIFORMLY at random among the agent's models that match the
+      // chosen tier. The previous implementation used Array.find which
+      // returned only the first matching entry — that meant agents with
+      // qwen3.5-27b as their 2nd/3rd tier-1 model (Kai, Cleopatra, Alexander,
+      // MoneyGod, Kimi) never logged a qwen call, even though the dashboard
+      // listed it as a preferred model. Reported as "QWEN tokens not updated".
+      const pickFromTier = (tier: 1 | 2 | 3): string | undefined => {
+        const matches = models.filter(m => MODEL_COSTS[m]?.tier === tier);
+        if (matches.length === 0) return undefined;
+        return matches[Math.floor(Math.random() * matches.length)];
+      };
+      if (roll < 0.70)      model = pickFromTier(1) || models[0];
+      else if (roll < 0.90) model = pickFromTier(2) || pickFromTier(1) || models[0];
+      else                  model = pickFromTier(3) || pickFromTier(1) || models[0];
 
       const mc = MODEL_COSTS[model] || { prompt: 0, completion: 0, tier: 1 };
       const promptTokens = 200 + Math.floor(Math.random() * 1800);
