@@ -142,7 +142,17 @@ async function refresh() {
   try {
     const vit = await getJSON('/api/vitals');
     const snap = vit.snapshot || {};
-    document.getElementById('ts').textContent = snap.ts || '';
+    // Overlay LIVE GPU values via the inline-nvidia-smi path so the cards
+    // match what nvtop shows. Cached snapshot still drives everything else
+    // (procs, ollama, history) — no point hammering nvidia-smi for those.
+    try {
+      const liveGpu = await getJSON('/api/vitals/gpu?fresh=1');
+      if (liveGpu && liveGpu.gpus && liveGpu.gpus.length) {
+        snap.gpus = liveGpu.gpus;
+        snap._gpu_live = !!liveGpu.live;
+      }
+    } catch {}
+    document.getElementById('ts').textContent = (snap.ts || '') + (snap._gpu_live ? ' · gpu LIVE' : ' · gpu cached');
     pill('gpuEnabled', 'gpu: ' + (vit.gpu_enabled ? 'on' : 'off'), vit.gpu_enabled ? 'up' : 'down', vit.gpu_enabled);
 
     document.getElementById('host').innerHTML =

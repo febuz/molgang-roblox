@@ -1604,8 +1604,15 @@ async function initialize() {
 
     // 6b. Start vitals monitor (if GPU_ENABLED). Spawns vitals-monitor.sh
     //     as a child so the JSONL keeps updating. Routes wired below.
+    //
+    // Sample interval: 5s (was 30s). nvtop refreshes ~1-2s, so 30s caused
+    // the dashboard to lag visibly behind a side-by-side terminal. 5s cuts
+    // the gap to within one dashboard refresh tick. JSONL grows 6× faster
+    // (~17k entries/24h vs ~2.9k) — still trivial vs available disk.
+    // Override via VITALS_INTERVAL_SEC env var.
     const vitals = new VitalsService();
-    if (vitals.isGpuEnabled()) vitals.startMonitor(30);
+    const vitalsInterval = parseInt(process.env.VITALS_INTERVAL_SEC || '5');
+    if (vitals.isGpuEnabled()) vitals.startMonitor(vitalsInterval);
     const inferenceAudit = new InferenceAudit();
     const selfRepair = new SelfRepair(inferenceAudit);
     if (vitals.isGpuEnabled() && (process.env.SELF_REPAIR_ENABLED ?? 'true').toLowerCase() !== 'false') {
@@ -2850,14 +2857,40 @@ function setupVitalsRoutes(app: express.Express, vitals: VitalsService, audit?: 
     }
   });
 
-  app.get('/api/vitals/gpu', async (_req, res) => {
+  app.get('/api/vitals/gpu', async (req, res) => {
     try {
       const snap = await vitals.getSnapshot();
       if (!snap) return res.status(404).json({ success: false, error: 'no snapshot yet' });
+      // ?fresh=1 — bypass the cached snapshot and run nvidia-smi inline so
+      // util/mem/temp match what nvtop shows right now (cached data lags by
+      // up to one sample interval). Costs ~50 ms per call. Keeps gpu_procs
+      // from the snapshot since that requires a separate nvidia-smi call.
+      let gpus = snap.gpus;
+      let live = false;
+      if (req.query.fresh) {
+        try {
+          const fresh = await new Promise<any[]>((resolve, reject) => {
+            const { execFile } = require('child_process');
+            execFile('nvidia-smi',
+              ['--query-gpu=index,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw', '--format=csv,noheader,nounits'],
+              { timeout: 4000 },
+              (err: any, stdout: string) => {
+                if (err) return reject(err);
+                resolve(stdout.trim().split('\n').map(line => {
+                  const [i, util, mu, mt, t, p] = line.split(',').map(s => s.trim());
+                  return { i: parseInt(i), util: parseInt(util) || 0, mem_used: parseInt(mu) || 0, mem_total: parseInt(mt) || 0, temp: parseInt(t) || 0, power: parseFloat(p) || 0 };
+                }));
+              });
+          });
+          gpus = fresh;
+          live = true;
+        } catch { /* fall through to cached */ }
+      }
       return res.json({
         success: true,
         gpu_enabled: vitals.isGpuEnabled(),
-        gpus: snap.gpus,
+        live,
+        gpus,
         gpu_procs: snap.gpu_procs,
         ollama: snap.ollama,
       });
