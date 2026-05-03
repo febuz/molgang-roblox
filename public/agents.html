@@ -152,6 +152,8 @@
     <div class="meta">
       <a href="/dashboard.html">← Dashboard</a>
       <a href="#" id="refreshBtn">↻ Refresh</a>
+      <a href="#" id="benchBtn" title="Fire one short prompt at every agent and measure tokens/second">⚡ Benchmark all</a>
+      <span id="benchStatus" style="color:var(--text-secondary)"></span>
     </div>
   </header>
 
@@ -244,6 +246,9 @@ function render() {
         <span><b>${a.tasksCompleted}</b> done</span>
         <span><b>${a.tasksInProgress}</b> active</span>
         <span><b>${a.models.length}</b> models</span>
+        ${a.throughput
+          ? `<span title="${escapeHtml(a.throughput.model)} · ${a.throughput.completionTokens}t / ${a.throughput.latencyMs}ms · ${new Date(a.throughput.ts).toLocaleTimeString()}"><b style="color:#22c55e">${a.throughput.tokensPerSec}</b> tok/s</span>`
+          : `<span style="color:var(--warning)" title="No real LLM call recorded yet — click ⚡ Benchmark all">— tok/s</span>`}
       </div>
       ${a.lastAction ? `<div class="last">▸ ${escapeHtml(a.lastAction.line)}</div>` : ''}
     </div>
@@ -304,6 +309,26 @@ document.getElementById('mClose').addEventListener('click', () => document.getEl
 document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') document.getElementById('modal').classList.remove('open'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('modal').classList.remove('open'); });
 document.getElementById('refreshBtn').addEventListener('click', e => { e.preventDefault(); loadOverview(); });
+
+document.getElementById('benchBtn').addEventListener('click', async e => {
+  e.preventDefault();
+  const btn = e.target;
+  const status = document.getElementById('benchStatus');
+  btn.style.opacity = '0.5';
+  status.textContent = 'benchmarking 14 agents (sequential, ~30-90 s)…';
+  try {
+    const t0 = Date.now();
+    const r = await fetch('/api/agents/benchmark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await r.json();
+    const ok = (j.results || []).filter(x => x.ok).length;
+    const fail = (j.results || []).length - ok;
+    const total = ((Date.now() - t0) / 1000).toFixed(1);
+    status.textContent = `bench done · ${ok}/${ok + fail} ok · ${total}s`;
+    await loadOverview();
+  } catch (err) {
+    status.textContent = 'bench failed: ' + err.message;
+  } finally { btn.style.opacity = '1'; }
+});
 
 // === Ask Agent (live test against the drafted persona) =========================
 let currentAgent = null;

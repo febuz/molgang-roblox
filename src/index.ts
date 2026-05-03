@@ -694,11 +694,13 @@ function readAgentPrompts(): { [name: string]: { prompt: string; model?: string;
 app.get('/api/agents/overview', (_req, res) => {
   const prompts = readAgentPrompts();
   const tail = (s: string, n: number) => s.length > n ? s.slice(0, n) + '…' : s;
+  const throughput = lmstudio.getLastThroughput();
   const agents = AGENT_META.map(meta => {
     const prog = (taskEngine as any).getAgentProgress?.(meta.name) || { completed: 0, inProgress: 0, currentTask: null };
     const cli = taskEngine.getAgentCliLog(meta.name, 1);
     const lastLine = cli[0];
     const persona = prompts[meta.name];
+    const tp = throughput[meta.name];
     return {
       name: meta.name,
       role: meta.role,
@@ -715,6 +717,7 @@ app.get('/api/agents/overview', (_req, res) => {
       promptModel: persona?.model || null,
       promptGeneratedAt: persona?.generatedAt || null,
       hasPrompt: !!persona,
+      throughput: tp || null,    // {tokensPerSec, model, promptTokens, completionTokens, latencyMs, ts}
     };
   });
   res.json({
@@ -724,6 +727,47 @@ app.get('/api/agents/overview', (_req, res) => {
     promptsAvailable: Object.keys(prompts).length,
     generatedAt: new Date().toISOString(),
   });
+});
+
+// Live tokens-per-second per agent. Updated by lmstudio.chatAsAgent on every
+// successful real call. Empty until something has actually been measured.
+app.get('/api/agents/throughput', (_req, res) => {
+  res.json({ success: true, throughput: lmstudio.getLastThroughput() });
+});
+
+// Run a one-shot benchmark for every agent (or a subset). Each agent gets a
+// short identical prompt, lmstudio.chatAsAgent serves it (Kimi via CLI; the
+// rest via LM Studio with the existing fallback chain), and the resulting
+// tokens/second + which model actually served are returned. Updates the
+// in-memory throughput cache so the All-Agents page can show fresh numbers
+// without re-running. Sequential to avoid GPU contention spikes.
+app.post('/api/agents/benchmark', async (req, res) => {
+  const wanted: string[] = Array.isArray(req.body?.agents) ? req.body.agents
+                          : AGENT_META.map(a => a.name);
+  const maxTokens = parseInt(req.body?.max_tokens) || 80;
+  const prompt = String(req.body?.prompt || 'Reply with this exact sentence and nothing else: BENCHMARK_OK.');
+  const results: Array<{ agent: string; ok: boolean; model?: string; tokensPerSec?: number; promptTokens?: number; completionTokens?: number; latencyMs?: number; reason?: string }> = [];
+  const t0 = Date.now();
+  for (const agent of wanted) {
+    const meta = AGENT_META.find(a => a.name === agent);
+    if (!meta) { results.push({ agent, ok: false, reason: 'unknown agent' }); continue; }
+    try {
+      const r = await lmstudio.chatAsAgent(agent, [
+        { role: 'system', content: 'You are a benchmark probe. Reply tersely.' },
+        { role: 'user', content: prompt },
+      ], { taskType: 'cheap', temperature: 0.1, max_tokens: maxTokens });
+      if (r.ok) {
+        const tt = lmstudio.getLastThroughput()[agent];
+        results.push({ agent, ok: true, model: r.model, tokensPerSec: tt?.tokensPerSec ?? 0,
+                       promptTokens: tt?.promptTokens, completionTokens: tt?.completionTokens, latencyMs: r.latencyMs });
+      } else {
+        results.push({ agent, ok: false, reason: r.reason });
+      }
+    } catch (e: any) {
+      results.push({ agent, ok: false, reason: e.message });
+    }
+  }
+  res.json({ success: true, totalMs: Date.now() - t0, results });
 });
 
 // Single-agent zoom-in: full persona prompt + recent activity

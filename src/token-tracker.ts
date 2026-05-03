@@ -136,6 +136,26 @@ export function recordAgentTokens() {
   }
 }
 
+// Real-call recorder — wired from lmstudio.chatAsAgent on every successful
+// completion. Adds a real event alongside the simulated stream, tagged with
+// action='real-llm' so dashboards can split if they want to.
+export function recordRealEvent(input: { agent: string; model: string; promptTokens: number; completionTokens: number }) {
+  const mc = MODEL_COSTS[input.model] || { prompt: 0, completion: 0, tier: 1 as 1|2|3 };
+  const total = input.promptTokens + input.completionTokens;
+  events.push({
+    timestamp: Date.now(),
+    agent: input.agent,
+    model: input.model,
+    tier: mc.tier,
+    promptTokens: input.promptTokens,
+    completionTokens: input.completionTokens,
+    totalTokens: total,
+    cost: (input.promptTokens / 1000) * mc.prompt + (input.completionTokens / 1000) * mc.completion,
+    action: 'real-llm',
+  });
+  if (events.length > 50000) events.splice(0, events.length - 50000);
+}
+
 // === AGGREGATION FUNCTIONS ===
 
 function filterByTime(from: number, to: number): TokenEvent[] {

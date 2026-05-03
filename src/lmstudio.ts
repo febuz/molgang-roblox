@@ -13,6 +13,38 @@
 import logger from './utils/logger';
 import { execFile } from 'child_process';
 
+// Lazy-imported to avoid the chicken-and-egg between token-tracker (also
+// imports from agent-registry like this module does). Re-imported inside
+// the recordRealCall fn so the module's events array is shared.
+
+// Most-recent measurement per agent. Updated on every successful chatAsAgent
+// call so the dashboard can show "live tok/s" without re-running benchmarks.
+// Persists in-process; resets on virtualpc restart.
+const lastThroughput: Record<string, { tokensPerSec: number; model: string; promptTokens: number; completionTokens: number; latencyMs: number; ts: string }> = {};
+export function getLastThroughput() { return { ...lastThroughput }; }
+function recordThroughput(agent: string, model: string, usage: any, latencyMs: number) {
+  const completion = usage?.completion_tokens ?? 0;
+  const prompt = usage?.prompt_tokens ?? 0;
+  const tps = latencyMs > 0 ? (completion / (latencyMs / 1000)) : 0;
+  lastThroughput[agent] = {
+    tokensPerSec: Math.round(tps * 10) / 10,
+    model,
+    promptTokens: prompt,
+    completionTokens: completion,
+    latencyMs,
+    ts: new Date().toISOString(),
+  };
+  // Best-effort feed to the simulated tracker so events page reflects it
+  // alongside the simulated stream. Keeps the dashboard's accounting model
+  // unchanged; the tracker just gains real entries on top.
+  try {
+    const tt = require('./token-tracker');
+    if (typeof tt.recordRealEvent === 'function') {
+      tt.recordRealEvent({ agent, model, promptTokens: prompt, completionTokens: completion });
+    }
+  } catch { /* tracker unavailable — ignore */ }
+}
+
 // ─── Kimi CLI bridge ──────────────────────────────────────────────────────
 // Shells out to `kimi --quiet -p <prompt>` (Moonshot's paid CLI, installed
 // at ~/.local/bin/kimi by the user). Joins messages[] into one prompt so
@@ -258,7 +290,10 @@ export async function chatAsAgent(
   // call still completes against a local model.
   if (agent === 'Kimi') {
     const r = await chatViaKimiCli(messages, opts);
-    if (r) return { ...r, agent };
+    if (r) {
+      recordThroughput(agent, r.model, r.usage, r.latencyMs);
+      return { ...r, agent };
+    }
   }
 
   const hint = opts.taskType
@@ -300,13 +335,15 @@ export async function chatAsAgent(
 
   try {
     const r = await attemptChat(model);
+    const latencyMs = Date.now() - started;
+    recordThroughput(agent, model, r.usage, latencyMs);
     return {
       ok: true,
       model,
       agent,
       content: r.choices[0]?.message?.content || '',
       usage: r.usage || null,
-      latencyMs: Date.now() - started,
+      latencyMs,
     };
   } catch (e: any) {
     // Two distinct error families the local stack throws under load:
@@ -328,12 +365,14 @@ export async function chatAsAgent(
       await new Promise(r => setTimeout(r, wait));
       try {
         const r = await attemptChat(model);
+        const latencyMs = Date.now() - started;
+        recordThroughput(agent, model, r.usage, latencyMs);
         logger.info(`LM Studio retry-after-OOM: ${model} succeeded after wait`);
         return {
           ok: true, model, agent,
           content: r.choices[0]?.message?.content || '',
           usage: r.usage || null,
-          latencyMs: Date.now() - started,
+          latencyMs,
         };
       } catch (e2: any) {
         // Fall through to the load-failure / fallback path below with the new error.
@@ -347,6 +386,8 @@ export async function chatAsAgent(
       if (fallbackModel && fallbackModel !== model) {
         try {
           const r = await attemptChat(fallbackModel);
+          const latencyMs = Date.now() - started;
+          recordThroughput(agent, fallbackModel, r.usage, latencyMs);
           logger.info(`LM Studio fallback: ${model} failed, served via ${fallbackModel}`);
           return {
             ok: true,
@@ -354,7 +395,7 @@ export async function chatAsAgent(
             agent,
             content: r.choices[0]?.message?.content || '',
             usage: r.usage || null,
-            latencyMs: Date.now() - started,
+            latencyMs,
           };
         } catch (e2: any) {
           return { ok: false, reason: `Both ${model} and fallback ${fallbackModel} failed. Last: ${e2.message}`, hint: 'Try `lms load microsoft/phi-4` then retry' };
