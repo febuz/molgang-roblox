@@ -697,9 +697,14 @@ interface WorkLogEntry {
 }
 
 const workLog: WorkLogEntry[] = [];
-// Replay any work-log entries that were restored from the persisted state
+// Replay any work-log entries that were restored from the persisted state.
+// Use a manual loop instead of `push(...arr)` because the persisted log can
+// be 100k+ entries and V8's variadic-call argument limit (~125k) blows the
+// stack — observed crash: "RangeError: Maximum call stack size exceeded"
+// at startup when the log grew past the threshold.
 if ((globalThis as any).__virtualpcPersistedWorkLog) {
-  workLog.push(...((globalThis as any).__virtualpcPersistedWorkLog as WorkLogEntry[]));
+  const persisted = (globalThis as any).__virtualpcPersistedWorkLog as WorkLogEntry[];
+  for (let i = 0; i < persisted.length; i++) workLog.push(persisted[i]);
   delete (globalThis as any).__virtualpcPersistedWorkLog;
 }
 const PROJECT_NAME = 'VirtualPC platform';

@@ -619,6 +619,30 @@ app.get('/api/agents/:name/in-progress-detail', (req, res) => {
 });
 
 // Live CLI log stream for an agent (client polls every 2s)
+// All-agents merged CLI feed — backs the /terminal.html page that streams
+// every agent's stdout into one timeline. Each line is tagged with agent +
+// color (from the registry) so the client can show colored output and let
+// the user toggle individual agents on/off without an extra fetch per agent.
+app.get('/api/agents/cli-log/all', (req, res) => {
+  const limitPerAgent = parseInt(req.query.limit as string) || 30;
+  const since = req.query.since ? Date.parse(String(req.query.since)) : 0;
+  const merged: { ts: string; agent: string; color: string; avatar: string; line: string; level?: string }[] = [];
+  for (const meta of AGENT_META) {
+    const lines = taskEngine.getAgentCliLog(meta.name, limitPerAgent);
+    for (const l of lines) {
+      if (since && Date.parse(l.ts) <= since) continue;
+      merged.push({ ts: l.ts, agent: meta.name, color: meta.color, avatar: meta.avatar, line: l.line, level: l.level });
+    }
+  }
+  merged.sort((a, b) => a.ts.localeCompare(b.ts));
+  res.json({
+    success: true,
+    count: merged.length,
+    lastTs: merged.length ? merged[merged.length - 1].ts : null,
+    lines: merged,
+  });
+});
+
 app.get('/api/agents/:name/cli-log', (req, res) => {
   const limit = parseInt(req.query.limit as string) || 50;
   const lines = taskEngine.getAgentCliLog(req.params.name, limit);
