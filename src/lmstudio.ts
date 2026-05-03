@@ -11,6 +11,68 @@
  */
 
 import logger from './utils/logger';
+import { execFile } from 'child_process';
+
+// ─── Kimi CLI bridge ──────────────────────────────────────────────────────
+// Shells out to `kimi --quiet -p <prompt>` (Moonshot's paid CLI, installed
+// at ~/.local/bin/kimi by the user). Joins messages[] into one prompt so
+// the existing call sites don't need to change shape. Prints stdout only;
+// the CLI's --quiet flag suppresses the TUI noise.
+const KIMI_CLI_PATH = process.env.KIMI_CLI_PATH || (process.env.HOME ? `${process.env.HOME}/.local/bin/kimi` : 'kimi');
+const KIMI_TIMEOUT_MS = parseInt(process.env.KIMI_TIMEOUT_MS || '120000');
+
+function flattenMessages(messages: { role: string; content: string }[]): string {
+  // kimi --quiet -p takes a single string. Mark roles so the model can
+  // tell SYSTEM context from the USER turn.
+  return messages.map(m => {
+    const r = m.role.toUpperCase();
+    return r === 'USER' ? m.content : `[${r}]\n${m.content}`;
+  }).join('\n\n');
+}
+
+async function chatViaKimiCli(
+  messages: { role: string; content: string }[],
+  opts: { temperature?: number; max_tokens?: number } = {},
+): Promise<{ ok: true; model: string; agent: string; content: string; usage: any; latencyMs: number } | null> {
+  const prompt = flattenMessages(messages);
+  const started = Date.now();
+  return new Promise((resolve) => {
+    execFile(KIMI_CLI_PATH, ['--quiet', '-p', prompt], { maxBuffer: 4 * 1024 * 1024, timeout: KIMI_TIMEOUT_MS },
+      (err, stdout, stderr) => {
+        if (err) {
+          // Common cases: ENOENT (CLI not installed for this user/PATH), 124 (timeout), 1 (auth lapse).
+          const code = (err as any).code;
+          if (code === 'ENOENT') {
+            logger.warn(`Kimi CLI not found at ${KIMI_CLI_PATH} — falling back to LM Studio`);
+            resolve(null);     // signals caller to fall through
+            return;
+          }
+          logger.warn(`Kimi CLI error (code=${code}): ${(stderr || err.message).slice(0, 200)}`);
+          resolve(null);       // graceful fallback
+          return;
+        }
+        // --quiet output also includes a trailing "To resume this session: kimi -r <id>" line.
+        // Strip it so the response is clean.
+        const cleaned = stdout
+          .split('\n')
+          .filter(l => !/^\s*To resume this session:/i.test(l))
+          .join('\n')
+          .trim();
+        // Rough token estimate (no usage stats from CLI). 1 token ≈ 4 chars.
+        const promptTokens = Math.round(prompt.length / 4);
+        const completionTokens = Math.round(cleaned.length / 4);
+        resolve({
+          ok: true,
+          model: 'kimi-k2.6',
+          agent: '',                     // filled in by caller
+          content: cleaned,
+          usage: { prompt_tokens: promptTokens, completion_tokens: completionTokens, total_tokens: promptTokens + completionTokens, source: 'kimi-cli-estimate' },
+          latencyMs: Date.now() - started,
+        });
+      },
+    );
+  });
+}
 
 // Prefer LiteLLM unified gateway when running. LiteLLM exposes the
 // OpenAI-compatible /v1 surface and routes to local LM Studio + every
@@ -188,6 +250,17 @@ export async function chatAsAgent(
   opts: { temperature?: number; max_tokens?: number; taskType?: keyof typeof TASK_TYPE_ROUTES } = {}
 ): Promise<{ ok: true; model: string; agent: string; content: string; usage: any; latencyMs: number }
          | { ok: false; reason: string; hint?: string }> {
+  // Kimi agent has its own paid CLI subscription — bypass LM Studio entirely
+  // and shell out to `kimi --quiet -p ...`. Honors the user's explicit
+  // request: the Kimi roster slot should consume Moonshot quota, not local
+  // GPU. If the CLI isn't on PATH (e.g. virtualpc.service running as a
+  // different user), fall through to the LM Studio routing below so the
+  // call still completes against a local model.
+  if (agent === 'Kimi') {
+    const r = await chatViaKimiCli(messages, opts);
+    if (r) return { ...r, agent };
+  }
+
   const hint = opts.taskType
     ? (TASK_TYPE_ROUTES[opts.taskType] || AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b')
     : (AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b');

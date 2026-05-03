@@ -31,6 +31,10 @@ const MODEL_COSTS: { [model: string]: { prompt: number; completion: number; tier
   'deepseek-r1-8b': { prompt: 0, completion: 0, tier: 1 },
   'phi-4':          { prompt: 0, completion: 0, tier: 1 },
   'nomic-embed':    { prompt: 0, completion: 0, tier: 1 },
+  // Moonshot Kimi via the paid CLI subscription (kimi --quiet -p).
+  // User has a flat-fee plan, so per-token cost is $0 from our accounting
+  // perspective. Marked tier 1 so it shows alongside the local roster.
+  'kimi-k2.6':      { prompt: 0, completion: 0, tier: 1 },
   // Cloud fallbacks (used only when local is unreachable or context exceeds local ctx)
   'mistral-7b':     { prompt: 0.0001, completion: 0.0003, tier: 2 },
   'llama-70b':      { prompt: 0.0003, completion: 0.0008, tier: 2 },
@@ -55,7 +59,7 @@ const AGENT_MODELS: { [agent: string]: string[] } = {
   VideoProducer: ['phi-4', 'gemma-4-26b'],
   Vice:          ['phi-4', 'gemma-4-26b'],
   Atlas:         ['devstral', 'deepseek-r1-8b'],
-  Kimi:          ['phi-4', 'gemma-4-26b', 'qwen3.5-27b'],  // local fallbacks; routes to Moonshot Kimi when MOONSHOT_API_KEY is set
+  Kimi:          ['kimi-k2.6', 'phi-4', 'gemma-4-26b', 'qwen3.5-27b'],  // primary: Moonshot Kimi via paid CLI (~/.local/bin/kimi); local fallbacks if CLI missing
   Croesus:       ['phi-4', 'deepseek-r1-8b'],              // local fallbacks; routes to Kimi/DeepSeek for commercial reasoning
 };
 
