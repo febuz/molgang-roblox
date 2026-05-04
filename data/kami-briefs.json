@@ -15,9 +15,11 @@
         "docs/SCRUM-CHARTERS.md"
       ],
       "outputPath": "docs/kami/README.html",
-      "status": "queued",
+      "status": "delivered",
       "createdAt": "2026-05-04T11:08:37.292Z",
-      "updatedAt": "2026-05-04T11:08:37.292Z"
+      "updatedAt": "2026-05-04T14:39:23.295Z",
+      "notes": "fallback renderer used (scripts/render-kami-brief.js); editorial polish via real Kami skill recommended",
+      "deliveredAt": "2026-05-04T14:39:23.295Z"
     },
     {
       "id": "brief-mor3jepf-rg4oq",
@@ -35,9 +37,11 @@
         "docs/TOOL-USE-COORDINATION.md"
       ],
       "outputPath": "docs/kami/VIRTUALPC-ARCHITECTURE.html",
-      "status": "queued",
+      "status": "delivered",
       "createdAt": "2026-05-04T11:08:37.299Z",
-      "updatedAt": "2026-05-04T11:08:37.299Z"
+      "updatedAt": "2026-05-04T14:39:23.290Z",
+      "notes": "fallback renderer used (scripts/render-kami-brief.js); editorial polish via real Kami skill recommended",
+      "deliveredAt": "2026-05-04T14:39:23.290Z"
     },
     {
       "id": "brief-mor3jeph-li8tf",
@@ -52,9 +56,11 @@
         "shared/wiki-terms.json (molgang-web)"
       ],
       "outputPath": "docs/kami/wiki-one-pager.html",
-      "status": "queued",
+      "status": "delivered",
       "createdAt": "2026-05-04T11:08:37.301Z",
-      "updatedAt": "2026-05-04T11:08:37.301Z"
+      "updatedAt": "2026-05-04T14:40:13.291Z",
+      "notes": "fallback renderer used (scripts/render-kami-brief.js); editorial polish via real Kami skill recommended",
+      "deliveredAt": "2026-05-04T14:40:13.291Z"
     }
   ]
 }
