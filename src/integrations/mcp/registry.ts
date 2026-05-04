@@ -26,6 +26,7 @@ import * as governance from '../governance';
 import * as wiki from '../wiki';
 import * as scrum from '../scrum';
 import * as forum from '../forum';
+import * as kami from '../kami';
 import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../../utils/logger';
@@ -308,23 +309,59 @@ const TOOLS: ToolDefinition[] = [
     },
   },
 
-  // ─── docs.regenerate ──────────────────────────────────────────────────
-  // Kicks the Kimi-backed doc regeneration script. The actual long-running
-  // work is in scripts/regenerate-docs.js; this just records the request.
+  // ─── kami.* — typeset document briefs ─────────────────────────────────
+  // Agents queue typeset-doc requests here. A Claude Code session with
+  // the Kami skill (~/.claude/skills/kami) drains the queue and renders.
   {
-    name: 'docs.regenerate',
-    description: 'Trigger the Kimi-backed regenerate-docs script (long-context author refreshes README/architecture/wiki).',
+    name: 'kami.queue',
+    description: 'Queue a typeset-document brief for Kami (Claude Code skill renders to HTML/PDF/slides). Use for resumes, one-pagers, white papers, letters, portfolios, slide decks.',
     inputSchema: {
       type: 'object',
-      properties: { scope: { type: 'string', enum: ['readme', 'architecture', 'wiki', 'all'], description: 'Which doc bundle to refresh' } },
+      properties: {
+        requester: { type: 'string' },
+        type: { type: 'string', enum: ['one-pager', 'long-doc', 'letter', 'portfolio', 'resume', 'slides', 'white-paper'] },
+        language: { type: 'string', enum: ['en', 'zh', 'ja'] },
+        title: { type: 'string' },
+        audience: { type: 'string' },
+        outline: { type: 'string', description: 'Markdown outline / key points the doc must cover' },
+        sources: { type: 'string', description: 'comma-separated list of sources (URLs, file paths, governance ids)' },
+        outputPath: { type: 'string' },
+      },
+      required: ['requester', 'type', 'title', 'outline'],
     },
-    handler: async ({ scope }: { scope?: string }) => {
-      // Returns instructions; the actual run is shell-side via /api/docs/regenerate.
-      return {
-        ok: true,
-        note: `queued docs.regenerate scope=${scope || 'all'} — POST to /api/docs/regenerate to execute`,
-        scope: scope || 'all',
-      };
+    handler: async (a: any) => {
+      const sources = typeof a.sources === 'string'
+        ? a.sources.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : a.sources;
+      return kami.queueBrief({ ...a, sources });
+    },
+  },
+  {
+    name: 'kami.briefs',
+    description: 'List Kami doc briefs (filter by status / requester).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: { type: 'string', enum: ['queued', 'in-progress', 'delivered', 'cancelled'] },
+        requester: { type: 'string' },
+      },
+    },
+    handler: async (a: any) => ({ briefs: kami.listBriefs({ ...a, limit: 100 }) }),
+  },
+  {
+    name: 'kami.deliver',
+    description: 'Mark a Kami brief delivered (called by the renderer after writing the HTML/PDF). Optional notes on choices made.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' }, status: { type: 'string', enum: ['queued', 'in-progress', 'delivered', 'cancelled'] },
+        notes: { type: 'string' },
+      },
+      required: ['id', 'status'],
+    },
+    handler: async (a: { id: string; status: kami.KamiStatus; notes?: string }) => {
+      const b = kami.setStatus(a.id, a.status, a.notes);
+      return b ? { brief: b } : { error: `unknown brief: ${a.id}` };
     },
   },
 ];

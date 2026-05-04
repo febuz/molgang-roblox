@@ -1,0 +1,60 @@
+{
+  "briefs": [
+    {
+      "id": "brief-mor3jep8-6u5w0",
+      "requester": "Mira",
+      "type": "long-doc",
+      "language": "en",
+      "title": "virtualpc — multi-agent platform for molgang",
+      "audience": "developers + technical stakeholders new to the repo",
+      "outline": "## Mission\nvirtualpc orchestrates a 31-agent roster across four scrums (roblox, web, marketing, cross) plus testers and Hermes coordinators.\nIt produces the Roblox + web ports of molgang and the marketing perception layer.\n\n## Quick start\n- prerequisites (node 20+, LM Studio on :1234, optional Kimi CLI, optional Anthropic API key)\n- `npm install`\n- `npm run start` — defaults to port 3100\n- systemd: `systemctl --user enable --now virtualpc.service`\n\n## Agent roster\n- Core (8): Fill, Kai, Zip, Mira, Luna, Governor, Pixel + Atlas\n- Decision (3): Cleopatra, Alexander, MoneyGod\n- Specialists (4): Vice, Kimi, Croesus + Atlas\n- Resource (2): Analyst, VideoProducer\n- Hermes coordinators (5): Roblox, Web, Marketing, Cross, Reviewer\n- Testers (10): 4 Roblox + 4 Web + 2 Marketing\n\n## HTTP surface (key)\n- /api/agents/overview\n- /api/llm/chat — agent + messages + taskType\n- /api/scrums, /api/forum/:team, /api/wiki, /api/governance\n- /api/mcp/{tools,call} — schema-validated tool dispatch\n- /api/kami/{queue,briefs,briefs/:id/status}\n\n## Tool-use coordination\nSee docs/TOOL-USE-COORDINATION.md — in-house MCP-shaped registry, ACL per agent.\n\n## Documentation pipeline\nSee docs/KAMI-DOCS.md — agents queue Kami briefs; Claude Code session renders them via the Kami skill.",
+      "sources": [
+        "src/agent-registry.ts",
+        "src/index.ts",
+        "docs/TOOL-USE-COORDINATION.md",
+        "docs/SCRUM-CHARTERS.md"
+      ],
+      "outputPath": "docs/kami/README.html",
+      "status": "queued",
+      "createdAt": "2026-05-04T11:08:37.292Z",
+      "updatedAt": "2026-05-04T11:08:37.292Z"
+    },
+    {
+      "id": "brief-mor3jepf-rg4oq",
+      "requester": "Mira",
+      "type": "white-paper",
+      "language": "en",
+      "title": "virtualpc architecture — May 2026",
+      "audience": "engineering leads + future maintainers",
+      "outline": "## System overview\nExpress + TypeScript service on port 3100, fronted by an LM Studio + LiteLLM gateway. Persists state to JSON files (data/) with dirty-flag + 5s save pattern; codegraph + governance + wiki + scrum + forum + kami modules each self-contained under src/integrations.\n\n## Model routing\n- Default: LiteLLM → LM Studio (phi-4, devstral, deepseek-r1, gemma-4-26b, qwen3.5-27b).\n- Kimi agent: shells to ~/.local/bin/kimi --quiet -p (Moonshot subscription).\n- Designer agents (Mira, Luna): claude --bare --print -p (when ANTHROPIC_API_KEY set).\n- Documentation: Kami skill via Claude Code session (this script queues briefs).\n\n## Tool-use coordination\nIn-house MCP-shaped registry at src/integrations/mcp/registry.ts. 13 tools across codegraph, governance, wiki, assets, scrum, forum, kami namespaces. Per-agent ACL on AgentMeta.tools (wildcards allowed). HTTP surface at /api/mcp/{tools,call}.\nWhy MCP not Symphony: see docs/TOOL-USE-COORDINATION.md.\n\n## Data layer\n- governance: registry of every shared/*.json + asset registry + wiki source-of-truth.\n- wiki: glossary of game terms + quantum-chem-engineering terms.\n- scrum: standups + bug reports per team.\n- forum: tester discussion threads per team.\n- kami: typeset-doc brief queue.\nLineage walk: wiki entry → governance entry → source file.\n\n## Documentation pipeline (Kami)\nAgents queue briefs via kami.queue MCP tool or POST /api/kami/queue. A Claude Code session in ~/virtualpc reads /api/kami/briefs?status=queued and renders each via the Kami skill. Output lands in docs/kami/. Renderer marks the brief delivered via /api/kami/briefs/:id/status.\n\n## Operations\n- systemd unit: ~/.config/systemd/user/virtualpc.service\n- Backup timer: molgang-backup.timer (Sun 02:30, hardlink-deduped snapshots, see docs/BACKUP.md).",
+      "sources": [
+        "src/agent-registry.ts",
+        "src/integrations/mcp/registry.ts",
+        "src/integrations/governance/index.ts",
+        "src/integrations/kami/index.ts",
+        "docs/TOOL-USE-COORDINATION.md"
+      ],
+      "outputPath": "docs/kami/VIRTUALPC-ARCHITECTURE.html",
+      "status": "queued",
+      "createdAt": "2026-05-04T11:08:37.299Z",
+      "updatedAt": "2026-05-04T11:08:37.299Z"
+    },
+    {
+      "id": "brief-mor3jeph-li8tf",
+      "requester": "Mira",
+      "type": "one-pager",
+      "language": "en",
+      "title": "molgang glossary — game + quantum-chem-engineering terms",
+      "audience": "players, educators, and chem-curious browsers",
+      "outline": "Two-column layout: game terms (left) + quantum-chem-engineering terms (right).\nEach term: bold name + 1-line summary + (optional) brief expansion.\nSource: GET http://127.0.0.1:3100/api/wiki — 13 entries today, mix of namespaces.\nCross-references rendered as small hyperlinks.\nFooter: governance lineage line (\"authored by Kimi + curated by Governor; CC-BY-4.0\").",
+      "sources": [
+        "http://127.0.0.1:3100/api/wiki",
+        "shared/wiki-terms.json (molgang-web)"
+      ],
+      "outputPath": "docs/kami/wiki-one-pager.html",
+      "status": "queued",
+      "createdAt": "2026-05-04T11:08:37.301Z",
+      "updatedAt": "2026-05-04T11:08:37.301Z"
+    }
+  ]
+}

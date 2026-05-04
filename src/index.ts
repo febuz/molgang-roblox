@@ -59,6 +59,7 @@ import * as governance from './integrations/governance';
 import * as wiki from './integrations/wiki';
 import * as scrum from './integrations/scrum';
 import * as forum from './integrations/forum';
+import * as kami from './integrations/kami';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
@@ -506,6 +507,57 @@ app.post('/api/forum/thread/:id/reply', (req, res) => {
     if (!r) { res.status(404).json({ success: false, error: 'thread not found' }); return; }
     res.json({ success: true, reply: r });
   } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// Kami — doc-brief queue. Agents queue briefs here describing typeset
+// documents they want; a Claude Code session (with the Kami skill
+// installed at ~/.claude/skills/kami) drains the queue and renders.
+// virtualpc never tries to invoke `claude` itself — auth + autoloop-hook
+// recursion would bite. The renderer marks each brief delivered when
+// the HTML/PDF lands at outputPath.
+// ============================================================================
+app.get('/api/kami/briefs', (req, res) => {
+  try {
+    const status = req.query.status as kami.KamiStatus | undefined;
+    const requester = req.query.requester as string | undefined;
+    const limit = req.query.limit ? parseInt(String(req.query.limit)) : 50;
+    res.json({ success: true, briefs: kami.listBriefs({ status, requester, limit }) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/kami/briefs/:id', (req, res) => {
+  try {
+    const b = kami.getBrief(String(req.params.id));
+    if (!b) { res.status(404).json({ success: false, error: 'not found' }); return; }
+    res.json({ success: true, brief: b });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/kami/queue', (req, res) => {
+  try {
+    const body = req.body || {};
+    if (!body.requester || !body.type || !body.title || !body.outline) {
+      res.status(400).json({ success: false, error: 'requester, type, title, outline required' });
+      return;
+    }
+    res.json({ success: true, brief: kami.queueBrief(body) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/kami/briefs/:id/status', (req, res) => {
+  try {
+    const { status, notes } = req.body || {};
+    if (!status) { res.status(400).json({ success: false, error: 'status required' }); return; }
+    const b = kami.setStatus(req.params.id, status, notes);
+    if (!b) { res.status(404).json({ success: false, error: 'not found' }); return; }
+    res.json({ success: true, brief: b });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/kami/summary', (_req, res) => {
+  try { res.json({ success: true, ...kami.summary() }); }
+  catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // ============================================================================

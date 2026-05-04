@@ -269,12 +269,13 @@ const TASK_TYPE_ROUTES: { [kind: string]: string } = {
   // by default). Credit cost is real — gated by ANTHROPIC_API_KEY auth.
   design:       'claude-sonnet',
   // Documentation route: ANY agent calling with taskType:'docs' is force-
-  // routed through the Kimi CLI (Moonshot, paid). Long-context window
-  // makes it the right pick for README / architecture / wiki authoring.
-  // Local fallback when the CLI is unavailable is gemma-4-26b (next-best
-  // long-context). Hint shown here is informational; chatAsAgent intercepts
-  // taskType==='docs' before model resolution runs.
-  docs:         'kimi-k2.6',
+  // routed through the Claude CLI so the Kami skill (tw93/kami, installed
+  // at ~/.claude/skills/kami) auto-triggers and produces typeset HTML /
+  // PDF / slides under the parchment + ink-blue design language.
+  // Plain-prose fallback (no Kami styling) if Claude auth is missing:
+  // gemma-4-26b for the next-best long-context author. The chatAsAgent
+  // intercept handles taskType==='docs' before model resolution runs.
+  docs:         'claude-sonnet',
 };
 
 interface LmModel {
@@ -410,27 +411,11 @@ export async function chatAsAgent(
   // GPU. If the CLI isn't on PATH (e.g. virtualpc.service running as a
   // different user), fall through to the LM Studio routing below so the
   // call still completes against a local model.
-  //
-  // Same bridge handles taskType:'docs' for ANY agent — long-context Moonshot
-  // is the right pick for README / architecture / wiki authoring. KIMI_FOR_DOCS=0
-  // disables the always-on policy if quota becomes a concern.
-  const kimiForDocs = process.env.KIMI_FOR_DOCS !== '0';
-  const isDocsTask = opts.taskType === 'docs' && kimiForDocs;
-  let docsFallthroughHint: string | null = null;
-  if (agent === 'Kimi' || isDocsTask) {
+  if (agent === 'Kimi') {
     const r = await chatViaKimiCli(messages, opts);
     if (r) {
       recordThroughput(agent, r.model, r.usage, r.latencyMs);
       return { ...r, agent };
-    }
-    // Kimi unavailable on a docs task (CLI missing OR quota exhausted, which
-    // returns 429 → null) → force the hint to a long-context local fallback
-    // (gemma-4-26b) so the doc still gets written, just without the Moonshot
-    // context window. Applies whether the caller was the Kimi agent itself
-    // or a non-Kimi agent that picked taskType:'docs'.
-    if (isDocsTask) {
-      docsFallthroughHint = 'gemma-4-26b';
-      logger.info(`Kimi CLI unavailable — docs task for ${agent} falling back to gemma-4-26b`);
     }
   }
 
@@ -441,20 +426,38 @@ export async function chatAsAgent(
   // chat / code paths stay on local models — the user's stated "save
   // credits" preference applies unless design quality is explicitly
   // requested.
+  //
+  // Documentation route: taskType:'docs' for ANY agent goes through the
+  // same Claude CLI bridge so the Kami skill (tw93/kami, installed at
+  // ~/.claude/skills/kami) auto-triggers on the natural-language doc
+  // phrasing and produces typeset HTML/PDF/slides. KAMI_FOR_DOCS=0
+  // disables the always-on policy. Local fallback for docs (Claude auth
+  // missing) is gemma-4-26b — long-context plain-prose, no Kami styling.
+  const kamiForDocs = process.env.KAMI_FOR_DOCS !== '0';
+  const isDocsTask = opts.taskType === 'docs' && kamiForDocs;
   let designerFallthroughHint: string | null = null;
-  if (DESIGNER_AGENTS.has(agent) && (opts.taskType === 'design' || process.env.CLAUDE_FOR_DESIGNERS === '1')) {
+  let docsFallthroughHint: string | null = null;
+  const claudeRouted = DESIGNER_AGENTS.has(agent) && (opts.taskType === 'design' || process.env.CLAUDE_FOR_DESIGNERS === '1');
+  if (claudeRouted || isDocsTask) {
     const r = await chatViaClaudeCli(messages, opts);
     if (r) {
       recordThroughput(agent, r.model, r.usage, r.latencyMs);
       return { ...r, agent };
     }
-    // null → claude auth missing or call failed. The taskType=design hint
-    // would normally map to 'claude-sonnet' which doesn't resolve against
-    // any locally-loaded LM Studio model, so we'd 500 with "No model
-    // loaded matching claude-sonnet". Override the hint to a sensible
-    // local default so the call still completes (degraded but functional).
-    designerFallthroughHint = AGENT_MODEL_ROUTES[agent] || 'phi-4';
-    logger.info(`Claude CLI unavailable — designer ${agent} falling back to ${designerFallthroughHint}`);
+    // null → claude auth missing or call failed. The taskType=design /
+    // taskType=docs hints would normally map to 'claude-sonnet' which
+    // doesn't resolve against any locally-loaded LM Studio model, so we'd
+    // 500 with "No model loaded matching claude-sonnet". Override the
+    // hint to a sensible local default so the call still completes
+    // (degraded but functional — no Kami styling on the docs path).
+    if (isDocsTask) {
+      docsFallthroughHint = 'gemma-4-26b';
+      logger.info(`Claude CLI unavailable — docs task for ${agent} falling back to gemma-4-26b (no Kami styling)`);
+    }
+    if (claudeRouted) {
+      designerFallthroughHint = AGENT_MODEL_ROUTES[agent] || 'phi-4';
+      logger.info(`Claude CLI unavailable — designer ${agent} falling back to ${designerFallthroughHint}`);
+    }
   }
 
   const hint = docsFallthroughHint

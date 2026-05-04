@@ -49,7 +49,11 @@ bottleneck. That isn't where we are today.
 | `wiki.lookup` | look up a wiki term by id or fuzzy name |
 | `wiki.upsert` | create/update wiki entry (Kimi/Governor/Pixel) |
 | `assets.search` | search EDS2 asset registry |
-| `docs.regenerate` | trigger Kimi-backed documentation refresh |
+| `scrum.standup` / `scrum.standups` / `scrum.bug` / `scrum.bugs` / `scrum.summary` | per-team standups + bug queue |
+| `forum.read` / `forum.post` / `forum.reply` | tester discussion threads |
+| `kami.queue` | queue a typeset-document brief (one-pager / long-doc / portfolio / slides / resume / letter / white-paper) |
+| `kami.briefs` | list briefs (filter by status / requester) |
+| `kami.deliver` | mark a brief delivered (renderer side) |
 
 ## HTTP surface
 
