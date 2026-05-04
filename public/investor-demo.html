@@ -112,7 +112,7 @@
 
 <div id="root"></div>
 
-<div class="slide-num"><span id="slide-counter">01 / 06</span></div>
+<div class="slide-num"><span id="slide-counter">01 / 07</span></div>
 <div class="signature">presented by <strong style="color:#fbbf24">Fill · CEO</strong></div>
 
 <!-- ============================================================== -->
@@ -204,7 +204,23 @@
 </div>
 
 <!-- ============================================================== -->
-<!-- SLIDE 6 — ROADMAP / CTA -->
+<!-- SLIDE 6 — SPRINT PROGRESS (GTA6-Polish-S1) -->
+<!-- ============================================================== -->
+<div class="slide" id="slide-sprint">
+  <div class="panel">
+    <div class="eyebrow">sprint progress · GTA6-Polish-S1</div>
+    <h1 style="font-size: clamp(1.7rem, 3.8vw, 2.6rem);">From gap report to shipped data layer.</h1>
+    <p>Four GP-tester gap reports → 20 backlog features → agents ship data + specs. Live state:</p>
+    <div id="sprint-list" style="margin-top: 16px; max-height: 320px; overflow-y: auto; font-size: 0.85rem;">Loading…</div>
+    <p style="margin-top: 12px; font-size: 0.8rem; color: #64748b;">
+      Live source: <code style="color:#93c5fd">molgang-web /api/sprint/gta6-polish-s1</code> ·
+      visualised at <code style="color:#93c5fd">/sprint</code>.
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- SLIDE 7 — ROADMAP / CTA -->
 <!-- ============================================================== -->
 <div class="slide" id="slide-roadmap">
   <div class="panel">
@@ -368,6 +384,7 @@ function goto(i) {
     { x: -3, y: -1, z: 9,  mx: 1,    my: -0.5 }, // team
     { x: 5,  y: -2, z: 7,  mx: -1.5, my: 1   }, // diff
     { x: -4, y: 2,  z: 8,  mx: 1.5,  my: -1  }, // pipeline
+    { x: 3,  y: 3,  z: 8,  mx: -1,   my: -1  }, // sprint progress
     { x: 0,  y: -3, z: 10, mx: 0,    my: 1.5 }, // roadmap
   ][i];
   cameraTarget = targets;
@@ -410,6 +427,52 @@ function animate() {
 animate();
 
 // ─── live data overlays ──────────────────────────────────────────
+async function loadSprint() {
+  // The sprint endpoint lives on molgang-web (different port). Try common
+  // local ports + skip silently if unreachable.
+  const candidates = [
+    'http://127.0.0.1:8000/api/sprint/gta6-polish-s1',
+    'http://127.0.0.1:8001/api/sprint/gta6-polish-s1',
+    'http://127.0.0.1:3000/api/sprint/gta6-polish-s1',
+  ];
+  for (const url of candidates) {
+    try {
+      const r = await fetch(url, { mode: 'cors' });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const STATUS_COLORS = {
+        'data-shipped': '#10b981', 'spec-shipped': '#60a5fa',
+        'data-partial': '#eab308', 'spec-pending': '#94a3b8', 'pending': '#475569',
+      };
+      const list = document.getElementById('sprint-list');
+      if (!list) return;
+      list.innerHTML = `
+        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-bottom:14px;">
+          <div style="background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.2); border-radius:6px; padding:10px;">
+            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Avg completion</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#fbbf24;">${d.average_completion_pct}%</div>
+          </div>
+          <div style="background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.2); border-radius:6px; padding:10px;">
+            <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Features</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#fbbf24;">${d.total_features}</div>
+          </div>
+        </div>
+        ${(d.features || []).map(f => `
+          <div style="display:grid; grid-template-columns: 80px 1fr 60px; gap:8px; padding:5px 0; border-bottom:1px dotted rgba(96,165,250,0.12); font-size:0.78rem;">
+            <code style="color:#fbbf24; font-family: ui-monospace, monospace;">${f.id}</code>
+            <span style="color:#cbd5e1;">${f.title}</span>
+            <span style="color:${STATUS_COLORS[f.status] || '#888'}; text-align:right;">${f.completion_pct}%</span>
+          </div>
+        `).join('')}
+      `;
+      return;
+    } catch (e) { /* try next */ }
+  }
+  // All candidates failed — show a graceful fallback.
+  const list = document.getElementById('sprint-list');
+  if (list) list.innerHTML = '<em style="color:#64748b;">Sprint endpoint unreachable. Open <code>/sprint</code> on the molgang-web frontend for live status.</em>';
+}
+
 async function loadLive() {
   // Traction stats
   try {
@@ -471,6 +534,7 @@ async function loadLive() {
   }
 }
 loadLive();
+loadSprint();
 </script>
 </body>
 </html>
