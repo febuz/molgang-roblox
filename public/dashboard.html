@@ -611,6 +611,10 @@
                     <div class="nav-icon">🪶</div>
                     <div>Kafka Spine</div>
                 </div>
+                <div class="nav-item" data-page="commitsops">
+                    <div class="nav-icon">📜</div>
+                    <div>Recent Commits</div>
+                </div>
             </div>
 
             <div class="nav-section">
@@ -1043,6 +1047,24 @@
                 <div class="card">
                     <div class="card-title">Live audit tail <span style="float:right;"><select id="kf-topic-filter" style="background: var(--bg-darker); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-size: 0.85em;"><option value="">all topics</option></select></span></div>
                     <div id="kf-audit" style="display: flex; flex-direction: column; gap: 4px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.78em; max-height: 480px; overflow-y: auto;">Loading…</div>
+                </div>
+            </div>
+
+            <!-- RECENT COMMITS PAGE -->
+            <div class="content-section" id="commitsops">
+                <div class="page-header">
+                    <div class="page-title">📜 Recent Commits</div>
+                    <div class="page-subtitle">Live audit log from the post-commit git hook. Each commit attributed to an agent (word-boundary match on subject) and linked to its task ref where one was extractable.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Per-agent commit count <span style="float:right; color: var(--text-secondary); font-weight: normal; font-size: 0.85em;" id="ck-summary-meta">…</span></div>
+                    <div id="ck-byagent" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px;">Loading…</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Commits <span style="float:right;"><select id="ck-agent-filter" style="background: var(--bg-darker); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-size: 0.85em;"><option value="">all agents</option></select></span></div>
+                    <div id="ck-list" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85em; max-height: 600px; overflow-y: auto;">Loading…</div>
                 </div>
             </div>
 
@@ -1548,6 +1570,56 @@
         document.getElementById('kf-topic-filter').addEventListener('change', () => loadKafkaOps());
         document.querySelectorAll('.nav-item[data-page="kafkaops"]').forEach(el =>
             el.addEventListener('click', () => loadKafkaOps()));
+
+        // === Recent Commits panel ==========================================
+        let _ckEntriesCache = [];
+        async function loadCommitsOps() {
+            try {
+                const r = await fetch('/api/audit/commits?limit=200').then(x => x.json());
+                const entries = r.entries || [];
+                _ckEntriesCache = entries;
+
+                // Per-agent histogram
+                const byAgent = {};
+                for (const e of entries) {
+                    const a = e.attributedAgent || 'System';
+                    byAgent[a] = (byAgent[a] || 0) + 1;
+                }
+                document.getElementById('ck-byagent').innerHTML = Object.entries(byAgent)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([agent, n]) =>
+                      `<div class="stat-card"><div class="stat-label">${escapeHtml(agent)}</div><div class="stat-value">${n}</div></div>`)
+                    .join('') || '<em>No commits recorded.</em>';
+                document.getElementById('ck-summary-meta').textContent = `${entries.length} commits sampled`;
+
+                // Populate agent filter once.
+                const sel = document.getElementById('ck-agent-filter');
+                if (sel.options.length <= 1) {
+                    for (const a of Object.keys(byAgent).sort()) sel.add(new Option(a, a));
+                }
+                renderCommitsList();
+            } catch (e) {
+                document.getElementById('ck-byagent').textContent = 'Error: ' + e.message;
+            }
+        }
+        function renderCommitsList() {
+            const filter = document.getElementById('ck-agent-filter').value;
+            const filtered = filter ? _ckEntriesCache.filter(e => e.attributedAgent === filter) : _ckEntriesCache;
+            document.getElementById('ck-list').innerHTML = filtered.slice(0, 100).map(e => {
+                const taskRef = e.taskRef ? ` <span style="color: var(--text-secondary); font-size: 0.78em;">[${escapeHtml(e.taskRef)}]</span>` : '';
+                const ts = (e.timestamp || '').slice(0, 16).replace('T', ' ');
+                return `<div style="border-left: 3px solid var(--primary); padding: 4px 10px; background: var(--bg-darker); border-radius: 4px;">
+                  <div style="display: grid; grid-template-columns: 80px 110px 1fr; gap: 8px; align-items: baseline;">
+                    <code style="color: var(--text-secondary); font-size: 0.8em;">${escapeHtml(e.shortSha || '')}</code>
+                    <span style="color: var(--secondary); font-size: 0.85em;">${escapeHtml(e.attributedAgent || 'System')}</span>
+                    <span><strong>${escapeHtml(e.subject || '')}</strong>${taskRef}</span>
+                  </div>
+                  <div style="color: var(--text-secondary); font-size: 0.72em; margin-top: 2px; padding-left: 88px;">${ts} · ${escapeHtml(e.author || '')}</div></div>`;
+            }).join('') || '<em>No commits match filter.</em>';
+        }
+        document.getElementById('ck-agent-filter').addEventListener('change', renderCommitsList);
+        document.querySelectorAll('.nav-item[data-page="commitsops"]').forEach(el =>
+            el.addEventListener('click', () => loadCommitsOps()));
 
         // === Auto-research panel ===========================================
         document.getElementById('ar-form').addEventListener('submit', async (e) => {
