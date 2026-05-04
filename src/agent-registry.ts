@@ -30,7 +30,7 @@ export interface AgentMeta {
 
 export const AGENT_META: AgentMeta[] = [
   // ─── Core 14 (existing roster) ────────────────────────────────────────
-  { name: 'Fill',          role: 'CEO · Scrum-of-Scrums chair',       avatar: '👑', color: '#fbbf24', kind: 'core',       models: ['gemma-4-26b', 'claude-opus', 'qwen3.5-27b'], teams: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'], tools: ['scrum.*', 'forum.read', 'codegraph.stats', 'governance.lineage', 'wiki.lookup'] },
+  { name: 'Fill',          role: 'CEO · Scrum-of-Scrums chair',       avatar: '👑', color: '#fbbf24', kind: 'core',       models: ['gemma-4-26b', 'claude-opus', 'qwen3.5-27b'], teams: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'], tools: ['scrum.*', 'forum.*', 'codegraph.stats', 'governance.lineage', 'wiki.lookup'] },
   { name: 'Kai',           role: 'CTO · Cross-team infra',            avatar: '⚡', color: '#a78bfa', kind: 'core',       models: ['devstral', 'claude-opus', 'qwen3.5-27b'], teams: ['cross', 'scrum-roblox', 'scrum-web'], tools: ['codegraph.*', 'governance.lineage', 'assets.search', 'scrum.standup', 'scrum.bug', 'wiki.lookup'] },
   { name: 'Zip',           role: 'Developer',                          avatar: '💻', color: '#22c55e', kind: 'core',       models: ['devstral', 'claude-sonnet', 'phi-4'], teams: ['scrum-web'], tools: ['codegraph.*', 'wiki.lookup', 'assets.search'] },
   { name: 'Mira',          role: 'Creative Director',                  avatar: '🎨', color: '#ec4899', kind: 'core',       models: ['claude-sonnet', 'gemma-4-26b', 'phi-4'], teams: ['scrum-web', 'scrum-roblox'], tools: ['assets.search', 'wiki.lookup', 'governance.lineage'] },
@@ -56,26 +56,27 @@ export const AGENT_META: AgentMeta[] = [
   // ─── 5 Hermes scrum coordinators (one per scrum + 2 cross-cutting) ────
   // Backed by the Hermes 3 + DeepSeek-R1 Reviewer pair on EDS2.
   // They run the daily standup, hold the burndown, escalate blockers.
-  { name: 'Hermes-Roblox',   role: 'Scrum Master · Roblox team',       avatar: '🪽', color: '#fb923c', kind: 'hermes-coordinator', models: ['hermes-3', 'deepseek-r1'], teams: ['scrum-roblox'] },
-  { name: 'Hermes-Web',      role: 'Scrum Master · Web team',          avatar: '🪽', color: '#22d3ee', kind: 'hermes-coordinator', models: ['hermes-3', 'deepseek-r1'], teams: ['scrum-web'] },
-  { name: 'Hermes-Marketing',role: 'Scrum Master · Marketing & Perception', avatar: '🪽', color: '#facc15', kind: 'hermes-coordinator', models: ['hermes-3', 'deepseek-r1'], teams: ['scrum-marketing'] },
-  { name: 'Hermes-Cross',    role: 'Scrum-of-Scrums coordinator',      avatar: '🪽', color: '#f472b6', kind: 'hermes-coordinator', models: ['hermes-3', 'deepseek-r1'], teams: ['cross'] },
-  { name: 'Hermes-Reviewer', role: 'DeepSeek-R1 cross-team reviewer',  avatar: '🪽', color: '#a3e635', kind: 'hermes-coordinator', models: ['deepseek-r1', 'hermes-3'], teams: ['cross'] },
+  { name: 'Hermes-Roblox',   role: 'Scrum Master · Roblox team',       avatar: '🪽', color: '#fb923c', kind: 'hermes-coordinator', models: ['hermes-3', 'deepseek-r1'], teams: ['scrum-roblox'], tools: ['scrum.*', 'forum.*', 'codegraph.stats', 'wiki.lookup'] },
+  { name: 'Hermes-Web',      role: 'Scrum Master · Web team',          avatar: '🪽', color: '#22d3ee', kind: 'hermes-coordinator', models: ['hermes-3', 'deepseek-r1'], teams: ['scrum-web'], tools: ['scrum.*', 'forum.*', 'codegraph.stats', 'wiki.lookup'] },
+  { name: 'Hermes-Marketing',role: 'Scrum Master · Marketing & Perception', avatar: '🪽', color: '#facc15', kind: 'hermes-coordinator', models: ['hermes-3', 'deepseek-r1'], teams: ['scrum-marketing'], tools: ['scrum.*', 'forum.*', 'wiki.lookup'] },
+  { name: 'Hermes-Cross',    role: 'Scrum-of-Scrums coordinator',      avatar: '🪽', color: '#f472b6', kind: 'hermes-coordinator', models: ['hermes-3', 'deepseek-r1'], teams: ['cross'], tools: ['scrum.*', 'forum.*', 'governance.lineage'] },
+  { name: 'Hermes-Reviewer', role: 'DeepSeek-R1 cross-team reviewer',  avatar: '🪽', color: '#a3e635', kind: 'hermes-coordinator', models: ['deepseek-r1', 'hermes-3'], teams: ['cross'], tools: ['scrum.*', 'forum.*', 'codegraph.*', 'governance.lineage'] },
 
   // ─── Tester agents — synthetic users who play the games + file bugs ───
+  // Testers — get scrum.bug + forum.* (the forum is where they share tips/tricks).
   // Roblox testers (4)
-  { name: 'Tester-RB-Casey',   role: 'Casual Roblox player (10-13)',     avatar: '🎮', color: '#34d399', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-roblox'] },
-  { name: 'Tester-RB-Riley',   role: 'Hardcore tycoon player (14-17)',   avatar: '🎮', color: '#10b981', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-roblox'] },
-  { name: 'Tester-RB-Morgan',  role: 'Speedrunner / glitch-hunter',      avatar: '🎮', color: '#059669', kind: 'tester', models: ['phi-4', 'deepseek-r1'], teams: ['scrum-roblox'] },
-  { name: 'Tester-RB-Avery',   role: 'Educator playing in classroom',    avatar: '🎮', color: '#047857', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-roblox'] },
+  { name: 'Tester-RB-Casey',   role: 'Casual Roblox player (10-13)',     avatar: '🎮', color: '#34d399', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-roblox'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
+  { name: 'Tester-RB-Riley',   role: 'Hardcore tycoon player (14-17)',   avatar: '🎮', color: '#10b981', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-roblox'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
+  { name: 'Tester-RB-Morgan',  role: 'Speedrunner / glitch-hunter',      avatar: '🎮', color: '#059669', kind: 'tester', models: ['phi-4', 'deepseek-r1'], teams: ['scrum-roblox'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
+  { name: 'Tester-RB-Avery',   role: 'Educator playing in classroom',    avatar: '🎮', color: '#047857', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-roblox'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
   // Web testers (4)
-  { name: 'Tester-Web-Sam',    role: 'Mobile-first web player (Z Fold)', avatar: '🌐', color: '#60a5fa', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-web'] },
-  { name: 'Tester-Web-Quinn',  role: 'Desktop browser player',           avatar: '🌐', color: '#3b82f6', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-web'] },
-  { name: 'Tester-Web-Drew',   role: 'Accessibility tester (screen reader)', avatar: '🌐', color: '#2563eb', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-web'] },
-  { name: 'Tester-Web-Jordan', role: 'Chemistry teacher curriculum tester', avatar: '🌐', color: '#1d4ed8', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-web'] },
+  { name: 'Tester-Web-Sam',    role: 'Mobile-first web player (Z Fold)', avatar: '🌐', color: '#60a5fa', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-web'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
+  { name: 'Tester-Web-Quinn',  role: 'Desktop browser player',           avatar: '🌐', color: '#3b82f6', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-web'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
+  { name: 'Tester-Web-Drew',   role: 'Accessibility tester (screen reader)', avatar: '🌐', color: '#2563eb', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-web'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
+  { name: 'Tester-Web-Jordan', role: 'Chemistry teacher curriculum tester', avatar: '🌐', color: '#1d4ed8', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-web'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
   // Marketing/competitor playtest (2)
-  { name: 'Tester-MK-Alex',    role: 'Plays competitor chemistry games', avatar: '🎯', color: '#eab308', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-marketing'] },
-  { name: 'Tester-MK-Robin',   role: 'TikTok / social-loop tester',      avatar: '🎯', color: '#ca8a04', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-marketing'] },
+  { name: 'Tester-MK-Alex',    role: 'Plays competitor chemistry games', avatar: '🎯', color: '#eab308', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-marketing'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
+  { name: 'Tester-MK-Robin',   role: 'TikTok / social-loop tester',      avatar: '🎯', color: '#ca8a04', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-marketing'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
 ];
 
 /** Canonical list of agent names — use this everywhere you need to iterate. */

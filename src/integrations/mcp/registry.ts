@@ -24,6 +24,8 @@ import { AGENT_META, getAgent } from '../../agent-registry';
 import * as codegraph from '../codegraph';
 import * as governance from '../governance';
 import * as wiki from '../wiki';
+import * as scrum from '../scrum';
+import * as forum from '../forum';
 import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../../utils/logger';
@@ -188,6 +190,121 @@ const TOOLS: ToolDefinition[] = [
       } catch (e: any) {
         return { error: e.message };
       }
+    },
+  },
+
+  // ─── scrum.* ──────────────────────────────────────────────────────────
+  {
+    name: 'scrum.standup',
+    description: 'Log a standup item for a team (Hermes coordinators + members).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string', enum: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'] },
+        agent: { type: 'string' },
+        body: { type: 'string', description: 'Free-text: did / blocking / next' },
+      },
+      required: ['team', 'agent', 'body'],
+    },
+    handler: async (a: { team: scrum.ScrumTeam; agent: string; body: string }) => scrum.logStandup(a.team, a.agent, a.body),
+  },
+  {
+    name: 'scrum.standups',
+    description: 'List recent standup items, optionally per-team.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string', enum: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'] },
+        limit: { type: 'string' },
+      },
+    },
+    handler: async ({ team, limit }: { team?: scrum.ScrumTeam; limit?: string }) => ({
+      items: scrum.listStandups(team, limit ? parseInt(String(limit)) : 50),
+    }),
+  },
+  {
+    name: 'scrum.bug',
+    description: 'File a bug report (testers + agents finding regressions).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string', enum: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'] },
+        reporter: { type: 'string' },
+        title: { type: 'string' },
+        body: { type: 'string' },
+        severity: { type: 'string', enum: ['p0-blocker', 'p1-major', 'p2-minor', 'p3-cosmetic'] },
+        surface: { type: 'string' },
+      },
+      required: ['team', 'reporter', 'title', 'body'],
+    },
+    handler: async (a: any) => scrum.fileBug(a),
+  },
+  {
+    name: 'scrum.bugs',
+    description: 'List bug reports (filter by team / status / severity / reporter).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string' }, status: { type: 'string' },
+        severity: { type: 'string' }, reporter: { type: 'string' },
+      },
+    },
+    handler: async (a: any) => ({ bugs: scrum.listBugs({ ...a, limit: 100 }) }),
+  },
+  {
+    name: 'scrum.summary',
+    description: 'Summary counts per team (standups + open / total bugs).',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async () => scrum.summary(),
+  },
+
+  // ─── forum.* ──────────────────────────────────────────────────────────
+  {
+    name: 'forum.read',
+    description: 'List forum threads (testers share tips/tricks/feature ideas).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string' }, tag: { type: 'string' },
+        q: { type: 'string' }, threadId: { type: 'string' },
+      },
+    },
+    handler: async (a: any) => {
+      if (a.threadId) {
+        const t = forum.getThread(a.threadId);
+        return t ? { thread: t } : { error: `unknown thread: ${a.threadId}` };
+      }
+      return { threads: forum.listThreads({ team: a.team, tag: a.tag, q: a.q, limit: 50 }) };
+    },
+  },
+  {
+    name: 'forum.post',
+    description: 'Create a new forum thread.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string', enum: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'] },
+        author: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' },
+        tags: { type: 'string', description: 'comma-separated tags' },
+      },
+      required: ['team', 'author', 'title', 'body'],
+    },
+    handler: async (a: any) => {
+      const tags = typeof a.tags === 'string' ? a.tags.split(',').map((s: string) => s.trim()).filter(Boolean) : a.tags;
+      return forum.createThread({ ...a, tags });
+    },
+  },
+  {
+    name: 'forum.reply',
+    description: 'Reply to an existing forum thread.',
+    inputSchema: {
+      type: 'object',
+      properties: { threadId: { type: 'string' }, author: { type: 'string' }, body: { type: 'string' } },
+      required: ['threadId', 'author', 'body'],
+    },
+    handler: async (a: { threadId: string; author: string; body: string }) => {
+      const r = forum.reply(a.threadId, a.author, a.body);
+      return r ? { reply: r } : { error: `unknown thread: ${a.threadId}` };
     },
   },
 

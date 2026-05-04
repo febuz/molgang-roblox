@@ -57,6 +57,8 @@ import * as fs from 'fs';
 import * as codegraph from './integrations/codegraph';
 import * as governance from './integrations/governance';
 import * as wiki from './integrations/wiki';
+import * as scrum from './integrations/scrum';
+import * as forum from './integrations/forum';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
@@ -409,6 +411,100 @@ app.post('/api/wiki', (req, res) => {
     }
     const entry = wiki.upsertEntry(body);
     res.json({ success: true, entry });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// Scrum — standup feed + bug-report ingestion per team. Hermes coordinators
+// drive the standups; testers file bugs; Fill / Cleopatra read across teams.
+// ============================================================================
+app.get('/api/scrums', (_req, res) => {
+  try { res.json({ success: true, ...scrum.summary() }); }
+  catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/scrums/:team/standups', (req, res) => {
+  try {
+    const team = req.params.team as scrum.ScrumTeam;
+    const limit = req.query.limit ? parseInt(String(req.query.limit)) : 50;
+    res.json({ success: true, team, items: scrum.listStandups(team, limit) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/scrums/:team/standup', (req, res) => {
+  try {
+    const team = req.params.team as scrum.ScrumTeam;
+    const { agent, body } = req.body || {};
+    if (!agent || !body) { res.status(400).json({ success: false, error: 'agent + body required' }); return; }
+    res.json({ success: true, item: scrum.logStandup(team, agent, body) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/scrums/:team/bugs', (req, res) => {
+  try {
+    const team = req.params.team as scrum.ScrumTeam;
+    const status = req.query.status as scrum.BugReport['status'] | undefined;
+    const severity = req.query.severity as scrum.BugSeverity | undefined;
+    res.json({ success: true, team, bugs: scrum.listBugs({ team, status, severity, limit: 100 }) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/scrums/:team/bug', (req, res) => {
+  try {
+    const team = req.params.team as scrum.ScrumTeam;
+    const { reporter, title, body, severity, surface, refs } = req.body || {};
+    if (!reporter || !title || !body) { res.status(400).json({ success: false, error: 'reporter + title + body required' }); return; }
+    res.json({ success: true, bug: scrum.fileBug({ team, reporter, title, body, severity, surface, refs }) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/scrums/bug/:id/update', (req, res) => {
+  try {
+    const updated = scrum.updateBug(req.params.id, req.body || {});
+    if (!updated) { res.status(404).json({ success: false, error: 'not found' }); return; }
+    res.json({ success: true, bug: updated });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// Forum — testers share tips/tricks/feature ideas in their team's subforum.
+// ============================================================================
+app.get('/api/forum/:team', (req, res) => {
+  try {
+    const team = req.params.team as forum.ForumTeam;
+    const tag = req.query.tag as string | undefined;
+    const q = req.query.q as string | undefined;
+    res.json({ success: true, team, threads: forum.listThreads({ team, tag, q, limit: 50 }) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/forum/:team', (req, res) => {
+  try {
+    const team = req.params.team as forum.ForumTeam;
+    const { author, title, body, tags } = req.body || {};
+    if (!author || !title || !body) { res.status(400).json({ success: false, error: 'author + title + body required' }); return; }
+    const parsedTags = typeof tags === 'string'
+      ? tags.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : Array.isArray(tags) ? tags : undefined;
+    res.json({ success: true, thread: forum.createThread({ team, author, title, body, tags: parsedTags }) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/forum/thread/:id', (req, res) => {
+  try {
+    const t = forum.getThread(req.params.id);
+    if (!t) { res.status(404).json({ success: false, error: 'not found' }); return; }
+    res.json({ success: true, thread: t });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/forum/thread/:id/reply', (req, res) => {
+  try {
+    const { author, body } = req.body || {};
+    if (!author || !body) { res.status(400).json({ success: false, error: 'author + body required' }); return; }
+    const r = forum.reply(req.params.id, author, body);
+    if (!r) { res.status(404).json({ success: false, error: 'thread not found' }); return; }
+    res.json({ success: true, reply: r });
   } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
 });
 

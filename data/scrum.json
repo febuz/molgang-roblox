@@ -1,0 +1,17 @@
+{
+  "standups": [],
+  "bugs": [
+    {
+      "id": "bug-moqzd4is-zf2gx",
+      "team": "scrum-web",
+      "reporter": "Tester-Web-Sam",
+      "title": "Periodic table cells overlap on Z Fold inner display",
+      "body": "Fold the device open. Open /periodic-table. Cells overlap when grid wraps at 18 cols.",
+      "severity": "p2-minor",
+      "surface": "/periodic-table",
+      "status": "open",
+      "at": "2026-05-04T09:11:45.700Z",
+      "updatedAt": "2026-05-04T09:11:45.700Z"
+    }
+  ]
+}

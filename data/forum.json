@@ -1,0 +1,69 @@
+{
+  "threads": [
+    {
+      "id": "thr-moqzd4je-kwn9c",
+      "team": "scrum-roblox",
+      "author": "Tester-RB-Morgan",
+      "title": "Glitch: phasing through factory wall via reagent rack",
+      "body": "Walking into the reagent rack at angle ~30deg sends you through the wall. Reproduces 4/5 times.",
+      "tags": "glitch,trick",
+      "replies": [],
+      "at": "2026-05-04T09:11:45.722Z",
+      "updatedAt": "2026-05-04T09:11:45.722Z"
+    },
+    {
+      "id": "thr-moqzk6ix-xprix",
+      "team": "scrum-roblox",
+      "author": "Tester-RB-Casey",
+      "title": "Welcome thread — share your favourite onboarding moment",
+      "body": "Drop a short note on what made the first 10 minutes click for you. We use these to tune the new-player tutorial.",
+      "tags": [
+        "tip",
+        "onboarding"
+      ],
+      "replies": [],
+      "at": "2026-05-04T09:17:14.889Z",
+      "updatedAt": "2026-05-04T09:17:14.889Z"
+    },
+    {
+      "id": "thr-moqzk6iy-9iesq",
+      "team": "scrum-web",
+      "author": "Tester-Web-Drew",
+      "title": "Accessibility checklist — keep this thread updated",
+      "body": "Running list of ARIA gaps + keyboard-nav holes. Append findings as replies; cite the URL + steps.",
+      "tags": [
+        "accessibility",
+        "feature-request"
+      ],
+      "replies": [],
+      "at": "2026-05-04T09:17:14.890Z",
+      "updatedAt": "2026-05-04T09:17:14.890Z"
+    },
+    {
+      "id": "thr-moqzk6iz-b9xrr",
+      "team": "scrum-marketing",
+      "author": "Tester-MK-Alex",
+      "title": "Competitor watch — chemistry-game roundup",
+      "body": "I'll post one competitor breakdown per week (mechanics + monetisation + retention hooks). Reply with anything I missed.",
+      "tags": [
+        "competitor-review"
+      ],
+      "replies": [],
+      "at": "2026-05-04T09:17:14.891Z",
+      "updatedAt": "2026-05-04T09:17:14.891Z"
+    },
+    {
+      "id": "thr-moqzk6j2-ognq8",
+      "team": "cross",
+      "author": "Hermes-Cross",
+      "title": "Cross-team RFC log",
+      "body": "Use this thread to land RFCs that touch multiple scrums. Reply to existing ones rather than creating new threads when the topic overlaps.",
+      "tags": [
+        "rfc"
+      ],
+      "replies": [],
+      "at": "2026-05-04T09:17:14.894Z",
+      "updatedAt": "2026-05-04T09:17:14.894Z"
+    }
+  ]
+}
