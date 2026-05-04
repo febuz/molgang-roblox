@@ -1680,6 +1680,40 @@ async function initialize() {
       } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
     });
 
+    // Stream a single asset file by registry id. The three.js viewer
+    // (Atlas's queued task) consumes this. Sandboxed to the three known
+    // storage roots — anything outside `roblox-repo`, `web-repo`, `eds2`
+    // is rejected so a path-traversal payload can't escape.
+    app.get('/api/assets/file/:id', async (req, res) => {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const REGISTRY_PATH = '/media/knight2/EDS2/projects/molgang-web/shared/asset-registry.json';
+        if (!fs.existsSync(REGISTRY_PATH)) { res.status(503).json({ success: false, error: 'registry not built' }); return; }
+        const reg = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
+        const asset = (reg.assets || []).find((a: any) => a.id === req.params.id);
+        if (!asset || !asset.abs_path) { res.status(404).json({ success: false, error: 'asset not found' }); return; }
+        // Allowlist: file must live under one of the three known roots.
+        const roots = Object.values(reg.storage_roots || {}) as string[];
+        const real  = path.resolve(asset.abs_path);
+        if (!roots.some(r => real.startsWith(path.resolve(r) + path.sep) || real === path.resolve(r))) {
+          res.status(403).json({ success: false, error: 'asset outside known storage roots' }); return;
+        }
+        if (!fs.existsSync(real)) { res.status(404).json({ success: false, error: 'file missing on disk' }); return; }
+        // Set sensible content-type by extension. Browsers + three.js loaders
+        // both work fine without it but the explicit header helps caches.
+        const mime: { [k: string]: string } = {
+          '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json',
+          '.fbx': 'application/octet-stream', '.obj': 'text/plain',
+          '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+          '.svg': 'image/svg+xml', '.webp': 'image/webp',
+        };
+        res.setHeader('Content-Type', mime[asset.ext] || 'application/octet-stream');
+        res.setHeader('Cache-Control', 'public, max-age=86400');   // 1 day; assets don't change often
+        fs.createReadStream(real).pipe(res);
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+
     // 1b. Initialize Agent API Wrapper (with caching + rate limiting)
     logger.info('📦 Initializing Agent API Wrapper...');
     const agentAPI = new AgentAPIWrapper(lightrag);
@@ -1741,10 +1775,10 @@ async function initialize() {
     const sessionManager = new AutonomousSessionManager();
     logger.info('✓ Autonomous Session Manager ready');
 
-    // 5d. Initialize Guardrails Agent (suspicious-activity monitor)
-    logger.info('🛡️ Initializing Guardrails Agent...');
+    // 5d. Initialize 007 (rogue-agent watch)
+    logger.info('🎯 Initializing 007 — Rogue Agent Watch...');
     guardrailsAgent.start();
-    logger.info('✓ Guardrails Agent active');
+    logger.info('✓ 007 active and monitoring');
 
     // 5c. Initialize Authentication System (employee auth + roles)
     logger.info('🔐 Initializing Authentication System...');
@@ -3258,7 +3292,7 @@ function setupGuardrailsRoutes(app: express.Express) {
     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
   });
 
-  logger.info('✓ Guardrails routes wired: /api/guardrails/{health,alerts,incidents,intervene,interventions,rules}');
+  logger.info('✓ 007 routes wired: /api/guardrails/{health,alerts,incidents,intervene,interventions,rules}');
 }
 
 // Start the system
