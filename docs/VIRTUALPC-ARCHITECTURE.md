@@ -2,92 +2,102 @@
 
 **Status:** Production
 **Repo:** `github.com/febuz/virtualpc`
+**Last refresh:** 2026-05-04
 
-VirtualPC is a project-agnostic multi-agent orchestration backend. It is the
-platform; whatever your team is building plugs into it through the task
-engine and the LiteLLM gateway. There are no domain-specific assumptions in
-the core — agents, tasks, models, and dashboards are all pluggable.
+VirtualPC is a project-agnostic multi-agent orchestration backend. It is
+the platform; whatever your team is building plugs into it through the
+task engine, the Kafka event bus, the data-governance registry, and the
+LiteLLM gateway. There are no domain-specific assumptions in the core —
+agents, tasks, models, tools, and dashboards are all pluggable.
 
 ---
 
 ## 1. Process layout
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  Browser  →  http://localhost:3100                               │
-│            │                                                     │
-│            ▼                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │  virtualpc.service  (node dist/index.js)                    │ │
-│  │  • Express HTTP + Socket.IO                                 │ │
-│  │  • TaskEngine (in-memory, persisted JSONL)                  │ │
-│  │  • Agent registry (single source of truth)                  │ │
-│  │  • Vitals / Auto-update / Audit / Auth                      │ │
-│  └────────┬─────────────────────────┬──────────────────────────┘ │
-│           │                         │                            │
-│           ▼                         ▼                            │
-│  ┌──────────────────┐   ┌──────────────────────────────────┐     │
-│  │ LiteLLM gateway  │   │  Local services                  │     │
-│  │ 127.0.0.1:4000   │   │  • Redis (cache, queues)         │     │
-│  │ • LM Studio      │   │  • Neo4j (LightRAG, optional)    │     │
-│  │ • Cloud APIs     │   │  • Kafka (eventing, optional)    │     │
-│  └──────────────────┘   └──────────────────────────────────┘     │
-└──────────────────────────────────────────────────────────────────┘
+                          ┌──────────────────────────┐
+ Browser  ──────────────▶ │  Dashboard (port 3100)   │
+                          │  • virtualpc.service     │
+ Claude Code (skills) ──▶ │  • Express + Socket.IO   │ ◀── /api/mcp/*
+                          │  • TaskEngine            │     (tool dispatch
+                          │  • Kami brief queue      │      with per-agent
+                          └────────┬─────────────────┘      ACL)
+                                   │
+            ┌──────────────────────┼─────────────────────────────────┐
+            │                      │                                 │
+            ▼                      ▼                                 ▼
+ ┌────────────────────┐  ┌────────────────────────┐    ┌──────────────────────┐
+ │  Kafka (7 topics)  │  │  LiteLLM gateway       │    │  Local services      │
+ │  127.0.0.1:9092    │  │  127.0.0.1:4000        │    │  • Redis (caches)    │
+ │  • model.responses │  │  • LM Studio :1234     │    │  • Neo4j 7687        │
+ │  • agent.tasks     │  │  • Kimi CLI            │    │    (LightRAG +       │
+ │  • agent.results   │  │  • Claude CLI + Kami   │    │     governance graph)│
+ │  • task.failed     │  │  • Cloud APIs          │    │  • EDS2 asset store  │
+ │  • cost.tracking   │  └────────────────────────┘    └──────────────────────┘
+ │  • lightrag.updates│
+ │  • commit.audit    │
+ └────────────────────┘
 ```
 
-All three systemd user units (`virtualpc.service`,
-`virtualpc-litellm.service`, `virtualpc-auto-update.timer`) are installed by
-`scripts/install-systemd.sh`. Their unit files live in `deploy/systemd/`.
+All systemd user units (`virtualpc.service`, `virtualpc-litellm.service`,
+`virtualpc-auto-update.timer`, `molgang-backup.timer`) are installed by
+their respective `scripts/install-*.sh` helpers. Unit files live in
+`deploy/systemd/`.
 
 ---
 
 ## 2. Agent registry — single source of truth
 
-`src/agent-registry.ts` exports `AGENT_META` — the canonical list of agents.
-Every other module (task engine, token tracker, dashboard, social roster,
-LLM router) imports from this one file. Add an agent here and every dashboard
-picks them up automatically.
+`src/agent-registry.ts` exports `AGENT_META`. Every other module (task
+engine, token tracker, dashboard, MCP ACL, LLM router, scrum/forum
+hooks) imports from this one file.
 
-The roster currently ships 14 personas, grouped into four kinds:
+The roster currently ships **31 personas** in 8 kinds:
 
-| Kind         | Agents                                         |
-|--------------|------------------------------------------------|
-| `core`       | Fill, Kai, Zip, Mira, Luna                     |
-| `decision`   | Cleopatra, Alexander, MoneyGod                 |
-| `resource`   | Analyst, VideoProducer                         |
-| `specialist` | Vice, Atlas, Kimi, Croesus                     |
+| Kind                  | Count | Agents |
+|-----------------------|-------|--------|
+| `core`                | 6     | Fill, Kai, Zip, Mira, Luna, Pixel |
+| `decision`            | 3     | Cleopatra, Alexander, MoneyGod |
+| `resource`            | 2     | Analyst, VideoProducer |
+| `specialist`          | 4     | Vice, Atlas, Kimi, Croesus |
+| `governance`          | 1     | Governor |
+| `hermes-coordinator`  | 5     | Hermes-Roblox, Hermes-Web, Hermes-Marketing, Hermes-Cross, Hermes-Reviewer |
+| `tester`              | 10    | 4 Roblox + 4 Web + 2 Marketing |
 
-Each entry carries: `name`, `role`, `avatar`, `color`, `kind`, and a list
-of preferred model substrings used by the LLM router for routing decisions.
+Each entry carries: `name`, `role`, `avatar`, `color`, `kind`, `models`,
+`teams[]` (scrum membership), `tools[]` (MCP tool ACL with wildcards
+like `governance.*`).
 
-Persona prompts (drafted by the local Gemma 4 model) live in
-`data/agent-prompts.json` and surface in the dashboard's All-Agents page
-via `/api/agents/overview` and `/api/agents/:name/prompt`.
+Persona prompts live in `data/agent-prompts.json` and surface in the
+dashboard's All-Agents page via `/api/agents/overview` and
+`/api/agents/:name/prompt`.
 
 ---
 
 ## 3. Task engine
 
 `src/task-engine.ts` is a single-process, in-memory task store with
-JSONL persistence (`logs/work-log.jsonl`). It owns:
+JSON persistence (`data/tasks.json` + `logs/work-log.jsonl`). It owns:
 
-- **Tasks** — id, title, status (`pending`/`in-progress`/`completed`),
-  priority (`critical`/`high`/`medium`/`low`), assigned_to, subtasks,
+- **Tasks** — id, title, status, priority, assigned_to, subtasks,
   progress.
 - **Proposals** — agent-to-agent inbox/outbox messages.
 - **Artifacts** — outputs from real LM Studio runs.
-- **Work log** — every subtask completion timestamp + minutes-spent record.
+- **Work log** — every subtask completion timestamp + minutes-spent
+  record.
 
-The engine ticks every few seconds (`tickEngine()`), nudging in-progress
-tasks forward and emitting CLI-log lines per agent that drive the
-dashboard's live activity feed.
+The engine ticks every few seconds (`tickEngine()`), nudges in-progress
+tasks forward, and emits CLI-log lines per agent that drive the
+dashboard's live activity feed. State persists with a dirty-flag + 5-second save
+interval, so a SIGKILL after SIGTERM loses ≤ 5 s of work.
 
-Mutators exposed through HTTP:
+Mutator endpoints:
 
 | Endpoint                              | Effect                              |
 |---------------------------------------|-------------------------------------|
 | `POST /api/backlog/:id/status`        | flip pending↔in-progress↔completed  |
 | `POST /api/backlog/:id/priority`      | change priority tier                |
+| `POST /api/backlog/items`             | inject a new backlog item           |
 | `GET  /api/backlog/per-person`        | full per-agent task tree            |
 | `GET  /api/agents/:name/inbox`        | proposals received                  |
 | `GET  /api/agents/:name/outbox`       | proposals sent                      |
@@ -95,175 +105,420 @@ Mutators exposed through HTTP:
 
 ---
 
-## 4. LLM routing
+## 4. Kafka messaging — the spine
 
-`src/lmstudio.ts` and `src/orchestration/model-router.ts` form a 3-tier
-router:
+Kafka is **central**, not an optional add-on. Every model call, task
+mutation, and inter-agent message is published; the audit + cost
+consumer subscribes to all of it. Single-broker dev mode at
+`127.0.0.1:9092`; promote to multi-broker in production unchanged.
 
-- **Tier 1 (free, local)** — phi-4, gemma-4-26b, deepseek-r1, qwen3.5-27b,
-  devstral. Runs on LM Studio at `127.0.0.1:1234`.
-- **Tier 2 (low-cost cloud)** — Mistral 7B, Llama 70B.
-- **Tier 3 (premium cloud)** — Claude Opus, GPT-4-class.
+### 4.1 Topics
 
-All requests funnel through the LiteLLM gateway at `127.0.0.1:4000` so the
-TypeScript code only ever talks to one OpenAI-compatible endpoint. Routes
-are picked per-agent (each agent has a preferred model list in
-`AGENT_MODEL_ROUTES`) and per-task-type (`TASK_TYPE_ROUTES` — `concept`
-goes to Gemma 4, `code` to Devstral, `reasoning` to DeepSeek-R1, etc.).
+| Topic                | Producer                         | Consumer               | Payload |
+|----------------------|----------------------------------|------------------------|---------|
+| `model.responses`    | every `chatAsAgent` call         | audit, cost-rollup     | { agent, model, prompt_tokens, completion_tokens, latency_ms, ts } |
+| `agent.tasks`        | task-engine `addTask` / status   | audit                  | { task_id, agent, title, status, priority } |
+| `agent.results`      | task-engine `setStatus(completed)` | audit                | { task_id, agent, artifact_ref, completed_at } |
+| `task.failed`        | task-engine on retry exhaustion  | self-heal              | { task_id, agent, error, attempts } |
+| `cost.tracking`      | audit consumer (rollup)          | dashboard              | { agent, model, tier, usd_estimate, window } |
+| `lightrag.updates`   | governance-graph + asset-graph   | future replicas        | { node_type, content, created_by, affects[] } |
+| `commit.audit`       | git-hook                         | audit                  | { sha, author, task_ids[], ts } |
+
+### 4.2 Audit + cost consumer
+
+`src/integrations/kafka/audit-consumer.ts` subscribes to all 7 topics,
+appends every event to `data/kafka-audit.jsonl` (replay log), and
+maintains a per-agent / per-model spend rollup in `data/kafka-cost.json`
+that the dashboard reads. Tier 1 (local) is recorded with $0 cost; tier
+2/3 estimates use OpenAI/Anthropic published rates.
+
+### 4.3 Producer wire
+
+`src/integrations/kafka/shared.ts` holds a module-level singleton
+producer with reconnect backoff. The `chatAsAgent`, `addTask`, and
+`setTaskStatus` paths all best-effort-publish on success — failures log
+but never break the parent request. KAFKA_BROKERS env var enables;
+omit to noop (dev offline mode).
+
+---
+
+## 5. LLM routing
+
+`src/lmstudio.ts` is the multi-tier router. **Three CLI bridges** live
+alongside the LiteLLM gateway:
+
+| Path                            | Trigger                                               | Purpose |
+|---------------------------------|-------------------------------------------------------|---------|
+| LiteLLM → LM Studio (default)   | any local model hint                                  | bulk chat / code / reasoning |
+| `chatViaKimiCli` (Moonshot)     | `agent === 'Kimi'`                                    | long-context research (200K+) |
+| `chatViaClaudeCli` (Anthropic)  | designer agents + `taskType === 'design'` OR `taskType === 'docs'` (KAMI_FOR_DOCS=1) | high-quality design / typeset docs (Kami auto-triggers) |
+
+### 5.1 Per-agent + per-task-type routing
+
+- `AGENT_MODEL_ROUTES` — preferred model per agent.
+- `TASK_TYPE_ROUTES` — `concept` → gemma-4-26b, `code` → devstral,
+  `reasoning` → deepseek-r1, `design` → claude-sonnet,
+  `docs` → claude-sonnet (Kami flow).
+
+Fallbacks are deterministic: Kimi unavailable on a non-docs call →
+phi-4; Claude unavailable on a `docs` call → gemma-4-26b (long-context
+plain-prose, no Kami styling).
+
+### 5.2 Tier costs
+
+| Tier | Examples                        | Where              |
+|------|---------------------------------|--------------------|
+| 1    | phi-4, gemma-4-26b, devstral, deepseek-r1 | LM Studio (free) |
+| 2    | Kimi Moonshot, mistral-7b       | paid CLIs          |
+| 3    | Claude Sonnet/Opus, GPT-4-class | API gateway        |
 
 If a 26B model fails to load under memory pressure, the router falls
 back to phi-4 automatically and logs the substitution.
 
 ---
 
-## 5. HTTP surface
+## 6. Tool-use coordination (MCP)
 
-```
-GET  /                         → public/dashboard.html (live)
-GET  /agents.html              → All-Agents overview (14 cards)
-GET  /vitals.html              → GPU + service vitals
-GET  /api/health               → liveness probe
-GET  /api/agents/overview      → roster + activity + persona previews
-GET  /api/agents/:name/prompt  → full persona + runtime system prompt
-POST /api/llm/chat             → OpenAI-compatible chat for any agent
-GET  /api/backlog              → all tasks
-GET  /api/backlog/per-person   → grouped per agent
-GET  /api/vitals/auto-update   → systemd timer state
-GET  /api/github/virtualpc/list  → list files in .backlog / .governance / etc.
-GET  /api/github/virtualpc/file  → fetch a knowledge-dir markdown file
-```
+`src/integrations/mcp/registry.ts` is the in-house MCP-shaped tool
+catalogue. **20 tools** at the time of writing, all schema-validated +
+ACL-enforced:
 
-150+ routes total at present.
+| Namespace      | Tools |
+|----------------|-------|
+| `codegraph.*`  | stats, symbol, file |
+| `governance.*` | list, lineage, register |
+| `wiki.*`       | lookup, upsert |
+| `assets.*`     | search |
+| `scrum.*`      | standup, standups, bug, bugs, summary |
+| `forum.*`      | read, post, reply |
+| `kami.*`       | queue, briefs, deliver |
+
+Per-agent ACL on `AgentMeta.tools` (wildcards: `governance.*`, `*`).
+Calls that bypass the ACL get a 403 with the calling agent's actual
+rule set — debuggable in one round-trip.
+
+HTTP surface: `GET /api/mcp/tools[?agent=…]`, `POST /api/mcp/call` with
+`{ agent, tool, args }`.
+
+Why MCP, not OpenAI Symphony: see `docs/TOOL-USE-COORDINATION.md`.
+Symphony orchestrates issue queues; we needed tool-call coordination,
+which MCP was designed for. Both Claude CLI and Kimi CLI speak MCP
+natively — a future swap to `@modelcontextprotocol/sdk` keeps the
+schemas exactly as-is.
 
 ---
 
-## 5b. Dual-graph context layer (codegraph + LightRAG)
+## 7. Documentation pipeline (Kami)
 
-VirtualPC pairs two graphs so agents have both **structural** and
-**semantic** lenses on the codebase without loading the whole repo into a
-prompt every time:
+**Kami** ([tw93/kami](https://github.com/tw93/kami)) is the typeset-doc
+flow. It is a Claude Code skill installed at `~/.claude/skills/kami/`
+that produces HTML / PDF / slide decks under a parchment + ink-blue
+design language across 8 doc types (one-pager, long-doc, letter,
+portfolio, resume, slides, white-paper, changelog).
 
-| Graph              | Layer       | Source                          | Answers                                        |
-|--------------------|-------------|---------------------------------|------------------------------------------------|
-| `codegraph`        | structural  | `src/**.ts` (regex-based AST)   | "Where is X defined?" "Who calls X?"           |
-| LightRAG (Neo4j)   | semantic    | docs, comments, READMEs         | "Why is this done this way?"                   |
-
-The codegraph adapter (`src/integrations/codegraph/`) is a zero-dep
-TypeScript indexer. It walks `src/**.ts`, extracts exported symbols,
-imports per file, and a coarse references map. ~250 ms first build, cached
-for 30 minutes at `data/codegraph.json`. Endpoints:
+Skills only run **inside** a Claude Code session. virtualpc cannot
+recursively invoke `claude` from systemd context (auth + autoloop-hook
+recursion). So the architecture is **queue + render**:
 
 ```
-GET  /api/codegraph/stats           summary: counts per kind
-POST /api/codegraph/rebuild         force a full rebuild
-GET  /api/codegraph/symbol/:name    definitions + referencedBy
-GET  /api/codegraph/file?path=X     full file record
-GET  /api/codegraph/search?q=…      substring symbol search
+agent (Mira)        virtualpc                    Claude Code session
+  │ POST                /api/kami/queue                │
+  │────────────────────▶│  data/kami-briefs.json       │
+  │                     │ status=queued                │
+  │                     │                              │
+  │                     │ ◀────────GET /api/kami/briefs│
+  │                     │                              │
+  │                     │                  Kami skill  │
+  │                     │                  fires here  │
+  │                     │                              │
+  │                     │  POST .../status=delivered ◀─│
+  │                     │                              │
+  │                     │ docs/kami/<id>.html written  │
 ```
 
-The adapter is GitNexus-compatible — when a real GitNexus CLI ships, the
-internal driver swaps in one function without changing the response shape.
+`src/integrations/kami/` is the brief queue with statuses
+`queued → in-progress → delivered → cancelled`. Persists to
+`data/kami-briefs.json` with the same dirty-flag + 5-s save pattern.
 
-LightRAG (`src/integrations/lightrag/`) is the existing Neo4j-backed
-semantic graph; it gracefully degrades to in-memory mode when Neo4j isn't
-available, so VirtualPC never hard-fails on a missing optional service.
+Endpoints + MCP tools (`kami.queue`, `kami.briefs`, `kami.deliver`)
+mean any agent with the right ACL can request a typeset doc; a Claude
+Code session (interactive or scripted) drains the queue.
 
-## 5c. Auto-research loop (Karpathy-style)
+`scripts/regenerate-docs.js --scope <readme|architecture|wiki|all>` is
+the standard project-wide doc-refresh entry point — it queues briefs;
+a Claude Code session renders. See `docs/KAMI-DOCS.md` for the full
+producer + renderer flow.
 
-The four research-flavored agents (Vice, Kimi, Analyst, Atlas) can
-delegate questions to a multi-step loop on local Gemma 4. The loop is in
-`src/integrations/autoresearch/`:
+---
 
-1. **Plan** — Gemma 4 lists 3-5 sub-questions worth answering.
-2. **Probe** — for each sub-question, hit a context source (`codegraph`,
-   `lightrag`, or caller-supplied `static`).
-3. **Synthesize** — fuse all evidence into a final write-up.
-4. **Critique** — Gemma 4 reviews its own draft; if it finds gaps,
-   recursion (depth-capped).
+## 8. Data governance — single lineage layer
+
+`src/integrations/governance/` is the registry of every shared data
+artifact: shared/*.json files, asset registries, wiki source-of-truth,
+DB schemas, license records.
+
+Each `GovernanceEntry`:
+
+```ts
+{
+  id, name, kind, owner, source, schema?,
+  lineage,           // free text: where it came from + who consumes it
+  license,
+  tags[],
+  updatedAt
+}
+```
+
+Owned by the **Governor** agent (kind: `governance`). Every wiki entry
+carries a `governanceId` so a UI walk recovers the citation chain
+(wiki term → governance entry → source file or external attribution).
 
 Endpoints:
 
-```
-POST /api/autoresearch              run the loop for an agent
-GET  /api/autoresearch/agents       allowlist of research agents
-```
+| Endpoint                              | Purpose                                |
+|---------------------------------------|----------------------------------------|
+| `GET  /api/governance`                | list (filter by kind/owner/tag)        |
+| `GET  /api/governance/lineage/:id`    | entry + related-by-tag                 |
+| `POST /api/governance/register`       | upsert (Governor's MCP ACL gates this) |
 
-Pure-local: every hop runs on Gemma 4 26B via the LiteLLM gateway. Zero
-API credits, ~30-90 s per query for a 4-sub-question loop.
-
----
-
-## 6. Persistence
-
-| Store                    | Role                                          |
-|--------------------------|-----------------------------------------------|
-| `logs/work-log.jsonl`    | append-only log of every subtask completion  |
-| `data/agent-prompts.json`| persona prompts drafted by Gemma 4            |
-| `dist/` (gitignored)     | compiled TS output                            |
-| `EDS2:/virtualpc/cache/` | LM Studio model cache, large blobs            |
-| Redis                    | hot caches, rate limits                       |
-| Neo4j (optional)         | LightRAG knowledge graph; offline-fallback   |
-
-The task engine intentionally does **not** persist tasks themselves to disk
-— restarting the service re-seeds from the example task pool in
-`task-engine.ts`. Production deployments should swap that for a database
-hookup (the engine's mutators are isolated functions; redirecting them at
-Postgres or DynamoDB is a one-file change).
+Real-time hook: every `register` call also fires
+`notifyGovernanceWrite()` → LightRAG node ingest, so the knowledge
+graph stays in sync without a separate sync job.
 
 ---
 
-## 7. Auth & audit
+## 9. Wiki — game + qchem glossary
+
+`src/integrations/wiki/` stores the molgang glossary (game terms +
+quantum chemical engineering terms). Authored by Kimi
+(`taskType:'docs'` flow), curated by Governor.
+
+Each `WikiEntry`:
+
+```ts
+{
+  id, term,
+  namespace: 'game' | 'qchem',
+  summary,            // 1-line tooltip
+  body,               // markdown body
+  seeAlso[],          // cross-link ids
+  governanceId,       // lineage anchor
+  author, updatedAt
+}
+```
+
+The webgame's `/wiki` page (Next.js) and the dashboard's "Wiki &
+Governance" page both render off this surface. Real-time hook:
+`upsertEntry` → `notifyWikiWrite()` → LightRAG node with
+`affects=[governanceId, ...seeAlso]`.
+
+Endpoints: `GET /api/wiki[?namespace=…&q=…]`, `GET /api/wiki/:id`,
+`POST /api/wiki`.
+
+---
+
+## 10. Knowledge graph — codegraph + LightRAG
+
+VirtualPC pairs two graphs so agents have both **structural** and
+**semantic** lenses on the codebase + content:
+
+| Graph              | Source                                 | Answers |
+|--------------------|----------------------------------------|---------|
+| `codegraph`        | `src/**.ts` (regex-based AST + imports) | "Where is X defined?" "Who calls X?" "What depends on logger.ts?" |
+| LightRAG (Neo4j)   | governance + wiki + asset-registry + decisions | "What's the lineage of fugacity?" "Which assets are tagged quantum-chem?" "Why did we pick MCP over Symphony?" |
+
+The codegraph adapter (`src/integrations/codegraph/`) is a zero-dep
+TypeScript indexer — ~250 ms first build, cached at `data/codegraph.json`.
+Endpoints: `GET /api/codegraph/{stats,symbol/:name,file?path=,dependencies,search?q=}`,
+`POST /api/codegraph/rebuild`.
+
+LightRAG (`src/integrations/lightrag/`) is the Neo4j-backed semantic
+graph. Three ingest paths:
+
+- `asset-graph.ts` — bulk shared/asset-registry.json on startup.
+- `governance-graph.ts` — bulk governance + wiki entries on startup,
+  plus real-time hooks on writes (§ 8 + § 9).
+- Future: agent decision rationales via the `lightrag.updates` Kafka
+  topic.
+
+Gracefully degrades to in-memory mode when Neo4j isn't available; no
+hard fail on a missing optional service.
+
+---
+
+## 11. Scrum-of-scrums + tester forum
+
+Four scrums + a cross-team coordinator: see `docs/SCRUM-CHARTERS.md`
+for the full charter (mission, members, ceremonies per team).
+
+| Team              | Hermes coordinator | Members |
+|-------------------|--------------------|---------|
+| `scrum-roblox`    | Hermes-Roblox      | Fill, Kai, Mira, Vice + 4 testers |
+| `scrum-web`       | Hermes-Web         | Fill, Kai, Zip, Mira, Luna, Atlas, Vice, Pixel + 4 testers |
+| `scrum-marketing` | Hermes-Marketing   | Fill, MoneyGod, Analyst, VideoProducer, Croesus, Governor + 2 testers |
+| `cross`           | Hermes-Cross       | Fill (chair), Kai, Cleopatra, Alexander, MoneyGod, Kimi, Governor, Hermes-Reviewer |
+
+`src/integrations/scrum/` — standup feed + bug ingestion per team.
+`src/integrations/forum/` — threaded discussion (root post + replies).
+
+Testers run continuously: each session, file any defect via
+`/api/scrums/:team/bug`, share at least one tip / trick / glitch /
+feature-idea to the team's forum at `/api/forum/:team`. Hermes
+coordinators digest the feeds daily; Fill + Cleopatra read across
+teams via `/api/scrums/cross/standup`.
+
+The `scripts/seed-scrum-tasks.js` helper is idempotent — re-run after
+roster changes to ensure every tester has the recurring "play +
+report" duty and every Hermes has the daily-digest duty.
+
+---
+
+## 12. HTTP surface (key)
+
+```
+# Core
+GET  /                           → public/dashboard.html
+GET  /api/health                 → liveness probe
+GET  /api/agents/overview        → roster + activity
+POST /api/llm/chat               → OpenAI-compatible chat for any agent
+                                   (agent + messages + taskType)
+
+# Backlog / tasks
+GET  /api/backlog/per-person
+POST /api/backlog/items
+POST /api/backlog/:id/status     POST /api/backlog/:id/priority
+
+# Tool coordination
+GET  /api/mcp/tools[?agent=…]    POST /api/mcp/call
+
+# Knowledge
+GET  /api/codegraph/{stats,symbol/:name,file,dependencies,search}
+GET  /api/governance[?kind=…]    GET  /api/governance/lineage/:id
+GET  /api/wiki[?namespace=…&q=…] GET  /api/wiki/:id    POST /api/wiki
+
+# Scrum + forum
+GET  /api/scrums                 GET  /api/scrums/:team/{standups,bugs}
+POST /api/scrums/:team/{standup,bug}    POST /api/scrums/bug/:id/update
+GET  /api/forum/:team            POST /api/forum/:team
+GET  /api/forum/thread/:id       POST /api/forum/thread/:id/reply
+
+# Documentation (Kami)
+GET  /api/kami/{briefs,summary}  GET  /api/kami/briefs/:id
+POST /api/kami/queue             POST /api/kami/briefs/:id/status
+
+# Auto-research
+POST /api/autoresearch           GET  /api/autoresearch/agents
+
+# Vitals + auto-update
+GET  /api/vitals/auto-update     GET  /api/vitals/{gpu,services,disk}
+
+# Self-heal
+POST /api/selfheal/audit         GET  /api/selfheal/audit
+```
+
+200+ routes total at present.
+
+---
+
+## 13. Persistence
+
+| Store                          | Role                                          |
+|--------------------------------|-----------------------------------------------|
+| `data/tasks.json`              | task engine (dirty-flag + 5 s save)            |
+| `logs/work-log.jsonl`          | append-only subtask completion log             |
+| `data/agent-prompts.json`      | persona prompts                                |
+| `data/codegraph.json`          | codegraph cache                                |
+| `data/governance.json`         | data-governance registry                       |
+| `data/wiki.json`               | glossary entries                               |
+| `data/scrum.json`              | standups + bug reports per team                |
+| `data/forum.json`              | tester forum threads + replies                 |
+| `data/kami-briefs.json`        | Kami doc-brief queue                           |
+| `data/kafka-audit.jsonl`       | Kafka replay log (append-only)                 |
+| `data/kafka-cost.json`         | per-agent / per-model spend rollup             |
+| Neo4j (optional)               | LightRAG knowledge graph                       |
+| EDS2 `:/molgang-assets/`       | canonical 3D / texture / audio store (1.1 TB)  |
+
+Every JSON store uses the dirty-flag + 5 s save pattern; SIGKILL after
+SIGTERM loses ≤ 5 s of work.
+
+---
+
+## 14. Backups
+
+`molgang-backup.timer` (Sun 02:30 local, `Persistent=true`) drives
+`scripts/backup-eds2-assets.sh` — rsync with `--link-dest` for hardlink
+dedupe. Off-host target via `BACKUP_TARGET` in
+`~/.config/systemd/user/molgang-backup.env`. See `docs/BACKUP.md` for
+install + restore drill.
+
+---
+
+## 15. Auth & audit
 
 - `src/auth/` — login, sessions, role-based dashboards. Roles: `ceo`,
-  `cto`, `economy`, `creative`, `developer`, `viewer`. Specialist
-  dashboards expose only the routes their role can read.
-- `src/security/audit-logger.ts` — every mutation is logged with actor,
+  `cto`, `economy`, `creative`, `developer`, `viewer`.
+- `src/security/audit-logger.ts` — every mutation logged with actor,
   IP, timestamp, target.
-- `src/commit-audit.ts` — every git commit since installation is recorded
-  and linked back to the task it delivered (when titles match).
+- `src/commit-audit.ts` — every git commit is recorded and linked
+  back to the task it delivered (when titles match). Publishes to
+  `commit.audit` Kafka topic.
 
 ---
 
-## 8. Auto-update
+## 16. Auto-update + self-heal
 
-`scripts/auto-update.sh` is the systemd timer's payload. Every 15 minutes
-it:
+`scripts/auto-update.sh` is the systemd timer payload. Every 15 min:
 
-1. `git fetch origin master`
-2. If the working tree is clean and there's something to pull, `git pull`.
-3. If `package.json` or any TypeScript file changed, `npm ci` then
-   `npm run build`.
+1. `git fetch origin master`.
+2. If clean tree + something to pull, `git pull`.
+3. If `package.json` or any `*.ts` changed, `npm ci && npm run build`.
 4. If `dist/` changed, `systemctl --user restart virtualpc.service`.
 
-It refuses to act on a dirty or diverged tree; an out-of-band manual fix
-is required in those cases. State is exposed at `/api/vitals/auto-update`.
+Refuses dirty / diverged trees. State at `/api/vitals/auto-update`.
+
+`src/integrations/selfheal/` audits the dashboard for broken links,
+dead endpoints, dangling onclicks, orphaned nav items. Pure-local;
+no external services. POST `/api/selfheal/audit` to run; results at
+`GET /api/selfheal/audit`.
 
 ---
 
-## 9. Adding a new agent
+## 17. Adding a new agent
 
-1. Append to `AGENT_META` in `src/agent-registry.ts` (name, role, avatar,
-   color, kind, models).
-2. Optionally seed a few example tasks for them in `task-engine.ts`.
-3. Run `node scripts/delegate-build-overview.js` to have Gemma 4 draft a
-   persona prompt; output goes to `data/agent-prompts.json`.
-4. Restart the service. The All-Agents grid, the sidebar nav and the
+1. Append to `AGENT_META` in `src/agent-registry.ts` (name, role,
+   avatar, color, kind, models, teams, tools).
+2. Optionally add a model-route override in `AGENT_MODEL_ROUTES`
+   (`src/lmstudio.ts`).
+3. Run `node scripts/delegate-build-overview.js` to have Gemma 4 draft
+   a persona prompt; output goes to `data/agent-prompts.json`.
+4. If the agent is a tester or Hermes coordinator, also run
+   `node scripts/seed-scrum-tasks.js` to inject their recurring duty.
+5. Restart the service. Dashboard, MCP ACL, scrum membership, and
    per-agent detail panel all pick up the new agent automatically.
 
 No other files need editing.
 
 ---
 
-## 10. Adding a new dashboard route
+## 18. Adding a new MCP tool
 
-All dashboard pages are static HTML in `public/`, served by the Express
-static middleware. The dashboard navigates between sections by toggling
-`.content-section.active` — no SPA framework, no build step for the UI.
+1. Implement the handler in the right `src/integrations/<area>/` module.
+2. Add a `ToolDefinition` to `TOOLS[]` in
+   `src/integrations/mcp/registry.ts`. Pick a dotted name in the right
+   namespace (e.g. `wiki.export`).
+3. Update relevant agent `tools[]` ACLs in `src/agent-registry.ts`.
+4. The HTTP + MCP surface picks it up automatically; no route changes.
 
-To add a new section:
-1. Add a `<div class="nav-item" data-page="myroute">` to the sidebar.
-2. Add a `<div class="content-section" id="myroute">` with the body.
-3. If the section needs live data, fetch from a `/api/...` endpoint in
-   the existing `<script>` block.
+---
+
+## 19. Adding a new dashboard route
+
+All dashboard pages are static HTML in `public/`, served by Express
+static. Sections toggle `.content-section.active` — no SPA framework,
+no UI build step.
+
+1. Add `<div class="nav-item" data-page="myroute">` to the sidebar.
+2. Add `<div class="content-section" id="myroute">` with the body.
+3. If live data, fetch from `/api/...` in the existing `<script>`.
 
 That's the whole frontend pattern.
