@@ -1148,7 +1148,73 @@
             cleopatra: 'Cleopatra', alexander: 'Alexander', moneygod: 'MoneyGod',
             analyst: 'Analyst', videoproducer: 'VideoProducer',
             vice: 'Vice', atlas: 'Atlas', kimi: 'Kimi', croesus: 'Croesus',
+            // Added 2026-05-04: roster grew to 31; dynamic-fill below adds
+            // Hermes coordinators + testers from the live /api/agents/overview.
+            pixel: 'Pixel', governor: 'Governor',
         };
+
+        // Dynamic-fill the sidebar from the registry so new agents (Hermes
+        // coordinators, testers, future kinds) appear without hardcoding.
+        // Runs once on DOMContentLoaded; adds two new nav-sections at the
+        // bottom of the Team group: "Coordinators" + "Testers".
+        async function buildDynamicAgentNav() {
+            try {
+                const r = await fetch('/api/agents/overview').then(x => x.json());
+                const agents = r.agents || [];
+                const sidebar = document.querySelector('.sidebar') || document.body;
+                const existingPages = new Set(
+                    Array.from(document.querySelectorAll('.nav-item[data-page]'))
+                        .map(el => el.getAttribute('data-page'))
+                );
+                const newSections = {};
+                for (const a of agents) {
+                    const slug = a.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                    AGENT_NAME_MAP[slug] = a.name;
+                    if (existingPages.has(slug)) continue;
+                    const kindLabel = a.kind === 'hermes-coordinator' ? 'Coordinators'
+                                    : a.kind === 'tester' ? 'Testers'
+                                    : a.kind === 'governance' ? 'Governance'
+                                    : null;
+                    if (!kindLabel) continue;
+                    if (!newSections[kindLabel]) newSections[kindLabel] = [];
+                    newSections[kindLabel].push(a);
+                }
+                if (Object.keys(newSections).length === 0) return;
+                // Find the Team nav-section and append new sections AFTER it.
+                const teamSection = Array.from(document.querySelectorAll('.nav-section-title'))
+                    .find(el => el.textContent.trim() === 'Team');
+                let insertAfter = teamSection ? teamSection.parentElement : null;
+                for (const [label, agentList] of Object.entries(newSections)) {
+                    const section = document.createElement('div');
+                    section.className = 'nav-section';
+                    section.innerHTML = `<div class="nav-section-title">${label}</div>`;
+                    for (const a of agentList) {
+                        const slug = a.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                        const item = document.createElement('div');
+                        item.className = 'nav-item';
+                        item.setAttribute('data-page', slug);
+                        item.innerHTML = `<div class="nav-icon">${a.avatar || '•'}</div><div>${a.name}</div>`;
+                        item.addEventListener('click', () => {
+                            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                            item.classList.add('active');
+                            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                            const detail = document.getElementById('agent-detail');
+                            if (detail) { detail.classList.add('active'); loadAgentDetail(a.name); }
+                        });
+                        section.appendChild(item);
+                    }
+                    if (insertAfter && insertAfter.parentElement) {
+                        insertAfter.parentElement.insertBefore(section, insertAfter.nextSibling);
+                        insertAfter = section;
+                    } else {
+                        sidebar.appendChild(section);
+                    }
+                }
+            } catch (e) {
+                console.warn('dynamic agent nav build failed:', e);
+            }
+        }
+        document.addEventListener('DOMContentLoaded', buildDynamicAgentNav);
 
         // Navigation
         document.querySelectorAll('.nav-item').forEach(item => {
