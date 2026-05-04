@@ -91,8 +91,23 @@ function flushCost(): void {
   }
 }
 
+// Resolve a tier+pricing entry given a possibly-prefixed LM Studio model id.
+// LM Studio returns ids like 'mistralai/devstral-small-2-2512' or
+// 'google/gemma-4-26b-a4b' but our MODEL_COSTS table uses short names
+// ('devstral', 'gemma-4-26b', 'claude-sonnet'). Substring-match so cost
+// rollups attribute to the right tier instead of defaulting to tier 1 / $0.
+function resolveModelCost(model: string): { prompt: number; completion: number; tier: 1|2|3 } {
+  if (MODEL_COSTS[model]) return MODEL_COSTS[model];
+  const lower = model.toLowerCase();
+  // Most-specific first so 'claude-opus' wins over a hypothetical 'claude' key.
+  for (const key of Object.keys(MODEL_COSTS).sort((a, b) => b.length - a.length)) {
+    if (lower.includes(key)) return MODEL_COSTS[key];
+  }
+  return { prompt: 0, completion: 0, tier: 1 as 1|2|3 };
+}
+
 function bumpBucket(b: CostBucket, prompt: number, completion: number, model: string): void {
-  const mc = MODEL_COSTS[model] || { prompt: 0, completion: 0, tier: 1 as 1|2|3 };
+  const mc = resolveModelCost(model);
   b.prompt_tokens     += prompt;
   b.completion_tokens += completion;
   b.cost_usd          += (prompt / 1000) * mc.prompt + (completion / 1000) * mc.completion;
