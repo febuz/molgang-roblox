@@ -111,24 +111,16 @@ export function record(input: { sha: string; subject: string; author: string; ti
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { bestEffortPublish } = require('./integrations/kafka/shared');
-    bestEffortPublish(async (p: any) => {
-      await p.producer?.send({
-        topic: 'commit.audit',
-        messages: [{
-          key: entry.sha,
-          value: JSON.stringify({
-            sha: entry.sha,
-            shortSha: entry.shortSha,
-            author: entry.author,
-            ts: entry.timestamp,
-            subject: entry.subject,
-            attributedAgent: entry.attributedAgent,
-            taskRef: entry.taskRef,
-            source: entry.source,
-          }),
-        }],
-      });
-    });
+    bestEffortPublish((p: any) => p.publishCommitAudit({
+      sha: entry.sha,
+      shortSha: entry.shortSha,
+      author: entry.author,
+      ts: entry.timestamp,
+      subject: entry.subject,
+      attributedAgent: entry.attributedAgent,
+      taskRef: entry.taskRef,
+      source: entry.source,
+    }));
   } catch { /* shared.ts not loadable in some test envs — silently skip */ }
 
   return { ok: true, entry };

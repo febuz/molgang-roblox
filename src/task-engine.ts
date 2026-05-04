@@ -460,22 +460,14 @@ export function tickEngine() {
           // alongside other task lifecycle events. Best-effort.
           try {
             const { bestEffortPublish } = require('./integrations/kafka/shared');
-            bestEffortPublish(async (p: any) => {
-              await p.producer?.send({
-                topic: 'task.failed',
-                messages: [{
-                  key: task.id,
-                  value: JSON.stringify({
-                    task_id: task.id,
-                    agent,
-                    title: task.title,
-                    failure_stage: 'artifact-gen',
-                    error: err.message,
-                    ts: new Date().toISOString(),
-                  }),
-                }],
-              });
-            });
+            bestEffortPublish((p: any) => p.publishTaskFailed({
+              task_id: task.id,
+              agent,
+              title: task.title,
+              failure_stage: 'artifact-gen',
+              error: err.message,
+              ts: new Date().toISOString(),
+            }));
           } catch { /* shared.ts not loadable in test envs */ }
         });
       }
