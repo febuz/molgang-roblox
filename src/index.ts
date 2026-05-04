@@ -1642,6 +1642,44 @@ async function initialize() {
     await lightrag.connect();
     logger.info('✓ LightRAG connected');
 
+    // 1a. Ingest the shared asset registry (molgang-roblox + molgang-web).
+    //     Idempotent. Silently noops when LightRAG is offline. The
+    //     /api/assets/* surface below queries this graph live.
+    try {
+      const { ingestAssetRegistry } = await import('./integrations/lightrag/asset-graph');
+      const r = await ingestAssetRegistry(lightrag);
+      if (r.offline) logger.warn('asset-graph: LightRAG offline — skip ingest');
+      else logger.info(`✓ asset-graph: ${r.ingested} assets indexed (${r.mirrored} mirrored, ${r.orphan} orphan)`);
+    } catch (e: any) {
+      logger.warn(`asset-graph init failed: ${e.message}`);
+    }
+
+    // Asset query endpoints — read straight from the LightRAG graph so
+    // designers (Mira, Luna) can ask "which 3D models from Roblox are not
+    // yet ported to web?" without scanning the filesystem each time.
+    const { queryAssets, getCategorySummary } = await import('./integrations/lightrag/asset-graph');
+    app.get('/api/assets/categories', async (_req, res) => {
+      try { res.json({ success: true, lightrag_connected: lightrag.isConnected(), categories: await getCategorySummary(lightrag) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/assets', async (req, res) => {
+      try {
+        const assets = await queryAssets(lightrag, {
+          category: req.query.category ? String(req.query.category) : undefined,
+          origin:   req.query.origin   ? String(req.query.origin) as 'roblox'|'web' : undefined,
+          orphan_only: req.query.orphan === '1' || req.query.orphan === 'true',
+          limit: parseInt(String(req.query.limit || '50')) || 50,
+        });
+        res.json({ success: true, lightrag_connected: lightrag.isConnected(), count: assets.length, assets });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/assets/orphans', async (_req, res) => {
+      try {
+        const orphans = await queryAssets(lightrag, { orphan_only: true, limit: 200 });
+        res.json({ success: true, count: orphans.length, orphans });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+
     // 1b. Initialize Agent API Wrapper (with caching + rate limiting)
     logger.info('📦 Initializing Agent API Wrapper...');
     const agentAPI = new AgentAPIWrapper(lightrag);

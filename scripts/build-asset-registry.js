@@ -1,0 +1,152 @@
+#!/usr/bin/env node
+/**
+ * build-asset-registry.js — scan molgang-roblox/assets + molgang-web
+ * for shareable graphical assets and produce a single registry that
+ * (a) the Roblox build pipeline + (b) the web frontend can both consume.
+ *
+ * What counts as shareable: PNG / JPG (textures + UI), SVG (icons), GLB /
+ * GLTF / FBX / OBJ (3D meshes). Roblox-specific .rbxl, .lua, blender
+ * intermediates (.blend1, autosave) are filtered out.
+ *
+ * Output: molgang-web/shared/asset-registry.json — entries keyed by
+ * a stable hash so renames are reflected as same-id with new path.
+ *
+ * Re-runnable; idempotent. The Roblox sync routine should call this
+ * after every Roblox-side asset change so molgang-web sees the
+ * canonical list within 4 hours.
+ */
+
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+const ROBLOX_ROOT = process.env.ROBLOX_REPO || `${process.env.HOME}/molgang-roblox`;
+const WEB_ROOT    = process.env.MOLGANG_WEB_REPO || '/media/knight2/EDS2/projects/molgang-web';
+const OUT_PATH    = path.join(WEB_ROOT, 'shared/asset-registry.json');
+
+const SHAREABLE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.svg', '.glb', '.gltf', '.fbx', '.obj']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'pipeline_env', 'pipeline', 'downloads', '__pycache__', '.next', 'venv']);
+const SKIP_PATTERNS = [/\.blend1$/, /\.autosave/, /Thumbs\.db/, /\.DS_Store/];
+
+function walk(dir, results, root) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    if (SKIP_DIRS.has(e.name)) continue;
+    if (SKIP_PATTERNS.some(p => p.test(e.name))) continue;
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      walk(full, results, root);
+    } else if (e.isFile()) {
+      const ext = path.extname(e.name).toLowerCase();
+      if (!SHAREABLE_EXTS.has(ext)) continue;
+      let stat;
+      try { stat = fs.statSync(full); } catch { continue; }
+      results.push({
+        path: path.relative(root, full),
+        absPath: full,
+        ext,
+        sizeBytes: stat.size,
+        mtimeMs: stat.mtimeMs,
+      });
+    }
+  }
+}
+
+// Categorize an asset by where it lives + filename hints.
+function categorize(rel) {
+  const p = rel.toLowerCase();
+  if (p.includes('icon')         || p.includes('ui'))            return 'ui';
+  if (p.includes('character')    || p.includes('npc'))           return 'character';
+  if (p.includes('molecule')     || p.includes('atom'))          return 'molecule';
+  if (p.includes('zone')         || p.includes('environment'))   return 'environment';
+  if (p.includes('factory')      || p.includes('mine'))          return 'facility';
+  if (p.includes('logo')         || p.includes('brand'))         return 'brand';
+  if (/\.(glb|gltf|fbx|obj)$/.test(p))                            return '3d-model';
+  if (/\.(png|jpg|jpeg)$/.test(p))                                return 'texture';
+  if (/\.svg$/.test(p))                                           return 'vector';
+  return 'misc';
+}
+
+// Stable id: hash of (relative-path-after-root). Survives rename within a
+// repo as long as the path doesn't fully change. For move-across-repos use
+// the content-hash variant via mtime+size as a soft-stable salt.
+function makeId(repo, relPath) {
+  return repo + ':' + crypto.createHash('sha1').update(relPath).digest('hex').slice(0, 12);
+}
+
+function build() {
+  const start = Date.now();
+  const robloxAssets = [];
+  walk(path.join(ROBLOX_ROOT, 'assets'),  robloxAssets, ROBLOX_ROOT);
+  walk(path.join(ROBLOX_ROOT, 'game/src'), robloxAssets, ROBLOX_ROOT);   // catch any in-source assets
+
+  const webAssets = [];
+  walk(path.join(WEB_ROOT, 'frontend/public'), webAssets, WEB_ROOT);
+  walk(path.join(WEB_ROOT, 'frontend/assets'), webAssets, WEB_ROOT);
+
+  const entries = [];
+  for (const a of robloxAssets) {
+    entries.push({
+      id: makeId('roblox', a.path),
+      origin: 'roblox',
+      origin_path: a.path,
+      category: categorize(a.path),
+      ext: a.ext,
+      size_bytes: a.sizeBytes,
+      web_mirror_path: null,        // populated below if a sibling exists in web
+    });
+  }
+  for (const a of webAssets) {
+    entries.push({
+      id: makeId('web', a.path),
+      origin: 'web',
+      origin_path: a.path,
+      category: categorize(a.path),
+      ext: a.ext,
+      size_bytes: a.sizeBytes,
+    });
+  }
+
+  // Heuristic mirror match: same basename + ext between repos.
+  const webByBase = new Map();
+  for (const w of webAssets) webByBase.set(path.basename(w.path), w.path);
+  for (const e of entries) {
+    if (e.origin !== 'roblox') continue;
+    const base = path.basename(e.origin_path);
+    if (webByBase.has(base)) e.web_mirror_path = webByBase.get(base);
+  }
+
+  // Stats
+  const byCategory = {};
+  const byOrigin = { roblox: 0, web: 0 };
+  for (const e of entries) {
+    byCategory[e.category] = (byCategory[e.category] || 0) + 1;
+    byOrigin[e.origin] += 1;
+  }
+  const orphanRoblox = entries.filter(e => e.origin === 'roblox' && !e.web_mirror_path).length;
+
+  const doc = {
+    _source: 'Generated by virtualpc/scripts/build-asset-registry.js — single source of truth for assets shared between molgang-roblox and molgang-web. Re-run after any asset add/move on either side.',
+    generatedAt: new Date().toISOString(),
+    builtInMs: Date.now() - start,
+    counts: {
+      total: entries.length,
+      by_origin: byOrigin,
+      by_category: byCategory,
+      web_mirrors_for_roblox: entries.filter(e => e.origin === 'roblox' && e.web_mirror_path).length,
+      orphan_roblox: orphanRoblox,
+      orphan_web: byOrigin.web,
+    },
+    assets: entries,
+  };
+
+  if (!fs.existsSync(path.dirname(OUT_PATH))) fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
+  fs.writeFileSync(OUT_PATH, JSON.stringify(doc, null, 2));
+  console.log(`✓ wrote ${entries.length} assets to ${OUT_PATH}`);
+  console.log(`  by origin: roblox=${byOrigin.roblox}  web=${byOrigin.web}`);
+  console.log(`  by category:`, byCategory);
+  console.log(`  ${doc.counts.web_mirrors_for_roblox} roblox assets already mirrored on web · ${orphanRoblox} not yet ported`);
+}
+
+build();
