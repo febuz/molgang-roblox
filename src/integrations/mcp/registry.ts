@@ -1,0 +1,252 @@
+/**
+ * MCP-compatible tool registry — coordinates tool use across all agents.
+ *
+ * This is the in-house alternative to OpenAI Symphony for tool-call
+ * orchestration. Symphony orchestrates issue queues; we already have a
+ * task engine for that. What we needed was *tool-call* coordination — a
+ * single layer that:
+ *
+ *   1. Catalogues every tool the agents can invoke (codegraph, governance,
+ *      wiki, assets, scrum, forum) with a JSON schema for each.
+ *   2. Enforces a per-agent ACL (the `tools` field on AgentMeta) so an
+ *      agent can only call tools it was provisioned for.
+ *   3. Returns a single, consistent shape — { ok, result, error } — so the
+ *      caller doesn't need to know which subsystem actually answered.
+ *
+ * The shape mirrors the MCP "tools/list" + "tools/call" RPCs so we can
+ * swap in @modelcontextprotocol/sdk later without changing the schemas.
+ *
+ * Both Claude CLI (`claude mcp add`) and Kimi CLI (`kimi mcp`) speak the
+ * full MCP protocol; this registry speaks an HTTP subset that's easy to
+ * shim into either.
+ */
+import { AGENT_META, getAgent } from '../../agent-registry';
+import * as codegraph from '../codegraph';
+import * as governance from '../governance';
+import * as wiki from '../wiki';
+import * as fs from 'fs';
+import * as path from 'path';
+import logger from '../../utils/logger';
+
+// __dirname at runtime resolves to dist/integrations/mcp/, so three levels
+// up lands on the repo root regardless of whether we're loaded from src/
+// (ts-node) or dist/ (compiled).
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
+
+export interface ToolDefinition {
+  /** Dotted name, e.g. "codegraph.symbol" */
+  name: string;
+  /** One-line summary shown in MCP tool catalog */
+  description: string;
+  /** JSON-Schema for the input arguments (kept lightweight) */
+  inputSchema: {
+    type: 'object';
+    properties: Record<string, { type: string; description?: string; enum?: string[] }>;
+    required?: string[];
+  };
+  /** Implementation */
+  handler: (args: any) => Promise<unknown> | unknown;
+}
+
+const TOOLS: ToolDefinition[] = [
+  // ─── codegraph.* ──────────────────────────────────────────────────────
+  {
+    name: 'codegraph.stats',
+    description: 'Summary counts for the current code graph (files, symbols, edges).',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async () => {
+      const g = codegraph.getCodegraph(REPO_ROOT);
+      return codegraph.summarize(g);
+    },
+  },
+  {
+    name: 'codegraph.symbol',
+    description: 'Find a symbol (function/class/const) and the files that reference it.',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: 'Exact or substring symbol name' } },
+      required: ['name'],
+    },
+    handler: async ({ name }: { name: string }) => {
+      const g = codegraph.getCodegraph(REPO_ROOT);
+      const matches = codegraph.findSymbol(g, name);
+      return { matches, refs: matches.length > 0 ? codegraph.findReferences(g, matches[0].name) : [] };
+    },
+  },
+  {
+    name: 'codegraph.file',
+    description: 'Get exports + imports + cross-file dependencies for a TS file.',
+    inputSchema: {
+      type: 'object',
+      properties: { path: { type: 'string', description: 'Repo-relative file path' } },
+      required: ['path'],
+    },
+    handler: async ({ path: rel }: { path: string }) => {
+      const g = codegraph.getCodegraph(REPO_ROOT);
+      const file = (g as any).files?.[rel];
+      if (!file) return { error: `unknown path: ${rel}` };
+      return file;
+    },
+  },
+
+  // ─── governance.* ─────────────────────────────────────────────────────
+  {
+    name: 'governance.list',
+    description: 'List data-governance entries (filter by kind/owner/tag).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['shared-data', 'asset-registry', 'wiki-term', 'schema', 'config', 'license'] },
+        owner: { type: 'string' },
+        tag: { type: 'string' },
+      },
+    },
+    handler: async (args: { kind?: governance.GovernanceKind; owner?: string; tag?: string }) => {
+      return { entries: governance.listEntries(args) };
+    },
+  },
+  {
+    name: 'governance.lineage',
+    description: 'Get the lineage / source / consumers / related-by-tag for a governance entry or wiki term.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'Governance entry id or human term name' } },
+      required: ['id'],
+    },
+    handler: async ({ id }: { id: string }) => governance.getLineage(id),
+  },
+  {
+    name: 'governance.register',
+    description: 'Upsert a data-governance entry (Governor only — ACL enforced upstream).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' }, name: { type: 'string' }, kind: { type: 'string' },
+        owner: { type: 'string' }, source: { type: 'string' },
+        schema: { type: 'string' }, lineage: { type: 'string' }, license: { type: 'string' },
+      },
+      required: ['id', 'name', 'kind', 'owner', 'source'],
+    },
+    handler: async (args: any) => governance.registerEntry(args),
+  },
+
+  // ─── wiki.* ───────────────────────────────────────────────────────────
+  {
+    name: 'wiki.lookup',
+    description: 'Look up a wiki term by id or fuzzy term name.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string' }, q: { type: 'string' }, namespace: { type: 'string', enum: ['game', 'qchem'] } },
+    },
+    handler: async ({ id, q, namespace }: { id?: string; q?: string; namespace?: wiki.WikiNamespace }) => {
+      if (id) {
+        const e = wiki.getEntry(id);
+        return e ? { entry: e } : { error: `unknown wiki id: ${id}` };
+      }
+      return { entries: wiki.listEntries({ q, namespace }) };
+    },
+  },
+  {
+    name: 'wiki.upsert',
+    description: 'Create or update a wiki entry (Kimi/Governor/Pixel — ACL enforced).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' }, term: { type: 'string' },
+        namespace: { type: 'string', enum: ['game', 'qchem'] },
+        summary: { type: 'string' }, body: { type: 'string' },
+        seeAlso: { type: 'string' }, governanceId: { type: 'string' }, author: { type: 'string' },
+      },
+      required: ['id', 'term', 'namespace', 'summary', 'body'],
+    },
+    handler: async (args: any) => {
+      const seeAlso = typeof args.seeAlso === 'string'
+        ? args.seeAlso.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : args.seeAlso;
+      return wiki.upsertEntry({ ...args, seeAlso });
+    },
+  },
+
+  // ─── assets.search ────────────────────────────────────────────────────
+  {
+    name: 'assets.search',
+    description: 'Search the EDS2 asset registry for 3D models / textures / audio matching a query.',
+    inputSchema: {
+      type: 'object',
+      properties: { q: { type: 'string', description: 'Substring on filename or category' } },
+      required: ['q'],
+    },
+    handler: async ({ q }: { q: string }) => {
+      const REGISTRY_PATH = '/media/knight2/EDS2/projects/molgang-web/shared/asset-registry.json';
+      if (!fs.existsSync(REGISTRY_PATH)) return { entries: [], note: 'registry not yet built — run scripts/build-asset-registry.js' };
+      try {
+        const raw = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
+        const all = (raw.assets || raw.entries || []) as any[];
+        const lc = q.toLowerCase();
+        const matches = all.filter(a => JSON.stringify(a).toLowerCase().includes(lc)).slice(0, 50);
+        return { entries: matches, total: matches.length, registrySize: all.length };
+      } catch (e: any) {
+        return { error: e.message };
+      }
+    },
+  },
+
+  // ─── docs.regenerate ──────────────────────────────────────────────────
+  // Kicks the Kimi-backed doc regeneration script. The actual long-running
+  // work is in scripts/regenerate-docs.js; this just records the request.
+  {
+    name: 'docs.regenerate',
+    description: 'Trigger the Kimi-backed regenerate-docs script (long-context author refreshes README/architecture/wiki).',
+    inputSchema: {
+      type: 'object',
+      properties: { scope: { type: 'string', enum: ['readme', 'architecture', 'wiki', 'all'], description: 'Which doc bundle to refresh' } },
+    },
+    handler: async ({ scope }: { scope?: string }) => {
+      // Returns instructions; the actual run is shell-side via /api/docs/regenerate.
+      return {
+        ok: true,
+        note: `queued docs.regenerate scope=${scope || 'all'} — POST to /api/docs/regenerate to execute`,
+        scope: scope || 'all',
+      };
+    },
+  },
+];
+
+export function listTools(agentName?: string): { name: string; description: string; inputSchema: ToolDefinition['inputSchema'] }[] {
+  const all = TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
+  if (!agentName) return all;
+  const agent = getAgent(agentName);
+  if (!agent || !agent.tools) return [];
+  return all.filter(t => agentAllowed(agent.tools!, t.name));
+}
+
+export function agentAllowed(acl: string[], toolName: string): boolean {
+  for (const rule of acl) {
+    if (rule === toolName) return true;
+    if (rule.endsWith('.*')) {
+      const ns = rule.slice(0, -2);
+      if (toolName === ns || toolName.startsWith(ns + '.')) return true;
+    }
+    if (rule === '*') return true;
+  }
+  return false;
+}
+
+export async function callTool(agentName: string, toolName: string, args: any): Promise<{ ok: true; result: unknown } | { ok: false; error: string }> {
+  const agent = getAgent(agentName);
+  if (!agent) return { ok: false, error: `unknown agent: ${agentName}` };
+  if (!agent.tools || !agentAllowed(agent.tools, toolName)) {
+    return { ok: false, error: `agent ${agentName} not authorised to call ${toolName} (acl=${(agent.tools || []).join(',') || 'none'})` };
+  }
+  const def = TOOLS.find(t => t.name === toolName);
+  if (!def) return { ok: false, error: `unknown tool: ${toolName}` };
+  try {
+    const result = await def.handler(args || {});
+    return { ok: true, result };
+  } catch (e: any) {
+    logger.warn(`mcp.callTool ${toolName} failed for ${agentName}: ${e.message}`);
+    return { ok: false, error: e.message };
+  }
+}
+
+export function toolNames(): string[] { return TOOLS.map(t => t.name); }

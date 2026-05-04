@@ -248,6 +248,9 @@ const AGENT_MODEL_ROUTES: { [agent: string]: string } = {
   Vice:        'phi-4',           // screenplay / narrative (NOT gemma 26b by default)
   Atlas:       'devstral',        // CAD / physics code
   Kimi:        'phi-4',           // local fallback; routes to Moonshot Kimi via kimi-client when MOONSHOT_API_KEY is set
+  // Data governance + Web developer (added 2026-05-04)
+  Governor:    'phi-4',           // structured registry edits; deeper audits via taskType:'deep'
+  Pixel:       'devstral',        // Next.js / Phaser / Three.js code
 };
 
 const TASK_TYPE_ROUTES: { [kind: string]: string } = {
@@ -265,6 +268,13 @@ const TASK_TYPE_ROUTES: { [kind: string]: string } = {
   // shell out to the local `claude --bare --print` CLI (Anthropic Sonnet
   // by default). Credit cost is real — gated by ANTHROPIC_API_KEY auth.
   design:       'claude-sonnet',
+  // Documentation route: ANY agent calling with taskType:'docs' is force-
+  // routed through the Kimi CLI (Moonshot, paid). Long-context window
+  // makes it the right pick for README / architecture / wiki authoring.
+  // Local fallback when the CLI is unavailable is gemma-4-26b (next-best
+  // long-context). Hint shown here is informational; chatAsAgent intercepts
+  // taskType==='docs' before model resolution runs.
+  docs:         'kimi-k2.6',
 };
 
 interface LmModel {
@@ -400,11 +410,25 @@ export async function chatAsAgent(
   // GPU. If the CLI isn't on PATH (e.g. virtualpc.service running as a
   // different user), fall through to the LM Studio routing below so the
   // call still completes against a local model.
-  if (agent === 'Kimi') {
+  //
+  // Same bridge handles taskType:'docs' for ANY agent — long-context Moonshot
+  // is the right pick for README / architecture / wiki authoring. KIMI_FOR_DOCS=0
+  // disables the always-on policy if quota becomes a concern.
+  const kimiForDocs = process.env.KIMI_FOR_DOCS !== '0';
+  const isDocsTask = opts.taskType === 'docs' && kimiForDocs;
+  let docsFallthroughHint: string | null = null;
+  if (agent === 'Kimi' || isDocsTask) {
     const r = await chatViaKimiCli(messages, opts);
     if (r) {
       recordThroughput(agent, r.model, r.usage, r.latencyMs);
       return { ...r, agent };
+    }
+    // Kimi unavailable on a docs task → force the hint to a long-context
+    // local fallback (gemma-4-26b) so the doc still gets written, just
+    // without the Moonshot context window.
+    if (isDocsTask && agent !== 'Kimi') {
+      docsFallthroughHint = 'gemma-4-26b';
+      logger.info(`Kimi CLI unavailable — docs task for ${agent} falling back to gemma-4-26b`);
     }
   }
 
@@ -431,11 +455,13 @@ export async function chatAsAgent(
     logger.info(`Claude CLI unavailable — designer ${agent} falling back to ${designerFallthroughHint}`);
   }
 
-  const hint = designerFallthroughHint
-    ? designerFallthroughHint
-    : opts.taskType
-      ? (TASK_TYPE_ROUTES[opts.taskType] || AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b')
-      : (AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b');
+  const hint = docsFallthroughHint
+    ? docsFallthroughHint
+    : designerFallthroughHint
+      ? designerFallthroughHint
+      : opts.taskType
+        ? (TASK_TYPE_ROUTES[opts.taskType] || AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b')
+        : (AGENT_MODEL_ROUTES[agent] || 'gemma-4-26b');
 
   const model = await resolveModel(hint);
   if (!model) {

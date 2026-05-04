@@ -1,0 +1,74 @@
+{
+  "entries": [
+    {
+      "id": "molco2",
+      "term": "MOLCO2",
+      "namespace": "game",
+      "summary": "In-game carbon-credit currency awarded for sequestration / efficient reactions.",
+      "body": "## MOLCO2\n\nMOLCO2 is the carbon-credit currency in molgang. Players earn MOLCO2 by:\n\n- Running reactions that consume more CO₂ than they emit\n- Building facilities with high atom economy\n- Completing sustainability quests\n\nMOLCO2 is spent on: facility upgrades that reduce emissions, license carbon-offset partnerships, and the marketplace.\n\nSee also: [atom-economy](#atom-economy), [carbon-credit](#carbon-credit).",
+      "seeAlso": [
+        "atom-economy",
+        "carbon-credit"
+      ],
+      "governanceId": "shared-quests-json",
+      "updatedAt": "2026-05-04T08:55:02.100Z",
+      "author": "Vice"
+    },
+    {
+      "id": "fugacity",
+      "term": "Fugacity",
+      "namespace": "qchem",
+      "summary": "Effective partial pressure of a real gas — replaces ideal-gas pressure in chemical-equilibrium expressions.",
+      "body": "## Fugacity\n\nFugacity (φ·P) is the *effective* partial pressure of a real gas. It substitutes for raw pressure in Gibbs free-energy / equilibrium-constant expressions when the gas deviates from ideal behavior.\n\n- For an ideal gas: fugacity = pressure.\n- For a real gas at high P or low T: fugacity ≠ pressure; fugacity coefficient φ < 1 means attractive interactions dominate.\n\nIn molgang, the in-game reactor sim tracks fugacity for any reaction running above ~10 bar.\n\nSee also: [activity](#activity), [chemical-potential](#chemical-potential).",
+      "seeAlso": [
+        "activity",
+        "chemical-potential"
+      ],
+      "governanceId": "wiki-terms-json",
+      "updatedAt": "2026-05-04T08:55:02.100Z",
+      "author": "Kimi"
+    },
+    {
+      "id": "partition-function",
+      "term": "Partition function",
+      "namespace": "qchem",
+      "summary": "Sum over all microstates weighted by Boltzmann factor — connects quantum energy levels to thermodynamic state functions.",
+      "body": "## Partition function (Q)\n\nThe partition function Q = Σ exp(−Eᵢ/kT) sums Boltzmann-weighted microstates. Every macroscopic thermodynamic quantity (Helmholtz free energy, entropy, heat capacity) follows from Q.\n\nIn molgang the reaction simulator computes Q for translational + rotational + vibrational + electronic modes and uses it to predict equilibrium constants from first principles.\n\nSee also: [boltzmann-distribution](#boltzmann-distribution), [vibrational-mode](#vibrational-mode).",
+      "seeAlso": [
+        "boltzmann-distribution",
+        "vibrational-mode"
+      ],
+      "governanceId": "wiki-terms-json",
+      "updatedAt": "2026-05-04T08:55:02.100Z",
+      "author": "Kimi"
+    },
+    {
+      "id": "damkohler",
+      "term": "Damköhler number (Da)",
+      "namespace": "qchem",
+      "summary": "Dimensionless ratio of reaction rate to transport rate — tells you whether kinetics or mixing limits a reactor.",
+      "body": "## Damköhler number\n\nDa = (reaction rate) / (transport rate). Roughly:\n\n- Da ≪ 1 → reactor is *transport-limited*; molecules leave before reacting.\n- Da ≫ 1 → reactor is *kinetics-limited*; reaction equilibrates faster than flow / diffusion can supply reactants.\n\nIn molgang facility design, Da is the headline number on every continuous-flow reactor card.\n\nSee also: [residence-time](#residence-time), [péclet-number](#peclet-number).",
+      "seeAlso": [
+        "residence-time",
+        "peclet-number"
+      ],
+      "governanceId": "wiki-terms-json",
+      "updatedAt": "2026-05-04T08:55:02.100Z",
+      "author": "Kimi"
+    },
+    {
+      "id": "age-bands",
+      "term": "Age bands",
+      "namespace": "game",
+      "summary": "Player-progression tiers (8-10, 11-13, 14-17, 18+) gating quests, mechanics, and chemistry depth.",
+      "body": "## Age bands\n\nmolgang quests + mechanics are gated by four age bands so the game scales from middle-school casual to undergraduate-curriculum:\n\n- **8-10**: ion-pair matching, simple reactions, no thermodynamics math.\n- **11-13**: balancing equations, intro stoichiometry, MOLCO2 trading.\n- **14-17**: thermodynamics + kinetics, real-gas corrections, full reactor design.\n- **18+**: quantum chemistry path, partition functions, transport phenomena.\n\nAge band is set in the player profile and gates every quest unlock.",
+      "seeAlso": [
+        "quests",
+        "molco2"
+      ],
+      "governanceId": "shared-quests-json",
+      "updatedAt": "2026-05-04T08:55:02.100Z",
+      "author": "Vice"
+    }
+  ]
+}

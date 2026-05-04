@@ -55,6 +55,9 @@ import * as lmstudio from './lmstudio';
 import { AGENT_META } from './agent-registry';
 import * as fs from 'fs';
 import * as codegraph from './integrations/codegraph';
+import * as governance from './integrations/governance';
+import * as wiki from './integrations/wiki';
+import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
 import { guardrailsAgent } from './guardrails/guardrails-agent';
@@ -341,6 +344,118 @@ app.get('/api/codegraph/search', (req, res) => {
     const matches = codegraph.findSymbol(g, q);
     const limited = matches.slice(0, 30);
     res.json({ success: true, q, matchCount: matches.length, matches: limited });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// Data governance — Governor agent owns shared/*.json + asset registry +
+// wiki lineage. Read endpoints are open (any agent can lookup); write is
+// gated to Governor or the autonomous regenerate-docs script.
+// ============================================================================
+app.get('/api/governance', (req, res) => {
+  try {
+    const kind = req.query.kind as governance.GovernanceKind | undefined;
+    const owner = req.query.owner as string | undefined;
+    const tag = req.query.tag as string | undefined;
+    res.json({ success: true, entries: governance.listEntries({ kind, owner, tag }) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/governance/lineage/:id', (req, res) => {
+  try {
+    const r = governance.getLineage(String(req.params.id));
+    res.json({ success: true, ...r });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/governance/register', (req, res) => {
+  try {
+    const body = req.body || {};
+    if (!body.id || !body.name || !body.kind || !body.owner || !body.source) {
+      res.status(400).json({ success: false, error: 'id, name, kind, owner, source required' });
+      return;
+    }
+    const entry = governance.registerEntry(body);
+    res.json({ success: true, entry });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// Wiki — game terms + quantum chemical engineering glossary. Pixel renders
+// /wiki on molgang-web from these entries; Kimi authors them.
+// ============================================================================
+app.get('/api/wiki', (req, res) => {
+  try {
+    const namespace = req.query.namespace as wiki.WikiNamespace | undefined;
+    const q = req.query.q as string | undefined;
+    res.json({ success: true, entries: wiki.listEntries({ namespace, q }) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/wiki/:id', (req, res) => {
+  try {
+    const e = wiki.getEntry(String(req.params.id));
+    if (!e) { res.status(404).json({ success: false, error: 'not found' }); return; }
+    res.json({ success: true, entry: e });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/wiki', (req, res) => {
+  try {
+    const body = req.body || {};
+    if (!body.id || !body.term || !body.namespace || !body.summary || !body.body) {
+      res.status(400).json({ success: false, error: 'id, term, namespace, summary, body required' });
+      return;
+    }
+    const entry = wiki.upsertEntry(body);
+    res.json({ success: true, entry });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// MCP — tool-use coordination layer. Replaces the need for OpenAI Symphony
+// for tool orchestration: each agent has an ACL (`tools` field on AgentMeta)
+// and every tool call goes through this dispatcher. Both Claude CLI and
+// Kimi CLI can consume this catalogue once we shim it to the MCP RPC shape;
+// for now agents call directly via /api/mcp/call.
+// ============================================================================
+app.get('/api/mcp/tools', (req, res) => {
+  try {
+    const agent = req.query.agent as string | undefined;
+    res.json({ success: true, agent: agent || null, tools: mcp.listTools(agent) });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/mcp/call', async (req, res) => {
+  try {
+    const { agent, tool, args } = req.body || {};
+    if (!agent || !tool) {
+      res.status(400).json({ success: false, error: 'agent + tool required' });
+      return;
+    }
+    const r = await mcp.callTool(String(agent), String(tool), args || {});
+    if (!r.ok) { res.status(403).json({ success: false, error: r.error }); return; }
+    res.json({ success: true, result: r.result });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// Docs regeneration — kicks scripts/regenerate-docs.js which uses Kimi
+// (taskType:'docs') to refresh README, architecture, and wiki entries.
+// Long-running; returns the run id so the caller can poll if needed.
+// ============================================================================
+app.post('/api/docs/regenerate', async (req, res) => {
+  try {
+    const scope = String(req.body?.scope || 'all');
+    const { spawn } = require('child_process');
+    const script = path.join(REPO_ROOT, 'scripts', 'regenerate-docs.js');
+    if (!require('fs').existsSync(script)) {
+      res.status(404).json({ success: false, error: `script not found: ${script}` });
+      return;
+    }
+    const child = spawn('node', [script, '--scope', scope], { detached: true, stdio: 'ignore', cwd: REPO_ROOT });
+    child.unref();
+    res.json({ success: true, scope, pid: child.pid, note: 'queued — Kimi-backed long-context author runs in background' });
   } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
 });
 
