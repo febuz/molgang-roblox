@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>molgang · investor demo · Fill / CEO</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #050810; color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif; }
+  #root { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  .slide {
+    position: absolute; inset: 0; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.6s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  .panel {
+    background: linear-gradient(180deg, rgba(10,18,32,0.85) 0%, rgba(10,18,32,0.65) 100%);
+    border: 1px solid rgba(96,165,250,0.25); border-radius: 12px;
+    padding: 32px 40px; max-width: 720px; width: 90%;
+    backdrop-filter: blur(8px);
+  }
+  h1 {
+    font-family: 'Orbitron', 'Inter', sans-serif; font-weight: 900;
+    font-size: clamp(2.2rem, 5vw, 3.8rem); letter-spacing: -0.02em;
+    line-height: 1.05; margin-bottom: 12px;
+    background: linear-gradient(90deg, #60a5fa 0%, #f0abfc 50%, #fbbf24 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h2 { font-size: clamp(1.3rem, 2.5vw, 1.8rem); color: #93c5fd; margin-bottom: 16px; font-weight: 600; }
+  p { font-size: 1.05rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 12px; }
+  p strong { color: #fef3c7; font-weight: 600; }
+  .eyebrow { font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase;
+    color: #60a5fa; margin-bottom: 14px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-top: 22px; }
+  .stat { background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.2); border-radius: 8px; padding: 14px 18px; }
+  .stat-num { font-size: 1.85rem; font-weight: 800; color: #fbbf24; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat-lbl { font-size: 0.78rem; color: #94a3b8; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .gap-row { display: flex; align-items: baseline; gap: 12px; padding: 6px 0;
+    border-bottom: 1px dotted rgba(96,165,250,0.15); }
+  .gap-row:last-child { border-bottom: none; }
+  .gap-name { flex: 1; color: #e6f0ff; }
+  .gap-score { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 50px; text-align: right; }
+  .gap-bar { flex: 0 0 200px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .gap-fill { height: 100%; transition: width 1s ease; }
+
+  .nav { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px; z-index: 50; }
+  .nav-dot { width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(96,165,250,0.25); cursor: pointer; transition: all 0.3s; }
+  .nav-dot.active { background: #60a5fa; transform: scale(1.4); }
+  .nav-dot:hover { background: rgba(96,165,250,0.5); }
+
+  .nav-arrows {
+    position: fixed; bottom: 22px; right: 24px; display: flex; gap: 8px;
+    color: #64748b; font-size: 0.85rem; z-index: 50;
+  }
+  .nav-arrows kbd {
+    background: rgba(96,165,250,0.15); border: 1px solid rgba(96,165,250,0.3);
+    border-radius: 4px; padding: 2px 6px; font-family: ui-monospace, monospace;
+    color: #93c5fd; font-size: 0.78rem;
+  }
+
+  .slide-num {
+    position: fixed; top: 22px; left: 28px;
+    color: #475569; font-size: 0.78rem; letter-spacing: 0.15em; text-transform: uppercase;
+    z-index: 50;
+  }
+  .signature {
+    position: fixed; top: 22px; right: 28px;
+    color: #475569; font-size: 0.78rem; z-index: 50;
+  }
+
+  /* Slide-specific layouts */
+  #slide-team { flex-direction: column; }
+  #slide-team .panel { max-width: 900px; }
+  .agent-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+    gap: 8px; margin-top: 18px; max-height: 320px; overflow-y: auto;
+  }
+  .agent-chip {
+    background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.18);
+    border-radius: 8px; padding: 10px 6px; text-align: center;
+    transition: all 0.3s; animation: chipIn 0.5s ease backwards;
+  }
+  @keyframes chipIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .agent-chip:hover { transform: translateY(-2px); border-color: rgba(96,165,250,0.5); }
+  .agent-chip .ag-avatar { font-size: 1.4rem; }
+  .agent-chip .ag-name { font-size: 0.62rem; color: #94a3b8; margin-top: 4px; line-height: 1.1; }
+
+  ul.bullets { list-style: none; padding-left: 0; margin-top: 12px; }
+  ul.bullets li { padding: 6px 0 6px 24px; position: relative; color: #cbd5e1; line-height: 1.5; }
+  ul.bullets li::before { content: '→'; position: absolute; left: 0; color: #60a5fa; }
+
+  .roadmap-row {
+    display: grid; grid-template-columns: 80px 1fr; gap: 16px;
+    padding: 10px 0; border-bottom: 1px dotted rgba(96,165,250,0.15);
+    align-items: baseline;
+  }
+  .roadmap-row:last-child { border-bottom: none; }
+  .roadmap-q { font-family: 'Orbitron', sans-serif; font-weight: 700; color: #fbbf24; font-size: 0.95rem; }
+  .roadmap-text { color: #cbd5e1; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<div class="slide-num"><span id="slide-counter">01 / 06</span></div>
+<div class="signature">presented by <strong style="color:#fbbf24">Fill · CEO</strong></div>
+
+<!-- ============================================================== -->
+<!-- SLIDE 1 — HERO -->
+<!-- ============================================================== -->
+<div class="slide active" id="slide-hero">
+  <div class="panel" style="text-align:center;">
+    <div class="eyebrow">molgang · investor demo</div>
+    <h1>Real chemistry,<br>played as a game.</h1>
+    <p style="font-size: 1.2rem; color: #93c5fd; margin-top: 18px;">
+      A multiplayer open-world where every reaction obeys quantum chemistry, every NPC ships a real career,
+      and every player's atom-economy is denominated in <strong>tradeable carbon credits</strong>.
+    </p>
+    <p style="margin-top: 24px; color: #64748b; font-size: 0.9rem;">
+      The spinning H₂SO₄ behind this card is computed in real time. Use ← → or click the dots to navigate.
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- SLIDE 2 — TRACTION -->
+<!-- ============================================================== -->
+<div class="slide" id="slide-traction">
+  <div class="panel">
+    <div class="eyebrow">traction</div>
+    <h1 style="font-size: clamp(1.8rem, 4vw, 2.8rem);">31 agents, building 24/7.</h1>
+    <p>The platform <strong>virtualpc</strong> orchestrates a 31-agent roster — engineers, designers,
+    testers, and decision-makers — that ships features, files bugs, and audits its own work. Live counts:</p>
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="stat-agents">—</div><div class="stat-lbl">agents</div></div>
+      <div class="stat"><div class="stat-num" id="stat-commits">—</div><div class="stat-lbl">commits in audit log</div></div>
+      <div class="stat"><div class="stat-num" id="stat-tools">—</div><div class="stat-lbl">MCP tools</div></div>
+      <div class="stat"><div class="stat-num" id="stat-models">—</div><div class="stat-lbl">LM Studio models loaded</div></div>
+      <div class="stat"><div class="stat-num" id="stat-kafka">—</div><div class="stat-lbl">events on Kafka spine</div></div>
+      <div class="stat"><div class="stat-num" id="stat-uptime">—</div><div class="stat-lbl">service uptime</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- SLIDE 3 — TEAM -->
+<!-- ============================================================== -->
+<div class="slide" id="slide-team">
+  <div class="panel">
+    <div class="eyebrow">the operating model</div>
+    <h1 style="font-size: clamp(1.6rem, 3.5vw, 2.4rem);">A scrum-of-scrums of LLM-native agents.</h1>
+    <p>Four teams (roblox, web, marketing, cross-coordinator) each with a Hermes scrum master + dedicated testers.
+    Decision authority is split: Cleopatra arbitrates strategy, Alexander arbitrates technical, MoneyGod arbitrates economy.</p>
+    <div class="agent-grid" id="agent-grid"></div>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- SLIDE 4 — DIFFERENTIATION -->
+<!-- ============================================================== -->
+<div class="slide" id="slide-diff">
+  <div class="panel">
+    <div class="eyebrow">vs gta6 · without the vices</div>
+    <h1 style="font-size: clamp(1.8rem, 4vw, 2.8rem);">The polish loop, run by AI.</h1>
+    <p>Four <strong>Gameplay-Experience tester agents</strong> (Sienna, Dante, Onyx, Iris) play continuously,
+    score the four cardinal game systems against AAA polish, and write concrete feature recommendations
+    that flow straight to the build agents.</p>
+    <p style="margin-top:18px; color:#94a3b8; font-size:0.9rem;">Latest scores · 0–10 against the GTA6 target:</p>
+    <div id="gap-list" style="margin-top:14px;"></div>
+    <p style="margin-top: 18px; font-size: 0.92rem; color: #cbd5e1;">
+      <strong>The chemistry sim is genuinely strong.</strong> What we're closing now is the world around it —
+      character, dialogue, ambient life. GTA6's budget territory; our agents do it without the burn rate.
+    </p>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- SLIDE 5 — KAMI · PIPELINE -->
+<!-- ============================================================== -->
+<div class="slide" id="slide-pipeline">
+  <div class="panel">
+    <div class="eyebrow">documentation · governance · audit</div>
+    <h1 style="font-size: clamp(1.7rem, 3.8vw, 2.6rem);">Every artefact has a lineage.</h1>
+    <p>One Kafka spine carries every chat call, task mutation, and lineage write — 7 topics, real-time audit + cost rollup.
+    A data-governance registry maps every shared JSON file to its owner, schema, license. The Kami skill (open-source)
+    typesets every official document under one editorial design.</p>
+    <ul class="bullets">
+      <li><strong>20 MCP tools</strong> with per-agent ACL — every tool call schema-validated</li>
+      <li><strong>LightRAG knowledge graph</strong> on Neo4j — wiki + governance + asset lineage queryable</li>
+      <li><strong>Kami briefs</strong> for typeset deliverables — investor decks, white papers, one-pagers</li>
+      <li><strong>Codegraph</strong> walking the source tree — agents ask "who calls X" before they touch X</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- SLIDE 6 — ROADMAP / CTA -->
+<!-- ============================================================== -->
+<div class="slide" id="slide-roadmap">
+  <div class="panel">
+    <div class="eyebrow">where we go from here</div>
+    <h1 style="font-size: clamp(1.7rem, 3.8vw, 2.6rem);">A roadmap measured in playable demos, not slides.</h1>
+    <div style="margin-top: 18px;">
+      <div class="roadmap-row">
+        <div class="roadmap-q">Q2 '26</div>
+        <div class="roadmap-text">GTA6-Polish-S1 — 20 features distilled from the gap analysis. Critical path: liquid sim for the chem bench (Atlas) + Mixamo+RPM character pipeline (Mira).</div>
+      </div>
+      <div class="roadmap-row">
+        <div class="roadmap-q">Q3 '26</div>
+        <div class="roadmap-text">Voice gen pipeline (Coqui TTS, local GPU) + branching dialogue trees + NPC memory. The world starts talking back.</div>
+      </div>
+      <div class="roadmap-row">
+        <div class="roadmap-q">Q4 '26</div>
+        <div class="roadmap-text">Open-world density at GTA6 parity in 6 districts. Day/night + weather + ambient audio. Re-score target: 7/10 average.</div>
+      </div>
+      <div class="roadmap-row">
+        <div class="roadmap-q">'27</div>
+        <div class="roadmap-text">Native VR / AR via the Atlas track. Educational licensing — chemistry curriculum integrations.</div>
+      </div>
+    </div>
+    <p style="margin-top: 24px; text-align:center; font-size: 1.05rem; color: #fbbf24;">
+      The agents are already building. <strong style="color:#f0abfc">Join, or watch from the sidelines.</strong>
+    </p>
+    <p style="margin-top: 10px; text-align:center; color: #64748b; font-size: 0.85rem;">
+      Live dashboard: <code style="color:#93c5fd">http://localhost:3100</code> ·
+      Repo: <code style="color:#93c5fd">github.com/febuz/virtualpc</code>
+    </p>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav" id="nav-dots"></div>
+<div class="nav-arrows">
+  <kbd>←</kbd> <kbd>→</kbd> navigate · <kbd>F</kbd> fullscreen
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ─── 3-D scene ──────────────────────────────────────────────────
+const root = document.getElementById('root');
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x050810, 8, 22);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 9);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x050810, 1);
+root.appendChild(renderer.domElement);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Lighting
+const keyLight = new THREE.PointLight(0x60a5fa, 1.2, 25);
+keyLight.position.set(5, 5, 6);
+scene.add(keyLight);
+const rimLight = new THREE.PointLight(0xfbbf24, 0.6, 20);
+rimLight.position.set(-6, -3, 4);
+scene.add(rimLight);
+scene.add(new THREE.AmbientLight(0x1a2840, 0.4));
+
+// Build a molecule (sulfuric acid: H₂SO₄ — central S, 4 O, 2 H bonded to 2 of the O)
+const moleculeGroup = new THREE.Group();
+function addAtom(color, radius, position, emissive=0x000000) {
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: 0.35, metalness: 0.4, emissive, emissiveIntensity: 0.3
+  });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 32), mat);
+  mesh.position.copy(position);
+  return mesh;
+}
+function addBond(a, b, radius=0.07) {
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const len = dir.length();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.6, metalness: 0.2 });
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, len, 16), mat);
+  mesh.position.copy(a).add(b).multiplyScalar(0.5);
+  mesh.lookAt(b);
+  mesh.rotateX(Math.PI / 2);
+  return mesh;
+}
+
+// H₂SO₄ tetrahedral geometry — central S, 4 oxygens at tetrahedron corners, 2 H on 2 of those O
+const sPos = new THREE.Vector3(0, 0, 0);
+const tetra = [
+  new THREE.Vector3( 1,  1,  1),
+  new THREE.Vector3(-1, -1,  1),
+  new THREE.Vector3(-1,  1, -1),
+  new THREE.Vector3( 1, -1, -1),
+].map(v => v.normalize().multiplyScalar(1.4));
+const oPos = tetra;
+const hOffset = (oVec) => oVec.clone().multiplyScalar(0.55).add(oVec.clone().normalize().multiplyScalar(0.65));
+const hPositions = [hOffset(oPos[0]), hOffset(oPos[1])];
+
+// Atoms
+moleculeGroup.add(addAtom(0xfbbf24, 0.55, sPos, 0xfbbf24));   // S — gold
+oPos.forEach(p => moleculeGroup.add(addAtom(0xef4444, 0.42, p, 0xef4444))); // O — red
+hPositions.forEach(p => moleculeGroup.add(addAtom(0xe0e7ff, 0.28, p, 0xffffff))); // H — pale white
+// Bonds
+oPos.forEach(p => moleculeGroup.add(addBond(sPos, p)));
+hPositions.forEach((p, i) => moleculeGroup.add(addBond(oPos[i], p, 0.05)));
+
+scene.add(moleculeGroup);
+
+// Ambient particle field — represents the "events" flowing through the platform.
+const PARTICLE_COUNT = 600;
+const particles = new Float32Array(PARTICLE_COUNT * 3);
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  particles[i*3 + 0] = (Math.random() - 0.5) * 30;
+  particles[i*3 + 1] = (Math.random() - 0.5) * 18;
+  particles[i*3 + 2] = (Math.random() - 0.5) * 12 - 4;
+}
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(particles, 3));
+const pMat = new THREE.PointsMaterial({
+  color: 0x60a5fa, size: 0.04, sizeAttenuation: true, transparent: true, opacity: 0.55,
+});
+const points = new THREE.Points(pGeo, pMat);
+scene.add(points);
+
+// ─── slide state ─────────────────────────────────────────────────
+const slides = [...document.querySelectorAll('.slide')];
+let current = 0;
+const navDots = document.getElementById('nav-dots');
+slides.forEach((_, i) => {
+  const dot = document.createElement('div');
+  dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+  dot.addEventListener('click', () => goto(i));
+  navDots.appendChild(dot);
+});
+function goto(i) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  slides[current].classList.remove('active');
+  slides[i].classList.add('active');
+  document.querySelectorAll('.nav-dot').forEach((d, idx) => d.classList.toggle('active', idx === i));
+  document.getElementById('slide-counter').textContent =
+    String(i + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+  current = i;
+  // Camera pose per slide — gentle motion for variety.
+  const targets = [
+    { x: 0,  y: 0,  z: 9,  mx: 0,    my: 0  },  // hero — head-on
+    { x: 4,  y: 1,  z: 8,  mx: -1,   my: 0.5 }, // traction
+    { x: -3, y: -1, z: 9,  mx: 1,    my: -0.5 }, // team
+    { x: 5,  y: -2, z: 7,  mx: -1.5, my: 1   }, // diff
+    { x: -4, y: 2,  z: 8,  mx: 1.5,  my: -1  }, // pipeline
+    { x: 0,  y: -3, z: 10, mx: 0,    my: 1.5 }, // roadmap
+  ][i];
+  cameraTarget = targets;
+}
+let cameraTarget = { x: 0, y: 0, z: 9, mx: 0, my: 0 };
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') goto(current + 1);
+  if (e.key === 'ArrowLeft') goto(current - 1);
+  if (e.key === 'f' || e.key === 'F') {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+});
+
+// ─── render loop ─────────────────────────────────────────────────
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  // Smooth camera lerp toward target.
+  camera.position.x += (cameraTarget.x - camera.position.x) * 0.04;
+  camera.position.y += (cameraTarget.y - camera.position.y) * 0.04;
+  camera.position.z += (cameraTarget.z - camera.position.z) * 0.04;
+  moleculeGroup.position.x = cameraTarget.mx;
+  moleculeGroup.position.y = cameraTarget.my;
+  camera.lookAt(moleculeGroup.position);
+  // Rotate molecule for life.
+  moleculeGroup.rotation.y = t * 0.25;
+  moleculeGroup.rotation.x = Math.sin(t * 0.18) * 0.18;
+  // Drift particles.
+  const arr = pGeo.attributes.position.array;
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    arr[i*3 + 1] += 0.005;
+    if (arr[i*3 + 1] > 9) arr[i*3 + 1] = -9;
+  }
+  pGeo.attributes.position.needsUpdate = true;
+  renderer.render(scene, camera);
+}
+animate();
+
+// ─── live data overlays ──────────────────────────────────────────
+async function loadLive() {
+  // Traction stats
+  try {
+    const [agents, commits, tools, health, kafka] = await Promise.all([
+      fetch('/api/agents/overview').then(r => r.json()),
+      fetch('/api/audit/commits?limit=999').then(r => r.json()),
+      fetch('/api/mcp/tools').then(r => r.json()),
+      fetch('/api/health').then(r => r.json()),
+      fetch('/api/kafka/cost').then(r => r.json()),
+    ]);
+    const agentList = agents.agents || [];
+    document.getElementById('stat-agents').textContent = agents.count || agentList.length;
+    document.getElementById('stat-commits').textContent = (commits.entries || []).length;
+    document.getElementById('stat-tools').textContent = (tools.tools || []).length;
+    const modelsMatch = (health.services?.lm_studio || '').match(/\d+/);
+    document.getElementById('stat-models').textContent = modelsMatch ? modelsMatch[0] : '—';
+    document.getElementById('stat-kafka').textContent = (kafka.total?.calls || 0).toLocaleString();
+    const u = health.uptime_sec || 0;
+    const days = Math.floor(u / 86400);
+    document.getElementById('stat-uptime').textContent = days > 0 ? days + 'd' : Math.round(u/60) + 'm';
+
+    // Team grid
+    const grid = document.getElementById('agent-grid');
+    if (grid) {
+      grid.innerHTML = agentList.map((a, i) => `
+        <div class="agent-chip" style="animation-delay: ${i * 18}ms;" title="${a.role || ''}">
+          <div class="ag-avatar">${a.avatar || '•'}</div>
+          <div class="ag-name">${a.name}</div>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    console.warn('live data fetch failed:', e);
+  }
+
+  // Gap reports
+  try {
+    const r = await fetch('/api/forum/scrum-web?tag=gta6-gap').then(r => r.json());
+    const gaps = (r.threads || []).map(t => {
+      const m = t.title.match(/score (\d+)\/10/);
+      const score = m ? parseInt(m[1]) : null;
+      const dim = (t.title.match(/—\s*(.+?)\s*·/) || [])[1] || t.title;
+      return { dim, score };
+    }).sort((a, b) => (a.score || 0) - (b.score || 0));
+    const list = document.getElementById('gap-list');
+    if (list) {
+      list.innerHTML = gaps.map(g => {
+        const pct = g.score === null ? 0 : g.score * 10;
+        const color = g.score === null ? '#6b7280' : g.score <= 3 ? '#ef4444' : g.score <= 5 ? '#f59e0b' : g.score <= 7 ? '#eab308' : '#10b981';
+        return `<div class="gap-row">
+          <span class="gap-name">${g.dim}</span>
+          <span class="gap-bar"><span class="gap-fill" style="width:${pct}%; background:${color};"></span></span>
+          <span class="gap-score" style="color:${color};">${g.score === null ? '—' : g.score + '/10'}</span>
+        </div>`;
+      }).join('');
+    }
+  } catch (e) {
+    console.warn('gap fetch failed:', e);
+  }
+}
+loadLive();
+</script>
+</body>
+</html>
