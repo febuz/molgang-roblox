@@ -50,8 +50,13 @@ export const AGENT_META: AgentMeta[] = [
   // every wiki term, every asset license — owner, lineage, last-updated.
   // Pixel ships the webgame UI (Next.js/Phaser/Three.js) including the new
   // /wiki page that the data-governance registry feeds.
-  { name: 'Governor',      role: 'Data Governance Analyst',           avatar: '📒', color: '#0891b2', kind: 'governance', models: ['phi-4', 'qwen3.5-27b', 'claude-sonnet'], teams: ['cross', 'scrum-marketing', 'scrum-web'], tools: ['governance.*', 'codegraph.*', 'assets.search', 'wiki.lookup', 'kami.*'] },
-  { name: 'Pixel',         role: 'Web Developer · Wiki + UX',          avatar: '🖼️', color: '#16a34a', kind: 'core',       models: ['devstral', 'claude-sonnet', 'phi-4'], teams: ['scrum-web'], tools: ['codegraph.*', 'wiki.*', 'assets.search', 'governance.lineage', 'kami.queue', 'kami.briefs'] },
+  // Governor (data governance) and Pixel (web dev) are local-GPU-only —
+  // no claude-sonnet fallback. See docs/AGENT-MODEL-ROSTER.md for
+  // sizing rationale and pretrained-model picks per task type.
+  // Multi-model "expert team": each agent has 4 models picked per task
+  // type, all fitting in 24 GB VRAM (RTX 3090).
+  { name: 'Governor',      role: 'Data Governance / Wiki Analyst',     avatar: '📒', color: '#0891b2', kind: 'governance', models: ['phi-4', 'qwen3.5-27b', 'gemma-4-26b', 'deepseek-r1'], teams: ['cross', 'scrum-marketing', 'scrum-web'], tools: ['governance.*', 'codegraph.*', 'assets.search', 'wiki.*', 'kami.*'] },
+  { name: 'Pixel',         role: 'Web Developer · Next.js / Wiki UX',  avatar: '🖼️', color: '#16a34a', kind: 'core',       models: ['devstral', 'deepseek-r1', 'phi-4', 'gemma-4-26b'], teams: ['scrum-web'], tools: ['codegraph.*', 'wiki.*', 'assets.search', 'governance.lineage', 'kami.queue', 'kami.briefs'] },
 
   // ─── 5 Hermes scrum coordinators (one per scrum + 2 cross-cutting) ────
   // Backed by the Hermes 3 + DeepSeek-R1 Reviewer pair on EDS2.
