@@ -177,6 +177,16 @@
       "governanceId": "wiki-terms-json",
       "author": "Kimi",
       "updatedAt": "2026-05-04T09:28:24.134Z"
+    },
+    {
+      "id": "test-graph",
+      "term": "Graph test",
+      "namespace": "qchem",
+      "summary": "smoke test for lightrag write hook",
+      "body": "## Test",
+      "author": "system",
+      "governanceId": "wiki-terms-json",
+      "updatedAt": "2026-05-04T11:14:55.622Z"
     }
   ]
 }

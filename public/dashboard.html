@@ -586,6 +586,35 @@
             </div>
 
             <div class="nav-section">
+                <div class="nav-section-title">Scrum &amp; Docs</div>
+                <div class="nav-item" data-page="scrumops">
+                    <div class="nav-icon">🏃</div>
+                    <div>Scrum &amp; Forum</div>
+                </div>
+                <div class="nav-item" data-page="wikiops">
+                    <div class="nav-icon">📚</div>
+                    <div>Wiki &amp; Governance</div>
+                </div>
+                <div class="nav-item" data-page="kamiops">
+                    <div class="nav-icon">📄</div>
+                    <div>Kami Briefs</div>
+                </div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">007</div>
+                <div class="nav-item" onclick="window.open('/guardrails.html','_blank')" style="position:relative">
+                    <div class="nav-icon">🎯</div>
+                    <div>007 Monitor</div>
+                    <span id="guardrails-badge" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--danger);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;min-width:18px;text-align:center;">0</span>
+                </div>
+                <div class="nav-item" onclick="fetchGuardrailsStatus()" style="cursor:pointer">
+                    <div class="nav-icon" id="guardrails-status-icon">🟢</div>
+                    <div id="guardrails-status-text">007 — Clear</div>
+                </div>
+            </div>
+
+            <div class="nav-section">
                 <div class="nav-section-title">Projects</div>
                 <div class="nav-item" data-page="projects">
                     <div class="nav-icon">🎮</div>
@@ -662,6 +691,35 @@
                     <div class="card-title">👥 Team Overview</div>
                     <div class="agent-grid" id="team-overview">
                         <!-- Dynamically populated with per-agent metrics -->
+                    </div>
+                </div>
+
+                <div class="card" id="guardrails-card" style="border-left: 3px solid var(--success);">
+                    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span>🎯 007 — Rogue Agent Watch</span>
+                        <span id="gr-overview-pill" style="font-size:11px;padding:2px 10px;border-radius:999px;background:rgba(80,200,130,0.15);color:var(--success);font-weight:700;">HEALTHY</span>
+                    </div>
+                    <div class="stats-grid" style="margin-top:12px;">
+                        <div class="stat-card" style="padding:10px 12px;">
+                            <div class="stat-label" style="font-size:10px;">Active Alerts</div>
+                            <div class="stat-value" id="gr-alerts" style="font-size:20px;">—</div>
+                        </div>
+                        <div class="stat-card" style="padding:10px 12px;">
+                            <div class="stat-label" style="font-size:10px;">Critical</div>
+                            <div class="stat-value" id="gr-critical" style="font-size:20px;color:var(--success);">—</div>
+                        </div>
+                        <div class="stat-card" style="padding:10px 12px;">
+                            <div class="stat-label" style="font-size:10px;">Pending Approvals</div>
+                            <div class="stat-value" id="gr-approvals" style="font-size:20px;">—</div>
+                        </div>
+                        <div class="stat-card" style="padding:10px 12px;">
+                            <div class="stat-label" style="font-size:10px;">Cost/hr</div>
+                            <div class="stat-value" id="gr-cost" style="font-size:20px;">—</div>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="btn btn-primary" onclick="window.open('/guardrails.html','_blank')" style="font-size:12px;padding:6px 14px;">Open Monitor</button>
+                        <button class="btn" onclick="ackAllGuardrails()" style="font-size:12px;padding:6px 14px;">Acknowledge All</button>
                     </div>
                 </div>
             </div>
@@ -894,6 +952,65 @@
                 </div>
             </div>
 
+            <!-- SCRUM & FORUM PAGE -->
+            <div class="content-section" id="scrumops">
+                <div class="page-header">
+                    <div class="page-title">🏃 Scrum &amp; Forum</div>
+                    <div class="page-subtitle">Standups + bug queues for the four scrums; tester forum threads. Read-only view; agents post via API + MCP.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Per-team summary <span style="float:right; color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">refreshes on page-load</span></div>
+                    <div id="scrum-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">Loading…</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Recent bug reports <span style="float:right;"><select id="scrum-team-filter" style="background: var(--bg-darker); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-size: 0.85em;"><option value="">all teams</option><option>scrum-roblox</option><option>scrum-web</option><option>scrum-marketing</option><option>cross</option></select></span></div>
+                    <div id="scrum-bugs" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.88em;">Loading…</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Tester forum threads</div>
+                    <div id="scrum-forum" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.88em;">Loading…</div>
+                </div>
+            </div>
+
+            <!-- WIKI & GOVERNANCE PAGE -->
+            <div class="content-section" id="wikiops">
+                <div class="page-header">
+                    <div class="page-title">📚 Wiki &amp; Governance</div>
+                    <div class="page-subtitle">Glossary + data lineage. Both authored by Governor; Kimi expands wiki entries.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Wiki entries <span style="float:right; color: var(--text-secondary); font-weight: normal; font-size: 0.85em;" id="wiki-count">…</span></div>
+                    <div id="wiki-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; font-size: 0.85em;">Loading…</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Data governance entries <span style="float:right; color: var(--text-secondary); font-weight: normal; font-size: 0.85em;" id="gov-count">…</span></div>
+                    <div id="gov-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85em;">Loading…</div>
+                </div>
+            </div>
+
+            <!-- KAMI BRIEFS PAGE -->
+            <div class="content-section" id="kamiops">
+                <div class="page-header">
+                    <div class="page-title">📄 Kami Doc Briefs</div>
+                    <div class="page-subtitle">Typeset documents queued by agents. Render via Claude Code session — see <code>docs/KAMI-DOCS.md</code>.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Status summary</div>
+                    <div id="kami-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">Loading…</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">All briefs <span style="float:right;"><select id="kami-status-filter" style="background: var(--bg-darker); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-size: 0.85em;"><option value="">all</option><option>queued</option><option>in-progress</option><option>delivered</option><option>cancelled</option></select></span></div>
+                    <div id="kami-briefs" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85em;">Loading…</div>
+                </div>
+            </div>
+
             <!-- SYSTEM PAGE -->
             <div class="content-section" id="system">
                 <div class="page-header">
@@ -1121,6 +1238,133 @@
         // Populate when the codegraph page becomes visible
         document.querySelectorAll('.nav-item[data-page="codegraph"]').forEach(el =>
             el.addEventListener('click', () => loadCodegraphStats()));
+
+        // === Scrum & Forum panel ===========================================
+        function severityBadge(sev) {
+            const map = { 'p0-blocker': '#ef4444', 'p1-major': '#f97316', 'p2-minor': '#eab308', 'p3-cosmetic': '#94a3b8' };
+            return `<span style="display:inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.78em; background: ${map[sev] || '#666'}33; color: ${map[sev] || '#aaa'}; border: 1px solid ${map[sev] || '#666'}55;">${sev}</span>`;
+        }
+        function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+        async function loadScrumOps() {
+            try {
+                const summary = await fetch('/api/scrums').then(r => r.json());
+                const teams = ['scrum-roblox','scrum-web','scrum-marketing','cross'];
+                document.getElementById('scrum-summary').innerHTML = teams.map(t => {
+                    const s = summary.byTeam?.[t] || { standups: 0, bugs: { open: 0, total: 0 } };
+                    return `<div class="stat-card"><div class="stat-label">${t}</div>
+                      <div class="stat-value" style="font-size: 1.4em;">${s.bugs.open}<span style="color: var(--text-secondary); font-size: 0.6em;"> open / ${s.bugs.total}</span></div>
+                      <div class="stat-change">${s.standups} standup items</div></div>`;
+                }).join('');
+
+                await loadScrumBugs();
+                await loadForumThreads();
+            } catch (e) {
+                document.getElementById('scrum-summary').textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function loadScrumBugs() {
+            const team = document.getElementById('scrum-team-filter').value;
+            const teams = team ? [team] : ['scrum-roblox','scrum-web','scrum-marketing','cross'];
+            const out = [];
+            for (const t of teams) {
+                const r = await fetch(`/api/scrums/${t}/bugs`).then(r => r.json());
+                for (const b of (r.bugs || []).slice(0, 4)) {
+                    out.push(`<div style="border-left: 3px solid var(--primary); padding: 6px 12px; background: var(--bg-darker); border-radius: 4px;">
+                      <div style="display: flex; gap: 8px; align-items: baseline;">${severityBadge(b.severity)}<strong>${escapeHtml(b.title)}</strong>
+                      <span style="color: var(--text-secondary); font-size: 0.8em;">[${b.status}] ${b.team} · ${b.reporter}</span></div>
+                      <div style="color: var(--text-secondary); margin-top: 4px;">${escapeHtml((b.body||'').slice(0, 200))}</div></div>`);
+                }
+            }
+            document.getElementById('scrum-bugs').innerHTML = out.length ? out.join('') : '<div style="color: var(--text-secondary); font-style: italic;">No bug reports yet.</div>';
+        }
+
+        async function loadForumThreads() {
+            const teams = ['scrum-roblox','scrum-web','scrum-marketing','cross'];
+            const out = [];
+            for (const t of teams) {
+                const r = await fetch(`/api/forum/${t}`).then(r => r.json());
+                for (const th of (r.threads || []).slice(0, 3)) {
+                    const tags = (th.tags || []).map(x => `<span style="display:inline-block; padding: 0 6px; border-radius: 3px; background: rgba(96,165,250,0.18); color: var(--primary); font-size: 0.75em;">${escapeHtml(x)}</span>`).join(' ');
+                    out.push(`<div style="border-left: 3px solid var(--secondary); padding: 6px 12px; background: var(--bg-darker); border-radius: 4px;">
+                      <div><strong>${escapeHtml(th.title)}</strong>
+                      <span style="color: var(--text-secondary); font-size: 0.8em;">${th.team} · ${th.author} · ${th.replies?.length || 0} replies</span></div>
+                      <div style="margin-top: 4px;">${tags}</div></div>`);
+                }
+            }
+            document.getElementById('scrum-forum').innerHTML = out.length ? out.join('') : '<div style="color: var(--text-secondary); font-style: italic;">No threads yet.</div>';
+        }
+
+        document.getElementById('scrum-team-filter').addEventListener('change', loadScrumBugs);
+        document.querySelectorAll('.nav-item[data-page="scrumops"]').forEach(el =>
+            el.addEventListener('click', () => loadScrumOps()));
+
+        // === Wiki & Governance panel =======================================
+        async function loadWikiOps() {
+            try {
+                const wiki = await fetch('/api/wiki').then(r => r.json());
+                const gov = await fetch('/api/governance').then(r => r.json());
+                document.getElementById('wiki-count').textContent = `${wiki.entries?.length || 0} entries`;
+                document.getElementById('gov-count').textContent = `${gov.entries?.length || 0} entries`;
+
+                document.getElementById('wiki-list').innerHTML = (wiki.entries || []).map(e => {
+                    const nsColor = e.namespace === 'qchem' ? 'var(--primary)' : '#10b981';
+                    return `<div style="border-left: 3px solid ${nsColor}; padding: 6px 10px; background: var(--bg-darker); border-radius: 4px;">
+                      <strong>${escapeHtml(e.term)}</strong> <span style="color:${nsColor}; font-size: 0.75em;">[${e.namespace}]</span>
+                      <div style="color: var(--text-secondary); margin-top: 3px; font-size: 0.85em;">${escapeHtml((e.summary||'').slice(0, 130))}</div>
+                      <div style="color: var(--text-secondary); font-size: 0.72em; margin-top: 3px;">by ${escapeHtml(e.author||'?')}</div></div>`;
+                }).join('') || '<em>No entries.</em>';
+
+                document.getElementById('gov-list').innerHTML = (gov.entries || []).map(e => `
+                    <div style="border-left: 3px solid #f97316; padding: 6px 10px; background: var(--bg-darker); border-radius: 4px;">
+                      <strong>${escapeHtml(e.name)}</strong> <span style="color: var(--text-secondary); font-size: 0.78em;">[${e.kind}]</span>
+                      <div style="color: var(--text-secondary); margin-top: 3px; font-size: 0.82em;">${escapeHtml(e.lineage||'')}</div>
+                      <div style="color: var(--text-secondary); font-size: 0.72em; margin-top: 3px;">owner: ${escapeHtml(e.owner)} · ${escapeHtml(e.license||'?')}</div></div>`).join('') || '<em>No entries.</em>';
+            } catch (e) {
+                document.getElementById('wiki-list').textContent = 'Error: ' + e.message;
+            }
+        }
+        document.querySelectorAll('.nav-item[data-page="wikiops"]').forEach(el =>
+            el.addEventListener('click', () => loadWikiOps()));
+
+        // === Kami Briefs panel =============================================
+        async function loadKamiOps() {
+            try {
+                const summary = await fetch('/api/kami/summary').then(r => r.json());
+                const statuses = ['queued','in-progress','delivered','cancelled'];
+                document.getElementById('kami-summary').innerHTML = statuses.map(s => {
+                    const n = summary.byStatus?.[s] || 0;
+                    const colors = { queued: 'var(--primary)', 'in-progress': '#eab308', delivered: '#10b981', cancelled: '#94a3b8' };
+                    return `<div class="stat-card" style="border-color: ${colors[s]};">
+                      <div class="stat-label">${s}</div>
+                      <div class="stat-value" style="color: ${colors[s]};">${n}</div></div>`;
+                }).join('');
+                await loadKamiBriefs();
+            } catch (e) {
+                document.getElementById('kami-summary').textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function loadKamiBriefs() {
+            const status = document.getElementById('kami-status-filter').value;
+            const url = status ? `/api/kami/briefs?status=${status}` : '/api/kami/briefs';
+            const r = await fetch(url).then(r => r.json());
+            document.getElementById('kami-briefs').innerHTML = (r.briefs || []).map(b => {
+                const statusColors = { queued: 'var(--primary)', 'in-progress': '#eab308', delivered: '#10b981', cancelled: '#94a3b8' };
+                return `<div style="border-left: 3px solid ${statusColors[b.status] || '#666'}; padding: 6px 10px; background: var(--bg-darker); border-radius: 4px;">
+                  <div style="display:flex; gap: 8px; align-items:baseline;">
+                    <strong>${escapeHtml(b.title)}</strong>
+                    <span style="color:${statusColors[b.status]||'#aaa'}; font-size: 0.78em;">[${b.status}]</span>
+                    <span style="color: var(--text-secondary); font-size: 0.78em;">${b.type} · ${b.language} · by ${escapeHtml(b.requester)}</span>
+                  </div>
+                  <div style="color: var(--text-secondary); margin-top: 4px; font-size: 0.82em;">→ <code>${escapeHtml(b.outputPath)}</code></div>
+                  <div style="color: var(--text-secondary); font-size: 0.72em; margin-top: 3px;">id: <code>${b.id}</code> · created ${(b.createdAt||'').slice(0,16)}${b.deliveredAt ? ' · delivered ' + b.deliveredAt.slice(0,16) : ''}</div></div>`;
+            }).join('') || '<em>No briefs.</em>';
+        }
+        document.getElementById('kami-status-filter').addEventListener('change', loadKamiBriefs);
+        document.querySelectorAll('.nav-item[data-page="kamiops"]').forEach(el =>
+            el.addEventListener('click', () => loadKamiOps()));
 
         // === Auto-research panel ===========================================
         document.getElementById('ar-form').addEventListener('submit', async (e) => {
@@ -1749,12 +1993,73 @@
             }
         }
 
+        // Guardrails polling
+        async function fetchGuardrailsStatus() {
+            try {
+                const r = await fetch('/api/guardrails/health');
+                const j = await r.json();
+                if (!j.success) return;
+                const d = j.data;
+
+                // Sidebar badge
+                const badge = document.getElementById('guardrails-badge');
+                if (badge) {
+                    if (d.activeAlerts > 0) { badge.style.display = 'inline-block'; badge.textContent = d.activeAlerts; }
+                    else { badge.style.display = 'none'; }
+                }
+
+                // Sidebar status
+                const statusIcon = document.getElementById('guardrails-status-icon');
+                const statusText = document.getElementById('guardrails-status-text');
+                if (statusIcon && statusText) {
+                    if (d.overall === 'critical') { statusIcon.textContent = '🔴'; statusText.textContent = '007 — CRITICAL'; }
+                    else if (d.overall === 'degraded') { statusIcon.textContent = '🟡'; statusText.textContent = '007 — WARNING'; }
+                    else { statusIcon.textContent = '🟢'; statusText.textContent = '007 — CLEAR'; }
+                }
+
+                // Overview card
+                const card = document.getElementById('guardrails-card');
+                const pill = document.getElementById('gr-overview-pill');
+                if (card) {
+                    if (d.overall === 'critical') card.style.borderLeftColor = 'var(--danger)';
+                    else if (d.overall === 'degraded') card.style.borderLeftColor = 'var(--warning)';
+                    else card.style.borderLeftColor = 'var(--success)';
+                }
+                if (pill) {
+                    pill.textContent = d.overall.toUpperCase();
+                    if (d.overall === 'critical') { pill.style.background = 'rgba(232,90,100,0.15)'; pill.style.color = 'var(--danger)'; }
+                    else if (d.overall === 'degraded') { pill.style.background = 'rgba(255,174,59,0.15)'; pill.style.color = 'var(--warning)'; }
+                    else { pill.style.background = 'rgba(80,200,130,0.15)'; pill.style.color = 'var(--success)'; }
+                }
+                const elAlerts = document.getElementById('gr-alerts');
+                const elCritical = document.getElementById('gr-critical');
+                const elApprovals = document.getElementById('gr-approvals');
+                const elCost = document.getElementById('gr-cost');
+                if (elAlerts) elAlerts.textContent = d.activeAlerts;
+                if (elCritical) { elCritical.textContent = d.criticalAlerts; elCritical.style.color = d.criticalAlerts > 0 ? 'var(--danger)' : 'var(--success)'; }
+                if (elApprovals) elApprovals.textContent = d.pendingApprovals;
+                if (elCost) elCost.textContent = '$' + (d.totalCostThisHour || 0).toFixed(3);
+            } catch (e) { console.log('Guardrails fetch error:', e.message); }
+        }
+
+        async function ackAllGuardrails() {
+            try {
+                const r = await fetch('/api/guardrails/alerts?acknowledged=false&limit=50');
+                const j = await r.json();
+                if (!j.success) return;
+                await Promise.all(j.data.map(a => fetch(`/api/guardrails/alerts/${a.id}/acknowledge`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({by:'dashboard'}) }).catch(()=>{})));
+                fetchGuardrailsStatus();
+            } catch (e) { console.log('Guardrails ack error:', e.message); }
+        }
+
         // Update metrics immediately and every 5 seconds
         loadTeamOverview();
         updateMetrics();
+        fetchGuardrailsStatus();
         setInterval(() => {
             updateMetrics();
             loadTeamOverview();
+            fetchGuardrailsStatus();
         }, 5000);
     </script>
 </body>

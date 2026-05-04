@@ -379,6 +379,10 @@ app.post('/api/governance/register', (req, res) => {
       return;
     }
     const entry = governance.registerEntry(body);
+    // Best-effort knowledge-graph notify (fire-and-forget).
+    const hooks = (app as any).locals.governanceGraphHooks;
+    const lr = (app as any).locals.lightrag;
+    if (hooks && lr) hooks.notifyGovernanceWrite(lr, entry);
     res.json({ success: true, entry });
   } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -411,6 +415,10 @@ app.post('/api/wiki', (req, res) => {
       return;
     }
     const entry = wiki.upsertEntry(body);
+    // Best-effort knowledge-graph notify (fire-and-forget).
+    const hooks = (app as any).locals.governanceGraphHooks;
+    const lr = (app as any).locals.lightrag;
+    if (hooks && lr) hooks.notifyWikiWrite(lr, entry);
     res.json({ success: true, entry });
   } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
 });
@@ -1915,6 +1923,22 @@ async function initialize() {
       else logger.info(`✓ asset-graph: ${r.ingested} assets indexed (${r.mirrored} mirrored, ${r.orphan} orphan)`);
     } catch (e: any) {
       logger.warn(`asset-graph init failed: ${e.message}`);
+    }
+
+    // 1b. Ingest governance + wiki entries so the knowledge graph has
+    //     the full lineage layer (term → governance → source). Same
+    //     graceful-offline behavior as asset-graph.
+    try {
+      const gg = await import('./integrations/lightrag/governance-graph');
+      const govR = await gg.ingestGovernanceState(lightrag);
+      const wikR = await gg.ingestWikiState(lightrag);
+      if (govR.offline) logger.warn('governance-graph: LightRAG offline — skip ingest');
+      else logger.info(`✓ governance-graph: ${govR.ingested} governance + ${wikR.ingested} wiki nodes ingested`);
+      // Stash the hooks on the global app so the write routes can call them.
+      (app as any).locals.governanceGraphHooks = gg;
+      (app as any).locals.lightrag = lightrag;
+    } catch (e: any) {
+      logger.warn(`governance-graph init failed: ${e.message}`);
     }
 
     // Asset query endpoints — read straight from the LightRAG graph so
