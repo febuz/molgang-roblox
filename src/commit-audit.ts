@@ -38,12 +38,16 @@ function ensureDir(): void {
 }
 
 function attributeAgent(subject: string): string {
-  // Co-author trailer + subject keyword. Mirrors commits-tracker's heuristic
-  // but kept local so this module doesn't depend on commits-tracker (to avoid
-  // a require cycle when commits-tracker eventually wants to read this file).
-  const hay = subject.toLowerCase();
-  for (const a of AGENT_NAMES) {
-    if (hay.includes(a.toLowerCase())) return a;
+  // Word-boundary match so "Vice" doesn't match the "vice" inside "service",
+  // "Kai" doesn't match "kafka", "Mira" doesn't match "miracle", etc. Sort
+  // by length-desc so multi-word names (Hermes-Roblox, Tester-Web-Sam) are
+  // tried before their prefixes.
+  const sorted = [...AGENT_NAMES].sort((a, b) => b.length - a.length);
+  for (const a of sorted) {
+    // Escape any regex specials in the agent name (Hermes-Roblox has -)
+    const safe = a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`\\b${safe}\\b`, 'i');
+    if (re.test(subject)) return a;
   }
   return 'System';
 }
