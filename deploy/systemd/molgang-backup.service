@@ -1,0 +1,19 @@
+[Unit]
+Description=Molgang asset backup (EDS2 → snapshot)
+After=local-fs.target
+ConditionPathIsDirectory=/media/knight2/EDS2/molgang-assets
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/virtualpc
+# Override BACKUP_TARGET in ~/.config/systemd/user/molgang-backup.env
+# for an off-host destination (recommended — same-disk snapshot doesn't
+# survive a single-drive failure).
+# EnvironmentFile=-%h/.config/systemd/user/molgang-backup.env
+Environment=ROTATE_DAYS=14
+ExecStart=%h/virtualpc/scripts/backup-eds2-assets.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+StandardOutput=journal
+StandardError=journal

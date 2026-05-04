@@ -1,0 +1,14 @@
+[Unit]
+Description=Weekly molgang asset backup
+Documentation=file://%h/virtualpc/docs/BACKUP.md
+
+[Timer]
+# Sunday 02:30 local. Persistent=true catches up on missed runs (e.g.
+# after a reboot or a week the box was offline).
+OnCalendar=Sun *-*-* 02:30:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=molgang-backup.service
+
+[Install]
+WantedBy=timers.target
