@@ -101,6 +101,36 @@ export function record(input: { sha: string; subject: string; author: string; ti
     source: input.source || 'api',
   };
   appendOne(entry);
+
+  // Publish to Kafka commit.audit topic so the audit consumer + future
+  // replicas see the same event. Best-effort — failure logs but doesn't
+  // affect the local-jsonl recording. Architecture doc § 4.1 lists this
+  // as a producer; the wire is here.
+  // Lazy import to avoid pulling kafka into tools that just want to read
+  // the audit log without producer-side dependencies.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { bestEffortPublish } = require('./integrations/kafka/shared');
+    bestEffortPublish(async (p: any) => {
+      await p.producer?.send({
+        topic: 'commit.audit',
+        messages: [{
+          key: entry.sha,
+          value: JSON.stringify({
+            sha: entry.sha,
+            shortSha: entry.shortSha,
+            author: entry.author,
+            ts: entry.timestamp,
+            subject: entry.subject,
+            attributedAgent: entry.attributedAgent,
+            taskRef: entry.taskRef,
+            source: entry.source,
+          }),
+        }],
+      });
+    });
+  } catch { /* shared.ts not loadable in some test envs — silently skip */ }
+
   return { ok: true, entry };
 }
 
