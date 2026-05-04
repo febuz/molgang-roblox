@@ -16,9 +16,23 @@ WorkingDirectory=%h/virtualpc
 # LITELLM_URL is empty — see src/lmstudio.ts.
 Environment=LITELLM_URL=http://127.0.0.1:4000/v1
 Environment=LITELLM_MASTER_KEY=sk-virtualpc-dev
+# Neo4j credentials for the LightRAG knowledge graph. Brought online May 2026
+# via `docker run --name virtualpc-neo4j … neo4j:latest`. Password stored
+# in this unit file (low-sensitivity, single-host dev). Rotate to a
+# secrets-manager pull when Neo4j moves off-box.
+Environment=NEO4J_URI=bolt://localhost:7687
+Environment=NEO4J_USER=neo4j
+Environment=NEO4J_PASSWORD=virtualpc-neo4j-pass
+Environment=KAFKA_BROKERS=localhost:9092
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=10s
+# Graceful shutdown: index.ts handles SIGTERM (close server + flush stores
+# + disconnect kafka, ≤8s). 20s safety net if that hangs.
+TimeoutStopSec=20s
+# control-group: SIGTERM goes to every child (vitals-monitor.sh, nvidia-smi
+# spawns) so they exit cleanly instead of waiting for the timeout SIGKILL.
+KillMode=control-group
 
 # Logs (append, don't truncate)
 StandardOutput=append:%h/virtualpc/logs/virtualpc.log

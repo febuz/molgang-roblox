@@ -2154,6 +2154,48 @@ async function initialize() {
       `);
     });
 
+    // Graceful shutdown — without this, the Express + Socket.IO + Kafka
+    // sockets keep the event loop alive after SIGTERM, so systemd waits
+    // the full 90 s default before SIGKILLing. Now: stop accepting new
+    // connections, flush every dirty store, disconnect Kafka + Neo4j,
+    // exit. Force-exit at 8s so the unit can restart cleanly.
+    let shuttingDown = false;
+    async function shutdown(sig: string) {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      logger.info(`▶ ${sig} received — graceful shutdown`);
+      const forceExit = setTimeout(() => {
+        logger.warn('graceful shutdown took >8s — force-exit');
+        process.exit(1);
+      }, 8000);
+      try {
+        // Stop accepting new HTTP connections (existing in-flight ones still complete).
+        await new Promise<void>(resolve => server.close(() => resolve()));
+        // Flush every dirty in-memory store synchronously.
+        try { (taskEngine as any).flushSync?.(); } catch { /* */ }
+        try { governance.flushSync(); } catch { /* */ }
+        try { wiki.flushSync(); } catch { /* */ }
+        try { scrum.flushSync(); } catch { /* */ }
+        try { forum.flushSync(); } catch { /* */ }
+        try { kami.flushSync(); } catch { /* */ }
+        // Disconnect Kafka producer (consumer disconnect is best-effort).
+        try {
+          const { ensureSharedProducer } = require('./integrations/kafka/shared');
+          const p = await ensureSharedProducer();
+          await p?.disconnect?.();
+        } catch { /* */ }
+        clearTimeout(forceExit);
+        logger.info('✓ shutdown complete');
+        process.exit(0);
+      } catch (e: any) {
+        logger.warn(`shutdown error: ${e.message}`);
+        clearTimeout(forceExit);
+        process.exit(1);
+      }
+    }
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT',  () => shutdown('SIGINT'));
+
   } catch (error) {
     logger.error('❌ Initialization failed:', error);
     process.exit(1);
