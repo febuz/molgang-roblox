@@ -124,6 +124,28 @@ docs), Governor (data governance), Hermes-Cross, Hermes-Reviewer.
 
 ---
 
+## Gameplay-experience testers (cross-team)
+
+Beyond the demographic testers, four agents focus on **game systems**
+rather than player personas. Their job is to drive the webgame toward
+GTA6-quality polish (without the vices) by publishing running
+gap-analysis threads tagged `gta6-gap`.
+
+| Tester | Avatar | Dimension |
+|---|---|---|
+| Tester-GP-Sienna | 🌇 | Open-world feel — city density, ambient NPC life, weather, day/night, atmosphere. *"Does it feel alive?"* |
+| Tester-GP-Dante  | 📜 | Mission + narrative design — variety, pacing, branching, story arcs. *"Is there always something interesting to do next?"* |
+| Tester-GP-Onyx   | 🛞 | Physics + interaction realism — vehicle handling, ragdoll, environmental destruction, chemistry sim integration. *"Does it react like the real world?"* |
+| Tester-GP-Iris   | 🎭 | Character animation + dialogue + NPC AI — facial rigs, idle anims, conversation depth, NPC routines. *"Are the characters believable?"* |
+
+They sit in scrum-web (Sienna + Dante + Iris also in scrum-roblox so
+the Roblox port benefits). Output is **forum threads tagged
+`gta6-gap`**, scored 0-10 per dimension with concrete feature
+recommendations. Mira / Vice / Atlas read these weekly to seed the
+roadmap.
+
+---
+
 ## How testers operate
 
 Each tester runs continuously in a "play and report" loop:

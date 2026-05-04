@@ -82,6 +82,16 @@ export const AGENT_META: AgentMeta[] = [
   // Marketing/competitor playtest (2)
   { name: 'Tester-MK-Alex',    role: 'Plays competitor chemistry games', avatar: '🎯', color: '#eab308', kind: 'tester', models: ['phi-4', 'claude-sonnet'], teams: ['scrum-marketing'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
   { name: 'Tester-MK-Robin',   role: 'TikTok / social-loop tester',      avatar: '🎯', color: '#ca8a04', kind: 'tester', models: ['phi-4', 'gemma-4-26b'], teams: ['scrum-marketing'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'] },
+
+  // Gameplay-experience testers (4) — added 2026-05-04 to evaluate the
+  // GTA6-without-vices target. Demographic testers above hit specific
+  // personas; these hit specific GAME SYSTEMS: world feel, missions,
+  // physics, character. They publish gap-analysis threads tagged
+  // 'gta6-gap' so the team can prioritize the right feature work.
+  { name: 'Tester-GP-Sienna',  role: 'Open-world feel · density + ambient life',  avatar: '🌇', color: '#fb7185', kind: 'tester', models: ['gemma-4-26b', 'phi-4', 'deepseek-r1'], teams: ['scrum-web', 'scrum-roblox'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup', 'assets.search'] },
+  { name: 'Tester-GP-Dante',   role: 'Mission + narrative design',                avatar: '📜', color: '#c084fc', kind: 'tester', models: ['gemma-4-26b', 'qwen3.5-27b', 'phi-4'], teams: ['scrum-web', 'scrum-roblox'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup', 'governance.lineage'] },
+  { name: 'Tester-GP-Onyx',    role: 'Physics + interaction realism',             avatar: '🛞', color: '#475569', kind: 'tester', models: ['deepseek-r1', 'phi-4', 'devstral'], teams: ['scrum-web'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup', 'codegraph.symbol'] },
+  { name: 'Tester-GP-Iris',    role: 'Character animation · dialogue · NPC AI',   avatar: '🎭', color: '#f0abfc', kind: 'tester', models: ['gemma-4-26b', 'phi-4', 'claude-sonnet'], teams: ['scrum-web', 'scrum-roblox'], tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup', 'assets.search'] },
 ];
 
 /** Canonical list of agent names — use this everywhere you need to iterate. */
