@@ -453,9 +453,31 @@ export function tickEngine() {
         logger.info(`✅ ${agent} completed: ${task.title}`);
         // Fire-and-forget LM Studio generation of a real artifact for this task.
         // Agents actually think when they finish work.
-        generateArtifactForCompletedTask(agent, task).catch(err =>
-          logger.warn(`artifact gen failed for ${agent}/${task.id}: ${err.message}`)
-        );
+        generateArtifactForCompletedTask(agent, task).catch(err => {
+          logger.warn(`artifact gen failed for ${agent}/${task.id}: ${err.message}`);
+          // Publish to task.failed Kafka topic so the audit consumer + the
+          // dashboard's Kafka Spine page show artifact-generation failures
+          // alongside other task lifecycle events. Best-effort.
+          try {
+            const { bestEffortPublish } = require('./integrations/kafka/shared');
+            bestEffortPublish(async (p: any) => {
+              await p.producer?.send({
+                topic: 'task.failed',
+                messages: [{
+                  key: task.id,
+                  value: JSON.stringify({
+                    task_id: task.id,
+                    agent,
+                    title: task.title,
+                    failure_stage: 'artifact-gen',
+                    error: err.message,
+                    ts: new Date().toISOString(),
+                  }),
+                }],
+              });
+            });
+          } catch { /* shared.ts not loadable in test envs */ }
+        });
       }
     }
 
