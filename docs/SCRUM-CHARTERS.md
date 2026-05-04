@@ -218,3 +218,19 @@ recommendations; tasks reference those thread ids so the trace from
 Ship cadence: each agent completes their assigned tasks at their normal
 tick rate. Re-score by GP testers at end-of-sprint via fresh forum threads
 to measure the gap-close.
+
+### Snapshot — overnight 2026-05-04 → 05
+
+| Status | Features |
+|---|---|
+| **data-shipped** (full) | GTA6-OW-1 (35 NPCs), GTA6-OW-5 (district density × weather × day/night specs in world-config), GTA6-MN-2 (9 quests · 3 archetypes × 3 tiers), GTA6-MN-4 (100 atom-shards procedural), GTA6-MN-5 (3 contacts · Mentor/Rival/Inspector with tier unlocks), GTA6-CH-4 (dialogue schema + 4 trees) |
+| **data-partial** | GTA6-MN-3 (4 of 5 choice nodes done in extension) |
+| **spec-shipped** | GTA6-OW-2 (day/night), GTA6-OW-3 (weather), GTA6-OW-4 (audio manifest), GTA6-CH-1 (5-stage character pipeline), GTA6-CH-2 (visemes), GTA6-CH-5 (NPC memory schema) |
+| **spec-pending** | GTA6-MN-1 (cutscene system), GTA6-PH-1..5 (vehicles, liquids, ragdoll, cloth, glass shatter), GTA6-CH-3 (Coqui TTS) |
+
+Live introspection at `/api/sprint/gta6-polish-s1` on molgang-web; rendered
+visually on `/sprint`. Average completion at this snapshot: ≈40%.
+
+Critical-path remaining: GTA6-PH-2 (liquid sim, Atlas) and GTA6-CH-1
+implementation stages 2-5 (Mira → Atlas → Pixel → Luna). Both block
+visible polish on their respective dimensions.
