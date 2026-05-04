@@ -182,3 +182,39 @@ feedback that shapes the spec*. They feed different downstream agents.
 
 All of these are also exposed as MCP tools (`scrum.*` + `forum.*`) — see
 `docs/TOOL-USE-COORDINATION.md`.
+
+---
+
+## Sprint: GTA6-Polish-S1 (seeded 2026-05-04)
+
+Distilled from the four GP-tester gap analyses into 20 concrete backlog
+tasks. Closes the gap on the lowest-scored dimensions (character/AI 2/10,
+open-world feel 3/10) first, then mission variety (4/10) and physics
+realism (5/10). Each task carries `sprint=GTA6-Polish-S1` so the dashboard
+can filter the cohort.
+
+| Agent | Count | Focus |
+|---|---|---|
+| Mira  | 5 | NPC personas (50+), cutscene system, character pipeline (Mixamo+RPM), voice gen (Coqui TTS), ambient audio |
+| Vice  | 5 | Mission types (rescue/logistics/incident), choice nodes, recurring NPCs, dialogue trees, district density |
+| Atlas | 5 | Day/night cycle, weather (rain/storm), liquid sim, glass shatter, atom-shard collectibles |
+| Pixel | 3 | Vehicle layer (delivery trucks), NPC ragdoll, NPC memory of past interactions |
+| Luna  | 2 | Cloth physics (lab coats), viseme lip sync (12 blendshapes) |
+
+**Critical-priority items** (block downstream work):
+- `GTA6-PH-2` — Atlas — particle-based liquid sim for the chem bench. Currently liquids teleport between containers; this fixes the core feel of a chemistry game.
+- `GTA6-CH-1` — Mira — Mixamo + ReadyPlayerMe character pipeline. Unlocks every other character/dialogue task downstream.
+
+**High-priority cluster** (ship together for visible progress):
+- `GTA6-OW-1` (NPC pool) + `GTA6-OW-2` (day/night) + `GTA6-OW-5` (district density) → world stops feeling paused.
+- `GTA6-CH-3` (voice gen) + `GTA6-CH-4` (dialogue trees) → world starts talking back.
+
+The 20 tasks are visible in the dashboard backlog (`/api/backlog/per-person`)
+and persist to `data/task-state.json` (EDS2, off-tree). The four GP testers'
+gap threads on the scrum-web forum are the source-of-truth for the
+recommendations; tasks reference those thread ids so the trace from
+"playtest finding" → "feature work" stays auditable.
+
+Ship cadence: each agent completes their assigned tasks at their normal
+tick rate. Re-score by GP testers at end-of-sprint via fresh forum threads
+to measure the gap-close.
