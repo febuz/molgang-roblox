@@ -25,6 +25,21 @@ import logger from '../../utils/logger';
 import type { LightRAGClient } from './client';
 import * as governance from '../governance';
 import * as wiki from '../wiki';
+import { bestEffortPublish } from '../kafka/shared';
+
+// Publish to the lightrag.updates Kafka topic so the audit consumer (and
+// future replicas) see governance + wiki state changes. Best-effort: if
+// Kafka is offline we still wrote to Neo4j, so the local graph stays
+// consistent. Schema matches KafkaProducer.publishMemoryUpdate.
+function publishUpdate(payload: {
+  type: 'decision' | 'risk' | 'precedent' | 'context';
+  content: string;
+  agent: string;
+  affects?: string[];
+  metadata?: Record<string, any>;
+}) {
+  bestEffortPublish(p => p.publishMemoryUpdate(payload));
+}
 
 interface IngestResult {
   ingested: number;
@@ -43,6 +58,16 @@ export async function ingestGovernanceState(client: LightRAGClient): Promise<Ing
         context: `kind=${e.kind} owner=${e.owner} license=${e.license || ''} tags=${(e.tags || []).join(',')}`,
         created_by: e.owner,
         affects: e.tags || [],
+      });
+      // Mirror to Kafka lightrag.updates so the audit log + future replicas
+      // see the same state. Best-effort: Kafka offline means we still
+      // ingested to Neo4j.
+      publishUpdate({
+        type: 'context',
+        content: `governance:${e.id} — ${e.name}`,
+        agent: e.owner,
+        affects: e.tags || [],
+        metadata: { kind: e.kind, source: e.source, license: e.license },
       });
       ingested++;
     } catch (err: any) {
@@ -71,6 +96,13 @@ export async function ingestWikiState(client: LightRAGClient): Promise<IngestRes
         created_by: e.author || 'unknown',
         affects,
       });
+      publishUpdate({
+        type: 'context',
+        content: `wiki:${e.id} — ${e.term}`,
+        agent: e.author || 'unknown',
+        affects,
+        metadata: { namespace: e.namespace, governanceId: e.governanceId },
+      });
       ingested++;
     } catch (err: any) {
       logger.warn(`governance-graph: failed to ingest wiki:${e.id}: ${err.message}`);
@@ -85,27 +117,45 @@ export async function ingestWikiState(client: LightRAGClient): Promise<IngestRes
  * — failure logs but never breaks the parent request.
  */
 export function notifyGovernanceWrite(client: LightRAGClient, entry: governance.GovernanceEntry): void {
-  if (!client.isConnected()) return;
-  client.addNode({
-    type: 'governance',
-    content: `${entry.name} — ${entry.lineage || ''}`,
-    context: `kind=${entry.kind} owner=${entry.owner} license=${entry.license || ''} tags=${(entry.tags || []).join(',')}`,
-    created_by: entry.owner,
+  if (client.isConnected()) {
+    client.addNode({
+      type: 'governance',
+      content: `${entry.name} — ${entry.lineage || ''}`,
+      context: `kind=${entry.kind} owner=${entry.owner} license=${entry.license || ''} tags=${(entry.tags || []).join(',')}`,
+      created_by: entry.owner,
+      affects: entry.tags || [],
+    }).catch((err: any) => logger.warn(`governance-graph: notify failed for ${entry.id}: ${err.message}`));
+  }
+  // Always publish to Kafka regardless of LightRAG state — Kafka is the
+  // authoritative event log.
+  publishUpdate({
+    type: 'context',
+    content: `governance:${entry.id} — ${entry.name}`,
+    agent: entry.owner,
     affects: entry.tags || [],
-  }).catch((err: any) => logger.warn(`governance-graph: notify failed for ${entry.id}: ${err.message}`));
+    metadata: { kind: entry.kind, source: entry.source, license: entry.license },
+  });
 }
 
 export function notifyWikiWrite(client: LightRAGClient, entry: wiki.WikiEntry): void {
-  if (!client.isConnected()) return;
   const affects = [
     ...(entry.governanceId ? [entry.governanceId] : []),
     ...(entry.seeAlso || []),
   ];
-  client.addNode({
-    type: 'wiki',
-    content: `${entry.term}: ${entry.summary}`,
-    context: `namespace=${entry.namespace} author=${entry.author || ''} updated=${entry.updatedAt}`,
-    created_by: entry.author || 'unknown',
+  if (client.isConnected()) {
+    client.addNode({
+      type: 'wiki',
+      content: `${entry.term}: ${entry.summary}`,
+      context: `namespace=${entry.namespace} author=${entry.author || ''} updated=${entry.updatedAt}`,
+      created_by: entry.author || 'unknown',
+      affects,
+    }).catch((err: any) => logger.warn(`governance-graph: notify failed for wiki:${entry.id}: ${err.message}`));
+  }
+  publishUpdate({
+    type: 'context',
+    content: `wiki:${entry.id} — ${entry.term}`,
+    agent: entry.author || 'unknown',
     affects,
-  }).catch((err: any) => logger.warn(`governance-graph: notify failed for wiki:${entry.id}: ${err.message}`));
+    metadata: { namespace: entry.namespace, governanceId: entry.governanceId },
+  });
 }
