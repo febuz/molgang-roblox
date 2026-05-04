@@ -1868,18 +1868,39 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Health check alias for React SPA
-app.get('/api/health', (req, res) => {
+// Health check alias for React SPA — real status of every component the
+// dashboard cares about. Does NOT cost an LLM call (just probes liveness).
+app.get('/api/health', async (_req, res) => {
+  // LightRAG: read whatever was stashed at startup.
+  const lr = (app as any).locals.lightrag;
+  const lightragOk = lr?.isConnected?.() ?? false;
+  // Kafka: producer connection state from the shared singleton.
+  let kafkaOk = false;
+  try {
+    const { isKafkaConnected } = require('./integrations/kafka/shared');
+    kafkaOk = !!isKafkaConnected();
+  } catch { /* shared.ts not loaded */ }
+  // LM Studio: cheap models-list probe (cached 15 s upstream).
+  let modelsLoaded = 0;
+  try {
+    const h = await lmstudio.healthCheck();
+    modelsLoaded = h.modelsLoaded || 0;
+  } catch { /* */ }
+  // Process uptime + memory.
+  const uptimeSec = Math.round(process.uptime());
+  const mem = process.memoryUsage();
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
+    uptime_sec: uptimeSec,
+    memory_mb: { rss: Math.round(mem.rss / 1024 / 1024), heap: Math.round(mem.heapUsed / 1024 / 1024) },
     services: {
       api: 'operational',
-      lightrag: 'operational',
-      kafka: 'dev-mode',
-      redis: 'operational'
-    }
+      lightrag: lightragOk ? 'operational' : 'offline (graceful fallback)',
+      kafka: kafkaOk ? 'operational' : 'offline (events not persisted)',
+      lm_studio: modelsLoaded > 0 ? `operational (${modelsLoaded} models loaded)` : 'no models loaded',
+    },
   });
 });
 
