@@ -1016,6 +1016,8 @@ app.get('/api/agents/overview', (_req, res) => {
       color: meta.color,
       kind: meta.kind,
       models: meta.models,
+      teams: meta.teams || [],
+      tools: meta.tools || [],
       status: prog.inProgress > 0 ? 'working' : (prog.currentTask ? 'queued' : 'idle'),
       currentTask: prog.currentTask || null,
       tasksCompleted: prog.completed || 0,

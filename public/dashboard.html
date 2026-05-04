@@ -1135,6 +1135,12 @@
                     <div id="ad-tasks" style="display: flex; flex-direction: column; gap: 8px; max-height: 520px; overflow-y: auto;">Loading…</div>
                 </div>
 
+                <div class="card" id="ad-scrum-card" style="display: none;">
+                    <div class="card-title">Scrum &amp; Forum activity <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;" id="ad-scrum-meta"></span></div>
+                    <div id="ad-bugs" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85em; margin-bottom: 12px;"></div>
+                    <div id="ad-threads" style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85em;"></div>
+                </div>
+
                 <div class="card">
                     <div class="card-title">GitHub Authority Docs <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— from <code>febuz/virtualpc</code>, loaded live</span></div>
                     <div id="ad-gh-docs-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">Loading…</div>
@@ -1697,7 +1703,13 @@
                 const meta = (overview.agents || []).find(a => a.name === name);
                 if (meta) {
                     document.getElementById('ad-title').textContent = meta.avatar + ' ' + meta.name;
-                    document.getElementById('ad-subtitle').textContent = meta.role + ' · ' + meta.kind;
+                    const teamBadges = (meta.teams || []).map(t =>
+                      `<span style="display:inline-block; padding: 1px 7px; margin: 0 2px; background: rgba(96,165,250,0.18); color: var(--primary); border-radius: 3px; font-size: 0.78em;">${escapeHtml(t)}</span>`).join('');
+                    const toolBadges = (meta.tools || []).slice(0, 6).map(t =>
+                      `<span style="display:inline-block; padding: 1px 6px; margin: 0 2px; background: rgba(139,92,246,0.18); color: #a78bfa; border-radius: 3px; font-size: 0.75em; font-family: ui-monospace, monospace;">${escapeHtml(t)}</span>`).join('');
+                    const moreTools = (meta.tools || []).length > 6 ? ` <span style="color: var(--text-secondary); font-size: 0.78em;">+${meta.tools.length - 6} more</span>` : '';
+                    document.getElementById('ad-subtitle').innerHTML =
+                      `${escapeHtml(meta.role)} · <em>${escapeHtml(meta.kind)}</em>${teamBadges ? '<br>teams: ' + teamBadges : ''}${toolBadges ? '<br>tools: ' + toolBadges + moreTools : ''}`;
                     document.getElementById('ad-status').textContent = meta.status;
                     document.getElementById('ad-completed').textContent = meta.tasksCompleted;
                     document.getElementById('ad-inprogress').textContent = meta.tasksInProgress;
@@ -1735,8 +1747,61 @@
 
                 renderAgentTasks(perPerson && perPerson[name]);
                 loadAgentGitHubDocs(name);
+                loadAgentScrumActivity(name, meta);
             } catch (err) {
                 document.getElementById('ad-subtitle').textContent = 'Error loading: ' + err.message;
+            }
+        }
+
+        // Show scrum bugs + forum threads for testers, Hermes coordinators,
+        // and governance kinds. Hide for everyone else (most agents don't
+        // have scrum activity by design — Vice / Atlas / Mira aren't filing
+        // bugs or starting threads).
+        async function loadAgentScrumActivity(name, meta) {
+            const card = document.getElementById('ad-scrum-card');
+            if (!meta || !['tester', 'hermes-coordinator', 'governance', 'core', 'decision'].includes(meta.kind)) {
+                card.style.display = 'none';
+                return;
+            }
+            try {
+                // Filter on agent's teams. The bug + forum APIs are per-team
+                // so we fetch each team they belong to.
+                const teams = meta.teams || [];
+                if (teams.length === 0) { card.style.display = 'none'; return; }
+
+                const bugLists = await Promise.all(teams.map(t =>
+                    fetch(`/api/scrums/${t}/bugs`).then(r => r.json()).catch(() => ({ bugs: [] }))));
+                const threadLists = await Promise.all(teams.map(t =>
+                    fetch(`/api/forum/${t}`).then(r => r.json()).catch(() => ({ threads: [] }))));
+
+                const myBugs = bugLists.flatMap(r => (r.bugs || [])).filter(b => b.reporter === name).slice(0, 5);
+                const myThreads = threadLists.flatMap(r => (r.threads || [])).filter(t => t.author === name).slice(0, 5);
+
+                if (myBugs.length === 0 && myThreads.length === 0) {
+                    card.style.display = 'none';
+                    return;
+                }
+
+                card.style.display = '';
+                document.getElementById('ad-scrum-meta').textContent =
+                    `${myBugs.length} bug${myBugs.length === 1 ? '' : 's'} · ${myThreads.length} thread${myThreads.length === 1 ? '' : 's'} (across ${teams.join(', ')})`;
+
+                document.getElementById('ad-bugs').innerHTML = myBugs.length
+                    ? '<div style="color: var(--text-secondary); font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 4px;">Bugs filed</div>' +
+                      myBugs.map(b => `<div style="border-left: 3px solid var(--primary); padding: 4px 10px; background: var(--bg-darker); border-radius: 4px;">
+                        ${severityBadge(b.severity)}
+                        <strong>${escapeHtml(b.title)}</strong>
+                        <span style="color: var(--text-secondary); font-size: 0.85em;">[${b.status}] ${b.team}</span></div>`).join('')
+                    : '';
+
+                document.getElementById('ad-threads').innerHTML = myThreads.length
+                    ? '<div style="color: var(--text-secondary); font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.5pt; margin-bottom: 4px; margin-top: 8px;">Forum threads started</div>' +
+                      myThreads.map(t => `<div style="border-left: 3px solid var(--secondary); padding: 4px 10px; background: var(--bg-darker); border-radius: 4px;">
+                        <strong>${escapeHtml(t.title)}</strong>
+                        <span style="color: var(--text-secondary); font-size: 0.85em;">${t.team} · ${t.replies?.length || 0} replies</span></div>`).join('')
+                    : '';
+            } catch (e) {
+                card.style.display = 'none';
             }
         }
 
