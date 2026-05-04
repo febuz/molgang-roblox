@@ -70,7 +70,7 @@ async function postJSON(pathname, body) {
 }
 
 async function askKimi(systemPrompt, userPrompt) {
-  const r = await postJSON('/api/agents/Kimi/chat', {
+  const r = await postJSON('/api/llm/chat', {
     agent: 'Kimi',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -80,10 +80,10 @@ async function askKimi(systemPrompt, userPrompt) {
     max_tokens: 4000,
     temperature: 0.2,
   });
-  if (!r || r.success === false) {
-    throw new Error(`Kimi call failed: ${(r && r.error) || 'no response'}`);
+  if (!r || r.success === false || r.ok === false) {
+    throw new Error(`Kimi call failed: ${(r && (r.error || r.reason)) || 'no response'}`);
   }
-  return (r.content || r.result?.content || '').trim();
+  return (r.content || r.result?.content || r.message || '').trim();
 }
 
 function gatherSourceContext() {

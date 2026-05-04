@@ -69,6 +69,114 @@
       "governanceId": "shared-quests-json",
       "updatedAt": "2026-05-04T08:55:02.100Z",
       "author": "Vice"
+    },
+    {
+      "id": "atom-economy",
+      "term": "Atom economy",
+      "namespace": "game",
+      "summary": "Green-chemistry metric measuring the fraction of reactant atoms that end up in the desired product rather than waste.",
+      "body": "## Atom economy\n\nAtom economy, introduced by Barry Trost, compares the molecular weight of the desired product to the total molecular weight of all reactants. A high atom economy means fewer by-products and less environmental waste.\n\nIn molgang, every synthesis quest displays an atom-economy score. Players earn bonus MOLCO2 when they design routes that exceed 80 % atom economy, encouraging greener choices such as catalytic hydrogenation over stoichiometric reductions.\n\nImproving atom economy often requires unlocking advanced catalysts or switching to one-pot syntheses. The metric appears on the reaction summary card alongside yield and energy cost.\n\nSee also: [molco2](#molco2), [carbon-credit](#carbon-credit).",
+      "seeAlso": [
+        "molco2",
+        "carbon-credit"
+      ],
+      "governanceId": "shared-quests-json",
+      "author": "Kimi",
+      "updatedAt": "2026-05-04T09:28:24.091Z"
+    },
+    {
+      "id": "carbon-credit",
+      "term": "Carbon credit",
+      "namespace": "game",
+      "summary": "Tradeable permit representing the right to emit one tonne of CO₂ equivalent, earned by operating below emissions caps.",
+      "body": "## Carbon credit\n\nA carbon credit is a tradeable certificate granting the holder the right to emit one tonne of CO₂ equivalent. In molgang, credits are earned by operating below a facility's emissions cap and can be sold on the marketplace or retired for reputation gains.\n\nPlayers can also invest in offset projects—reforestation modules or direct-air-capture rigs—to generate additional credits. The in-game carbon market fluctuates based on server-wide emissions, creating a player-driven economy around sustainability.\n\nManaging credits is essential for high-tier reactor licenses. Running carbon-negative processes yields surplus credits that form a steady revenue stream for veteran players.\n\nSee also: [molco2](#molco2), [atom-economy](#atom-economy).",
+      "seeAlso": [
+        "molco2",
+        "atom-economy"
+      ],
+      "governanceId": "shared-quests-json",
+      "author": "Kimi",
+      "updatedAt": "2026-05-04T09:28:24.094Z"
+    },
+    {
+      "id": "quests",
+      "term": "Quests",
+      "namespace": "game",
+      "summary": "Structured missions that guide player progression through synthesis, engineering, and sustainability challenges.",
+      "body": "## Quests\n\nQuests are the primary progression mechanism in molgang. Each quest presents a specific chemistry or engineering challenge—synthesize a target molecule, minimize energy use, or scale a reaction to pilot-plant size.\n\nQuests are gated by age band and faction reputation. Completing a quest rewards MOLCO2, experience, and occasionally unique catalyst blueprints. Daily and weekly quests rotate through the community board, encouraging replayability and collaborative competition.\n\nAdvanced quest lines culminate in capstone projects that require designing an entire process flowsheet. Successful completion unlocks the next age band and expands the player's facility build limit.\n\nSee also: [age-bands](#age-bands), [molco2](#molco2).",
+      "seeAlso": [
+        "age-bands",
+        "molco2"
+      ],
+      "governanceId": "shared-quests-json",
+      "author": "Kimi",
+      "updatedAt": "2026-05-04T09:28:24.097Z"
+    },
+    {
+      "id": "chemical-potential",
+      "term": "Chemical potential",
+      "namespace": "qchem",
+      "summary": "Partial molar Gibbs free energy — the thermodynamic force that drives matter to flow between phases or react.",
+      "body": "## Chemical potential\n\nThe chemical potential μᵢ is the partial molar Gibbs free energy of component *i* in a mixture. It quantifies how the total free energy changes when an infinitesimal amount of *i* is added, holding temperature, pressure, and all other amounts constant.\n\nChemical potential is the true driving force for phase equilibrium, diffusion, and chemical reaction. When μᵢ is equal in two phases, net transfer stops; when reactants have a higher total chemical potential than products, the reaction proceeds spontaneously.\n\nIn molgang, the simulator uses chemical potentials derived from partition functions to compute equilibrium compositions without relying on empirical equilibrium constants.\n\nSee also: [fugacity](#fugacity), [partition-function](#partition-function).",
+      "seeAlso": [
+        "fugacity",
+        "partition-function"
+      ],
+      "governanceId": "wiki-terms-json",
+      "author": "Kimi",
+      "updatedAt": "2026-05-04T09:28:24.100Z"
+    },
+    {
+      "id": "residence-time",
+      "term": "Residence time",
+      "namespace": "qchem",
+      "summary": "Average duration a fluid element spends inside a reactor — the inverse of space velocity.",
+      "body": "## Residence time\n\nResidence time τ is the average period a fluid element remains inside a reactor, defined as reactor volume divided by volumetric flow rate (τ = V / Q). It is the inverse of space velocity and sets the temporal scale against which reaction rates are compared.\n\nShort residence times favor fast reactions or high throughput; long residence times allow slow equilibria to approach completion. Together with the Damköhler number, τ reveals whether a reactor is limited by kinetics or by flow.\n\nIn molgang, players adjust residence time by changing reactor volume or pump speed. The tooltip shows the resulting conversion for the current reaction mechanism.\n\nSee also: [damkohler](#damkohler), [mass-transfer](#mass-transfer).",
+      "seeAlso": [
+        "damkohler",
+        "mass-transfer"
+      ],
+      "governanceId": "wiki-terms-json",
+      "author": "Kimi",
+      "updatedAt": "2026-05-04T09:28:24.116Z"
+    },
+    {
+      "id": "boltzmann-distribution",
+      "term": "Boltzmann distribution",
+      "namespace": "qchem",
+      "summary": "Probability distribution giving the relative populations of quantum states as an exponential function of their energy and temperature.",
+      "body": "## Boltzmann distribution\n\nThe Boltzmann distribution states that the probability of finding a system in a quantum state *i* with energy Eᵢ is proportional to exp(−Eᵢ / kT). At higher temperatures, more excited states become populated; as T approaches zero, only the ground state remains occupied.\n\nThis distribution is the statistical-mechanical foundation of the partition function. From it, molgang's simulator computes internal energy, entropy, and equilibrium constants for reactions involving vibrational and electronic excitations.\n\nPlayers rarely edit the distribution directly, but it underlies every temperature-dependent rate constant shown in the kinetics panel. Understanding it explains why some reactions accelerate dramatically with heat while others plateau.\n\nSee also: [partition-function](#partition-function).",
+      "seeAlso": [
+        "partition-function"
+      ],
+      "governanceId": "wiki-terms-json",
+      "author": "Kimi",
+      "updatedAt": "2026-05-04T09:28:24.122Z"
+    },
+    {
+      "id": "hybridization",
+      "term": "Hybridization",
+      "namespace": "qchem",
+      "summary": "Quantum-mechanical mixing of atomic orbitals to form equivalent hybrid orbitals that determine molecular geometry.",
+      "body": "## Hybridization\n\nHybridization is the quantum-mechanical combination of atomic orbitals on a central atom to produce a set of equivalent hybrid orbitals. Common schemes include sp (linear), sp² (trigonal planar), and sp³ (tetrahedral), each dictating bond angles and thereby molecular shape.\n\nIn molgang, the molecule builder visually highlights hybridized lobes when players place atoms. Correct hybridization affects steric strain energy and reaction accessibility—an sp² carbon in a double bond, for example, cannot rotate freely like an sp³ single bond.\n\nUnderstanding hybridization helps players predict nucleophilic attack angles and design catalysts with optimal orbital overlap for transition-state stabilization.",
+      "seeAlso": [],
+      "governanceId": "wiki-terms-json",
+      "author": "Kimi",
+      "updatedAt": "2026-05-04T09:28:24.125Z"
+    },
+    {
+      "id": "mass-transfer",
+      "term": "Mass transfer",
+      "namespace": "qchem",
+      "summary": "Transport of species across concentration gradients — the physical movement that brings reactants together and removes products.",
+      "body": "## Mass transfer\n\nMass transfer is the net movement of species from regions of high concentration to low concentration, driven by diffusion, convection, or both. In chemical engineering, it encompasses external transfer across boundary layers and internal transfer within porous catalyst pellets.\n\nHigh mass-transfer rates ensure reactants reach active sites and products escape, preventing equilibrium limitations. When mass transfer is slower than intrinsic kinetics, the observed reaction rate drops and the reactor behaves as if governed by a smaller rate constant.\n\nIn molgang, players upgrade agitators, packing material, and membrane separators to boost mass-transfer coefficients. The facility card shows whether the current step is reaction-controlled or transfer-controlled.\n\nSee also: [residence-time](#residence-time), [damkohler](#damkohler).",
+      "seeAlso": [
+        "residence-time",
+        "damkohler"
+      ],
+      "governanceId": "wiki-terms-json",
+      "author": "Kimi",
+      "updatedAt": "2026-05-04T09:28:24.134Z"
     }
   ]
 }

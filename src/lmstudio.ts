@@ -423,10 +423,12 @@ export async function chatAsAgent(
       recordThroughput(agent, r.model, r.usage, r.latencyMs);
       return { ...r, agent };
     }
-    // Kimi unavailable on a docs task → force the hint to a long-context
-    // local fallback (gemma-4-26b) so the doc still gets written, just
-    // without the Moonshot context window.
-    if (isDocsTask && agent !== 'Kimi') {
+    // Kimi unavailable on a docs task (CLI missing OR quota exhausted, which
+    // returns 429 → null) → force the hint to a long-context local fallback
+    // (gemma-4-26b) so the doc still gets written, just without the Moonshot
+    // context window. Applies whether the caller was the Kimi agent itself
+    // or a non-Kimi agent that picked taskType:'docs'.
+    if (isDocsTask) {
       docsFallthroughHint = 'gemma-4-26b';
       logger.info(`Kimi CLI unavailable — docs task for ${agent} falling back to gemma-4-26b`);
     }
