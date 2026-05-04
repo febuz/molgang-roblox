@@ -607,6 +607,10 @@
                     <div class="nav-icon">📄</div>
                     <div>Kami Briefs</div>
                 </div>
+                <div class="nav-item" data-page="kafkaops">
+                    <div class="nav-icon">🪶</div>
+                    <div>Kafka Spine</div>
+                </div>
             </div>
 
             <div class="nav-section">
@@ -1016,6 +1020,29 @@
                 <div class="card">
                     <div class="card-title">All briefs <span style="float:right;"><select id="kami-status-filter" style="background: var(--bg-darker); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-size: 0.85em;"><option value="">all</option><option>queued</option><option>in-progress</option><option>delivered</option><option>cancelled</option></select></span></div>
                     <div id="kami-briefs" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85em;">Loading…</div>
+                </div>
+            </div>
+
+            <!-- KAFKA PAGE -->
+            <div class="content-section" id="kafkaops">
+                <div class="page-header">
+                    <div class="page-title">🪶 Kafka Spine</div>
+                    <div class="page-subtitle">7 topics, audit + cost rollup. Every chat call, task mutation, and lineage write flows through here. <code>data/kafka-audit.jsonl</code> is the replay log.</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Per-topic volume <span style="float:right; color: var(--text-secondary); font-weight: normal; font-size: 0.85em;" id="kf-summary-meta">…</span></div>
+                    <div id="kf-topics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">Loading…</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Cost rollup (top 10 agents) <span style="float:right; color: var(--text-secondary); font-weight: normal; font-size: 0.85em;" id="kf-cost-meta">…</span></div>
+                    <div id="kf-cost" style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85em;">Loading…</div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Live audit tail <span style="float:right;"><select id="kf-topic-filter" style="background: var(--bg-darker); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; font-size: 0.85em;"><option value="">all topics</option></select></span></div>
+                    <div id="kf-audit" style="display: flex; flex-direction: column; gap: 4px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.78em; max-height: 480px; overflow-y: auto;">Loading…</div>
                 </div>
             </div>
 
@@ -1439,6 +1466,82 @@
         document.getElementById('kami-status-filter').addEventListener('change', loadKamiBriefs);
         document.querySelectorAll('.nav-item[data-page="kamiops"]').forEach(el =>
             el.addEventListener('click', () => loadKamiOps()));
+
+        // === Kafka Spine panel =============================================
+        const KAFKA_TOPIC_COLORS = {
+            'model.responses':   '#60a5fa',
+            'agent.tasks':       '#10b981',
+            'agent.results':     '#34d399',
+            'task.failed':       '#ef4444',
+            'cost.tracking':     '#f59e0b',
+            'lightrag.updates':  '#a78bfa',
+            'commit.audit':      '#94a3b8',
+        };
+        async function loadKafkaOps() {
+            try {
+                const audit = await fetch('/api/kafka/audit?limit=200').then(r => r.json());
+                const cost = await fetch('/api/kafka/cost').then(r => r.json());
+                const events = audit.tail || [];
+
+                // Per-topic histogram + agent count.
+                const byTopic = {};
+                for (const e of events) {
+                    const t = e.topic || '?';
+                    byTopic[t] = byTopic[t] || { count: 0, agents: new Set() };
+                    byTopic[t].count++;
+                    if (e.payload?.agent) byTopic[t].agents.add(e.payload.agent);
+                }
+                const topics = Object.keys(byTopic).sort();
+                document.getElementById('kf-topics').innerHTML = topics.map(t => {
+                    const c = KAFKA_TOPIC_COLORS[t] || '#666';
+                    return `<div class="stat-card" style="border-color:${c}66;">
+                      <div class="stat-label" style="color:${c};">${t}</div>
+                      <div class="stat-value">${byTopic[t].count}</div>
+                      <div class="stat-change">${byTopic[t].agents.size} unique agents</div></div>`;
+                }).join('') || '<em>No events in audit log yet.</em>';
+                document.getElementById('kf-summary-meta').textContent = `${events.length} events sampled`;
+
+                // Cost rollup (top 10 by token total).
+                const byAgent = (cost.by_agent || [])
+                    .sort((a, b) => (b.prompt_tokens + b.completion_tokens) - (a.prompt_tokens + a.completion_tokens))
+                    .slice(0, 10);
+                document.getElementById('kf-cost').innerHTML = byAgent.map(a => {
+                    const total = a.prompt_tokens + a.completion_tokens;
+                    return `<div style="display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px dotted var(--border);">
+                      <span><strong>${escapeHtml(a.key)}</strong></span>
+                      <span style="color: var(--text-secondary);">${a.calls} calls · ${total.toLocaleString()} tok · $${(a.cost_usd||0).toFixed(4)}</span></div>`;
+                }).join('') || '<em>No cost data yet.</em>';
+                document.getElementById('kf-cost-meta').textContent =
+                    `total: ${cost.total?.calls || 0} calls · ${(cost.total?.prompt_tokens + cost.total?.completion_tokens).toLocaleString()} tokens · $${(cost.total?.cost_usd || 0).toFixed(4)}`;
+
+                // Topic dropdown
+                const sel = document.getElementById('kf-topic-filter');
+                if (sel.options.length <= 1) {
+                    for (const t of topics) sel.add(new Option(t, t));
+                }
+                renderKafkaAudit(events);
+            } catch (e) {
+                document.getElementById('kf-topics').textContent = 'Error: ' + e.message;
+            }
+        }
+        function renderKafkaAudit(events) {
+            const filter = document.getElementById('kf-topic-filter').value;
+            const filtered = filter ? events.filter(e => e.topic === filter) : events;
+            const recent = filtered.slice(-80).reverse();
+            document.getElementById('kf-audit').innerHTML = recent.map(e => {
+                const c = KAFKA_TOPIC_COLORS[e.topic] || '#666';
+                const agent = e.payload?.agent || e.payload?.created_by || '';
+                const detail = e.payload?.request_id || e.payload?.task_id || e.payload?.id || e.payload?.title || JSON.stringify(e.payload).slice(0, 60);
+                return `<div style="display: grid; grid-template-columns: 80px 150px 80px 1fr; gap: 8px; padding: 2px 0; border-bottom: 1px dotted var(--border);">
+                  <span style="color: var(--text-secondary);">${(e.ts||'').slice(11, 19)}</span>
+                  <span style="color: ${c};">${e.topic}</span>
+                  <span style="color: var(--text-primary);">${escapeHtml(agent)}</span>
+                  <span style="color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(detail)}</span></div>`;
+            }).join('') || '<em>No events match filter.</em>';
+        }
+        document.getElementById('kf-topic-filter').addEventListener('change', () => loadKafkaOps());
+        document.querySelectorAll('.nav-item[data-page="kafkaops"]').forEach(el =>
+            el.addEventListener('click', () => loadKafkaOps()));
 
         // === Auto-research panel ===========================================
         document.getElementById('ar-form').addEventListener('submit', async (e) => {
