@@ -497,6 +497,7 @@ const titlecard = document.getElementById('titlecard');
 startBtn.addEventListener('click', () => {
   controls.lock();
   titlecard.classList.add('hide');
+  initAudio();  // user gesture required
 });
 controls.addEventListener('lock', () => { titlecard.classList.add('hide'); });
 controls.addEventListener('unlock', () => { /* keep playing */ });
@@ -665,6 +666,7 @@ function resetReaction() {
   };
   fade();
   setStatus(`<span style="color:#10b981">${r.message}</span> · Product: <strong>${r.product}</strong>`);
+  playReactionTing();
   // Quest progression: if this was the CuSO4+H2O hydration, mark complete
   const products = [a.contents, b.contents].map(c => Object.keys(c).sort().join('+')).sort().join('|');
   if (products === 'CuSO4|H2O' && questState === 'active') {
@@ -864,6 +866,84 @@ function updateQuestUI() {
   q.innerHTML = html;
 }
 
+// ─── procedural ambient audio (Web Audio API — no external files) ─────
+// Bedroom-friendly: soft pad + slow lab hum + per-weather rain noise +
+// occasional glassware ting. All synthesized live; no asset dependency.
+let audioCtx = null;
+const audioState = { pad: null, hum: null, rainNoise: null, master: null, on: false };
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const master = audioCtx.createGain();
+  master.gain.value = 0.4;
+  master.connect(audioCtx.destination);
+  audioState.master = master;
+  // Ambient pad — two slightly detuned oscillators with low-pass
+  const pad = audioCtx.createGain();
+  pad.gain.value = 0;
+  const padFilter = audioCtx.createBiquadFilter();
+  padFilter.type = 'lowpass'; padFilter.frequency.value = 600;
+  pad.connect(padFilter).connect(master);
+  for (const f of [110, 165, 220]) {
+    const o = audioCtx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = f;
+    const g = audioCtx.createGain(); g.gain.value = 0.08;
+    o.connect(g).connect(pad); o.start();
+  }
+  audioState.pad = pad;
+  // Lab hum (60 Hz buzz)
+  const hum = audioCtx.createGain(); hum.gain.value = 0;
+  const humOsc = audioCtx.createOscillator(); humOsc.type = 'sawtooth'; humOsc.frequency.value = 60;
+  const humGain = audioCtx.createGain(); humGain.gain.value = 0.04;
+  const humFilter = audioCtx.createBiquadFilter(); humFilter.type = 'bandpass'; humFilter.frequency.value = 90; humFilter.Q.value = 4;
+  humOsc.connect(humGain).connect(humFilter).connect(hum).connect(master);
+  humOsc.start();
+  audioState.hum = hum;
+  // Rain noise — pink noise via biquad-filtered white
+  const noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+  const data = noiseBuf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+  const noiseSource = audioCtx.createBufferSource();
+  noiseSource.buffer = noiseBuf; noiseSource.loop = true;
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'highpass'; noiseFilter.frequency.value = 800;
+  const rainGain = audioCtx.createGain(); rainGain.gain.value = 0;
+  noiseSource.connect(noiseFilter).connect(rainGain).connect(master);
+  noiseSource.start();
+  audioState.rainNoise = rainGain;
+  audioState.on = true;
+}
+
+// Layer mixer — driven by location + weather
+function updateAmbientAudio() {
+  if (!audioState.on) return;
+  const inLab = Math.abs(controls.getObject().position.x) < ROOM.w/2 && Math.abs(controls.getObject().position.z) < ROOM.d/2;
+  // Pad always at low level outdoors, brighter indoors
+  audioState.pad.gain.linearRampToValueAtTime(inLab ? 0.5 : 0.3, audioCtx.currentTime + 0.5);
+  // Hum only audible indoors
+  audioState.hum.gain.linearRampToValueAtTime(inLab ? 0.4 : 0.0, audioCtx.currentTime + 0.5);
+  // Rain noise scales with weather
+  const rainLevel = weatherState === 'storm' ? 0.6 : weatherState === 'rain' ? 0.4 : weatherState === 'overcast' ? 0.05 : 0.0;
+  audioState.rainNoise.gain.linearRampToValueAtTime(rainLevel * (inLab ? 0.3 : 1.0), audioCtx.currentTime + 1.0);
+}
+// Glassware ting on reaction
+function playReactionTing() {
+  if (!audioState.on) return;
+  for (let i = 0; i < 3; i++) {
+    const o = audioCtx.createOscillator();
+    o.frequency.value = 880 + i * 220;
+    o.type = 'sine';
+    const g = audioCtx.createGain();
+    g.gain.value = 0.0;
+    g.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+    o.connect(g).connect(audioState.master);
+    o.start(audioCtx.currentTime + i * 0.04);
+    o.stop(audioCtx.currentTime + 1.2);
+  }
+}
+
 // ─── weather: rain particles ───────────────────────────────────────────
 const RAIN_COUNT = 1500;
 const rainPositions = new Float32Array(RAIN_COUNT * 3);
@@ -989,6 +1069,7 @@ function animate() {
   updateRain(dt);
   tickWeather(dt);
   tickLightning(dt);
+  updateAmbientAudio();
   // Femke idle bob
   femkeGroup.position.y = Math.sin(clock.getElapsedTime() * 1.4) * 0.02;
   // Update prompt based on what's nearby
