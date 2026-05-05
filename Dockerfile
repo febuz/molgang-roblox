@@ -27,8 +27,9 @@ RUN apk add --no-cache curl tini
 ENV NODE_ENV=production \
     PORT=3100 \
     EMBED_URL=http://host.docker.internal:1234/v1 \
-    LITELLM_URL=http://host.docker.internal:4000 \
-    NEO4J_URI=bolt://neo4j:7687
+    LM_STUDIO_URL=http://host.docker.internal:1234/v1 \
+    NEO4J_URI=bolt://neo4j:7687 \
+    KAFKA_DISABLED=1
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
