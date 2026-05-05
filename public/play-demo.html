@@ -423,9 +423,50 @@ function makeTruck() {
   truck.position.set(ROOM.w/2 + 9, 0, 6);
   truck.rotation.y = Math.PI / 2;
   scene.add(truck);
-  interactables.push({ group: truck, label: 'Delivery truck · Luca\'s ride', kind: 'truck', position: truck.position });
+  truckMesh = truck;
+  interactables.push({ group: truck, label: 'Delivery truck · drive [E]', kind: 'truck', position: truck.position });
 }
+let truckMesh = null;
 makeTruck();
+
+// ─── Dmitri (foreman) — near the truck ────────────────────────────────
+const dmitriGroup = new THREE.Group();
+const dmitriTorso = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 1.0, 8, 16), new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.7 }));
+dmitriTorso.position.y = 1.10; dmitriTorso.castShadow = true;
+dmitriGroup.add(dmitriTorso);
+const dmitriHead = new THREE.Mesh(new THREE.SphereGeometry(0.20, 16, 16), new THREE.MeshStandardMaterial({ color: 0xd8a06e, roughness: 0.55 }));
+dmitriHead.position.y = 1.85; dmitriHead.castShadow = true;
+dmitriGroup.add(dmitriHead);
+const hardHat = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xfb923c, roughness: 0.5 }));
+hardHat.position.y = 1.95; hardHat.scale.set(1, 0.6, 1.05); hardHat.castShadow = true;
+dmitriGroup.add(hardHat);
+const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0xfb923c, roughness: 0.5 }));
+hatBrim.position.y = 1.92;
+dmitriGroup.add(hatBrim);
+const dmitriLegL = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.6, 6, 8), new THREE.MeshStandardMaterial({ color: 0x52525b, roughness: 0.7 }));
+dmitriLegL.position.set(-0.14, 0.35, 0); dmitriLegL.castShadow = true;
+dmitriGroup.add(dmitriLegL);
+const dmitriLegR = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.6, 6, 8), new THREE.MeshStandardMaterial({ color: 0x52525b, roughness: 0.7 }));
+dmitriLegR.position.set(0.14, 0.35, 0); dmitriLegR.castShadow = true;
+dmitriGroup.add(dmitriLegR);
+dmitriGroup.position.set(ROOM.w/2 + 6, 0, 4);
+dmitriGroup.rotation.y = Math.PI / 2;
+scene.add(dmitriGroup);
+const dmitriName = makeNameTag('Dmitri · foreman [E]', '#fb923c');
+dmitriName.position.set(0, 2.35, 0);
+dmitriGroup.add(dmitriName);
+interactables.push({ group: dmitriGroup, label: 'Dmitri', kind: 'npc', position: dmitriGroup.position, npcId: 'dmitri' });
+
+// Marker for the second quest — a glowing pillar at the far end of the courtyard
+const markerMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 1, transparent: true, opacity: 0.7 });
+const markerPos = new THREE.Vector3(ROOM.w/2 + 22, 1, 14);
+const marker = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 16), markerMat);
+marker.position.copy(markerPos);
+scene.add(marker);
+const markerLight = new THREE.PointLight(0xfbbf24, 1.5, 12);
+markerLight.position.copy(markerPos);
+markerLight.position.y = 2;
+scene.add(markerLight);
 
 // ─── chemistry interaction — combine reagents ─────────────────────────
 const inventory = []; // array of { id, label, contents }
@@ -532,6 +573,42 @@ function tryInteract() {
   if (it.kind === 'npc') openDialogue(it);
   else if (it.kind === 'beaker') pickUp(it);
   else if (it.kind === 'door') openDoor();
+  else if (it.kind === 'truck') toggleDrive(it);
+}
+
+let drivingTruck = false;
+function toggleDrive(t) {
+  if (!drivingTruck) {
+    drivingTruck = true;
+    setStatus('<span style="color:#fbbf24">Driving · WASD steers truck · E to dismount</span>');
+  } else {
+    drivingTruck = false;
+    setStatus('Dismounted. Walk to the marker or back to Dmitri.');
+  }
+}
+
+function updateTruckDriving(dt) {
+  if (!drivingTruck || !truckMesh) return;
+  const speed = (move.f ? 8 : 0) + (move.b ? -5 : 0);
+  const turn = (move.l ? 1.4 : 0) + (move.r ? -1.4 : 0);
+  truckMesh.rotation.y += turn * dt;
+  const forward = new THREE.Vector3(Math.sin(truckMesh.rotation.y), 0, Math.cos(truckMesh.rotation.y));
+  truckMesh.position.x += forward.x * speed * dt;
+  truckMesh.position.z += forward.z * speed * dt;
+  // Camera rides on top of truck cab
+  const camOffset = new THREE.Vector3(-forward.x * 5, 4, -forward.z * 5);
+  controls.getObject().position.set(truckMesh.position.x + camOffset.x, truckMesh.position.y + camOffset.y, truckMesh.position.z + camOffset.z);
+  // Soft look-toward truck
+  camera.lookAt(truckMesh.position.x + forward.x * 4, truckMesh.position.y + 1.5, truckMesh.position.z + forward.z * 4);
+  // Quest-two check: distance from truck to marker
+  if (questTwo === 'active') {
+    const dist = truckMesh.position.distanceTo(markerPos);
+    if (dist < 4) {
+      questTwo = 'awaiting_return';
+      updateQuestUI();
+      setStatus('<span style="color:#10b981">✓ Truck delivered to marker. Dismount (E) and return to Dmitri.</span>');
+    }
+  }
 }
 
 function openDoor() {
@@ -624,6 +701,14 @@ function openDialogue(npc) {
     showNode('root');
     return;
   }
+  if (npc.npcId === 'dmitri') {
+    currentTree = DMITRI_TREE;
+    controls.unlock();
+    dialogueActive = true;
+    if (questTwo === 'awaiting_return') showNode('truck_quest_complete');
+    else showNode('root');
+    return;
+  }
   setStatus('NPC not yet authored.');
 }
 function closeDialogue() {
@@ -664,6 +749,33 @@ const FEMKE_TREE = {
     speaker: 'Prof. Femke',
     text: "I saw the colour change from across the bench. CuSO₄·5H₂O — classic copper sulphate hydration. The blue is the hexa-aqua complex; you got it on the first try. Take this — the chemistry-bench key. You've earned the right to access the rest of the reagents.",
     choices: [{ label: "Thank you, professor.", next: '__close', effect: () => { questState = 'complete'; addInventoryItem({ id: 'lab-key', label: '🔑 Chemistry-bench key', contents: {}, color: 0xfbbf24 }); updateQuestUI(); } }],
+  },
+};
+
+let questTwo = 'pending'; // pending → active → complete
+const DMITRI_TREE = {
+  root: {
+    speaker: 'Dmitri · foreman',
+    text: "Hard hat. Steel boots. No exceptions. You don't have either, but I'll let you through this once. Truck needs moving — V₂O₅ to delivery marker by the warehouse end. You drive. Keys are in the cab.",
+    choices: [
+      { label: "On it. I'll drive the truck to the marker.", next: 'truck_quest_active' },
+      { label: "I can't drive yet.",                          next: 'truck_quest_decline' },
+    ],
+  },
+  truck_quest_active: {
+    speaker: 'Dmitri · foreman',
+    text: "Good. Press E by the truck cab to climb in. WASD to drive. Stop next to the glowing pillar. Don't scratch it.",
+    choices: [{ label: "Understood.", next: '__close', effect: () => { questTwo = 'active'; updateQuestUI(); } }],
+  },
+  truck_quest_decline: {
+    speaker: 'Dmitri · foreman',
+    text: "Drink's on me when you can. Also — get a hard hat. Inês will have my head if she sees you.",
+    choices: [{ label: "Will do.", next: '__close' }],
+  },
+  truck_quest_complete: {
+    speaker: 'Dmitri · foreman',
+    text: "Clean run. Plant didn't go up. Drink IS on me Friday. Tell Sofia you're shift-lead material — I'll back you.",
+    choices: [{ label: "Thanks, Dmitri.", next: '__close', effect: () => { questTwo = 'complete'; addInventoryItem({ id: 'shift-lead-key', label: '🔑 Shift-lead key', contents: {}, color: 0xfb923c }); updateQuestUI(); } }],
   },
 };
 
@@ -728,18 +840,24 @@ function updateQuestUI() {
     Object.assign(q.style, { marginTop: '8px', padding: '8px 12px', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.5)', borderRadius: '6px', fontSize: '0.78rem', color: '#fde047' });
     inv.appendChild(q);
   }
-  if (questState === 'pending') {
-    q.style.display = 'none';
-  } else if (questState === 'active') {
-    q.style.display = '';
-    q.innerHTML = '<strong>Quest · Femke\'s tutorial</strong><br>Combine H₂O + CuSO₄ (R)<br>Then return to Femke.';
+  let html = '';
+  if (questState === 'active') {
+    html += '<strong>Q1 · Femke\'s tutorial</strong><br>Combine H₂O + CuSO₄ (R)<br>Then return to Femke.<br><br>';
   } else if (questState === 'awaiting_return') {
-    q.style.display = '';
-    q.innerHTML = '<strong>Quest · ✓ hydration done</strong><br>Return to Femke (E)';
+    html += '<strong>Q1 · ✓ hydration done</strong><br>Return to Femke (E)<br><br>';
   } else if (questState === 'complete') {
-    q.style.display = '';
-    q.innerHTML = '<strong style="color:#10b981;">Quest complete</strong><br>+ chemistry-bench key';
+    html += '<strong style="color:#10b981;">Q1 ✓ chemistry-bench key</strong><br><br>';
   }
+  if (questTwo === 'active') {
+    html += '<strong>Q2 · Dmitri\'s delivery</strong><br>Drive truck to glowing pillar.<br>';
+  } else if (questTwo === 'awaiting_return') {
+    html += '<strong>Q2 · ✓ truck delivered</strong><br>Return to Dmitri (E)';
+  } else if (questTwo === 'complete') {
+    html += '<strong style="color:#10b981;">Q2 ✓ shift-lead key</strong>';
+  }
+  if (!html) { q.style.display = 'none'; return; }
+  q.style.display = '';
+  q.innerHTML = html;
 }
 
 // ─── day/night clock + sky tint ───────────────────────────────────────
@@ -783,7 +901,10 @@ function updateDayNight(dt) {
 const clock = new THREE.Clock();
 function animate() {
   const dt = Math.min(0.05, clock.getDelta());
-  if (controls.isLocked) updateMovement(dt);
+  if (controls.isLocked) {
+    if (drivingTruck) updateTruckDriving(dt);
+    else updateMovement(dt);
+  }
   updateDayNight(dt);
   // Femke idle bob
   femkeGroup.position.y = Math.sin(clock.getElapsedTime() * 1.4) * 0.02;
