@@ -291,6 +291,142 @@ femkeName.position.set(0, 2.25, 0);
 femkeGroup.add(femkeName);
 interactables.push({ group: femkeGroup, label: 'Prof. Femke', kind: 'npc', position: femkeGroup.position, npcId: 'femke' });
 
+// ─── Marina (second NPC at bench-B) ───────────────────────────────────
+const marinaGroup = new THREE.Group();
+const marinaTorso = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.7 }));
+marinaTorso.position.y = 1.05; marinaTorso.castShadow = true;
+marinaGroup.add(marinaTorso);
+const marinaHead = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), new THREE.MeshStandardMaterial({ color: 0xe6c39c, roughness: 0.55 }));
+marinaHead.position.y = 1.78; marinaHead.castShadow = true;
+marinaGroup.add(marinaHead);
+const marinaHair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 }));
+marinaHair.position.y = 1.82; marinaHair.scale.set(1, 0.7, 1.05); marinaHair.castShadow = true;
+marinaGroup.add(marinaHair);
+const marinaLegL = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.55, 6, 8), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 }));
+marinaLegL.position.set(-0.12, 0.32, 0); marinaLegL.castShadow = true;
+marinaGroup.add(marinaLegL);
+const marinaLegR = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.55, 6, 8), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 }));
+marinaLegR.position.set(0.12, 0.32, 0); marinaLegR.castShadow = true;
+marinaGroup.add(marinaLegR);
+marinaGroup.position.set(3, 0, -3.6);
+marinaGroup.rotation.y = Math.PI;
+scene.add(marinaGroup);
+const marinaName = makeNameTag('Marina · QC tech [E]', '#06b6d4');
+marinaName.position.set(0, 2.25, 0);
+marinaGroup.add(marinaName);
+interactables.push({ group: marinaGroup, label: 'Marina', kind: 'npc', position: marinaGroup.position, npcId: 'marina' });
+
+// ─── exit door + courtyard preview (back wall, visible through window) ─
+function makeDoor() {
+  const m = new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.7, metalness: 0.05 });
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 0.1), m);
+  door.position.set(ROOM.w/2 - 0.06, 1.2, 5);
+  door.castShadow = true;
+  scene.add(door);
+  const handle = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2 }));
+  handle.position.set(ROOM.w/2 - 0.12, 1.2, 5.45);
+  scene.add(handle);
+  // Door frame
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x504e49, roughness: 0.6 });
+  for (const [hh, yy, zz, ww] of [[2.5, 2.45, 5, 1.6], [0.06, 1.2, 4.25, 0.06], [0.06, 1.2, 5.75, 0.06]]) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.15, hh, ww), frameMat);
+    f.position.set(ROOM.w/2 - 0.08, yy, zz);
+    scene.add(f);
+  }
+  interactables.push({ kind: 'door', label: 'Door · to courtyard', position: door.position });
+}
+makeDoor();
+
+// ─── courtyard (outdoor area visible past the door, walkable after openDoor) ─
+function makeCourtyard() {
+  const grassMat = new THREE.MeshStandardMaterial({ color: 0x4a6c3f, roughness: 0.95 });
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x504e49, roughness: 0.85 });
+  // Asphalt strip
+  const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(20, 12), groundMat);
+  asphalt.rotation.x = -Math.PI / 2;
+  asphalt.position.set(ROOM.w/2 + 10, 0, 5);
+  asphalt.receiveShadow = true;
+  scene.add(asphalt);
+  // Grass on either side
+  for (const dz of [-12, 12]) {
+    const grass = new THREE.Mesh(new THREE.PlaneGeometry(20, 8), grassMat);
+    grass.rotation.x = -Math.PI / 2;
+    grass.position.set(ROOM.w/2 + 10, 0, 5 + dz);
+    grass.receiveShadow = true;
+    scene.add(grass);
+  }
+  // Distant building blocks (suggestion of city)
+  for (const [x, z, h, c] of [
+    [ROOM.w/2 + 18, -8, 8, 0xa3a3a3],
+    [ROOM.w/2 + 22, 4, 12, 0x94a3b8],
+    [ROOM.w/2 + 16, 14, 6, 0xe5e3d8],
+    [ROOM.w/2 + 24, 12, 10, 0x6b6a64],
+  ]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(4, h, 4), new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 }));
+    b.position.set(x, h/2, z);
+    b.castShadow = true; b.receiveShadow = true;
+    scene.add(b);
+  }
+  // A few trees as cones
+  for (const [x, z] of [[ROOM.w/2 + 6, -6], [ROOM.w/2 + 7, 18], [ROOM.w/2 + 14, 17]]) {
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 1.5, 8), new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.85 }));
+    trunk.position.set(x, 0.75, z);
+    trunk.castShadow = true;
+    scene.add(trunk);
+    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.8, 8), new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.95 }));
+    crown.position.set(x, 2.2, z);
+    crown.castShadow = true;
+    scene.add(crown);
+  }
+}
+makeCourtyard();
+
+// Delivery truck (Pixel's GTA6-PH-1 made manifest in 30 lines)
+function makeTruck() {
+  const truck = new THREE.Group();
+  const cabMat = new THREE.MeshStandardMaterial({ color: 0xfb923c, roughness: 0.5, metalness: 0.4 });
+  const cargoMat = new THREE.MeshStandardMaterial({ color: 0xf5f4ed, roughness: 0.7, metalness: 0.1 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.8, metalness: 0.0 });
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.9, 1.7), cabMat);
+  cab.position.set(0, 1.45, 0);
+  cab.castShadow = true; cab.receiveShadow = true;
+  truck.add(cab);
+  const cargo = new THREE.Mesh(new THREE.BoxGeometry(4, 2.2, 1.9), cargoMat);
+  cargo.position.set(-3.2, 1.6, 0);
+  cargo.castShadow = true; cargo.receiveShadow = true;
+  truck.add(cargo);
+  // Wheels
+  for (const [x, z] of [[1.0, 1.0], [1.0, -1.0], [-1.5, 1.0], [-1.5, -1.0], [-4.5, 1.0], [-4.5, -1.0]]) {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.32, 16), blackMat);
+    wheel.rotation.x = Math.PI / 2;
+    wheel.position.set(x, 0.42, z);
+    wheel.castShadow = true;
+    truck.add(wheel);
+  }
+  // Windshield
+  const wsMat = new THREE.MeshPhysicalMaterial({ color: 0x0a1628, transparent: true, opacity: 0.7, transmission: 0.4 });
+  const ws = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 0.05), wsMat);
+  ws.position.set(0.85, 1.85, 0);
+  ws.rotation.y = -0.1;
+  truck.add(ws);
+  // molgang livery on the cargo box
+  const liveryCanvas = document.createElement('canvas');
+  liveryCanvas.width = 256; liveryCanvas.height = 128;
+  const lc = liveryCanvas.getContext('2d');
+  lc.fillStyle = '#f5f4ed'; lc.fillRect(0, 0, 256, 128);
+  lc.fillStyle = '#1B365D'; lc.font = 'bold 48px Arial'; lc.fillText('molgang', 24, 70);
+  lc.fillStyle = '#fbbf24'; lc.font = 'italic 18px Arial'; lc.fillText('reagent logistics', 24, 96);
+  const liveryTex = new THREE.CanvasTexture(liveryCanvas);
+  const livery = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.6), new THREE.MeshStandardMaterial({ map: liveryTex, roughness: 0.6 }));
+  livery.position.set(-3.2, 1.7, 0.96);
+  truck.add(livery);
+  truck.position.set(ROOM.w/2 + 9, 0, 6);
+  truck.rotation.y = Math.PI / 2;
+  scene.add(truck);
+  interactables.push({ group: truck, label: 'Delivery truck · Luca\'s ride', kind: 'truck', position: truck.position });
+}
+makeTruck();
+
 // ─── chemistry interaction — combine reagents ─────────────────────────
 const inventory = []; // array of { id, label, contents }
 function syncInv() {
@@ -357,11 +493,21 @@ function updateMovement(dt) {
   if (move.l || move.r) velocity.x += direction.x * SPEED * dt * 8;
   controls.moveRight(velocity.x * dt);
   controls.moveForward(-velocity.z * dt);
-  // Clamp inside room
+  // Walls + courtyard boundary. Player can be inside the lab room OR outside
+  // (after openDoor teleport). Allow free movement in both regions; door
+  // segment at x=ROOM.w/2 is permeable around z=4.5..5.5.
   const p = controls.getObject().position;
-  p.x = Math.max(-ROOM.w/2 + 0.6, Math.min(ROOM.w/2 - 0.6, p.x));
-  p.z = Math.max(-ROOM.d/2 + 0.6, Math.min(ROOM.d/2 - 0.6, p.z));
-  p.y = 1.7; // keep camera at standing height
+  const insideLab = (p.x < ROOM.w/2 - 0.4) && (p.x > -ROOM.w/2 + 0.4) && (p.z > -ROOM.d/2 + 0.4) && (p.z < ROOM.d/2 - 0.4);
+  const inDoorZone = (Math.abs(p.x - ROOM.w/2) < 1.5) && (p.z > 3.5) && (p.z < 6.5);
+  const outdoorBound = (p.x > ROOM.w/2 - 1.0) && (p.x < ROOM.w/2 + 30) && (p.z > -20) && (p.z < 30);
+  if (!insideLab && !inDoorZone && !outdoorBound) {
+    // Push back to nearest valid space
+    if (p.x < -ROOM.w/2 + 0.4) p.x = -ROOM.w/2 + 0.6;
+    if (p.x > ROOM.w/2 + 30)   p.x = ROOM.w/2 + 30;
+    if (p.z < -ROOM.d/2 + 0.4 && p.x < ROOM.w/2) p.z = -ROOM.d/2 + 0.6;
+    if (p.z > ROOM.d/2 - 0.4 && p.x < ROOM.w/2 - 1) p.z = ROOM.d/2 - 0.6;
+  }
+  p.y = 1.7;
 }
 
 // ─── interaction ──────────────────────────────────────────────────────
@@ -385,6 +531,21 @@ function tryInteract() {
   if (!it) { setStatus('Nothing in reach. Walk closer.'); return; }
   if (it.kind === 'npc') openDialogue(it);
   else if (it.kind === 'beaker') pickUp(it);
+  else if (it.kind === 'door') openDoor();
+}
+
+function openDoor() {
+  // Teleport player out to courtyard preview (a quick fade)
+  const overlay = document.createElement('div');
+  Object.assign(overlay.style, { position: 'fixed', inset: '0', background: '#000', opacity: '0', transition: 'opacity 0.6s', zIndex: 50, pointerEvents: 'none' });
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.style.opacity = '1', 10);
+  setTimeout(() => {
+    controls.getObject().position.set(0, 1.7, ROOM.d/2 + 4);
+    setStatus('Outside · the courtyard. Truck on the right. Walk back inside through the door.');
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 600);
+  }, 600);
 }
 
 function pickUp(b) {
@@ -423,6 +584,14 @@ function resetReaction() {
   };
   fade();
   setStatus(`<span style="color:#10b981">${r.message}</span> · Product: <strong>${r.product}</strong>`);
+  // Quest progression: if this was the CuSO4+H2O hydration, mark complete
+  const products = [a.contents, b.contents].map(c => Object.keys(c).sort().join('+')).sort().join('|');
+  if (products === 'CuSO4|H2O' && questState === 'active') {
+    playerCompletedHydration = true;
+    questState = 'awaiting_return';
+    updateQuestUI();
+    setTimeout(() => setStatus('<span style="color:#fbbf24">Quest progress · return to Femke (E)</span>'), 2500);
+  }
   // Empty inventory after reaction
   inventory.length = 0;
   syncInv();
@@ -434,11 +603,28 @@ const dialogueEl = document.getElementById('dialogue');
 const dSpeaker = document.getElementById('d-speaker');
 const dText = document.getElementById('d-text');
 const dChoices = document.getElementById('d-choices');
+let currentTree = null; // 'femke' or 'marina'
 function openDialogue(npc) {
-  if (npc.npcId !== 'femke') { setStatus('NPC not yet authored.'); return; }
-  controls.unlock();
-  dialogueActive = true;
-  showNode('root');
+  if (npc.npcId === 'femke') {
+    currentTree = FEMKE_TREE;
+    controls.unlock();
+    dialogueActive = true;
+    // Branch on quest state — if quest_active and player has the result, root_post_quest
+    if (questState === 'awaiting_return' && playerCompletedHydration) {
+      showNode('quest_complete');
+    } else {
+      showNode('root');
+    }
+    return;
+  }
+  if (npc.npcId === 'marina') {
+    currentTree = MARINA_TREE;
+    controls.unlock();
+    dialogueActive = true;
+    showNode('root');
+    return;
+  }
+  setStatus('NPC not yet authored.');
 }
 function closeDialogue() {
   dialogueActive = false;
@@ -447,6 +633,8 @@ function closeDialogue() {
   setStatus('approach the white bench · press <span style="color:#fbbf24">E</span> when prompted');
 }
 
+let questState = 'pending';        // pending → active → awaiting_return → complete
+let playerCompletedHydration = false;
 const FEMKE_TREE = {
   root: {
     speaker: 'Prof. Femke',
@@ -459,8 +647,8 @@ const FEMKE_TREE = {
   },
   tutorial: {
     speaker: 'Prof. Femke',
-    text: "Good. The best chemists start by being honest about what they don't know. Pick up the H₂O and CuSO₄ on the benches behind me. Combine them — press R when you have both. You'll see hydration. Come back when you've done it.",
-    choices: [{ label: "Will do.", next: '__close' }],
+    text: "Good. The best chemists start by being honest about what they don't know. Pick up the H₂O on the bench by Marina, and the CuSO₄ from bench-C in the centre. Combine them — press R when you have both. You'll see hydration. Come back when you've done it. I'll know.",
+    choices: [{ label: "Will do.", next: '__close', effect: () => { questState = 'active'; updateQuestUI(); } }],
   },
   wary: {
     speaker: 'Prof. Femke',
@@ -472,11 +660,43 @@ const FEMKE_TREE = {
     text: "Fair enough. Look around. The bench is for collaborators, not tourists, so stay this side of the yellow tape. If you decide to take this seriously, find me again — I'll know.",
     choices: [{ label: "Thanks, I will.", next: '__close' }],
   },
+  quest_complete: {
+    speaker: 'Prof. Femke',
+    text: "I saw the colour change from across the bench. CuSO₄·5H₂O — classic copper sulphate hydration. The blue is the hexa-aqua complex; you got it on the first try. Take this — the chemistry-bench key. You've earned the right to access the rest of the reagents.",
+    choices: [{ label: "Thank you, professor.", next: '__close', effect: () => { questState = 'complete'; addInventoryItem({ id: 'lab-key', label: '🔑 Chemistry-bench key', contents: {}, color: 0xfbbf24 }); updateQuestUI(); } }],
+  },
+};
+
+const MARINA_TREE = {
+  root: {
+    speaker: 'Marina · QC tech',
+    text: "What's broken this time? Or — actually, you look new. You don't break things yet. Tell me what you need.",
+    choices: [
+      { label: "Femke wants me to combine H₂O and CuSO₄.", next: 'femke_quest_help' },
+      { label: "What do you do here?", next: 'marina_role' },
+      { label: "Just exploring.", next: 'marina_dismiss' },
+    ],
+  },
+  femke_quest_help: {
+    speaker: 'Marina · QC tech',
+    text: "Easy one. The H₂O is on bench-B right next to me. The CuSO₄ is on bench-C in the centre, the red beaker. Pick them both up (E), then press R. You'll see the cation form a hydrate complex — copper(II) goes deep blue. Don't spill — Inês will have my head.",
+    choices: [{ label: "Got it, thanks.", next: '__close' }],
+  },
+  marina_role: {
+    speaker: 'Marina · QC tech',
+    text: "I run the QC bench. Every batch that leaves this lab passes me first. The autoclave likes me, the rotovap tolerates me, Femke trusts me. Most days that's enough.",
+    choices: [{ label: "Respect.", next: '__close' }],
+  },
+  marina_dismiss: {
+    speaker: 'Marina · QC tech',
+    text: "Don't touch anything. The yellow tape is yellow for a reason.",
+    choices: [{ label: "Understood.", next: '__close' }],
+  },
 };
 
 function showNode(id) {
   if (id === '__close') return closeDialogue();
-  const n = FEMKE_TREE[id];
+  const n = (currentTree || FEMKE_TREE)[id];
   if (!n) return closeDialogue();
   dSpeaker.textContent = n.speaker;
   dText.textContent = n.text;
@@ -484,10 +704,42 @@ function showNode(id) {
   for (const c of n.choices) {
     const btn = document.createElement('button');
     btn.textContent = `→  ${c.label}` + (c.score && c.score !== '0' ? `  <${c.score}>` : '');
-    btn.addEventListener('click', () => showNode(c.next));
+    btn.addEventListener('click', () => {
+      if (c.effect) try { c.effect(); } catch (e) { console.warn(e); }
+      showNode(c.next);
+    });
     dChoices.appendChild(btn);
   }
   dialogueEl.classList.add('show');
+}
+
+function addInventoryItem(item) {
+  inventory.push(item);
+  syncInv();
+}
+
+// Quest UI banner (top-right under inventory)
+function updateQuestUI() {
+  const inv = document.getElementById('inventory');
+  let q = document.getElementById('quest-banner');
+  if (!q) {
+    q = document.createElement('div');
+    q.id = 'quest-banner';
+    Object.assign(q.style, { marginTop: '8px', padding: '8px 12px', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.5)', borderRadius: '6px', fontSize: '0.78rem', color: '#fde047' });
+    inv.appendChild(q);
+  }
+  if (questState === 'pending') {
+    q.style.display = 'none';
+  } else if (questState === 'active') {
+    q.style.display = '';
+    q.innerHTML = '<strong>Quest · Femke\'s tutorial</strong><br>Combine H₂O + CuSO₄ (R)<br>Then return to Femke.';
+  } else if (questState === 'awaiting_return') {
+    q.style.display = '';
+    q.innerHTML = '<strong>Quest · ✓ hydration done</strong><br>Return to Femke (E)';
+  } else if (questState === 'complete') {
+    q.style.display = '';
+    q.innerHTML = '<strong style="color:#10b981;">Quest complete</strong><br>+ chemistry-bench key';
+  }
 }
 
 // ─── day/night clock + sky tint ───────────────────────────────────────
@@ -550,6 +802,7 @@ function animate() {
 }
 animate();
 syncInv();
+updateQuestUI();
 </script>
 </body>
 </html>
