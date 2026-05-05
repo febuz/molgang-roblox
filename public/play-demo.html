@@ -64,8 +64,9 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "PointerLockControls": "https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js"
+    "three":              "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/":      "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "PointerLockControls":"https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js"
   }
 }
 </script>
@@ -73,6 +74,12 @@
 <script type="module">
 import * as THREE from 'three';
 import { PointerLockControls } from 'PointerLockControls';
+import { EffectComposer }   from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }       from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass }  from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }       from 'three/addons/postprocessing/OutputPass.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+RectAreaLightUniformsLib.init();
 
 // ─── scene + renderer ─────────────────────────────────────────────────
 const scene = new THREE.Scene();
@@ -85,16 +92,29 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;  // cinematic warmth
+renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
+
+// Post-processing chain — bloom on emissive surfaces (LED, window, marker pillar),
+// ACES tonemap, output gamma. This single pass moves the look from
+// "engineering placeholder" to "video game lab" without changing geometry.
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.65, 0.5, 0.85);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
 });
 
 // ─── lighting + sky (drives day/night via current hour clock) ─────────
-const sun = new THREE.DirectionalLight(0xfff5e0, 1.4);
+// Sun (outdoor lighting through the courtyard) + low ambient
+const sun = new THREE.DirectionalLight(0xfff5e0, 1.0);
 sun.position.set(8, 12, 6);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -104,12 +124,48 @@ sun.shadow.camera.top = 25;
 sun.shadow.camera.bottom = -25;
 sun.shadow.camera.near = 0.1;
 sun.shadow.camera.far = 50;
+sun.shadow.bias = -0.0005;
 scene.add(sun);
-scene.add(new THREE.AmbientLight(0x6080a0, 0.45));
-const lampWarm = new THREE.PointLight(0xfbbf24, 1.3, 18);
-lampWarm.position.set(0, 4.2, 0);
-lampWarm.castShadow = true;
-scene.add(lampWarm);
+scene.add(new THREE.AmbientLight(0x40506a, 0.18));  // moodier baseline
+
+// Lab interior lighting — 4 overhead fluorescent strips (RectAreaLight, cool 4500K)
+// + 2 warm task lights at the chemistry benches. Closes Mira's design-review
+// recommendation #1 (highest-leverage cheap upgrade).
+const fluorescentColor = 0xe8f0ff;  // cool office-white
+const taskColor = 0xffe2a8;          // warm task light
+function addFluorescent(x, z) {
+  const ral = new THREE.RectAreaLight(fluorescentColor, 6.5, 3.4, 0.4);
+  ral.position.set(x, ROOM.h - 0.15, z);
+  ral.lookAt(x, 0, z);
+  scene.add(ral);
+  // Visible fixture mesh (emissive — bloom catches it)
+  const fixMat = new THREE.MeshStandardMaterial({ color: 0xf5f4ed, emissive: fluorescentColor, emissiveIntensity: 1.2, roughness: 0.6 });
+  const fix = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.06, 0.4), fixMat);
+  fix.position.set(x, ROOM.h - 0.10, z);
+  scene.add(fix);
+}
+addFluorescent(-4.5, -2);
+addFluorescent( 4.5, -2);
+addFluorescent(-4.5,  2.5);
+addFluorescent( 4.5,  2.5);
+
+// Task lights at the two front benches — warm, soft, focused
+function addTaskLight(x, z) {
+  const tl = new THREE.PointLight(taskColor, 1.4, 6, 1.6);
+  tl.position.set(x, 1.7, z);
+  tl.castShadow = true;
+  tl.shadow.mapSize.set(512, 512);
+  tl.shadow.bias = -0.001;
+  scene.add(tl);
+}
+addTaskLight(-3, -2.7);
+addTaskLight( 3, -2.7);
+
+// Emergency exit sign (green, glowing — bloom-anchor #2)
+const exitMat = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 2.5, roughness: 0.6 });
+const exitSign = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.04), exitMat);
+exitSign.position.set(ROOM.w/2 - 0.06, ROOM.h - 0.5, 5);
+scene.add(exitSign);
 
 scene.background = new THREE.Color(0x1a2840);
 
@@ -1190,7 +1246,7 @@ function animate() {
       setStatus(`Walk to a beaker or to <span style="color:#fbbf24">Femke</span>. ${inventory.length} carried.`);
     }
   }
-  renderer.render(scene, camera);
+  composer.render();
   requestAnimationFrame(animate);
 }
 animate();
