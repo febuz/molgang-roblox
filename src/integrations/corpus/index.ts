@@ -106,6 +106,33 @@ export async function embedTexts(texts: string[]): Promise<(number[] | null)[]> 
   return out;
 }
 
+/** Create the corpus vector index if missing. Neo4j 2026.04 syntax with
+ *  backtick-escaped option keys (the dotted form 'vector.dimensions' must
+ *  be back-quoted in Cypher). Safe to call repeatedly. */
+async function ensureVectorIndex(session: any): Promise<void> {
+  try {
+    await session.run(
+      `CREATE VECTOR INDEX corpus_embedding IF NOT EXISTS
+       FOR (n:Corpus) ON (n.embedding)
+       OPTIONS { indexConfig: { \`vector.dimensions\`: ${EMBEDDING_DIM}, \`vector.similarity_function\`: 'cosine' } }`,
+    );
+  } catch (e: any) {
+    logger.warn(`corpus.ensureVectorIndex failed: ${e.message}`);
+  }
+}
+
+/** Bootstrap the vector index on virtualpc startup so the very first
+ *  corpus.search call finds it (instead of returning empty until an
+ *  ingest happens). Called from index.ts after LightRAG connects. */
+export async function bootstrapIndex(client: LightRAGClient): Promise<void> {
+  if (!client.isConnected()) return;
+  const driver = (client as any).driver;
+  if (!driver) return;
+  const session = driver.session();
+  try { await ensureVectorIndex(session); }
+  finally { await session.close(); }
+}
+
 /** Push a batch of chunks to Neo4j as Corpus nodes. Idempotent on chunk.id.
  *  Stores embedding as a list property so Neo4j 5's vector index can use it. */
 export async function ingestChunks(client: LightRAGClient, chunks: CorpusChunk[]): Promise<{ ingested: number; offline: boolean }> {
@@ -151,11 +178,7 @@ export async function ingestChunks(client: LightRAGClient, chunks: CorpusChunk[]
       }
     }
     // Ensure the vector index exists (idempotent)
-    try {
-      await session.run(`CREATE VECTOR INDEX corpus_embedding IF NOT EXISTS
-        FOR (n:Corpus) ON (n.embedding)
-        OPTIONS { indexConfig: { 'vector.dimensions': ${EMBEDDING_DIM}, 'vector.similarity_function': 'cosine' } }`);
-    } catch (e: any) { /* older Neo4j: skip */ }
+    await ensureVectorIndex(session);
   } finally {
     await session.close();
   }

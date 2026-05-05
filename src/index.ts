@@ -1989,6 +1989,15 @@ async function initialize() {
       logger.warn(`asset-graph init failed: ${e.message}`);
     }
 
+    // 1aa. Bootstrap the corpus vector index so corpus.search works on
+    //      the very first call after a fresh DB. Idempotent.
+    try {
+      await corpus.bootstrapIndex(lightrag);
+      logger.info('✓ corpus: vector index bootstrapped');
+    } catch (e: any) {
+      logger.warn(`corpus bootstrap failed: ${e.message}`);
+    }
+
     // 1b. Ingest governance + wiki entries so the knowledge graph has
     //     the full lineage layer (term → governance → source). Same
     //     graceful-offline behavior as asset-graph.
