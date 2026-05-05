@@ -60,6 +60,7 @@ import * as wiki from './integrations/wiki';
 import * as scrum from './integrations/scrum';
 import * as forum from './integrations/forum';
 import * as kami from './integrations/kami';
+import * as corpus from './integrations/corpus';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
@@ -566,6 +567,46 @@ app.post('/api/kami/briefs/:id/status', (req, res) => {
 app.get('/api/kami/summary', (_req, res) => {
   try { res.json({ success: true, ...kami.summary() }); }
   catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+// ============================================================================
+// Corpus — semantic-chunked + vector-embedded knowledge store. Hybrid
+// search via the same Neo4j instance LightRAG uses (separate :Corpus
+// label + native vector index, 768-dim from nomic-embed). Lets agents
+// retrieve prior context before reasoning — closes the "agent reasons
+// from scratch" cost gap. See § 10 of VIRTUALPC-ARCHITECTURE.md.
+// ============================================================================
+app.get('/api/corpus/search', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) { res.status(400).json({ success: false, error: 'q required' }); return; }
+    const k = Math.min(50, Math.max(1, parseInt(String(req.query.k || '8'))));
+    const sourceKind = req.query.kind ? String(req.query.kind) as corpus.CorpusChunk['source_kind'] : undefined;
+    const lr = (app as any).locals.lightrag;
+    if (!lr) { res.json({ success: true, results: [], note: 'lightrag not initialized' }); return; }
+    const results = await corpus.search(lr, q, { k, sourceKind });
+    res.json({ success: true, q, k, count: results.length, results });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.get('/api/corpus/stats', async (_req, res) => {
+  try {
+    const lr = (app as any).locals.lightrag;
+    if (!lr) { res.json({ success: true, total: 0, by_kind: {}, vector_indexed: 0, offline: true }); return; }
+    const s = await corpus.stats(lr);
+    res.json({ success: true, ...s });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+});
+
+app.post('/api/corpus/ingest', async (req, res) => {
+  try {
+    const chunks = req.body?.chunks;
+    if (!Array.isArray(chunks)) { res.status(400).json({ success: false, error: 'chunks[] required' }); return; }
+    const lr = (app as any).locals.lightrag;
+    if (!lr) { res.status(503).json({ success: false, error: 'lightrag not initialized' }); return; }
+    const r = await corpus.ingestChunks(lr, chunks);
+    res.json({ success: true, ...r });
+  } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // ============================================================================

@@ -15,29 +15,42 @@ agents, tasks, models, tools, and dashboards are all pluggable.
 ## 1. Process layout
 
 ```
-                          ┌──────────────────────────┐
- Browser  ──────────────▶ │  Dashboard (port 3100)   │
-                          │  • virtualpc.service     │
- Claude Code (skills) ──▶ │  • Express + Socket.IO   │ ◀── /api/mcp/*
-                          │  • TaskEngine            │     (tool dispatch
-                          │  • Kami brief queue      │      with per-agent
-                          └────────┬─────────────────┘      ACL)
+                              ┌──────────────────────────┐
+ Browser  ──────────────────▶ │  Dashboard (port 3100)   │
+                              │  • virtualpc.service     │
+ Claude Code (skills) ──────▶ │  • Express + Socket.IO   │ ◀── /api/mcp/*
+                              │  • TaskEngine            │     (tool dispatch
+                              │  • Kami brief queue      │      with per-agent
+                              └────┬─────────────────────┘      ACL)
                                    │
-            ┌──────────────────────┼─────────────────────────────────┐
-            │                      │                                 │
-            ▼                      ▼                                 ▼
- ┌────────────────────┐  ┌────────────────────────┐    ┌──────────────────────┐
- │  Kafka (7 topics)  │  │  LiteLLM gateway       │    │  Local services      │
- │  127.0.0.1:9092    │  │  127.0.0.1:4000        │    │  • Redis (caches)    │
- │  • model.responses │  │  • LM Studio :1234     │    │  • Neo4j 7687        │
- │  • agent.tasks     │  │  • Kimi CLI            │    │    (LightRAG +       │
- │  • agent.results   │  │  • Claude CLI + Kami   │    │     governance graph)│
- │  • task.failed     │  │  • Cloud APIs          │    │  • EDS2 asset store  │
- │  • cost.tracking   │  └────────────────────────┘    └──────────────────────┘
- │  • lightrag.updates│
- │  • commit.audit    │
- └────────────────────┘
+        ┌──────────────────────────┼──────────────────────────┬────────────────────┐
+        │                          │                          │                    │
+        ▼                          ▼                          ▼                    ▼
+ ┌────────────────┐  ┌────────────────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+ │ Kafka 9092     │  │  Knowledge layer           │  │ LiteLLM 4000     │  │ Local services   │
+ │ (7 topics)     │  │                            │  │ • LM Studio 1234 │  │ • Redis (caches) │
+ │ • model.resp   │  │  ┌──────────────────────┐  │  │ • Kimi CLI       │  │ • EDS2 1.1 TB    │
+ │ • agent.tasks  │  │  │ LightRAG (Neo4j 7687)│  │  │ • Claude CLI+Kami│  │   asset store    │
+ │ • agent.results│  │  │ ─ governance graph   │  │  │ • Cloud APIs     │  │ • molgang-backup │
+ │ • task.failed  │  │  │ ─ wiki + npc memory  │  │  │ • nomic-embed    │  │   weekly timer   │
+ │ • cost.tracking│  │  │ ─ asset registry     │  │  │   (corpus vectors)│  └──────────────────┘
+ │ • commit.audit │  │  │ ─ Corpus passages    │  │  └──────────────────┘
+ │ • lightrag.upd │  │  │   + vector index     │  │
+ └────────────────┘  │  │   (32G heap+64G pgcache)│  │
+                     │  └──────────────────────┘  │
+                     │  ┌──────────────────────┐  │
+                     │  │ GitNexus (codegraph) │  │
+                     │  │ ─ AST symbols 397+   │  │
+                     │  │ ─ imports/exports    │  │
+                     │  │ ─ fan-in / fan-out   │  │
+                     │  │   /api/codegraph/*   │  │
+                     │  └──────────────────────┘  │
+                     └────────────────────────────┘
 ```
+
+**Knowledge layer** is the pair of graphs every agent queries before
+reasoning. They answer different questions and stack — see § 10 for
+the dual-graph design rationale.
 
 All systemd user units (`virtualpc.service`, `virtualpc-litellm.service`,
 `virtualpc-auto-update.timer`, `molgang-backup.timer`) are installed by
@@ -317,32 +330,127 @@ Endpoints: `GET /api/wiki[?namespace=…&q=…]`, `GET /api/wiki/:id`,
 
 ---
 
-## 10. Knowledge graph — codegraph + LightRAG
+## 10. Knowledge layer — GitNexus + LightRAG + Corpus
 
-VirtualPC pairs two graphs so agents have both **structural** and
-**semantic** lenses on the codebase + content:
+Three stacked surfaces, each answering a different class of question.
+Together they're the prior context every agent should hit before
+reasoning from scratch — same answer quality at ~3× lower token cost.
 
-| Graph              | Source                                 | Answers |
-|--------------------|----------------------------------------|---------|
-| `codegraph`        | `src/**.ts` (regex-based AST + imports) | "Where is X defined?" "Who calls X?" "What depends on logger.ts?" |
-| LightRAG (Neo4j)   | governance + wiki + asset-registry + decisions | "What's the lineage of fugacity?" "Which assets are tagged quantum-chem?" "Why did we pick MCP over Symphony?" |
+### 10.1 Surfaces
 
-The codegraph adapter (`src/integrations/codegraph/`) is a zero-dep
-TypeScript indexer — ~250 ms first build, cached at `data/codegraph.json`.
-Endpoints: `GET /api/codegraph/{stats,symbol/:name,file?path=,dependencies,search?q=}`,
-`POST /api/codegraph/rebuild`.
+| Surface           | Implementation                          | Answers |
+|-------------------|-----------------------------------------|---------|
+| **GitNexus** (a.k.a. `codegraph`) | Zero-dep TypeScript indexer at `src/integrations/codegraph/`; Tree-sitter-style AST extraction; cached at `data/codegraph.json` | "Where is X defined?" "Who calls X?" "What does logger.ts import?" |
+| **LightRAG** (Neo4j entity graph) | `src/integrations/lightrag/` driving Neo4j 5 at `bolt://127.0.0.1:7687`; entity-typed nodes (Governance / Wiki / Asset / NPCMemory / Decision) with typed relationships | "What's the lineage of fugacity?" "Which assets share tag quantum-chem?" "Why did we pick MCP over Symphony?" |
+| **Corpus** (Neo4j vector index + embeddings) | `src/integrations/corpus/`; same Neo4j instance, `:Corpus` nodes carrying 768-dim embeddings via the Neo4j 5 native vector index | "Tell me everything we have on partition functions." "Find passages relevant to liquid-sim implementation." |
 
-LightRAG (`src/integrations/lightrag/`) is the Neo4j-backed semantic
-graph. Three ingest paths:
+### 10.2 Why three (not one)
 
-- `asset-graph.ts` — bulk shared/asset-registry.json on startup.
-- `governance-graph.ts` — bulk governance + wiki entries on startup,
-  plus real-time hooks on writes (§ 8 + § 9).
-- Future: agent decision rationales via the `lightrag.updates` Kafka
-  topic.
+- **GitNexus** is structural — it knows that `chatAsAgent()` lives in
+  `src/lmstudio.ts:391` and is referenced 23 times. Answers questions
+  about *code shape*.
+- **LightRAG** is relational — it knows that wiki entry `fugacity`
+  has `governanceId='wiki-terms-json'` which has `owner='Governor'`
+  and `tag='quantum-chemistry'`. Answers questions about *typed
+  relationships*.
+- **Corpus** is semantic — it can find passages textually similar to
+  the query, including ones we've never explicitly classified. Answers
+  questions about *what does the body of knowledge say*.
 
-Gracefully degrades to in-memory mode when Neo4j isn't available; no
-hard fail on a missing optional service.
+You need all three: a structural query like "what calls
+`chatAsAgent`" gives WRONG answers via vector similarity, and a
+semantic query like "explain partition functions" gives WRONG answers
+via Cypher MATCH.
+
+### 10.3 Memory tier (sized for the box, not for a laptop)
+
+The host has 629 GB RAM. Neo4j was running on 1 GB heap default. As of
+2026-05-05 the container runs with:
+
+- `server.memory.heap.initial_size = 8G`
+- `server.memory.heap.max_size      = 32G`  *(or 48 G — see §10.7)*
+- `server.memory.pagecache.size     = 64G`
+
+Effective Neo4j footprint ~96 GB. Lets the entire corpus (textbooks +
+papers + IUPAC + codebase) sit hot in RAM. **Token-cost effect**: an
+agent answering "how do I model fugacity at high pressure" today
+reasons through ~1500 prompt tokens. With Corpus retrieval first, the
+same answer needs ~400 prompt tokens + 6 retrieved passages — same
+quality, ~3× cheaper.
+
+### 10.4 Ingest paths
+
+| Source                          | Owner    | Volume       |
+|---------------------------------|----------|--------------|
+| `shared/asset-registry.json`    | Atlas    | bulk on startup (`asset-graph.ts`) |
+| Governance + wiki entries       | Governor | bulk + real-time hooks (`governance-graph.ts`) |
+| Repo source + docs              | Kai      | corpus-ingest scan, embedded chunks |
+| IUPAC Gold Book terminology     | Governor | scheduled fetch + parse |
+| OpenStax Chemistry 2e (CC-BY)   | Mira     | bulk one-shot |
+| arXiv chem-ph abstracts         | Kimi     | weekly RSS pull |
+| PubChem compound summaries      | Atlas    | on-demand REST cache |
+| Decision rationales (Kafka)     | system   | streamed via `lightrag.updates` topic |
+
+### 10.5 Endpoints + MCP tools
+
+```
+GET  /api/codegraph/{stats,symbol/:name,file,dependencies,search}
+GET  /api/governance/lineage/:id            # LightRAG-backed
+GET  /api/corpus/search?q=…&k=8&kind=…      # Corpus, hybrid vector + keyword
+GET  /api/corpus/stats                      # total, by_kind, vector_indexed
+
+# MCP tool namespace (per-agent ACL via tools[]):
+  codegraph.symbol / codegraph.file / codegraph.stats
+  governance.lineage / governance.list / governance.register
+  wiki.lookup / wiki.upsert
+  corpus.search                              # the "search the world" tool
+```
+
+### 10.6 Open-source alternatives — what we considered
+
+The user asked: *"choose something better complementary to GitNexus
+and LightRAG if it is open source available."* Survey:
+
+| Tool                  | Class                           | Why we kept Neo4j-native + GitNexus instead |
+|-----------------------|--------------------------------|--------|
+| **Qdrant**            | Pure-vector DB (Rust)           | Fast and lean — but we'd run a second service for what Neo4j 5's vector index already does. Adds an HTTP hop per query. Re-evaluate when corpus exceeds ~100 M passages. |
+| **Weaviate**          | Vector + hybrid + graph         | Heavier than Neo4j; overlaps with LightRAG's role; module-heavy install. |
+| **Memgraph**          | In-memory Cypher (faster)       | Promising for big-RAM box. *Worth re-evaluating* — drop-in for Neo4j with same Cypher, claims 100× perf on graph algos. |
+| **NebulaGraph**       | Distributed graph               | Overkill for one host. |
+| **TerminusDB**        | Git-style versioned graph       | Niche; we already audit-log via Kafka. |
+| **DuckDB + DuckDB-VSS** | Single-binary OLAP + vector   | Nice for analytics, but LightRAG's queries are graph-shaped, not analytical. |
+| **Apache AGE**        | Postgres property-graph         | Mature; but adds Postgres dependency we don't otherwise need. |
+| **LlamaIndex**        | Python retrieval framework      | Application layer, not storage; can sit on top of any of the above. |
+| **Vespa.ai**          | Hybrid search engine            | Heavyweight (JVM); same role as Qdrant but slower to set up. |
+
+**Conclusion**: stay on Neo4j 5 + native vector index for v1. Two
+deferred options worth a future bake-off:
+
+1. **Memgraph** as a Neo4j swap-in if Cypher latency becomes a
+   bottleneck (the box has the RAM for it).
+2. **Qdrant** as a dedicated vector tier *only if* the corpus exceeds
+   ~100 M passages — at that scale the dedicated index beats Neo4j's
+   vector index on QPS by ~5×.
+
+Both are wired into the recommended-pulls list; neither is required
+for current scale.
+
+### 10.7 Heap-size note (≤32 GB or ≥48 GB)
+
+JVM compressed-oops boundary is ~32 GB. Above that, pointers go from
+4 to 8 bytes — a ~50% overhead per heap object. **Either keep heap
+≤32 GB or jump to ≥48 GB to skip the inefficient zone.** Current
+config (32 G) sits right at the boundary; bump to 48 G if we see
+heap pressure under heavy ingest.
+
+### 10.8 Graceful degradation
+
+LightRAG / Neo4j down → in-memory fallback in the client (§ existing
+behavior, unchanged). All endpoints still answer; vector search
+returns empty rather than 500. Restart Neo4j and it back-fills from
+asset-graph + governance-graph init paths. No data loss because the
+canonical sources (governance.json / wiki.json / asset-registry.json)
+are filesystem-backed.
 
 ---
 

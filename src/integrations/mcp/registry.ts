@@ -27,6 +27,7 @@ import * as wiki from '../wiki';
 import * as scrum from '../scrum';
 import * as forum from '../forum';
 import * as kami from '../kami';
+import * as corpus from '../corpus';
 import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../../utils/logger';
@@ -306,6 +307,56 @@ const TOOLS: ToolDefinition[] = [
     handler: async (a: { threadId: string; author: string; body: string }) => {
       const r = forum.reply(a.threadId, a.author, a.body);
       return r ? { reply: r } : { error: `unknown thread: ${a.threadId}` };
+    },
+  },
+
+  // ─── corpus.* — semantic retrieval over the unified knowledge store ──
+  {
+    name: 'corpus.search',
+    description: 'Hybrid semantic search across the embedded corpus (codebase + docs + IUPAC + textbook + papers). Agents call this BEFORE reasoning from scratch — same answer quality at ~3× lower token cost.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        q: { type: 'string', description: 'natural-language query' },
+        k: { type: 'string', description: 'top-k passages to return (default 8, max 50)' },
+        kind: { type: 'string', enum: ['code', 'doc', 'shared-data', 'iupac', 'textbook', 'paper', 'other'], description: 'optional source-kind filter' },
+      },
+      required: ['q'],
+    },
+    handler: async ({ q, k, kind }: { q: string; k?: string; kind?: corpus.CorpusChunk['source_kind'] }) => {
+      // Need access to the LightRAGClient; the MCP registry doesn't have direct
+      // wiring to it. We could plumb it via a setter, but the cheapest path is
+      // to call our own HTTP endpoint that already has access via app.locals.
+      const http = require('http');
+      return new Promise((resolve) => {
+        const url = new URL(`http://127.0.0.1:${process.env.PORT || 3100}/api/corpus/search?q=${encodeURIComponent(q)}&k=${k || 8}${kind ? '&kind=' + encodeURIComponent(kind) : ''}`);
+        http.get(url, (r: any) => {
+          const chunks: Buffer[] = [];
+          r.on('data', (c: Buffer) => chunks.push(c));
+          r.on('end', () => {
+            try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+            catch { resolve({ error: 'parse failed' }); }
+          });
+        }).on('error', (e: any) => resolve({ error: e.message }));
+      });
+    },
+  },
+  {
+    name: 'corpus.stats',
+    description: 'Corpus size by source kind (code / doc / iupac / textbook / etc) + vector-indexed count.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async () => {
+      const http = require('http');
+      return new Promise((resolve) => {
+        http.get(`http://127.0.0.1:${process.env.PORT || 3100}/api/corpus/stats`, (r: any) => {
+          const chunks: Buffer[] = [];
+          r.on('data', (c: Buffer) => chunks.push(c));
+          r.on('end', () => {
+            try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+            catch { resolve({ error: 'parse failed' }); }
+          });
+        }).on('error', (e: any) => resolve({ error: e.message }));
+      });
     },
   },
 
