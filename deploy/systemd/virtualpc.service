@@ -10,7 +10,7 @@ Type=simple
 # set REPO_DIR=/path/to/virtualpc in ~/.config/systemd/user/virtualpc.env
 # and uncomment the EnvironmentFile line below.
 WorkingDirectory=%h/virtualpc
-# EnvironmentFile=-%h/.config/systemd/user/virtualpc.env
+EnvironmentFile=-%h/.config/systemd/user/virtualpc.env
 # Route all model calls through the LiteLLM gateway
 # (deploy/docker-compose.litellm.yml). Falls back to LM_STUDIO_URL if
 # LITELLM_URL is empty — see src/lmstudio.ts.
