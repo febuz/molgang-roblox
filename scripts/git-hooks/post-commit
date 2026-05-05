@@ -29,4 +29,18 @@ curl --silent --show-error --max-time 3 \
      -H 'Content-Type: application/json' \
      -X POST "$URL" -d "$BODY" >/dev/null 2>&1 || true
 
+# Auto-trigger playtest-runner if /play-demo.html changed in this commit.
+# Runs in the background so the hook returns instantly. Findings auto-file
+# as bugs to /api/scrums/scrum-web/bug; gap-thread reposts to /api/forum.
+# Skip if PLAYTEST_AUTO=0 (CI / scripted commits / fast-loop sessions).
+if [[ "${PLAYTEST_AUTO:-1}" == "1" ]] && \
+   git diff-tree --no-commit-id --name-only -r "$SHA" 2>/dev/null | grep -q '^public/play-demo.html$'; then
+  REPO_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [[ -n "$REPO_DIR" && -x "$REPO_DIR/scripts/playtest-runner.js" ]]; then
+    nohup node "$REPO_DIR/scripts/playtest-runner.js" --tester all \
+      >> "$REPO_DIR/data/playtest-reports.log" 2>&1 &
+    disown 2>/dev/null || true
+  fi
+fi
+
 exit 0
