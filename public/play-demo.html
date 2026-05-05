@@ -457,6 +457,31 @@ dmitriName.position.set(0, 2.35, 0);
 dmitriGroup.add(dmitriName);
 interactables.push({ group: dmitriGroup, label: 'Dmitri', kind: 'npc', position: dmitriGroup.position, npcId: 'dmitri' });
 
+// ─── Inês (EHS officer) — at the fume hood ────────────────────────────
+const inesGroup = new THREE.Group();
+const inesTorso = new THREE.Mesh(new THREE.CapsuleGeometry(0.27, 0.9, 8, 16), new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.55 }));
+inesTorso.position.y = 1.05; inesTorso.castShadow = true;
+inesGroup.add(inesTorso);
+const inesHead = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 16), new THREE.MeshStandardMaterial({ color: 0xdca888, roughness: 0.55 }));
+inesHead.position.y = 1.78; inesHead.castShadow = true;
+inesGroup.add(inesHead);
+const inesHair = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.85 }));
+inesHair.position.y = 1.82; inesHair.scale.set(1, 0.75, 1.05); inesHair.castShadow = true;
+inesGroup.add(inesHair);
+const inesLegL = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.55, 6, 8), new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.7 }));
+inesLegL.position.set(-0.12, 0.32, 0); inesLegL.castShadow = true;
+inesGroup.add(inesLegL);
+const inesLegR = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.55, 6, 8), new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.7 }));
+inesLegR.position.set(0.12, 0.32, 0); inesLegR.castShadow = true;
+inesGroup.add(inesLegR);
+inesGroup.position.set(6, 0, -ROOM.d/2 + 1.7);
+inesGroup.rotation.y = Math.PI / 2;  // facing the room
+scene.add(inesGroup);
+const inesName = makeNameTag('Inês · EHS [E]', '#fde047');
+inesName.position.set(0, 2.25, 0);
+inesGroup.add(inesName);
+interactables.push({ group: inesGroup, label: 'Inês', kind: 'npc', position: inesGroup.position, npcId: 'ines' });
+
 // Marker for the second quest — a glowing pillar at the far end of the courtyard
 const markerMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 1, transparent: true, opacity: 0.7 });
 const markerPos = new THREE.Vector3(ROOM.w/2 + 22, 1, 14);
@@ -715,6 +740,13 @@ function openDialogue(npc) {
     else showNode('root');
     return;
   }
+  if (npc.npcId === 'ines') {
+    currentTree = INES_TREE;
+    controls.unlock();
+    dialogueActive = true;
+    showNode('root');
+    return;
+  }
   setStatus('NPC not yet authored.');
 }
 function closeDialogue() {
@@ -759,6 +791,71 @@ const FEMKE_TREE = {
 };
 
 let questTwo = 'pending'; // pending → active → complete
+let questThree = 'pending'; // Inês safety quiz: pending → active → complete
+let inesQuizScore = 0;
+
+const INES_TREE = {
+  root: {
+    speaker: 'Inês · EHS',
+    text: "I see Femke's been talking to you. Before she hands you the rare reagents, you and I have three questions to settle. EHS protocol. Get them right, you're cleared. Get them wrong, you wait six weeks for the next training cycle.",
+    choices: [
+      { label: "Let's do it.",            next: 'q1', effect: () => { questThree = 'active'; inesQuizScore = 0; updateQuestUI(); } },
+      { label: "Six weeks. I'll wait.",   next: '__close' },
+    ],
+  },
+  q1: {
+    speaker: 'Inês · EHS',
+    text: "Question 1: maximum allowable HCl vapour in the work area, in ppm?",
+    choices: [
+      { label: "5 ppm (OSHA TWA)",   next: 'q2', effect: () => inesQuizScore++ },
+      { label: "50 ppm",             next: 'q2' },
+      { label: "I don't know — I'll check.", next: 'q2' },
+    ],
+  },
+  q2: {
+    speaker: 'Inês · EHS',
+    text: "Question 2: cooling-jacket fails on an exothermic batch. First action?",
+    choices: [
+      { label: "Activate emergency quench.",            next: 'q3' },
+      { label: "Cut feed and isolate the reactor.",     next: 'q3', effect: () => inesQuizScore++ },
+      { label: "Raise agitator speed to dissipate heat.",next: 'q3' },
+    ],
+  },
+  q3: {
+    speaker: 'Inês · EHS',
+    text: "Last one: who do you call before you call me?",
+    choices: [
+      { label: "Dmitri (foreman).",       next: 'result', effect: () => inesQuizScore++ },
+      { label: "Sofia (CEO).",            next: 'result' },
+      { label: "Local fire brigade.",     next: 'result' },
+    ],
+  },
+  result: {
+    speaker: 'Inês · EHS',
+    text: '',
+    choices: [],
+    onEnter: () => {
+      const pass = inesQuizScore >= 2;
+      const node = (currentTree || INES_TREE).result;
+      node.text = pass
+        ? `${inesQuizScore}/3 correct. Cleared. Restricted Reagents cabinet is now accessible. Don't make me regret this.`
+        : `Only ${inesQuizScore}/3. Read the EHS manual — it's by the eyewash. Come back when you're ready.`;
+      node.choices = [{
+        label: pass ? "Thank you, I appreciate it." : "Understood, I'll study.",
+        next: '__close',
+        effect: () => {
+          if (pass) {
+            questThree = 'complete';
+            addInventoryItem({ id: 'rare-reagent-pass', label: '🔑 Restricted-reagents pass', contents: {}, color: 0xfde047 });
+          } else {
+            questThree = 'pending'; // can retry
+          }
+          updateQuestUI();
+        },
+      }];
+    },
+  },
+};
 const DMITRI_TREE = {
   root: {
     speaker: 'Dmitri · foreman',
@@ -816,6 +913,7 @@ function showNode(id) {
   if (id === '__close') return closeDialogue();
   const n = (currentTree || FEMKE_TREE)[id];
   if (!n) return closeDialogue();
+  if (n.onEnter) try { n.onEnter(); } catch (e) { console.warn(e); }
   dSpeaker.textContent = n.speaker;
   dText.textContent = n.text;
   dChoices.innerHTML = '';
@@ -855,11 +953,16 @@ function updateQuestUI() {
     html += '<strong style="color:#10b981;">Q1 ✓ chemistry-bench key</strong><br><br>';
   }
   if (questTwo === 'active') {
-    html += '<strong>Q2 · Dmitri\'s delivery</strong><br>Drive truck to glowing pillar.<br>';
+    html += '<strong>Q2 · Dmitri\'s delivery</strong><br>Drive truck to glowing pillar.<br><br>';
   } else if (questTwo === 'awaiting_return') {
-    html += '<strong>Q2 · ✓ truck delivered</strong><br>Return to Dmitri (E)';
+    html += '<strong>Q2 · ✓ truck delivered</strong><br>Return to Dmitri (E)<br><br>';
   } else if (questTwo === 'complete') {
-    html += '<strong style="color:#10b981;">Q2 ✓ shift-lead key</strong>';
+    html += '<strong style="color:#10b981;">Q2 ✓ shift-lead key</strong><br><br>';
+  }
+  if (questThree === 'active') {
+    html += '<strong>Q3 · Inês safety quiz</strong><br>3 questions, need 2/3.';
+  } else if (questThree === 'complete') {
+    html += '<strong style="color:#10b981;">Q3 ✓ rare-reagents pass</strong>';
   }
   if (!html) { q.style.display = 'none'; return; }
   q.style.display = '';
