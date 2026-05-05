@@ -157,35 +157,73 @@ async function exerciseDemo(page, tester) {
   }
 
   if (tester === 'Dante') {
-    // Walk to Femke (back-left of room) and try to start the quest
-    await page.keyboard.down('KeyA'); await page.waitForTimeout(1200); await page.keyboard.up('KeyA');
-    await page.keyboard.down('KeyW'); await page.waitForTimeout(1500); await page.keyboard.up('KeyW');
+    // Teleport to a known-good position near Femke (she's at -3, 0, -3.6).
+    // This avoids the false-positive where blind WASD walking missed her.
+    await page.evaluate(() => {
+      // controls is global — defined as `const controls = ...` in module scope.
+      // It's accessible via the renderer's scene if we can find it, but easier:
+      // grab the THREE camera and move it. Look for a reachable global.
+      try {
+        // module scope isn't exposed; instead poke the renderer's scene+camera
+        // by reaching into the global window.__three if we set it up. Without
+        // that, fall back to keyboard nav. The scene module exposes nothing
+        // by default — graceful degrade.
+      } catch {}
+    });
+    // Walk via keyboard with longer holds — Femke sits at -3, -3.6, player starts at 0, 8.
+    // Need to move ~3m left + ~12m forward.
+    await page.keyboard.down('KeyA'); await page.waitForTimeout(900); await page.keyboard.up('KeyA');
+    await page.keyboard.down('KeyW'); await page.waitForTimeout(2800); await page.keyboard.up('KeyW');
+    await page.waitForTimeout(300);
     await page.keyboard.press('KeyE');
     await page.waitForTimeout(1500);
-    // Did a dialogue panel appear?
+    // Did the new bottom-third dialogue panel appear?
     const dialogueShown = await page.locator('#dialogue.show').isVisible().catch(() => false);
     if (!dialogueShown) {
-      findings.push({ severity: 'p1-major', title: 'Dialogue did not open when pressing E near Femke', detail: 'Expected #dialogue.show visible after walking ~3m and pressing E on Femke. Was not. Player loses the quest hook entirely.' });
-    } else {
-      // Click first choice
-      const firstChoice = await page.locator('#d-choices button').first();
-      if (await firstChoice.count() === 0) {
-        findings.push({ severity: 'p1-major', title: 'Dialogue panel had no choices', detail: 'Femke root node should have 3 choices; found 0.' });
+      // Re-try once with a slight nudge in case we overshot
+      await page.keyboard.down('KeyS'); await page.waitForTimeout(400); await page.keyboard.up('KeyS');
+      await page.keyboard.press('KeyE');
+      await page.waitForTimeout(1500);
+      const retry = await page.locator('#dialogue.show').isVisible().catch(() => false);
+      if (!retry) {
+        findings.push({ severity: 'p1-major', title: 'Dialogue did not open when pressing E near Femke', detail: 'Walked ~3m and pressed E twice with a slight nudge. #dialogue.show not visible. Either Femke is unreachable or the dialogue trigger logic is broken.' });
+        return { findings, consoleErrors, screenshot: null };
       }
     }
+    // Verify the Pokemon-style affordances are present
+    const portrait = await page.locator('#d-portrait').isVisible().catch(() => false);
+    if (!portrait) findings.push({ severity: 'p2-minor', title: 'Dialogue panel missing character portrait', detail: 'Expected #d-portrait canvas; not found. Dialogue still feels empty.' });
+    const choices = await page.locator('#d-choices button').count();
+    if (choices === 0) {
+      // Choices may be hidden during typewriter — wait for them to appear
+      await page.waitForTimeout(2500);
+      const choices2 = await page.locator('#d-choices button').count();
+      if (choices2 === 0) findings.push({ severity: 'p1-major', title: 'Dialogue panel had no choices', detail: 'Femke root node should have 3 choices; found 0 even after typewriter wait.' });
+    }
+    // Check for keynum chips on choices (verifies Pokemon UI)
+    const keynums = await page.locator('#d-choices button .keynum').count();
+    if (keynums === 0) findings.push({ severity: 'p2-minor', title: 'Choices are not numbered', detail: 'Pokemon-style numbered keys (1/2/3) missing. Player has to use mouse.' });
   }
 
   if (tester === 'Onyx') {
-    // Walk to a beaker, pick up, try to react with only 1
-    await page.keyboard.down('KeyD'); await page.waitForTimeout(800); await page.keyboard.up('KeyD');
-    await page.keyboard.down('KeyW'); await page.waitForTimeout(1200); await page.keyboard.up('KeyW');
+    // Walk toward a beaker (CuSO₄ is at z=3, x=0). Start position is near 0,8.
+    await page.keyboard.down('KeyW'); await page.waitForTimeout(900); await page.keyboard.up('KeyW');
+    await page.waitForTimeout(200);
     await page.keyboard.press('KeyE');
     await page.waitForTimeout(800);
     await page.keyboard.press('KeyR');
     await page.waitForTimeout(600);
     const status = await page.locator('#status').textContent().catch(() => '');
     if (!/Need 2 reagents|Already carrying|Pick up another/i.test(status)) {
-      findings.push({ severity: 'p2-minor', title: 'R-key with <2 reagents has no clear feedback', detail: `status text was: "${status}". A new player gets no actionable hint.` });
+      findings.push({ severity: 'p2-minor', title: 'R-key with <2 reagents has no clear feedback', detail: `status text was: "${status}".` });
+    }
+    // Check that the new recipe panel exists once a quest is started
+    const recipeVisible = await page.locator('#recipe.show').isVisible().catch(() => false);
+    if (!recipeVisible) {
+      // Quest may not be active; fine
+    } else {
+      const reagentEls = await page.locator('#recipe-reagents .reagent').count();
+      if (reagentEls === 0) findings.push({ severity: 'p2-minor', title: 'Recipe panel showed but had no reagents', detail: '#recipe-reagents was empty.' });
     }
   }
 
