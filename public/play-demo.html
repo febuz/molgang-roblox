@@ -193,7 +193,7 @@ const beakerN = makeBeaker(2.4, 1.12, -3, 0xa78bfa, 'Beaker · NaOH', { NaOH: 0.
 const beakerE = makeBeaker(3.6, 1.12, -3, 0xffffff, 'Empty Beaker', {});
 const beakerC = makeBeaker(0, 1.12, 3, 0xef4444, 'Beaker · CuSO₄', { CuSO4: 0.5 });
 
-// Magnetic stirrer base
+// Magnetic stirrer base + visible label so players don't wonder what the LED is
 function makeStirrer(x, z) {
   const baseMat = new THREE.MeshStandardMaterial({ color: 0x141413, roughness: 0.7, metalness: 0.4 });
   const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.4), baseMat);
@@ -203,6 +203,11 @@ function makeStirrer(x, z) {
   const led = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 1 }));
   led.position.set(x + 0.15, 1.14, z + 0.15);
   scene.add(led);
+  // Floating label so the LED isn't a mystery (per playtest bug bug-moscjwfq)
+  const label = makeNameTag('Magnetic stirrer · idle', '#94a3b8');
+  label.position.set(x, 1.55, z);
+  label.scale.set(1.0, 0.25, 1);
+  scene.add(label);
   return base;
 }
 makeStirrer(0, -3);

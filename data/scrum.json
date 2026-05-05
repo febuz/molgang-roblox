@@ -12,6 +12,192 @@
       "status": "open",
       "at": "2026-05-04T09:11:45.700Z",
       "updatedAt": "2026-05-04T09:11:45.700Z"
+    },
+    {
+      "id": "bug-moscjwdr-m706u",
+      "team": "scrum-web",
+      "reporter": "human-playtest",
+      "title": "Dialogue with Femke does not feel functional — game-feel broken",
+      "body": "Walked up to Femke and pressed E. Dialogue panel popped up but: (a) panel is small at the bottom, easy to miss; (b) clicking choices closes the panel without any acknowledgement; (c) no follow-up beat — Femke does not react in-world; (d) no portrait, no voice, no body language change. Player loses the thread immediately. Compare Pokemon: NPC text fills bottom 1/3 of the screen, character portrait left, choices stack in a clear arrow-keyed list, audible 'beep' per character typed. We need that legibility + ceremony, not a quiet pop-up.",
+      "severity": "p1-major",
+      "surface": "/play-demo.html dialogue UI",
+      "status": "open",
+      "at": "2026-05-05T08:08:42.927Z",
+      "updatedAt": "2026-05-05T08:08:42.927Z"
+    },
+    {
+      "id": "bug-moscjwfq-ywcdj",
+      "team": "scrum-web",
+      "reporter": "human-playtest",
+      "title": "Yellow bead on black plate (magnetic stirrer LED) is unexplained",
+      "body": "On the central bench there is a small black box (the magnetic stirrer base) with a glowing yellow dot. New players have NO idea what this is or whether it is interactive. It is not in any tutorial. It is not labeled. It does not respond to E. Either label it, make it interactive (turn-on / turn-off the stirrer affects reactions), or remove it from v1.",
+      "severity": "p2-minor",
+      "surface": "/play-demo.html chem bench",
+      "status": "open",
+      "at": "2026-05-05T08:08:42.998Z",
+      "updatedAt": "2026-05-05T08:08:42.998Z"
+    },
+    {
+      "id": "bug-moscjwhp-v9k4n",
+      "team": "scrum-web",
+      "reporter": "human-playtest",
+      "title": "No quest UI explains WHICH reaction to conduct or WHEN to press R",
+      "body": "Femke's tutorial mentions 'combine H₂O and CuSO₄' but the player has to memorize that line. After closing the dialogue there is NO persistent reminder of the recipe. The R-key reactivity is invisible: you have to discover it by reading the status banner. Players try E on the central bench, walk past the right beakers, give up. Need: (1) recipe panel pinned to the screen during active quest, (2) reagent highlight overlay on the right beakers, (3) on-screen R-key prompt when 2 valid reagents are in inventory.",
+      "severity": "p1-major",
+      "surface": "/play-demo.html quest UI + reaction system",
+      "status": "open",
+      "at": "2026-05-05T08:08:43.069Z",
+      "updatedAt": "2026-05-05T08:08:43.069Z"
+    },
+    {
+      "id": "bug-moscjwjn-5w6bu",
+      "team": "scrum-web",
+      "reporter": "human-playtest",
+      "title": "Player cannot tell which beakers are active reagents vs decoration",
+      "body": "All 5 beakers look the same. Hovering over them with the crosshair gives no visual feedback. Walking close lights up the status bar BUT the bar is a 1-line text at screen-bottom — small text, easy to scan past. Need: outline shader on interactable objects when crosshair is over them (Outline pass / fresnel rim) + floating label + hand-shaped cursor. Standard 3D-game affordance, missing here.",
+      "severity": "p1-major",
+      "surface": "/play-demo.html object interaction",
+      "status": "open",
+      "at": "2026-05-05T08:08:43.139Z",
+      "updatedAt": "2026-05-05T08:08:43.139Z"
+    },
+    {
+      "id": "bug-moscjwlj-rj11u",
+      "team": "scrum-web",
+      "reporter": "human-playtest",
+      "title": "Visual quality is sketch-grade — feels like a placeholder, not a demo",
+      "body": "The lab walls are flat-shaded boxes. The 'periodic table poster' is 4 colored grid squares on a canvas. The NPCs are coloured capsules. The beakers are decent because of MeshPhysicalMaterial transmission, but everything else is engineering placeholders. For a GTA6-comparable target this won't survive a 5-second screenshot. Need full visual upgrade pass: WebGPU renderer, PBR materials with real textures (concrete floor, lab tile, painted plaster, frosted glass), baked lighting (light probes / lightmaps), proper character models with anim, ambient occlusion, screen-space reflections, bloom on the magnetic-stirrer LED + window, depth-of-field on the dialogue close-up.",
+      "severity": "p1-major",
+      "surface": "/play-demo.html visual quality",
+      "status": "open",
+      "at": "2026-05-05T08:08:43.207Z",
+      "updatedAt": "2026-05-05T08:08:43.207Z"
+    },
+    {
+      "id": "bug-moscjwnn-r2jsk",
+      "team": "scrum-web",
+      "reporter": "human-playtest",
+      "title": "Audio is procedural-only — feels uncanny without real recordings",
+      "body": "Synthesized pad + sawtooth hum + pink-noise rain. Functional but distinctly artificial. Real ambient (lab room tone, distant compressor cycles, fluorescent buzz at 50/100Hz, ventilation hum, occasional pipe-clank), real footsteps (concrete vs lab-tile vs metal catwalk), real glassware Foley (clinks, pours, sets-on-bench), real voice for at least Femke's first lines — without these the world stays a tech demo regardless of how good the visuals get.",
+      "severity": "p2-minor",
+      "surface": "/play-demo.html audio",
+      "status": "open",
+      "at": "2026-05-05T08:08:43.283Z",
+      "updatedAt": "2026-05-05T08:08:43.283Z"
+    },
+    {
+      "id": "bug-moscjwpr-yakbs",
+      "team": "scrum-web",
+      "reporter": "human-playtest",
+      "title": "Walking is floaty / no head-bob / no footstep audio — breaks immersion",
+      "body": "Default PointerLockControls walk is a sliding camera. No subtle vertical bob, no footstep sounds, no breathing. Modern FPS-style games tune all three for game-feel. Without them the player feels like a flying camera, not a person.",
+      "severity": "p2-minor",
+      "surface": "/play-demo.html player movement",
+      "status": "open",
+      "at": "2026-05-05T08:08:43.359Z",
+      "updatedAt": "2026-05-05T08:08:43.359Z"
+    },
+    {
+      "id": "bug-moscjwrt-anocq",
+      "team": "scrum-web",
+      "reporter": "human-playtest",
+      "title": "Truck driving has no sense of weight — no engine sound, no inertia, no suspension",
+      "body": "Truck rotates instantly to WASD input. No engine audio. No camera shake on acceleration. No suspension travel on bumps. Feels like sliding a box. cannon-es vehicle controller would give: spring suspension, friction model, engine RPM-driven audio, gear shift haptics.",
+      "severity": "p2-minor",
+      "surface": "/play-demo.html vehicle",
+      "status": "open",
+      "at": "2026-05-05T08:08:43.433Z",
+      "updatedAt": "2026-05-05T08:08:43.433Z"
+    },
+    {
+      "id": "bug-mosczmme-ha0nh",
+      "team": "scrum-web",
+      "reporter": "Tester-GP-Dante",
+      "title": "Dialogue did not open when pressing E near Femke",
+      "body": "Expected #dialogue.show visible after walking ~3m and pressing E on Femke. Was not. Player loses the quest hook entirely.\n\n— Auto-filed by scripts/playtest-runner.js (run pt-moscw3gf-b36). Screenshot: /home/knight2/virtualpc/data/playtest-shots/pt-moscw3gf-b36-Dante.png",
+      "severity": "p1-major",
+      "surface": "/play-demo.html",
+      "status": "open",
+      "refs": [
+        "pt-moscw3gf-b36"
+      ],
+      "at": "2026-05-05T08:20:56.774Z",
+      "updatedAt": "2026-05-05T08:20:56.774Z"
+    },
+    {
+      "id": "bug-mosd1hhw-7s8v3",
+      "team": "scrum-web",
+      "reporter": "Tester-GP-Onyx",
+      "title": "Playtest crashed for Onyx",
+      "body": "keyboard.up: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /home/knight2/.cache/ms-playwright/chromium_headless_shell-1217/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --enable-automation --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-BaJzGb --remote-debugging-pipe --no-startup-window\n<launched> pid=1408286\n[pid=1408286][err] [0505/102057.410753:WARNING:media/gpu/vaapi/vaapi_wrapper.cc:122] Should skip nVidia device named: nvidia-drm\n[pid=1408286][err] [0505/102057.412269:WARNING:media/gpu/vaapi/vaapi_wrapper.cc:122] Should skip nVidia device named: nvidia-drm\n[pid=1408286][err] [0505/102057.420802:WARNING:sandbox/policy/linux/sandbox_linux.cc:405] InitializeSandbox() called with multiple threads in process gpu-process.\n[pid=1408286][err] [0505/102114.439591:ERROR:gpu/command_buffer/service/gl_utils.cc:431] [.WebGL-0x1e7400146000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels\n[pid=1408286][err] [0505/102119.962915:INFO:CONSOLE:0] \"[.WebGL-0x1e7400146000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels\", source: http://127.0.0.1:3100/play-demo.html (0)\n[pid=1408286][err] [0505/102119.992017:ERROR:gpu/command_buffer/service/gl_utils.cc:431] [.WebGL-0x1e7400146000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels\n[pid=1408286][err] [0505/102120.351669:INFO:CONSOLE:0] \"[.WebGL-0x1e7400146000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels\", source: http://127.0.0.1:3100/play-demo.html (0)\n[pid=1408286][err] [0505/102120.359266:ERROR:gpu/command_buffer/service/gl_utils.cc:431] [.WebGL-0x1e7400146000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels\n[pid=1408286][err] [0505/102120.813607:INFO:CONSOLE:0] \"[.WebGL-0x1e7400146000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels\", source: http://127.0.0.1:3100/play-demo.html (0)\n[pid=1408286][err] [0505/102120.819341:ERROR:gpu/command_buffer/service/gl_utils.cc:431] [.WebGL-0x1e7400146000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)\n[pid=1408286][err] [0505/102121.181317:INFO:CONSOLE:0] \"[.WebGL-0x1e7400146000]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)\", source: http://127.0.0.1:3100/play-demo.html (0)\n[pid=1408286][err] [0505/102144.492967:WARNING:services/audio/sync_reader.cc:175] SyncReader::Read timed out, audio glitch count=10\n[pid=1408286][err] [0505/102151.207980:WARNING:services/audio/sync_reader.cc:175] SyncReader::Read timed out, audio glitch count=20\n[pid=1408286] <gracefully close start>\n[pid=1408286] <forcefully close>\n[pid=1408286] <kill>\n[pid=1408286] <will force kill>\nkeyboard.up: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /home/knight2/.cache/ms-playwright/chromium_headless_shell-1217/chrome-headless-shell-linux64/chrome-headless-shell --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disabl\n\n— Auto-filed by scripts/playtest-runner.js (run pt-moscw3gf-b36). Screenshot: null",
+      "severity": "p1-major",
+      "surface": "/play-demo.html",
+      "status": "open",
+      "refs": [
+        "pt-moscw3gf-b36"
+      ],
+      "at": "2026-05-05T08:22:23.444Z",
+      "updatedAt": "2026-05-05T08:22:23.444Z"
+    },
+    {
+      "id": "bug-mosd2z29-z4ahh",
+      "team": "scrum-web",
+      "reporter": "Tester-GP-Iris",
+      "title": "NPCs are colored capsules, not characters",
+      "body": "Femke / Marina / Dmitri / Inês are CapsuleGeometry + SphereGeometry. No facial rig, no idle body anim beyond a Y-axis sine bob, no walk anim, no eye gaze, no lip sync, no voice. Iris's 2/10 dimension score holds — character is the biggest open gap. The capsules are clearly placeholder, but the demo pretends they are NPCs.\n\n— Auto-filed by scripts/playtest-runner.js (run pt-moscw3gf-b36). Screenshot: /home/knight2/virtualpc/data/playtest-shots/pt-moscw3gf-b36-Iris.png",
+      "severity": "p1-major",
+      "surface": "/play-demo.html",
+      "status": "open",
+      "refs": [
+        "pt-moscw3gf-b36"
+      ],
+      "at": "2026-05-05T08:23:32.865Z",
+      "updatedAt": "2026-05-05T08:23:32.865Z"
+    },
+    {
+      "id": "bug-mosd4rik-r9gxv",
+      "team": "scrum-web",
+      "reporter": "Tester-GP-Iris",
+      "title": "NPCs are colored capsules, not characters",
+      "body": "Femke / Marina / Dmitri / Inês are CapsuleGeometry + SphereGeometry. No facial rig, no idle body anim beyond a Y-axis sine bob, no walk anim, no eye gaze, no lip sync, no voice. Iris's 2/10 dimension score holds — character is the biggest open gap. The capsules are clearly placeholder, but the demo pretends they are NPCs.\n\n— Auto-filed by scripts/playtest-runner.js (run pt-mosd3k99-pqv). Screenshot: /home/knight2/virtualpc/data/playtest-shots/pt-mosd3k99-pqv-Iris.png",
+      "severity": "p1-major",
+      "surface": "/play-demo.html",
+      "status": "open",
+      "refs": [
+        "pt-mosd3k99-pqv"
+      ],
+      "at": "2026-05-05T08:24:56.396Z",
+      "updatedAt": "2026-05-05T08:24:56.396Z"
+    },
+    {
+      "id": "bug-mosd4wx3-ppoxy",
+      "team": "scrum-web",
+      "reporter": "Tester-GP-Iris",
+      "title": "No voice on dialogue lines",
+      "body": "Procedural ambient audio plays (pad + hum) but actual NPC dialogue is silent text. Coqui TTS pipeline (GTA6-CH-3) is the gating dependency.\n\n— Auto-filed by scripts/playtest-runner.js (run pt-mosd3k99-pqv). Screenshot: /home/knight2/virtualpc/data/playtest-shots/pt-mosd3k99-pqv-Iris.png",
+      "severity": "p2-minor",
+      "surface": "/play-demo.html",
+      "status": "open",
+      "refs": [
+        "pt-mosd3k99-pqv"
+      ],
+      "at": "2026-05-05T08:25:03.399Z",
+      "updatedAt": "2026-05-05T08:25:03.399Z"
+    },
+    {
+      "id": "bug-mosd5app-m56ji",
+      "team": "scrum-web",
+      "reporter": "Tester-GP-Onyx",
+      "title": "R-key with <2 reagents has no clear feedback",
+      "body": "status text was: \"Beaker · CuSO₄ · press E to pick up · \". A new player gets no actionable hint.\n\n— Auto-filed by scripts/playtest-runner.js (run pt-mosd3k99-pqv). Screenshot: /home/knight2/virtualpc/data/playtest-shots/pt-mosd3k99-pqv-Onyx.png",
+      "severity": "p2-minor",
+      "surface": "/play-demo.html",
+      "status": "open",
+      "refs": [
+        "pt-mosd3k99-pqv"
+      ],
+      "at": "2026-05-05T08:25:21.277Z",
+      "updatedAt": "2026-05-05T08:25:21.277Z"
     }
   ]
 }
