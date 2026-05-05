@@ -23,11 +23,22 @@ function get(pathname) {
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
       res.on('end', () => {
-        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-        catch (e) { reject(e); }
+        const body = Buffer.concat(chunks).toString('utf8');
+        if (res.statusCode >= 400) return reject(new Error(`${res.statusCode} ${pathname}`));
+        try { resolve(JSON.parse(body)); }
+        catch (e) { reject(new Error(`non-JSON response from ${pathname} (${body.slice(0,60)}…)`)); }
       });
     }).on('error', reject);
   });
+}
+
+// Tags arrive as either an array or a comma-separated string depending
+// on which seed wrote them — coerce to a string for display.
+function tagStr(tags) {
+  if (!tags) return '';
+  if (Array.isArray(tags)) return tags.join(', ');
+  if (typeof tags === 'string') return tags;
+  return String(tags);
 }
 
 function postIngest(chunks) {
@@ -68,7 +79,7 @@ function postIngest(chunks) {
           source: `forum/${team}/${t.id}`,
           source_kind: 'doc',
           title: t.title,
-          content: `# ${t.title}\n\nTeam: ${team}\nAuthor: ${t.author}\nTags: ${(t.tags || []).join(', ')}\nUpdated: ${t.updatedAt}\n\n${t.body}\n\n${replyText ? '## Replies\n\n' + replyText : ''}`,
+          content: `# ${t.title}\n\nTeam: ${team}\nAuthor: ${t.author}\nTags: ${tagStr(t.tags)}\nUpdated: ${t.updatedAt}\n\n${t.body}\n\n${replyText ? '## Replies\n\n' + replyText : ''}`,
         });
       }
     } catch (e) { console.warn(`  ! forum/${team}: ${e.message}`); }
