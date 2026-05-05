@@ -34,8 +34,11 @@ const EMBEDDING_DIM = 768;
 const CHUNK_TARGET_CHARS = 1200;
 const CHUNK_OVERLAP_CHARS = 150;
 
-const LITELLM_URL = process.env.LITELLM_URL || 'http://127.0.0.1:4000/v1';
-const LITELLM_KEY = process.env.LITELLM_MASTER_KEY || 'sk-virtualpc-dev';
+// LM Studio direct — LiteLLM gateway doesn't expose embedding models in
+// the current config. Embedding requests go straight to LM Studio's
+// /v1/embeddings on :1234 against the loaded nomic-embed model.
+const EMBED_URL = process.env.EMBED_URL || 'http://127.0.0.1:1234/v1';
+const EMBED_MODEL = process.env.EMBED_MODEL || 'text-embedding-nomic-embed-text-v1.5';
 
 /** Split text into ~CHUNK_TARGET_CHARS passages with overlap. Sentence-aware
  *  where possible (split on . ! ? newlines), falls back to char-window.  */
@@ -79,13 +82,10 @@ export async function embedTexts(texts: string[]): Promise<(number[] | null)[]> 
   for (let i = 0; i < texts.length; i += 16) {
     const batch = texts.slice(i, i + 16);
     try {
-      const r = await fetch(`${LITELLM_URL}/embeddings`, {
+      const r = await fetch(`${EMBED_URL}/embeddings`, {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'authorization': `Bearer ${LITELLM_KEY}`,
-        },
-        body: JSON.stringify({ model: 'nomic-embed-text', input: batch }),
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: EMBED_MODEL, input: batch }),
         signal: AbortSignal.timeout(30000),
       });
       if (!r.ok) {
