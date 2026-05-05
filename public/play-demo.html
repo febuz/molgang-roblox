@@ -12,14 +12,34 @@
   #hud .row { background: rgba(10,18,32,0.7); border: 1px solid rgba(96,165,250,0.25); border-radius: 6px; padding: 6px 12px; margin-bottom: 6px; backdrop-filter: blur(6px); font-size: 0.85rem; }
   #hud .key { display: inline-block; padding: 1px 6px; border-radius: 3px; background: rgba(96,165,250,0.18); color: #93c5fd; font-family: ui-monospace, monospace; font-size: 0.75rem; margin: 0 2px; }
   #status { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(10,18,32,0.85); border: 1px solid rgba(96,165,250,0.3); border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; pointer-events: none; user-select: none; backdrop-filter: blur(6px); }
-  #dialogue { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); width: min(620px, 92%); background: rgba(10,18,32,0.92); border: 2px solid #60a5fa; border-radius: 10px; padding: 16px 20px; backdrop-filter: blur(8px); display: none; }
-  #dialogue.show { display: block; animation: slideUp 0.25s ease; }
-  @keyframes slideUp { from { transform: translateX(-50%) translateY(8px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
-  #dialogue .speaker { color: #fbbf24; font-weight: 700; font-size: 0.85rem; margin-bottom: 4px; }
-  #dialogue .text { color: #e6f0ff; line-height: 1.45; }
-  #dialogue .choices { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; }
-  #dialogue button { background: rgba(96,165,250,0.15); border: 1px solid rgba(96,165,250,0.4); border-radius: 5px; padding: 7px 12px; color: #cbd5e1; font: inherit; font-size: 0.85rem; text-align: left; cursor: pointer; transition: all 0.15s; }
-  #dialogue button:hover { background: rgba(96,165,250,0.3); color: #fff; transform: translateX(2px); }
+  /* Pokemon-style dialogue: bottom-third panel, character portrait left, numbered keyed choices.
+     Closes the user's #1 playtest bug (bug-moscjwdr): "dialogue does not feel functional". */
+  #dialogue {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: 32vh; min-height: 240px; max-height: 360px;
+    background: linear-gradient(180deg, rgba(245,244,237,0.97) 0%, rgba(232,230,220,0.97) 100%);
+    border-top: 4px solid #1B365D;
+    box-shadow: 0 -8px 28px rgba(0,0,0,0.5);
+    display: none;
+    color: #141413;
+    font-family: 'Charter', Georgia, serif;
+  }
+  #dialogue.show { display: flex; animation: dlgSlide 0.28s cubic-bezier(0.2, 0.6, 0.2, 1); }
+  @keyframes dlgSlide { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  #dialogue .portrait { width: 220px; flex-shrink: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; border-right: 1px solid rgba(27,54,93,0.18); }
+  #dialogue .portrait canvas { width: 180px; height: 180px; border-radius: 8px; border: 2px solid #1B365D; background: #1a2840; }
+  #dialogue .portrait .speakername { font-weight: 700; color: #1B365D; font-size: 1.05rem; text-align: center; line-height: 1.1; }
+  #dialogue .body { flex: 1; padding: 22px 28px 18px 28px; display: flex; flex-direction: column; }
+  #dialogue .text { color: #141413; font-size: 1.18rem; line-height: 1.5; min-height: 4.5em; }
+  #dialogue .text .caret { display: inline-block; width: 0.55em; height: 1.1em; background: #1B365D; vertical-align: text-bottom; animation: blink 0.7s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  #dialogue .choices { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; pointer-events: auto; }
+  #dialogue button { background: rgba(255,255,255,0.5); border: 1px solid rgba(27,54,93,0.3); border-radius: 4px; padding: 8px 14px 8px 36px; color: #141413; font: inherit; font-size: 1.0rem; text-align: left; cursor: pointer; transition: all 0.12s; position: relative; font-family: inherit; }
+  #dialogue button:hover, #dialogue button:focus { background: #fff8e1; border-color: #fbbf24; outline: none; }
+  #dialogue button.selected { background: #fff8e1; border-color: #fbbf24; }
+  #dialogue button .keynum { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 50%; background: #1B365D; color: #fff; font-size: 0.75rem; font-weight: 700; text-align: center; line-height: 18px; }
+  #dialogue button:hover .keynum, #dialogue button.selected .keynum { background: #fbbf24; color: #141413; }
+  #dialogue .hint { position: absolute; right: 18px; bottom: 8px; font-size: 0.78rem; color: rgba(20,20,19,0.55); }
   #inventory { position: fixed; top: 16px; right: 16px; background: rgba(10,18,32,0.7); border: 1px solid rgba(96,165,250,0.25); border-radius: 6px; padding: 8px 12px; min-width: 180px; backdrop-filter: blur(6px); pointer-events: none; user-select: none; }
   #inventory .ihead { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
   #inventory .iitem { font-size: 0.85rem; margin: 3px 0; color: #e6f0ff; }
@@ -56,9 +76,15 @@
 <div id="status">approach the white bench · press <span style="color:#fbbf24">E</span> when prompted</div>
 
 <div id="dialogue">
-  <div class="speaker" id="d-speaker">Speaker</div>
-  <div class="text" id="d-text">Line.</div>
-  <div class="choices" id="d-choices"></div>
+  <div class="portrait">
+    <canvas id="d-portrait" width="180" height="180"></canvas>
+    <div class="speakername" id="d-speaker">Speaker</div>
+  </div>
+  <div class="body">
+    <div class="text" id="d-text">Line.</div>
+    <div class="choices" id="d-choices"></div>
+  </div>
+  <div class="hint">↑↓ navigate · Enter / 1-4 confirm · E skip text</div>
 </div>
 
 <script type="importmap">
@@ -715,6 +741,30 @@ scene.add(controls.getObject());
 
 const move = { f: false, b: false, l: false, r: false };
 addEventListener('keydown', e => {
+  // Dialogue keyboard handling has priority
+  if (dialogueActive) {
+    if (e.code === 'Escape') { closeDialogue(); return; }
+    // Skip typewriter on E or Enter (first press) ; advance/confirm choice on second press
+    if (typewriterTimer) {
+      if (['KeyE','Enter','Space'].includes(e.code)) {
+        clearTimeout(typewriterTimer);
+        typewriterIndex = typewriterFull.length;
+        dText.innerHTML = typewriterFull + '<span class="caret"></span>';
+        renderChoices();
+        e.preventDefault();
+        return;
+      }
+    }
+    if (e.code === 'ArrowUp')   { activeChoiceIndex = Math.max(0, activeChoiceIndex - 1); highlightActive(); e.preventDefault(); return; }
+    if (e.code === 'ArrowDown') { activeChoiceIndex = Math.min((activeNode?.choices.length || 1) - 1, activeChoiceIndex + 1); highlightActive(); e.preventDefault(); return; }
+    if (e.code === 'Enter' || e.code === 'KeyE')  { commitChoice(activeChoiceIndex); e.preventDefault(); return; }
+    if (/^Digit[1-4]$/.test(e.code)) {
+      const i = parseInt(e.code.slice(5)) - 1;
+      if (activeNode?.choices[i]) commitChoice(i);
+      e.preventDefault(); return;
+    }
+    return;  // suppress walk inputs while dialogue open
+  }
   if (e.code === 'KeyW') move.f = true;
   if (e.code === 'KeyS') move.b = true;
   if (e.code === 'KeyA') move.l = true;
@@ -1094,23 +1144,142 @@ const MARINA_TREE = {
   },
 };
 
+// Portrait — canvas-drawn placeholder per NPC (color triple from npcs.json
+// in spirit). Closes the design-review request to give Femke + others a
+// face. Will get swapped for ReadyPlayerMe avatar headshots once the
+// character pipeline (GTA6-CH-1) lands.
+function drawPortrait(npcId, mood) {
+  const cv = document.getElementById('d-portrait');
+  const ctx = cv.getContext('2d');
+  const profiles = {
+    femke:  { skin: '#ffe0bd', hair: '#52525b', coat: '#ffffff', accent: '#1B365D' },
+    marina: { skin: '#e6c39c', hair: '#1e293b', coat: '#2563eb', accent: '#0e7490' },
+    dmitri: { skin: '#d8a06e', hair: '#fb923c', coat: '#fbbf24', accent: '#7c2d12' },
+    ines:   { skin: '#dca888', hair: '#7c2d12', coat: '#fde047', accent: '#1c1917' },
+  };
+  const p = profiles[npcId] || profiles.femke;
+  ctx.clearRect(0, 0, 180, 180);
+  // Background — tinted parchment with vignette
+  const bg = ctx.createRadialGradient(90, 80, 30, 90, 90, 110);
+  bg.addColorStop(0, '#f5f4ed'); bg.addColorStop(1, '#d8d6cc');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, 180, 180);
+  // Coat (shoulders + neckline)
+  ctx.fillStyle = p.coat;
+  ctx.beginPath(); ctx.moveTo(20, 180); ctx.lineTo(40, 130); ctx.quadraticCurveTo(90, 125, 140, 130); ctx.lineTo(160, 180); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = p.accent; ctx.lineWidth = 1.5; ctx.stroke();
+  // Coat lapel V-neck
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.moveTo(75, 130); ctx.lineTo(90, 145); ctx.lineTo(105, 130); ctx.closePath(); ctx.fill();
+  // Neck
+  ctx.fillStyle = p.skin;
+  ctx.fillRect(78, 110, 24, 30);
+  // Head (ellipse)
+  ctx.fillStyle = p.skin;
+  ctx.beginPath(); ctx.ellipse(90, 80, 35, 42, 0, 0, Math.PI*2); ctx.fill();
+  // Hair (top swoop)
+  ctx.fillStyle = p.hair;
+  ctx.beginPath(); ctx.ellipse(90, 56, 36, 24, 0, Math.PI, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(60, 70, 12, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(120, 70, 12, 0, Math.PI*2); ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#141413';
+  const eyeY = mood === 'wary' ? 82 : 78;
+  ctx.beginPath(); ctx.arc(78, eyeY, 2.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(102, eyeY, 2.5, 0, Math.PI*2); ctx.fill();
+  // Eyebrows (mood-driven)
+  ctx.strokeStyle = p.hair; ctx.lineWidth = 2;
+  if (mood === 'warm') {
+    ctx.beginPath(); ctx.arc(78, 72, 6, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(102, 72, 6, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+  } else if (mood === 'wary') {
+    ctx.beginPath(); ctx.moveTo(72, 70); ctx.lineTo(83, 74); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(108, 74); ctx.lineTo(97, 70); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(72, 73); ctx.lineTo(84, 73); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(108, 73); ctx.lineTo(96, 73); ctx.stroke();
+  }
+  // Mouth (subtle smile / neutral / frown by mood)
+  ctx.strokeStyle = '#7c2d12'; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  if (mood === 'warm') ctx.arc(90, 96, 8, Math.PI*0.15, Math.PI*0.85);
+  else if (mood === 'wary') ctx.arc(90, 100, 8, Math.PI*1.15, Math.PI*1.85);
+  else ctx.moveTo(83, 98), ctx.lineTo(97, 98);
+  ctx.stroke();
+}
+
+// Typewriter state + keyboard navigation
+let typewriterTimer = null;
+let typewriterFull = '';
+let typewriterIndex = 0;
+let activeChoiceIndex = 0;
+let activeNode = null;
+
+function typewriterStep() {
+  if (typewriterIndex >= typewriterFull.length) {
+    dText.innerHTML = typewriterFull + '<span class="caret"></span>';
+    typewriterTimer = null;
+    renderChoices();
+    return;
+  }
+  typewriterIndex += 1;
+  dText.textContent = typewriterFull.slice(0, typewriterIndex);
+  // Cheap typewriter beep — reuse Web Audio
+  if (audioState.on && Math.random() < 0.5) {
+    const o = audioCtx.createOscillator(); o.frequency.value = 440 + (typewriterIndex % 4) * 30; o.type = 'square';
+    const g = audioCtx.createGain(); g.gain.value = 0; g.gain.linearRampToValueAtTime(0.04, audioCtx.currentTime + 0.005); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    o.connect(g).connect(audioState.master); o.start(); o.stop(audioCtx.currentTime + 0.06);
+  }
+  typewriterTimer = setTimeout(typewriterStep, 18);
+}
+
+function renderChoices() {
+  if (!activeNode) return;
+  dChoices.innerHTML = '';
+  activeChoiceIndex = 0;
+  activeNode.choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.innerHTML = `<span class="keynum">${i+1}</span>${c.label}` + (c.score && c.score !== '0' ? ` <span style="color:#94a3b8;">(${c.score})</span>` : '');
+    btn.addEventListener('click', () => commitChoice(i));
+    dChoices.appendChild(btn);
+  });
+  highlightActive();
+}
+function highlightActive() {
+  const btns = dChoices.querySelectorAll('button');
+  btns.forEach((b, i) => b.classList.toggle('selected', i === activeChoiceIndex));
+}
+function commitChoice(i) {
+  if (!activeNode || !activeNode.choices[i]) return;
+  const c = activeNode.choices[i];
+  if (c.effect) try { c.effect(); } catch (e) { console.warn(e); }
+  showNode(c.next);
+}
+
 function showNode(id) {
   if (id === '__close') return closeDialogue();
   const n = (currentTree || FEMKE_TREE)[id];
   if (!n) return closeDialogue();
   if (n.onEnter) try { n.onEnter(); } catch (e) { console.warn(e); }
-  dSpeaker.textContent = n.speaker;
-  dText.textContent = n.text;
-  dChoices.innerHTML = '';
-  for (const c of n.choices) {
-    const btn = document.createElement('button');
-    btn.textContent = `→  ${c.label}` + (c.score && c.score !== '0' ? `  <${c.score}>` : '');
-    btn.addEventListener('click', () => {
-      if (c.effect) try { c.effect(); } catch (e) { console.warn(e); }
-      showNode(c.next);
-    });
-    dChoices.appendChild(btn);
-  }
+  activeNode = n;
+  // Speaker name + portrait
+  const speakerStr = n.speaker || 'Speaker';
+  const npcId = speakerStr.toLowerCase().includes('femke') ? 'femke'
+              : speakerStr.toLowerCase().includes('marina') ? 'marina'
+              : speakerStr.toLowerCase().includes('dmitri') ? 'dmitri'
+              : speakerStr.toLowerCase().includes('inês') || speakerStr.toLowerCase().includes('ines') ? 'ines'
+              : 'femke';
+  // Mood from node text — naive
+  const mood = /sorry|patience|trust|earned|warm|good/i.test(n.text || '') ? 'warm'
+             : /wait|six weeks|locked|cited|paranoid|don't|do not/i.test(n.text || '') ? 'wary'
+             : 'neutral';
+  drawPortrait(npcId, mood);
+  dSpeaker.textContent = speakerStr;
+  // Typewriter
+  typewriterFull = n.text || '';
+  typewriterIndex = 0;
+  if (typewriterTimer) clearTimeout(typewriterTimer);
+  dChoices.innerHTML = '';  // hide choices until text done
+  typewriterStep();
   dialogueEl.classList.add('show');
 }
 
