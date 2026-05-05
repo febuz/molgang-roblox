@@ -901,8 +901,23 @@ function updateMovement(dt) {
     if (p.z < -ROOM.d/2 + 0.4 && p.x < ROOM.w/2) p.z = -ROOM.d/2 + 0.6;
     if (p.z > ROOM.d/2 - 0.4 && p.x < ROOM.w/2 - 1) p.z = ROOM.d/2 - 0.6;
   }
-  p.y = 1.7;
+  // Head-bob — vertical sine driven by walking speed; closes bug-moscjwpr
+  const moving = velocity.lengthSq() > 1.5;
+  if (moving) {
+    walkPhase += dt * 8.5;
+    p.y = 1.7 + Math.sin(walkPhase * 2) * 0.045;
+    // Footstep audio every half-cycle (~0.36s at this speed)
+    if (walkPhase - lastStepPhase > Math.PI) {
+      lastStepPhase = walkPhase;
+      playFootstep(insideLab ? 'tile' : 'concrete');
+    }
+  } else {
+    p.y = 1.7 + (p.y > 1.7 ? -0.005 : p.y < 1.7 ? 0.005 : 0);
+    walkPhase *= 0.95;  // dampen
+  }
 }
+let walkPhase = 0;
+let lastStepPhase = 0;
 
 // ─── interaction ──────────────────────────────────────────────────────
 function nearestInteractable() {
@@ -930,29 +945,63 @@ function tryInteract() {
 }
 
 let drivingTruck = false;
+let truckEngineGain = null;
+let truckEngineOsc = null;
 function toggleDrive(t) {
   if (!drivingTruck) {
     drivingTruck = true;
     setStatus('<span style="color:#fbbf24">Driving · WASD steers truck · E to dismount</span>');
+    // Spin up engine — sawtooth at low Hz with band-pass
+    if (audioState.on && !truckEngineOsc) {
+      truckEngineOsc = audioCtx.createOscillator();
+      truckEngineOsc.type = 'sawtooth';
+      truckEngineOsc.frequency.value = 55;
+      const filt = audioCtx.createBiquadFilter();
+      filt.type = 'bandpass'; filt.frequency.value = 90; filt.Q.value = 1.5;
+      truckEngineGain = audioCtx.createGain();
+      truckEngineGain.gain.value = 0;
+      truckEngineGain.gain.linearRampToValueAtTime(0.18, audioCtx.currentTime + 1.2);  // 1.2s ignition ramp
+      truckEngineOsc.connect(filt).connect(truckEngineGain).connect(audioState.master);
+      truckEngineOsc.start();
+    }
   } else {
     drivingTruck = false;
     setStatus('Dismounted. Walk to the marker or back to Dmitri.');
+    // Wind down engine
+    if (truckEngineOsc) {
+      const g = truckEngineGain;
+      g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
+      const o = truckEngineOsc;
+      setTimeout(() => { try { o.stop(); } catch {} }, 700);
+      truckEngineOsc = null;
+      truckEngineGain = null;
+    }
   }
 }
 
+let truckSpeedActual = 0;
 function updateTruckDriving(dt) {
   if (!drivingTruck || !truckMesh) return;
-  const speed = (move.f ? 8 : 0) + (move.b ? -5 : 0);
-  const turn = (move.l ? 1.4 : 0) + (move.r ? -1.4 : 0);
-  truckMesh.rotation.y += turn * dt;
+  // Inertia — speed lerps toward target rather than snapping
+  const targetSpeed = (move.f ? 8 : 0) + (move.b ? -5 : 0);
+  truckSpeedActual += (targetSpeed - truckSpeedActual) * Math.min(1, dt * 1.6);
+  const turn = (move.l ? 1.2 : 0) + (move.r ? -1.2 : 0);
+  // Steering scales with speed — feels weighted instead of pivot-on-stop
+  truckMesh.rotation.y += turn * dt * Math.min(1, Math.abs(truckSpeedActual) / 4 + 0.3);
   const forward = new THREE.Vector3(Math.sin(truckMesh.rotation.y), 0, Math.cos(truckMesh.rotation.y));
-  truckMesh.position.x += forward.x * speed * dt;
-  truckMesh.position.z += forward.z * speed * dt;
-  // Camera rides on top of truck cab
-  const camOffset = new THREE.Vector3(-forward.x * 5, 4, -forward.z * 5);
+  truckMesh.position.x += forward.x * truckSpeedActual * dt;
+  truckMesh.position.z += forward.z * truckSpeedActual * dt;
+  // Engine pitch follows speed
+  if (truckEngineOsc) {
+    truckEngineOsc.frequency.linearRampToValueAtTime(55 + Math.abs(truckSpeedActual) * 9, audioCtx.currentTime + 0.1);
+  }
+  // Camera with subtle shake proportional to acceleration
+  const accelMag = Math.abs(targetSpeed - truckSpeedActual);
+  const shake = (Math.random() - 0.5) * accelMag * 0.012;
+  const camOffset = new THREE.Vector3(-forward.x * 5, 4 + shake, -forward.z * 5);
   controls.getObject().position.set(truckMesh.position.x + camOffset.x, truckMesh.position.y + camOffset.y, truckMesh.position.z + camOffset.z);
   // Soft look-toward truck
-  camera.lookAt(truckMesh.position.x + forward.x * 4, truckMesh.position.y + 1.5, truckMesh.position.z + forward.z * 4);
+  camera.lookAt(truckMesh.position.x + forward.x * 4, truckMesh.position.y + 1.5 + shake * 0.5, truckMesh.position.z + forward.z * 4);
   // Quest-two check: distance from truck to marker
   if (questTwo === 'active') {
     const dist = truckMesh.position.distanceTo(markerPos);
@@ -1472,6 +1521,26 @@ function updateAmbientAudio() {
   const rainLevel = weatherState === 'storm' ? 0.6 : weatherState === 'rain' ? 0.4 : weatherState === 'overcast' ? 0.05 : 0.0;
   audioState.rainNoise.gain.linearRampToValueAtTime(rainLevel * (inLab ? 0.3 : 1.0), audioCtx.currentTime + 1.0);
 }
+// Footstep tick — short percussive snap, surface-tinted via filter
+function playFootstep(surface = 'tile') {
+  if (!audioState.on) return;
+  const noiseDur = 0.06;
+  // Short noise burst
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * noiseDur, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'bandpass';
+  filt.frequency.value = surface === 'tile' ? 2200 : surface === 'concrete' ? 1300 : 1700;
+  filt.Q.value = 2.0;
+  const g = audioCtx.createGain(); g.gain.value = 0.16;
+  src.connect(filt).connect(g).connect(audioState.master);
+  src.start();
+  src.stop(audioCtx.currentTime + noiseDur);
+}
+
 // Glassware ting on reaction
 function playReactionTing() {
   if (!audioState.on) return;
