@@ -17,6 +17,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
+import { int as neo4jInt } from 'neo4j-driver';
 import logger from '../../utils/logger';
 import type { LightRAGClient } from '../lightrag/client';
 
@@ -175,10 +176,11 @@ export async function search(
 
   // Embed the query
   const qVec = (await embedTexts([query]))[0];
+  logger.info(`corpus.search(q="${query.slice(0,50)}", k=${k}) qVec=${qVec ? `dim=${qVec.length}` : 'null'}`);
   const session = driver.session();
   try {
     let cypher: string;
-    let params: any = { k };
+    let params: any = { k: neo4jInt(k) };
     if (qVec) {
       cypher = `
         CALL db.index.vector.queryNodes('corpus_embedding', $k, $q)
@@ -201,6 +203,7 @@ export async function search(
       if (opts.sourceKind) params.sourceKind = opts.sourceKind;
     }
     const result = await session.run(cypher, params);
+    logger.info(`corpus.search returned ${result.records.length} rows`);
     return result.records.map((r: any) => ({
       id: r.get('id'),
       source: r.get('source'),
