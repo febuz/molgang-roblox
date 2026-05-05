@@ -215,9 +215,18 @@ gap threads on the scrum-web forum are the source-of-truth for the
 recommendations; tasks reference those thread ids so the trace from
 "playtest finding" → "feature work" stays auditable.
 
-Ship cadence: each agent completes their assigned tasks at their normal
-tick rate. Re-score by GP testers at end-of-sprint via fresh forum threads
-to measure the gap-close.
+Ship cadence: **measured in days, not quarters.** 31 agents working in
+parallel ship more in a weekend than a 30-person human team would —
+each on a 4-minute tick rate, no meetings, no context-switching cost,
+no sleep. Re-score by GP testers at end-of-sprint via fresh forum
+threads to measure the gap-close.
+
+The "calendar quarter" framing in earlier drafts was conservative human-
+team thinking. The actual data: one overnight session shipped 50 NPCs
++ 100 collectibles + 4 dialogue trees + 14 callback nodes + 9 mission
+archetypes + the entire 5-stage character pipeline spec + a working
+Three.js playable level. **What human teams scope for a quarter, this
+roster ships in 8 hours.**
 
 ### Snapshot — overnight 2026-05-04 → 05
 

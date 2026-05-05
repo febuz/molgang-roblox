@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>molgang · playable first level</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #000; color: #fff; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  canvas { display: block; cursor: crosshair; }
+  #hud { position: fixed; top: 16px; left: 16px; pointer-events: none; user-select: none; }
+  #hud .row { background: rgba(10,18,32,0.7); border: 1px solid rgba(96,165,250,0.25); border-radius: 6px; padding: 6px 12px; margin-bottom: 6px; backdrop-filter: blur(6px); font-size: 0.85rem; }
+  #hud .key { display: inline-block; padding: 1px 6px; border-radius: 3px; background: rgba(96,165,250,0.18); color: #93c5fd; font-family: ui-monospace, monospace; font-size: 0.75rem; margin: 0 2px; }
+  #status { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(10,18,32,0.85); border: 1px solid rgba(96,165,250,0.3); border-radius: 6px; padding: 6px 14px; font-size: 0.85rem; pointer-events: none; user-select: none; backdrop-filter: blur(6px); }
+  #dialogue { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); width: min(620px, 92%); background: rgba(10,18,32,0.92); border: 2px solid #60a5fa; border-radius: 10px; padding: 16px 20px; backdrop-filter: blur(8px); display: none; }
+  #dialogue.show { display: block; animation: slideUp 0.25s ease; }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(8px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+  #dialogue .speaker { color: #fbbf24; font-weight: 700; font-size: 0.85rem; margin-bottom: 4px; }
+  #dialogue .text { color: #e6f0ff; line-height: 1.45; }
+  #dialogue .choices { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; }
+  #dialogue button { background: rgba(96,165,250,0.15); border: 1px solid rgba(96,165,250,0.4); border-radius: 5px; padding: 7px 12px; color: #cbd5e1; font: inherit; font-size: 0.85rem; text-align: left; cursor: pointer; transition: all 0.15s; }
+  #dialogue button:hover { background: rgba(96,165,250,0.3); color: #fff; transform: translateX(2px); }
+  #inventory { position: fixed; top: 16px; right: 16px; background: rgba(10,18,32,0.7); border: 1px solid rgba(96,165,250,0.25); border-radius: 6px; padding: 8px 12px; min-width: 180px; backdrop-filter: blur(6px); pointer-events: none; user-select: none; }
+  #inventory .ihead { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  #inventory .iitem { font-size: 0.85rem; margin: 3px 0; color: #e6f0ff; }
+  #inventory .iempty { font-size: 0.78rem; color: #475569; font-style: italic; }
+  #titlecard { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #050810 0%, #0d0d2b 100%); z-index: 100; transition: opacity 0.6s; }
+  #titlecard.hide { opacity: 0; pointer-events: none; }
+  #titlecard h1 { font-family: 'Orbitron', sans-serif; font-size: clamp(2.4rem, 6vw, 4.8rem); font-weight: 900; background: linear-gradient(90deg, #60a5fa 0%, #f0abfc 50%, #fbbf24 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #titlecard p { color: #93c5fd; margin-top: 12px; font-size: 1.1rem; }
+  #titlecard button { margin-top: 28px; background: rgba(96,165,250,0.2); border: 2px solid #60a5fa; color: #fff; padding: 12px 32px; font-size: 1.05rem; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 600; }
+  #titlecard button:hover { background: rgba(96,165,250,0.4); }
+</style>
+</head>
+<body>
+
+<div id="titlecard">
+  <div style="text-align:center;">
+    <h1>molgang</h1>
+    <p>Playable first level · WASD to move · E to interact · ESC for cursor</p>
+    <p style="font-size: 0.85rem; color: #64748b; margin-top: 4px;">Real chemistry. Walkable lab. Femke is at the bench.</p>
+    <button id="start-btn">Enter the lab</button>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="row"><span class="key">W A S D</span> walk · <span class="key">Mouse</span> look · <span class="key">E</span> interact</div>
+  <div class="row" id="time-row">phase: <span id="phase-label">midday</span></div>
+</div>
+
+<div id="inventory">
+  <div class="ihead">inventory</div>
+  <div id="inv-list"><div class="iempty">empty</div></div>
+</div>
+
+<div id="status">approach the white bench · press <span style="color:#fbbf24">E</span> when prompted</div>
+
+<div id="dialogue">
+  <div class="speaker" id="d-speaker">Speaker</div>
+  <div class="text" id="d-text">Line.</div>
+  <div class="choices" id="d-choices"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "PointerLockControls": "https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { PointerLockControls } from 'PointerLockControls';
+
+// ─── scene + renderer ─────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x101828, 8, 60);
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 1.7, 8);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ─── lighting + sky (drives day/night via current hour clock) ─────────
+const sun = new THREE.DirectionalLight(0xfff5e0, 1.4);
+sun.position.set(8, 12, 6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -25;
+sun.shadow.camera.right = 25;
+sun.shadow.camera.top = 25;
+sun.shadow.camera.bottom = -25;
+sun.shadow.camera.near = 0.1;
+sun.shadow.camera.far = 50;
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0x6080a0, 0.45));
+const lampWarm = new THREE.PointLight(0xfbbf24, 1.3, 18);
+lampWarm.position.set(0, 4.2, 0);
+lampWarm.castShadow = true;
+scene.add(lampWarm);
+
+scene.background = new THREE.Color(0x1a2840);
+
+// ─── lab room ─────────────────────────────────────────────────────────
+const ROOM = { w: 18, d: 14, h: 4.5 };
+function makeRoom() {
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xe8e6dc, roughness: 0.92, metalness: 0.0 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x6b6a64, roughness: 0.6, metalness: 0.1 });
+  const ceilMat = new THREE.MeshStandardMaterial({ color: 0xf5f4ed, roughness: 0.95 });
+  // Floor
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w, ROOM.d), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+  // Ceiling
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w, ROOM.d), ceilMat);
+  ceil.rotation.x = Math.PI / 2;
+  ceil.position.y = ROOM.h;
+  scene.add(ceil);
+  // Walls
+  const walls = [
+    [ROOM.w, ROOM.h, 0.3, 0, ROOM.h/2, -ROOM.d/2], // back
+    [ROOM.w, ROOM.h, 0.3, 0, ROOM.h/2,  ROOM.d/2], // front
+    [0.3, ROOM.h, ROOM.d, -ROOM.w/2, ROOM.h/2, 0], // left
+    [0.3, ROOM.h, ROOM.d,  ROOM.w/2, ROOM.h/2, 0], // right
+  ];
+  for (const [w, h, d, x, y, z] of walls) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wallMat);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    scene.add(m);
+  }
+  // Window strip on back wall
+  const winMat = new THREE.MeshStandardMaterial({ color: 0xa3bffa, roughness: 0.1, metalness: 0.4, transparent: true, opacity: 0.55, emissive: 0x1a2840, emissiveIntensity: 0.4 });
+  const win = new THREE.Mesh(new THREE.BoxGeometry(8, 1.6, 0.05), winMat);
+  win.position.set(0, 2.6, -ROOM.d/2 + 0.16);
+  scene.add(win);
+}
+makeRoom();
+
+// ─── lab equipment ────────────────────────────────────────────────────
+const interactables = [];
+function makeBench(x, z, label) {
+  const benchMat = new THREE.MeshStandardMaterial({ color: 0xf5f4ed, roughness: 0.4, metalness: 0.05 });
+  const legMat = new THREE.MeshStandardMaterial({ color: 0x504e49, roughness: 0.6, metalness: 0.4 });
+  const top = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 0.8), benchMat);
+  top.position.set(x, 0.95, z);
+  top.castShadow = true; top.receiveShadow = true;
+  scene.add(top);
+  for (const [dx, dz] of [[-1.1, -0.3], [1.1, -0.3], [-1.1, 0.3], [1.1, 0.3]]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8), legMat);
+    leg.position.set(x + dx, 0.45, z + dz);
+    leg.castShadow = true;
+    scene.add(leg);
+  }
+  return top;
+}
+const benchA = makeBench(-3, -3, 'bench-A'); // Femke's bench
+const benchB = makeBench(3, -3, 'bench-B');
+const benchC = makeBench(0, 3, 'bench-C');
+
+function makeBeaker(x, y, z, color, label, contents) {
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: color, transparent: true, opacity: 0.55, roughness: 0.05, metalness: 0.0, transmission: 0.85, thickness: 0.4, ior: 1.5, emissive: color, emissiveIntensity: 0.15 });
+  const beaker = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.22, 24, 1, true), glassMat);
+  beaker.position.set(x, y, z);
+  beaker.castShadow = true;
+  scene.add(beaker);
+  // Liquid level
+  const liquidMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, metalness: 0.0, emissive: color, emissiveIntensity: 0.3 });
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.095, 0.16, 24), liquidMat);
+  liquid.position.set(x, y - 0.02, z);
+  scene.add(liquid);
+  // Mark interactable
+  const obj = { mesh: beaker, liquid, label, contents, color, position: beaker.position, kind: 'beaker' };
+  interactables.push(obj);
+  return obj;
+}
+const beakerH = makeBeaker(-3.6, 1.12, -3, 0x60a5fa, 'Beaker · H₂O', { H2O: 1 });
+const beakerS = makeBeaker(-2.4, 1.12, -3, 0xfde047, 'Beaker · H₂SO₄ (dilute)', { H2SO4: 0.5 });
+const beakerN = makeBeaker(2.4, 1.12, -3, 0xa78bfa, 'Beaker · NaOH', { NaOH: 0.5 });
+const beakerE = makeBeaker(3.6, 1.12, -3, 0xffffff, 'Empty Beaker', {});
+const beakerC = makeBeaker(0, 1.12, 3, 0xef4444, 'Beaker · CuSO₄', { CuSO4: 0.5 });
+
+// Magnetic stirrer base
+function makeStirrer(x, z) {
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x141413, roughness: 0.7, metalness: 0.4 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.4), baseMat);
+  base.position.set(x, 1.07, z);
+  base.castShadow = true;
+  scene.add(base);
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 1 }));
+  led.position.set(x + 0.15, 1.14, z + 0.15);
+  scene.add(led);
+  return base;
+}
+makeStirrer(0, -3);
+
+// Periodic-table poster on a wall
+function makePosterPT() {
+  const w = 4, h = 2.2;
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 280;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f5f4ed'; ctx.fillRect(0, 0, 512, 280);
+  ctx.fillStyle = '#141413'; ctx.font = 'bold 24px serif'; ctx.fillText('Periodic Table', 24, 36);
+  // Crude grid of element squares
+  const groups = 18, periods = 7;
+  const cellW = (512 - 48) / groups, cellH = (280 - 60) / periods;
+  for (let p = 0; p < periods; p++) {
+    for (let g = 0; g < groups; g++) {
+      ctx.fillStyle = `hsl(${(g * 15 + p * 5) % 360}, 30%, 75%)`;
+      ctx.fillRect(24 + g * cellW, 50 + p * cellH, cellW - 1, cellH - 1);
+    }
+  }
+  ctx.fillStyle = '#1B365D'; ctx.font = 'italic 12px serif'; ctx.fillText('Authored by Mira from IUPAC', 24, 268);
+  const tex = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 });
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  poster.position.set(-ROOM.w/2 + 0.2, 2.6, 0);
+  poster.rotation.y = Math.PI / 2;
+  scene.add(poster);
+}
+makePosterPT();
+
+// Fume hood (back wall corner)
+function makeFumeHood() {
+  const m = new THREE.MeshStandardMaterial({ color: 0xe5e3d8, roughness: 0.7, metalness: 0.3 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2, 2.2, 1.2), m);
+  body.position.set(6, 1.3, -ROOM.d/2 + 0.7);
+  body.castShadow = true; body.receiveShadow = true;
+  scene.add(body);
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xa3bffa, transparent: true, opacity: 0.4, transmission: 0.7 });
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(1.85, 1.4, 0.05), glassMat);
+  sash.position.set(6, 1.7, -ROOM.d/2 + 1.32);
+  scene.add(sash);
+}
+makeFumeHood();
+
+// ─── Femke (NPC) — capsule + name plaque + simple idle bob ────────────
+const femkeGroup = new THREE.Group();
+const femkeMatBody = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, metalness: 0.0 });
+const femkeMatHead = new THREE.MeshStandardMaterial({ color: 0xffe0bd, roughness: 0.55, metalness: 0.0 });
+const femkeMatHair = new THREE.MeshStandardMaterial({ color: 0x52525b, roughness: 0.85, metalness: 0.0 });
+const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.9, 8, 16), femkeMatBody);
+torso.position.y = 1.05; torso.castShadow = true;
+femkeGroup.add(torso);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), femkeMatHead);
+head.position.y = 1.78; head.castShadow = true;
+femkeGroup.add(head);
+const hair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), femkeMatHair);
+hair.position.y = 1.82; hair.scale.set(1, 0.7, 1.05); hair.castShadow = true;
+femkeGroup.add(hair);
+const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.55, 6, 8), new THREE.MeshStandardMaterial({ color: 0x323278, roughness: 0.7 }));
+legL.position.set(-0.12, 0.32, 0); legL.castShadow = true;
+femkeGroup.add(legL);
+const legR = new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 0.55, 6, 8), new THREE.MeshStandardMaterial({ color: 0x323278, roughness: 0.7 }));
+legR.position.set(0.12, 0.32, 0); legR.castShadow = true;
+femkeGroup.add(legR);
+femkeGroup.position.set(-3, 0, -3.6);
+femkeGroup.rotation.y = Math.PI; // facing the player
+scene.add(femkeGroup);
+
+// Floating name tag above Femke
+function makeNameTag(text, color) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(10,18,32,0.85)'; ctx.fillRect(0, 0, 256, 64);
+  ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.strokeRect(2, 2, 252, 60);
+  ctx.fillStyle = color; ctx.font = 'bold 22px Inter, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(text, 128, 38);
+  const tex = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  sprite.scale.set(1.4, 0.35, 1);
+  return sprite;
+}
+const femkeName = makeNameTag('Prof. Femke · talk [E]', '#fbbf24');
+femkeName.position.set(0, 2.25, 0);
+femkeGroup.add(femkeName);
+interactables.push({ group: femkeGroup, label: 'Prof. Femke', kind: 'npc', position: femkeGroup.position, npcId: 'femke' });
+
+// ─── chemistry interaction — combine reagents ─────────────────────────
+const inventory = []; // array of { id, label, contents }
+function syncInv() {
+  const list = document.getElementById('inv-list');
+  if (inventory.length === 0) { list.innerHTML = '<div class="iempty">empty</div>'; return; }
+  list.innerHTML = inventory.map(it => `<div class="iitem">• ${it.label}</div>`).join('');
+}
+
+function tryReact(a, b) {
+  // Very small reaction table (real chemistry, played fast)
+  const aId = Object.keys(a.contents).join('+'); const bId = Object.keys(b.contents).join('+');
+  const pair = [aId, bId].sort().join('|');
+  const reactions = {
+    'H2SO4|NaOH': { product: 'Na₂SO₄ + H₂O', color: 0xa3bffa, message: '⚗ Acid-base neutralisation. Heat released. Salt + water.' },
+    'CuSO4|NaOH': { product: 'Cu(OH)₂↓ + Na₂SO₄', color: 0x60a5fa, message: '⚗ Cu(OH)₂ precipitates as a pale-blue gelatinous solid. ΔH negative.' },
+    'CuSO4|H2O':  { product: 'CuSO₄·5H₂O (solution)', color: 0x3b82f6, message: '⚗ Hydration. The classic blue copper sulphate solution.' },
+    'H2O|NaOH':   { product: 'NaOH solution', color: 0x7c3aed, message: '⚗ Strong base in water. Exothermic, splash-risk.' },
+    'H2O|H2SO4':  { product: 'dilute H₂SO₄', color: 0xfde047, message: '⚗ ALWAYS acid into water. You did it right. Heat generated.' },
+  };
+  return reactions[pair] || null;
+}
+
+// ─── player movement (PointerLock) ─────────────────────────────────────
+const controls = new PointerLockControls(camera, renderer.domElement);
+const startBtn = document.getElementById('start-btn');
+const titlecard = document.getElementById('titlecard');
+startBtn.addEventListener('click', () => {
+  controls.lock();
+  titlecard.classList.add('hide');
+});
+controls.addEventListener('lock', () => { titlecard.classList.add('hide'); });
+controls.addEventListener('unlock', () => { /* keep playing */ });
+scene.add(controls.getObject());
+
+const move = { f: false, b: false, l: false, r: false };
+addEventListener('keydown', e => {
+  if (e.code === 'KeyW') move.f = true;
+  if (e.code === 'KeyS') move.b = true;
+  if (e.code === 'KeyA') move.l = true;
+  if (e.code === 'KeyD') move.r = true;
+  if (e.code === 'KeyE') tryInteract();
+  if (e.code === 'KeyR') resetReaction();
+});
+addEventListener('keyup', e => {
+  if (e.code === 'KeyW') move.f = false;
+  if (e.code === 'KeyS') move.b = false;
+  if (e.code === 'KeyA') move.l = false;
+  if (e.code === 'KeyD') move.r = false;
+});
+
+const SPEED = 4.5;
+const velocity = new THREE.Vector3();
+const direction = new THREE.Vector3();
+function updateMovement(dt) {
+  velocity.x -= velocity.x * 8 * dt;
+  velocity.z -= velocity.z * 8 * dt;
+  direction.set(0, 0, 0);
+  if (move.f) direction.z = -1;
+  if (move.b) direction.z = 1;
+  if (move.l) direction.x = -1;
+  if (move.r) direction.x = 1;
+  direction.normalize();
+  if (move.f || move.b) velocity.z += direction.z * SPEED * dt * 8;
+  if (move.l || move.r) velocity.x += direction.x * SPEED * dt * 8;
+  controls.moveRight(velocity.x * dt);
+  controls.moveForward(-velocity.z * dt);
+  // Clamp inside room
+  const p = controls.getObject().position;
+  p.x = Math.max(-ROOM.w/2 + 0.6, Math.min(ROOM.w/2 - 0.6, p.x));
+  p.z = Math.max(-ROOM.d/2 + 0.6, Math.min(ROOM.d/2 - 0.6, p.z));
+  p.y = 1.7; // keep camera at standing height
+}
+
+// ─── interaction ──────────────────────────────────────────────────────
+function nearestInteractable() {
+  const p = controls.getObject().position;
+  let best = null, bestDist = 2.0; // 2m reach
+  for (const it of interactables) {
+    const pos = it.position || (it.mesh && it.mesh.position) || (it.group && it.group.position);
+    if (!pos) continue;
+    const d = pos.distanceTo(p);
+    if (d < bestDist) { best = it; bestDist = d; }
+  }
+  return best;
+}
+
+function setStatus(text) { document.getElementById('status').innerHTML = text; }
+
+function tryInteract() {
+  if (dialogueActive) return; // ignore E during dialogue
+  const it = nearestInteractable();
+  if (!it) { setStatus('Nothing in reach. Walk closer.'); return; }
+  if (it.kind === 'npc') openDialogue(it);
+  else if (it.kind === 'beaker') pickUp(it);
+}
+
+function pickUp(b) {
+  if (Object.keys(b.contents).length === 0) {
+    setStatus('Empty beaker — nothing to pick up.');
+    return;
+  }
+  if (inventory.find(i => i.id === b.label)) {
+    setStatus('Already carrying that beaker.');
+    return;
+  }
+  inventory.push({ id: b.label, label: b.label, contents: b.contents, color: b.color });
+  syncInv();
+  setStatus(`Picked up <span style="color:#fbbf24">${b.label}</span>. ${inventory.length === 2 ? 'Press <span style="color:#fbbf24">R</span> to react.' : 'Pick up another to react.'}`);
+}
+
+function resetReaction() {
+  if (inventory.length < 2) { setStatus('Need 2 reagents. Pick up another beaker.'); return; }
+  const [a, b] = inventory.slice(-2);
+  const r = tryReact(a, b);
+  if (!r) {
+    setStatus(`No reaction between <strong>${a.label}</strong> and <strong>${b.label}</strong> at room conditions.`);
+    return;
+  }
+  // Visual: spawn a glowing puff at the central bench
+  const puff = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshStandardMaterial({ color: r.color, emissive: r.color, emissiveIntensity: 1.5, transparent: true, opacity: 0.7 }));
+  puff.position.set(0, 1.3, -3);
+  scene.add(puff);
+  let life = 0;
+  const fade = () => {
+    life += 0.03; puff.scale.setScalar(1 + life * 1.2);
+    puff.material.opacity = Math.max(0, 0.7 - life * 0.5);
+    puff.position.y += 0.01;
+    if (life < 1.4) requestAnimationFrame(fade);
+    else scene.remove(puff);
+  };
+  fade();
+  setStatus(`<span style="color:#10b981">${r.message}</span> · Product: <strong>${r.product}</strong>`);
+  // Empty inventory after reaction
+  inventory.length = 0;
+  syncInv();
+}
+
+// ─── dialogue ─────────────────────────────────────────────────────────
+let dialogueActive = false;
+const dialogueEl = document.getElementById('dialogue');
+const dSpeaker = document.getElementById('d-speaker');
+const dText = document.getElementById('d-text');
+const dChoices = document.getElementById('d-choices');
+function openDialogue(npc) {
+  if (npc.npcId !== 'femke') { setStatus('NPC not yet authored.'); return; }
+  controls.unlock();
+  dialogueActive = true;
+  showNode('root');
+}
+function closeDialogue() {
+  dialogueActive = false;
+  dialogueEl.classList.remove('show');
+  setTimeout(() => controls.lock(), 100);
+  setStatus('approach the white bench · press <span style="color:#fbbf24">E</span> when prompted');
+}
+
+const FEMKE_TREE = {
+  root: {
+    speaker: 'Prof. Femke',
+    text: "Hello there. I'm Prof. Femke. The lab is open from 7 to 19. Don't touch anything you can't name. Why are you here?",
+    choices: [
+      { label: "I want to learn chemistry from scratch.", next: 'tutorial', score: '+2' },
+      { label: "I'm here for the rare reagents — heard you have them.", next: 'wary', score: '-2' },
+      { label: "Just looking around, honestly.", next: 'neutral', score: '0' },
+    ],
+  },
+  tutorial: {
+    speaker: 'Prof. Femke',
+    text: "Good. The best chemists start by being honest about what they don't know. Pick up the H₂O and CuSO₄ on the benches behind me. Combine them — press R when you have both. You'll see hydration. Come back when you've done it.",
+    choices: [{ label: "Will do.", next: '__close' }],
+  },
+  wary: {
+    speaker: 'Prof. Femke',
+    text: "The rare reagents are locked. They will stay locked until you've earned the right to use them. That right is not granted — it's measured. Come back when you have something to show me.",
+    choices: [{ label: "Understood.", next: '__close' }],
+  },
+  neutral: {
+    speaker: 'Prof. Femke',
+    text: "Fair enough. Look around. The bench is for collaborators, not tourists, so stay this side of the yellow tape. If you decide to take this seriously, find me again — I'll know.",
+    choices: [{ label: "Thanks, I will.", next: '__close' }],
+  },
+};
+
+function showNode(id) {
+  if (id === '__close') return closeDialogue();
+  const n = FEMKE_TREE[id];
+  if (!n) return closeDialogue();
+  dSpeaker.textContent = n.speaker;
+  dText.textContent = n.text;
+  dChoices.innerHTML = '';
+  for (const c of n.choices) {
+    const btn = document.createElement('button');
+    btn.textContent = `→  ${c.label}` + (c.score && c.score !== '0' ? `  <${c.score}>` : '');
+    btn.addEventListener('click', () => showNode(c.next));
+    dChoices.appendChild(btn);
+  }
+  dialogueEl.classList.add('show');
+}
+
+// ─── day/night clock + sky tint ───────────────────────────────────────
+let inGameHour = 12; // start at midday
+const phaseLabel = document.getElementById('phase-label');
+function updateDayNight(dt) {
+  // 24-min real-time per in-game day per world-config spec
+  inGameHour = (inGameHour + dt / 60) % 24;
+  // Compute sun angle + intensity + sky color
+  const t = inGameHour / 24;
+  const sunAngle = (t - 0.25) * Math.PI * 2; // sunrise at 6, noon at 12, sunset at 18
+  sun.position.set(Math.cos(sunAngle) * 12, Math.max(0.5, Math.sin(sunAngle) * 12), 6);
+  const intensity = Math.max(0.05, Math.sin(sunAngle));
+  sun.intensity = intensity * 1.8 + 0.1;
+  // Sky color
+  let skyColor;
+  if (inGameHour < 5) skyColor = 0x0a1628;       // deep night
+  else if (inGameHour < 7) skyColor = 0x1f3a5f;  // dawn
+  else if (inGameHour < 11) skyColor = 0xa3bffa; // morning
+  else if (inGameHour < 15) skyColor = 0xcbd5ff; // midday
+  else if (inGameHour < 18) skyColor = 0xfbbf24; // afternoon
+  else if (inGameHour < 20) skyColor = 0xfb923c; // dusk
+  else if (inGameHour < 22) skyColor = 0x1e293b; // evening
+  else skyColor = 0x0a1628;
+  scene.background = new THREE.Color(skyColor);
+  scene.fog.color.setHex(skyColor);
+  // Phase label
+  let phase = 'midday';
+  if (inGameHour < 5) phase = 'deep-night';
+  else if (inGameHour < 7) phase = 'dawn';
+  else if (inGameHour < 11) phase = 'morning';
+  else if (inGameHour < 15) phase = 'midday';
+  else if (inGameHour < 18) phase = 'afternoon';
+  else if (inGameHour < 20) phase = 'dusk';
+  else if (inGameHour < 22) phase = 'evening';
+  else phase = 'deep-night';
+  phaseLabel.textContent = `${phase} · ${Math.floor(inGameHour).toString().padStart(2, '0')}:${Math.floor((inGameHour % 1) * 60).toString().padStart(2, '0')}`;
+}
+
+// ─── render loop ──────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+function animate() {
+  const dt = Math.min(0.05, clock.getDelta());
+  if (controls.isLocked) updateMovement(dt);
+  updateDayNight(dt);
+  // Femke idle bob
+  femkeGroup.position.y = Math.sin(clock.getElapsedTime() * 1.4) * 0.02;
+  // Update prompt based on what's nearby
+  if (controls.isLocked && !dialogueActive) {
+    const it = nearestInteractable();
+    if (it) {
+      if (it.kind === 'npc') setStatus(`<strong>${it.label}</strong> · press <span style="color:#fbbf24">E</span> to talk`);
+      else setStatus(`<strong>${it.label}</strong> · press <span style="color:#fbbf24">E</span> to pick up · ${inventory.length === 2 ? '<span style="color:#fbbf24">R</span> to react' : ''}`);
+    } else {
+      setStatus(`Walk to a beaker or to <span style="color:#fbbf24">Femke</span>. ${inventory.length} carried.`);
+    }
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+syncInv();
+</script>
+</body>
+</html>
