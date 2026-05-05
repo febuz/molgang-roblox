@@ -673,11 +673,12 @@ app.post('/api/autoresearch', async (req, res) => {
     const r = await autoresearch.research({
       agent,
       question,
-      sources: Array.isArray(req.body?.sources) ? req.body.sources : ['codegraph'],
+      sources: Array.isArray(req.body?.sources) ? req.body.sources : ['corpus', 'codegraph'],
       staticContext: Array.isArray(req.body?.staticContext) ? req.body.staticContext : undefined,
       maxSubQuestions: Number(req.body?.maxSubQuestions) || undefined,
       maxDepth: Number(req.body?.maxDepth) || undefined,
       rootDir: REPO_ROOT,
+      lightragClient: (req.app as any).locals.lightrag,
     });
     res.json({ success: true, ...r });
   } catch (e: any) { res.status(502).json({ success: false, error: e.message }); }

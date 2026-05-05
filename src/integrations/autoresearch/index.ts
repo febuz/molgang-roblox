@@ -23,21 +23,26 @@
 
 import * as lmstudio from '../../lmstudio';
 import * as codegraph from '../codegraph';
+import * as corpus from '../corpus';
+import type { LightRAGClient } from '../lightrag/client';
 import * as path from 'path';
 
 export interface AutoResearchOptions {
   agent: string;                  // Vice, Kimi, Analyst, etc.
   question: string;
   /**
-   * Probe sources the loop is allowed to call. Default: ['codegraph'].
+   * Probe sources the loop is allowed to call. Default: ['corpus', 'codegraph'].
    * 'static' mode uses only the `staticContext` array; useful for tests.
+   * 'corpus' uses the vector-embedded knowledge layer (chemistry, wiki,
+   * forum threads, repo passages — everything ingested into Neo4j Corpus).
    */
-  sources?: ('codegraph' | 'lightrag' | 'static')[];
+  sources?: ('codegraph' | 'corpus' | 'lightrag' | 'static')[];
   staticContext?: string[];
   maxSubQuestions?: number;        // default 4
   maxDepth?: number;               // default 1 (single critique pass)
   rootDir?: string;                // for codegraph
   systemPrompt?: string;           // override the per-agent persona
+  lightragClient?: LightRAGClient; // required when 'corpus' is in sources
 }
 
 export interface ResearchTrace {
@@ -104,6 +109,21 @@ async function probeCodegraph(rootDir: string, subQ: string): Promise<string> {
   return lines.join('\n');
 }
 
+/** Hit the corpus vector index. Returns top-K passages formatted as
+ *  evidence lines the synthesizer can cite. Skips if the corpus turns
+ *  up nothing (so the loop falls through to the next configured source). */
+async function probeCorpus(client: LightRAGClient, subQ: string): Promise<string> {
+  try {
+    const hits = await corpus.search(client, subQ, { k: 4, minScore: 0.55 });
+    if (!hits.length) return '';
+    return hits
+      .map(h => `[${h.score.toFixed(3)}] ${h.source} — ${(h.title || '').slice(0, 60)}\n  ${h.content.replace(/\s+/g, ' ').slice(0, 320)}…`)
+      .join('\n');
+  } catch (e: any) {
+    return `(corpus probe failed: ${e.message})`;
+  }
+}
+
 async function probeStatic(staticContext: string[], subQ: string): Promise<string> {
   if (!staticContext.length) return '(no static context provided)';
   // Naive: keyword overlap to pick the 3 most-relevant items.
@@ -117,10 +137,16 @@ async function probeStatic(staticContext: string[], subQ: string): Promise<strin
 }
 
 async function probe(opts: AutoResearchOptions, subQ: string): Promise<{ output: string; source: string }> {
-  const sources = opts.sources || ['codegraph'];
+  // Corpus first — semantic search is broad (chemistry data, wiki, forum,
+  // repo passages all ingested), so it usually has the best shot. Fall
+  // through to codegraph for structural questions, static for tests.
+  const sources = opts.sources || ['corpus', 'codegraph'];
   const root = opts.rootDir || path.resolve(__dirname, '..', '..', '..');
   for (const src of sources) {
-    if (src === 'codegraph') {
+    if (src === 'corpus' && opts.lightragClient) {
+      const r = await probeCorpus(opts.lightragClient, subQ);
+      if (r && !r.startsWith('(corpus probe failed')) return { output: r, source: 'corpus' };
+    } else if (src === 'codegraph') {
       const r = await probeCodegraph(root, subQ);
       if (r && !r.startsWith('No exact codegraph hit')) return { output: r, source: 'codegraph' };
     } else if (src === 'static') {
