@@ -22,6 +22,8 @@ DOCS = os.path.join(os.path.dirname(__file__), "..", "docs")
 ENTRIES = [
     ("head",  "coordinator-charter", "Coordinator Charter (PO/Scrum-Master)", "CLAUDE-COORDINATOR-CHARTER.md", False),
     ("head",  "product-catalog",     "Product Catalog (P1/P2/P3)",            "PRODUCTS.md",                   True),
+    ("head",  "capability-charter",  "Capability & Data-Maturity Charter",    "CAPABILITY-CHARTER.md",         True),
+    ("hands", "headroom",            "Headroom token-saver",                  "HEADROOM.md",                   False),
     ("hands", "architecture",        "VirtualPC Architecture",                "VIRTUALPC-ARCHITECTURE.md",     True),
     ("hands", "scrum-charters",      "Scrum Charters",                        "SCRUM-CHARTERS.md",             False),
     ("hands", "coding-standards",    "Coding Standards",                      "CODING-STANDARDS.md",           False),
