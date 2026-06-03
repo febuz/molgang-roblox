@@ -52,6 +52,12 @@ export class OpenClawHandler {
         cmd.status = 'failed';
       }
 
+      // Move the command OUT of the active queue into history. Previously it
+      // was left in commandQueue too, so completed commands were double-counted
+      // in getStats()/getCommandHistory() and the queue grew without bound.
+      const qi = this.commandQueue.indexOf(cmd);
+      if (qi !== -1) this.commandQueue.splice(qi, 1);
+
       this.executedCommands.push(cmd);
       if (this.executedCommands.length > 1000) {
         this.executedCommands.shift();

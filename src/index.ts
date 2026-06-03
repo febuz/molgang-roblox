@@ -70,6 +70,7 @@ import { registerDataQualityRoutes } from './data-quality';
 import { registerFinanceRoutes } from './finance';
 import { registerGpuRoutes, getGpuAvailable } from './gpu';
 import { registerQueryRoutes } from './query-builder';
+import { registerSpectroscopyRoutes } from './spectroscopy';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -106,6 +107,8 @@ registerFinanceRoutes(app);
 registerGpuRoutes(app);
 // Query builder — saved, parameterised, versioned queries over the knowledge surfaces.
 registerQueryRoutes(app);
+// Spectroscopy — ingest + peak detection for real spectra (Engel QChem payload).
+registerSpectroscopyRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {

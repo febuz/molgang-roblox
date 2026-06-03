@@ -47,6 +47,9 @@ export class CollaborationManager {
   private collaborations: Map<string, Collaboration> = new Map();
   private workspaces: Map<string, SharedWorkspace> = new Map();
   private conversations: Map<string, Message[]> = new Map();
+  // Monotonic suffix so ids created in the same millisecond don't collide
+  // (otherwise rapid create* calls overwrite in the maps / produce dup doc ids).
+  private idSeq: number = 0;
 
   /**
    * Start collaboration
@@ -57,7 +60,7 @@ export class CollaborationManager {
     priority: string = 'medium'
   ): Collaboration {
     const collab: Collaboration = {
-      id: `collab_${Date.now()}`,
+      id: `collab_${Date.now()}_${this.idSeq++}`,
       type,
       participants,
       startTime: new Date(),
@@ -83,7 +86,7 @@ export class CollaborationManager {
     if (!collab) return null;
 
     const message: Message = {
-      id: `msg_${Date.now()}`,
+      id: `msg_${Date.now()}_${this.idSeq++}`,
       author,
       content,
       timestamp: new Date(),
@@ -100,7 +103,7 @@ export class CollaborationManager {
    */
   createWorkspace(name: string, owner: string, members: string[]): SharedWorkspace {
     const workspace: SharedWorkspace = {
-      id: `workspace_${Date.now()}`,
+      id: `workspace_${Date.now()}_${this.idSeq++}`,
       name,
       owner,
       members: [owner, ...members],
@@ -121,7 +124,7 @@ export class CollaborationManager {
     if (!workspace) return null;
 
     const doc: Document = {
-      id: `doc_${Date.now()}`,
+      id: `doc_${Date.now()}_${this.idSeq++}`,
       title,
       content,
       author,

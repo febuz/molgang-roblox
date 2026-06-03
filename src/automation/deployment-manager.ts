@@ -31,13 +31,16 @@ export class DeploymentManager {
   private deployments: Map<string, Deployment> = new Map();
   private healthChecks: Map<string, HealthCheck> = new Map();
   private rollbackStack: Deployment[] = [];
+  // Monotonic suffix: two deployments started in the same ms must not share an
+  // id (a collision would overwrite the first in the map and break rollback).
+  private idSeq = 0;
 
   /**
    * Start deployment
    */
   startDeployment(version: string, environment: string, services: string[]): Deployment {
     const deployment: Deployment = {
-      id: `deploy_${Date.now()}`,
+      id: `deploy_${Date.now()}_${this.idSeq++}`,
       version,
       timestamp: new Date(),
       status: 'deploying',

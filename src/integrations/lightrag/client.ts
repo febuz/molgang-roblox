@@ -31,6 +31,10 @@ export interface QueryResult {
 export class LightRAGClient {
   private driver: Driver;
   private queryCache = new Map<string, any>();
+  // Monotonic suffix so two nodes added in the same millisecond get distinct
+  // ids — otherwise CREATE would produce duplicate-id graph nodes (corrupting
+  // the shared knowledge graph under bulk ingest).
+  private nodeSeq = 0;
 
   constructor(config: {
     neo4j_url: string;
@@ -122,7 +126,7 @@ export class LightRAGClient {
    * Add a fact/decision to the graph
    */
   async addNode(node: Omit<GraphNode, 'id' | 'created_at'>): Promise<GraphNode> {
-    const id = `node_${Date.now()}`;
+    const id = `node_${Date.now()}_${this.nodeSeq++}`;
 
     // Return in-memory node if not connected
     if (!this.connected) {
