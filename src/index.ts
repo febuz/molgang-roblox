@@ -67,6 +67,7 @@ import * as kami from './integrations/kami';
 import * as corpus from './integrations/corpus';
 import { registerPlanRoutes } from './plan-review';
 import { registerDataQualityRoutes } from './data-quality';
+import { registerFinanceRoutes } from './finance';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
@@ -95,6 +96,8 @@ app.use(express.json({ limit: '6mb' }));
 registerPlanRoutes(app);
 // Data-quality daemon — continuous profiling + SLA on the platform's datasets.
 registerDataQualityRoutes(app);
+// Finance — intangible-asset (immateriële activa) capitalization report + ROI.
+registerFinanceRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
