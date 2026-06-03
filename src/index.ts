@@ -41,6 +41,9 @@ import SpecialistDashboards from './auth/specialist-dashboards';
 import setupAuthRoutes from './auth/auth-routes';
 import setupAuditRoutes from './auth/audit-routes';
 import setupSpecialistRoutes from './auth/specialist-routes';
+import { AuditRetentionScheduler } from './auth/audit-retention';
+import { LoginAnomalyMonitor } from './security/loginAnomalyMonitor';
+import { setupOpenApiRoutes } from './api/openapi';
 import GitHubSync from './automation/github-sync';
 import setupGitHubRoutes from './automation/github-routes';
 import { SecurityDashboard } from './security/securityDashboard';
@@ -673,11 +676,12 @@ app.post('/api/autoresearch', async (req, res) => {
     const r = await autoresearch.research({
       agent,
       question,
-      sources: Array.isArray(req.body?.sources) ? req.body.sources : ['codegraph'],
+      sources: Array.isArray(req.body?.sources) ? req.body.sources : ['corpus', 'codegraph'],
       staticContext: Array.isArray(req.body?.staticContext) ? req.body.staticContext : undefined,
       maxSubQuestions: Number(req.body?.maxSubQuestions) || undefined,
       maxDepth: Number(req.body?.maxDepth) || undefined,
       rootDir: REPO_ROOT,
+      lightragClient: (req.app as any).locals.lightrag,
     });
     res.json({ success: true, ...r });
   } catch (e: any) { res.status(502).json({ success: false, error: e.message }); }
@@ -2151,10 +2155,21 @@ async function initialize() {
     // 5d. Setup API routes
     setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, authSystem, ceoAuditLogger, specialistDashboards, entityModel, dataFetcher, edbConfig });
 
-    // 5e. Setup authentication routes
-    setupAuthRoutes(app, authSystem, authMiddleware);
+    // 5e. Setup authentication routes (+ per-attempt login anomaly scoring)
+    const loginAnomalyMonitor = new LoginAnomalyMonitor();
+    setupAuthRoutes(app, authSystem, authMiddleware, { auditLogger: ceoAuditLogger, anomalyMonitor: loginAnomalyMonitor });
     setupAuditRoutes(app, ceoAuditLogger, authMiddleware);
     setupSpecialistRoutes(app, specialistDashboards, authMiddleware);
+
+    // 5e-bis. Audit log retention (purge events older than the window; auto unless AUDIT_RETENTION_AUTO=false)
+    const auditRetention = new AuditRetentionScheduler(ceoAuditLogger, {
+      retentionDays: parseInt(process.env.AUDIT_RETENTION_DAYS || '90'),
+      intervalMs: parseInt(process.env.AUDIT_RETENTION_INTERVAL_HOURS || '24') * 60 * 60 * 1000,
+      runOnStart: (process.env.AUDIT_RETENTION_RUN_ON_START || 'false').toLowerCase() === 'true',
+    });
+    if ((process.env.AUDIT_RETENTION_AUTO || 'true').toLowerCase() === 'true') {
+      auditRetention.start();
+    }
 
     // 5f. Setup GitHub sync (auto-sync disabled unless GITHUB_SYNC_AUTO=true)
     const githubSync = new GitHubSync({
@@ -2172,6 +2187,9 @@ async function initialize() {
     // 5g. Security dashboard (CEO composite view of audit + auth signals)
     const securityDashboard = new SecurityDashboard(authSystem, ceoAuditLogger);
     setupSecurityRoutes(app, securityDashboard, authMiddleware);
+
+    // 5g-bis. OpenAPI spec + Swagger UI (public) for the auth/audit/dashboard/security API
+    setupOpenApiRoutes(app);
 
     // 5h. Quality dashboard (CEO view of QA gate reports — mirrors the
     // security dashboard pattern but reads <project>/build/qa/*.json
@@ -3260,15 +3278,19 @@ function setupRoutes(app: express.Express, components: any) {
 
   app.get('/api/models/config', (req, res) => {
     try {
+      // Policy (2026-06-03): every agent runs on Claude Sonnet as primary;
+      // Athena (Principal Reviewer) is the lone Opus 4.8 PR gate. Derived
+      // from the registry so the map can never drift from the roster.
+      const agents: Record<string, { primary: string; fallback: string }> = {};
+      for (const meta of AGENT_META) {
+        const primary = meta.models[0] || 'claude-sonnet';
+        const fallback = meta.models.find(m => m !== primary) || 'claude-opus';
+        agents[meta.name.toLowerCase()] = { primary, fallback };
+      }
       const config = {
         success: true,
-        agents: {
-          fill: { primary: 'qwen-27b', fallback: 'claude-opus' },
-          kai: { primary: 'qwen-27b', fallback: 'claude-opus' },
-          zip: { primary: 'qwen-14b', fallback: 'claude-sonnet' },
-          mira: { primary: 'phi-4-15b', fallback: 'claude-opus' },
-          luna: { primary: 'deepseek-r1-8b', fallback: 'claude-sonnet' }
-        },
+        policy: 'sonnet-everywhere; Athena=opus reviewer',
+        agents,
         tier1_models: ['qwen-27b', 'qwen-14b', 'qwen-7b', 'deepseek-r1-8b', 'phi-4-15b', 'mistral-7b'],
         tier3_models: ['claude-opus', 'claude-sonnet', 'claude-haiku'],
         cost_optimization: {

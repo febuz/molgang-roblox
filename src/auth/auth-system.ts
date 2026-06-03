@@ -11,6 +11,7 @@
 
 import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { generateSecret, verifyTotp, otpauthUri } from './totp';
+import FieldCrypto from '../security/fieldCrypto';
 import logger from '../utils/logger';
 
 const SCRYPT_KEYLEN = 64;
@@ -137,9 +138,24 @@ export class AuthSystem {
   private sessions: Map<string, AuthToken> = new Map();
   private loginAttempts: Map<string, { count: number; lastAttempt: Date }> = new Map();
   private twoFactorChallenges: Map<string, TwoFactorChallenge> = new Map();
+  /** When set, TOTP secrets are encrypted at rest (backlog 6.5.20). */
+  private fieldCrypto?: FieldCrypto;
 
-  constructor() {
+  constructor(opts?: { fieldCrypto?: FieldCrypto }) {
+    // Explicit injection wins; otherwise auto-enable if FIELD_ENCRYPTION_KEY is set.
+    this.fieldCrypto = opts?.fieldCrypto ?? (process.env.FIELD_ENCRYPTION_KEY ? FieldCrypto.fromEnv() : undefined);
     this.initializeDefaultUsers();
+  }
+
+  /** Store form of a TOTP secret: encrypted when field encryption is enabled. */
+  private storeTotpSecret(secret: string): string {
+    return this.fieldCrypto ? this.fieldCrypto.encrypt(secret) : secret;
+  }
+
+  /** Usable plaintext TOTP secret for a user (decrypts at-rest ciphertext). */
+  private readTotpSecret(user: User): string | undefined {
+    if (!user.totpSecret) return undefined;
+    return this.fieldCrypto ? this.fieldCrypto.decryptField(user.totpSecret) as string : user.totpSecret;
   }
 
   /**
@@ -309,7 +325,7 @@ export class AuthSystem {
       return { success: false, error: 'Invalid 2FA state' };
     }
 
-    if (!verifyTotp(user.totpSecret, code)) {
+    if (!verifyTotp(this.readTotpSecret(user)!, code)) {
       logger.warn(`❌ 2FA failed for ${user.username} from ${challenge.ipAddress}`);
       return { success: false, error: 'Invalid 2FA code' };
     }
@@ -328,7 +344,7 @@ export class AuthSystem {
     if (!user) return { success: false, error: 'User not found' };
 
     const secret = generateSecret();
-    user.totpSecret = secret;
+    user.totpSecret = this.storeTotpSecret(secret);
     user.totpEnabled = false;
     return {
       success: true,
@@ -345,7 +361,7 @@ export class AuthSystem {
     const user = this.users.get(userId);
     if (!user) return { success: false, error: 'User not found' };
     if (!user.totpSecret) return { success: false, error: 'Run setupTotp first' };
-    if (!verifyTotp(user.totpSecret, code)) {
+    if (!verifyTotp(this.readTotpSecret(user)!, code)) {
       return { success: false, error: 'Invalid 2FA code' };
     }
     user.totpEnabled = true;
@@ -364,7 +380,7 @@ export class AuthSystem {
     if (!this.verifyPassword(password, user.passwordHash)) {
       return { success: false, error: 'Password incorrect' };
     }
-    if (!user.totpSecret || !verifyTotp(user.totpSecret, code)) {
+    if (!user.totpSecret || !verifyTotp(this.readTotpSecret(user)!, code)) {
       return { success: false, error: 'Invalid 2FA code' };
     }
     user.totpSecret = undefined;

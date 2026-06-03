@@ -16,14 +16,31 @@ import logger from '../../utils/logger';
 
 const BROKERS  = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
 const CLIENT_ID = process.env.KAFKA_CLIENT_ID || 'virtualpc-shared';
+// When the Kafka container is intentionally not running (consolidated
+// docker-compose drops kafka+zookeeper for single-box dev), set
+// KAFKA_DISABLED=1 to skip all connect attempts and silence the
+// otherwise-cascading ECONNREFUSED retry logs from kafkajs. Read
+// lazily inside the function — dotenv.config() runs after this
+// module is imported, so reading at module-load time misses the flag.
+function isKafkaDisabled(): boolean {
+  return /^(1|true|yes)$/i.test(process.env.KAFKA_DISABLED || '');
+}
 
 let _producer: KafkaProducer | null = null;
 let _connected = false;
 let _lastConnectAttempt = 0;
+let _disabledLogged = false;
 const RECONNECT_BACKOFF_MS = 30_000;
 
 /** Idempotent. Safe to call multiple times. */
 export async function ensureSharedProducer(): Promise<KafkaProducer | null> {
+  if (isKafkaDisabled()) {
+    if (!_disabledLogged) {
+      logger.info('Kafka producer disabled via KAFKA_DISABLED=1 — events will not be published');
+      _disabledLogged = true;
+    }
+    return null;
+  }
   if (_connected && _producer) return _producer;
   // Throttle reconnect attempts so a wholly-offline Kafka doesn't burn CPU.
   if (Date.now() - _lastConnectAttempt < RECONNECT_BACKOFF_MS && !_connected) return null;

@@ -26,6 +26,10 @@ import { MODEL_COSTS } from '../../token-tracker';
 
 const BROKERS  = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
 const GROUP_ID = process.env.KAFKA_AUDIT_GROUP || 'virtualpc-audit';
+// Read lazily — dotenv.config() runs after this module is imported.
+function isKafkaDisabled(): boolean {
+  return /^(1|true|yes)$/i.test(process.env.KAFKA_DISABLED || '');
+}
 const TOPICS = [
   'agent.tasks', 'agent.results',
   'model.requests', 'model.responses',
@@ -161,6 +165,11 @@ let _running = false;
 
 export async function startAuditConsumer(): Promise<void> {
   if (_running) return;
+  if (isKafkaDisabled()) {
+    logger.info('Kafka audit consumer disabled via KAFKA_DISABLED=1 — audit log will not be populated');
+    loadCost();  // still expose any previously-flushed cost totals via the API
+    return;
+  }
   loadCost();
 
   const kafka = new Kafka({

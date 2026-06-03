@@ -380,16 +380,18 @@ quality, ~3× cheaper.
 
 ### 10.4 Ingest paths
 
-| Source                          | Owner    | Volume       |
-|---------------------------------|----------|--------------|
-| `shared/asset-registry.json`    | Atlas    | bulk on startup (`asset-graph.ts`) |
-| Governance + wiki entries       | Governor | bulk + real-time hooks (`governance-graph.ts`) |
-| Repo source + docs              | Kai      | corpus-ingest scan, embedded chunks |
-| IUPAC Gold Book terminology     | Governor | scheduled fetch + parse |
-| OpenStax Chemistry 2e (CC-BY)   | Mira     | bulk one-shot |
-| arXiv chem-ph abstracts         | Kimi     | weekly RSS pull |
-| PubChem compound summaries      | Atlas    | on-demand REST cache |
-| Decision rationales (Kafka)     | system   | streamed via `lightrag.updates` topic |
+| Source                          | Owner    | Volume       | Script |
+|---------------------------------|----------|--------------|--------|
+| `shared/asset-registry.json`    | Atlas    | bulk on startup (`asset-graph.ts`) | (auto) |
+| Governance + wiki entries       | Governor | bulk + real-time hooks (`governance-graph.ts`) | `ingest-wiki-into-corpus.js` |
+| Repo source + docs              | Kai      | corpus-ingest scan, embedded chunks | `ingest-corpus.js` |
+| Forum threads + scrum bugs + persona prompts | Kai | bulk on demand | `ingest-discussions-into-corpus.js` |
+| Chemistry: 118 elements + 10 recipes + reaction conditions | Atlas | bulk on demand from molgang-web FastAPI | `ingest-chemistry-into-corpus.js` |
+| IUPAC Gold Book terminology     | Governor | scheduled fetch + parse | (planned) |
+| OpenStax Chemistry 2e (CC-BY)   | Mira     | bulk one-shot | (planned) |
+| arXiv chem-ph abstracts         | Kimi     | weekly RSS pull | (planned) |
+| PubChem compound summaries      | Atlas    | on-demand REST cache | (planned) |
+| Decision rationales (Kafka)     | system   | streamed via `lightrag.updates` topic | (auto) |
 
 ### 10.5 Endpoints + MCP tools
 

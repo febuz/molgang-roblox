@@ -1,7 +1,7 @@
 [Unit]
 Description=VirtualPC API + agent system (port 3100)
-After=network.target ollama.service virtualpc-litellm.service
-Wants=ollama.service virtualpc-litellm.service
+After=network.target ollama.service
+Wants=ollama.service
 
 [Service]
 Type=simple
@@ -11,11 +11,10 @@ Type=simple
 # and uncomment the EnvironmentFile line below.
 WorkingDirectory=%h/virtualpc
 EnvironmentFile=-%h/.config/systemd/user/virtualpc.env
-# Route all model calls through the LiteLLM gateway
-# (deploy/docker-compose.litellm.yml). Falls back to LM_STUDIO_URL if
-# LITELLM_URL is empty — see src/lmstudio.ts.
-Environment=LITELLM_URL=http://127.0.0.1:4000/v1
-Environment=LITELLM_MASTER_KEY=sk-virtualpc-dev
+# LiteLLM gateway is no longer in the consolidated stack — model calls
+# go straight to LM Studio (:1234). To re-enable a gateway, set
+# LITELLM_URL=http://127.0.0.1:4000/v1 in virtualpc.env above.
+# (Old: Environment=LITELLM_URL=http://127.0.0.1:4000/v1)
 # Neo4j credentials for the LightRAG knowledge graph. Brought online May 2026
 # via `docker run --name virtualpc-neo4j … neo4j:latest`. Password stored
 # in this unit file (low-sensitivity, single-host dev). Rotate to a
@@ -23,6 +22,9 @@ Environment=LITELLM_MASTER_KEY=sk-virtualpc-dev
 Environment=NEO4J_URI=bolt://localhost:7687
 Environment=NEO4J_USER=neo4j
 Environment=NEO4J_PASSWORD=virtualpc-neo4j-pass
+# Kafka container is dropped from the consolidated stack — silence the
+# kafkajs ECONNREFUSED retry loop. Unset to re-enable when Kafka returns.
+Environment=KAFKA_DISABLED=1
 Environment=KAFKA_BROKERS=localhost:9092
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
