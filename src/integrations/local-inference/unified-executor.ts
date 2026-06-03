@@ -10,6 +10,7 @@
 
 import logger from '../../utils/logger';
 import OllamaClient from './ollama-client';
+import { secretOrEnv } from '../../security/secretsBootstrap';
 
 export interface ExecutionConfig {
   preferLocal: boolean; // Try local models first
@@ -184,7 +185,7 @@ export class UnifiedExecutor {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+          'x-api-key': secretOrEnv('api', 'ANTHROPIC_API_KEY') || '',
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({

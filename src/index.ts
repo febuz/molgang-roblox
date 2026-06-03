@@ -35,7 +35,7 @@ import { killSwitch } from './openclaw-kill-switch';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
 import AuthSystem from './auth/auth-system';
-import { loadSecrets, resolveFieldCrypto } from './security/secretsBootstrap';
+import { loadSecrets, resolveFieldCrypto, setActiveSecrets } from './security/secretsBootstrap';
 import AuthMiddleware from './auth/auth-middleware';
 import CEOAuditLogger from './auth/audit-logger';
 import SpecialistDashboards from './auth/specialist-dashboards';
@@ -2158,6 +2158,7 @@ async function initialize() {
     // infra layer. loadSecrets() returns null until Infisical is provisioned, so
     // this is non-breaking — AuthSystem keeps its prior env behavior meanwhile.
     const secrets = await loadSecrets();
+    setActiveSecrets(secrets); // process-wide accessor for migrated call sites (secretOrEnv)
     const authSystem = new AuthSystem({ fieldCrypto: secrets ? resolveFieldCrypto(secrets) : undefined });
     const authMiddleware = new AuthMiddleware(authSystem);
     const ceoAuditLogger = new CEOAuditLogger();
