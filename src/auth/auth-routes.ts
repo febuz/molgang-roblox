@@ -7,9 +7,66 @@ import express from 'express';
 import AuthSystem from './auth-system';
 import AuthMiddleware, { AuthRequest } from './auth-middleware';
 import { AdvancedRateLimiter } from '../security/rateLimiter';
+import CEOAuditLogger from './audit-logger';
+import { LoginAnomalyMonitor, LoginRiskAssessment } from '../security/loginAnomalyMonitor';
 import logger from '../utils/logger';
 
-export function setupAuthRoutes(app: express.Express, authSystem: AuthSystem, authMiddleware: AuthMiddleware) {
+export interface AuthRouteDeps {
+  /** When provided, anomalous logins are written to the audit trail. */
+  auditLogger?: CEOAuditLogger;
+  /** When provided, each login attempt is scored for anomalies. */
+  anomalyMonitor?: LoginAnomalyMonitor;
+}
+
+/**
+ * Score a login attempt for anomalies, record it into the monitor's history,
+ * and — when the risk is medium/high — write an audit event. Pure and
+ * dependency-injected so it can be unit-tested without an HTTP server.
+ *
+ * Returns the assessment, or null if no monitor was wired.
+ */
+export function processLoginAttempt(
+  attempt: { username: string; ipAddress: string; deviceId: string; location?: string; outcome: 'success' | 'failure' },
+  deps: AuthRouteDeps
+): LoginRiskAssessment | null {
+  const { anomalyMonitor, auditLogger } = deps;
+  if (!anomalyMonitor) return null;
+
+  const assessment = anomalyMonitor.assess({
+    username: attempt.username,
+    ipAddress: attempt.ipAddress,
+    deviceId: attempt.deviceId,
+    outcome: attempt.outcome,
+  });
+
+  if (auditLogger && assessment.level !== 'low') {
+    auditLogger.logEvent(
+      attempt.username,
+      attempt.username,
+      'unknown',
+      'invalid_access',
+      attempt.ipAddress,
+      attempt.deviceId,
+      attempt.location || 'unknown-location',
+      `Anomalous login (${assessment.level} risk): ${assessment.flags.join(', ') || 'no flags'}`,
+      attempt.outcome,
+      {
+        severity: assessment.level === 'high' ? 'critical' : 'warning',
+        action: 'login_anomaly',
+        details: { score: assessment.score, flags: assessment.flags },
+      }
+    );
+  }
+
+  return assessment;
+}
+
+export function setupAuthRoutes(
+  app: express.Express,
+  authSystem: AuthSystem,
+  authMiddleware: AuthMiddleware,
+  deps: AuthRouteDeps = {}
+) {
   // Rate limiting (one shared store across all auth routes)
   const limiter = new AdvancedRateLimiter();
 
@@ -48,6 +105,15 @@ export function setupAuthRoutes(app: express.Express, authSystem: AuthSystem, au
         deviceId,
         location
       });
+
+      // Score this attempt for anomalies (new device/IP, burst, velocity) and
+      // audit-log it when risky. Best-effort: never blocks the login outcome.
+      if (deps.anomalyMonitor && username) {
+        processLoginAttempt(
+          { username, ipAddress, deviceId, location, outcome: result.success ? 'success' : 'failure' },
+          deps
+        );
+      }
 
       if (!result.success) {
         if (result.requires2fa && result.challengeId) {

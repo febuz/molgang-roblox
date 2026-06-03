@@ -42,6 +42,7 @@ import setupAuthRoutes from './auth/auth-routes';
 import setupAuditRoutes from './auth/audit-routes';
 import setupSpecialistRoutes from './auth/specialist-routes';
 import { AuditRetentionScheduler } from './auth/audit-retention';
+import { LoginAnomalyMonitor } from './security/loginAnomalyMonitor';
 import { setupOpenApiRoutes } from './api/openapi';
 import GitHubSync from './automation/github-sync';
 import setupGitHubRoutes from './automation/github-routes';
@@ -2154,8 +2155,9 @@ async function initialize() {
     // 5d. Setup API routes
     setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, authSystem, ceoAuditLogger, specialistDashboards, entityModel, dataFetcher, edbConfig });
 
-    // 5e. Setup authentication routes
-    setupAuthRoutes(app, authSystem, authMiddleware);
+    // 5e. Setup authentication routes (+ per-attempt login anomaly scoring)
+    const loginAnomalyMonitor = new LoginAnomalyMonitor();
+    setupAuthRoutes(app, authSystem, authMiddleware, { auditLogger: ceoAuditLogger, anomalyMonitor: loginAnomalyMonitor });
     setupAuditRoutes(app, ceoAuditLogger, authMiddleware);
     setupSpecialistRoutes(app, specialistDashboards, authMiddleware);
 
