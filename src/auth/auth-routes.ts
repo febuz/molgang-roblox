@@ -76,6 +76,42 @@ export function processLoginAttempt(
   }
 }
 
+/** Result of a route-level guard check. */
+export interface GuardResult {
+  allowed: boolean;
+  status?: number;
+  error?: string;
+}
+
+/**
+ * Guard for DELETE /api/auth/sessions/:sessionId — a CEO must not revoke the
+ * session backing the current request (that's self-lockout; use logout).
+ */
+export function checkSessionRevocation(targetSessionId: string, currentSessionId?: string): GuardResult {
+  if (targetSessionId === currentSessionId) {
+    return { allowed: false, status: 403, error: 'Cannot revoke your own active session (use logout)' };
+  }
+  return { allowed: true };
+}
+
+/**
+ * Guard for POST /api/auth/sessions/revoke-user — validate the username,
+ * require the user to exist (consistent 404, no silent enumeration), and block
+ * a CEO from revoking ALL of their own sessions (self-lockout).
+ */
+export function checkRevokeUser(username: unknown, currentUsername: string, userExists: boolean): GuardResult {
+  if (!username || typeof username !== 'string') {
+    return { allowed: false, status: 400, error: 'username is required' };
+  }
+  if (!userExists) {
+    return { allowed: false, status: 404, error: 'User not found' };
+  }
+  if (username === currentUsername) {
+    return { allowed: false, status: 403, error: 'Cannot revoke all of your own sessions (use logout)' };
+  }
+  return { allowed: true };
+}
+
 export function setupAuthRoutes(
   app: express.Express,
   authSystem: AuthSystem,
@@ -431,6 +467,10 @@ export function setupAuthRoutes(
     authMiddleware.requireRole('ceo'),
     (req: AuthRequest, res: express.Response) => {
       try {
+        const guard = checkSessionRevocation(req.params.sessionId, req.user?.sessionId);
+        if (!guard.allowed) {
+          return res.status(guard.status!).json({ success: false, error: guard.error });
+        }
         const revoked = authSystem.revokeSession(req.params.sessionId);
         if (!revoked) {
           return res.status(404).json({ success: false, error: 'Session not found' });
@@ -453,8 +493,11 @@ export function setupAuthRoutes(
     (req: AuthRequest, res: express.Response) => {
       try {
         const { username } = req.body || {};
-        if (!username || typeof username !== 'string') {
-          return res.status(400).json({ success: false, error: 'username is required' });
+        const userExists =
+          typeof username === 'string' && authSystem.getAllUsers().some(u => u.username === username);
+        const guard = checkRevokeUser(username, req.user?.username || '', userExists);
+        if (!guard.allowed) {
+          return res.status(guard.status!).json({ success: false, error: guard.error });
         }
         const revoked = authSystem.revokeUserSessions(username);
         return res.json({ success: true, revoked });
