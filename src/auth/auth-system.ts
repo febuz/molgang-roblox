@@ -140,10 +140,19 @@ export class AuthSystem {
   private twoFactorChallenges: Map<string, TwoFactorChallenge> = new Map();
   /** When set, TOTP secrets are encrypted at rest (backlog 6.5.20). */
   private fieldCrypto?: FieldCrypto;
+  /** When non-empty, CEO logins are only allowed from these IPs. */
+  private ceoIpAllowlist: string[];
 
-  constructor(opts?: { fieldCrypto?: FieldCrypto }) {
+  constructor(opts?: { fieldCrypto?: FieldCrypto; ceoIpAllowlist?: string[] }) {
     // Explicit injection wins; otherwise auto-enable if FIELD_ENCRYPTION_KEY is set.
     this.fieldCrypto = opts?.fieldCrypto ?? (process.env.FIELD_ENCRYPTION_KEY ? FieldCrypto.fromEnv() : undefined);
+    // CEO IP allowlist: injected, else CEO_IP_ALLOWLIST (comma-separated), else off.
+    this.ceoIpAllowlist =
+      opts?.ceoIpAllowlist ??
+      (process.env.CEO_IP_ALLOWLIST || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
     this.initializeDefaultUsers();
   }
 
@@ -294,6 +303,14 @@ export class AuthSystem {
 
     // Clear failed-attempt counter — password was correct.
     this.loginAttempts.delete(username);
+
+    // CEO IP allowlist: even with valid credentials, a CEO may only sign in
+    // from an approved network when an allowlist is configured. Checked after
+    // password verification so the policy isn't revealed to wrong-password probes.
+    if (user.role === 'ceo' && this.ceoIpAllowlist.length > 0 && !this.ceoIpAllowlist.includes(ipAddress || '')) {
+      logger.warn(`🚫 CEO login from non-allowlisted IP: ${username} from ${ipAddress}`);
+      return { success: false, error: 'Access denied from this network' };
+    }
 
     // If 2FA is enabled, do not issue a session yet — return a challenge.
     if (user.totpEnabled && user.totpSecret) {

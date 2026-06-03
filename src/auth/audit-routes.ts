@@ -200,7 +200,7 @@ export function setupAuditRoutes(app: express.Express, auditLogger: CEOAuditLogg
         const d = new Date(v as string);
         return isNaN(d.getTime()) ? undefined : d;
       };
-      const limit = Math.min(parseInt(q.limit as string) || 100, 1000);
+      const limit = Math.min(Math.max(parseInt(q.limit as string) || 100, 1), 1000);
       const events = auditLogger.search(
         {
           username: (q.username as string) || undefined,

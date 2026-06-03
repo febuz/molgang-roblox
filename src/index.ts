@@ -64,6 +64,7 @@ import * as scrum from './integrations/scrum';
 import * as forum from './integrations/forum';
 import * as kami from './integrations/kami';
 import * as corpus from './integrations/corpus';
+import { registerPlanRoutes } from './plan-review';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
@@ -87,6 +88,9 @@ const PORT = process.env.PORT || 3100;
 // Bumped from default 100kb so /api/migration/slag/claim can accept a base64-
 // encoded screenshot (~5 MB worst case after the ~33% base64 overhead).
 app.use(express.json({ limit: '6mb' }));
+// Plan review — make plans available from VirtualPC + per-section human comments
+// that relay back to the agents. See src/plan-review + /plan-review.html.
+registerPlanRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
