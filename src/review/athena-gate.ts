@@ -44,6 +44,14 @@ export interface AthenaVerdict {
   featureWorks: boolean;
   /** True only if Athena confirms she saw the unit + regression run on the whole. */
   reviewedTests: boolean;
+  /**
+   * True only if the branch adheres to docs/CODING-STANDARDS.md. Athena reviews
+   * as the most-senior PhD-level engineer: any real coding mistake, missing test
+   * for shipped behaviour, type hole, swallowed error, secret, or style break
+   * sets this false and BLOCKS the gate. Optional for back-compat — when omitted
+   * it is treated as adhered, but the reviewer should always set it explicitly.
+   */
+  standardsAdhered?: boolean;
   /** Athena's own approve/request-changes call, independent of the raw numbers. */
   approve: boolean;
   feedback: string[];
@@ -166,6 +174,7 @@ export function decideGate(input: GateInput): GateDecision {
   }
   if (!verdict.featureWorks) blocking.push('Athena could not confirm the feature works.');
   if (!verdict.reviewedTests) blocking.push('Athena has not yet reviewed the unit + regression run.');
+  if (verdict.standardsAdhered === false) blocking.push('Branch violates docs/CODING-STANDARDS.md — see feedback.');
   if (!verdict.approve) blocking.push('Athena requested changes on the diff.');
 
   if (environmental.length > 0) {

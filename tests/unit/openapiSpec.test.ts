@@ -23,7 +23,11 @@ const INVENTORY = [
   'get /api/auth/profile',
   'get /api/auth/users',
   'post /api/auth/users',
+  'post /api/auth/users/{userId}/status',
+  'delete /api/auth/users/{userId}',
   'get /api/auth/sessions',
+  'delete /api/auth/sessions/{sessionId}',
+  'post /api/auth/sessions/revoke-user',
   'get /api/audit/stats',
   'get /api/audit/events',
   'get /api/audit/events/user/{username}',
@@ -33,6 +37,7 @@ const INVENTORY = [
   'get /api/audit/export/csv',
   'get /api/audit/export/json',
   'post /api/audit/clear-old',
+  'get /api/audit/search',
   'get /api/dashboard/my',
   'get /api/dashboard/ceo',
   'get /api/dashboard/cto',
@@ -115,5 +120,21 @@ describe('OpenAPI spec (public/openapi.json)', () => {
     const loaded = loadOpenApiSpec();
     expect(loaded.openapi).toBe(spec.openapi);
     expect(Object.keys(loaded.paths).sort()).toEqual(Object.keys(spec.paths).sort());
+  });
+
+  it('loadOpenApiSpec() returns a deep-frozen object (no cache poisoning)', () => {
+    const loaded = loadOpenApiSpec();
+    expect(Object.isFrozen(loaded)).toBe(true);
+    expect(Object.isFrozen(loaded.paths)).toBe(true);
+    expect(Object.isFrozen(loaded.components.schemas)).toBe(true);
+    // Mutating a frozen object is a silent no-op in non-strict mode — assert
+    // the value is unchanged so a caller can't poison the shared cache.
+    const before = loaded.info.title;
+    try {
+      (loaded as any).info.title = 'HACKED';
+    } catch {
+      /* strict mode throws — also acceptable */
+    }
+    expect(loadOpenApiSpec().info.title).toBe(before);
   });
 });

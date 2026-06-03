@@ -8,6 +8,21 @@ Complete reference for VirtualPC REST API.
 https://api.virtualpc.com/api
 ```
 
+## Interactive API Docs (OpenAPI)
+
+A machine-readable OpenAPI 3.0 spec covers the auth, audit, dashboard, and
+security endpoints, with an interactive Swagger UI:
+
+```
+GET /api/openapi.json   # the spec (also served statically at /openapi.json)
+GET /api/docs           # Swagger UI (try-it-out console)
+```
+
+The spec declares a `bearerAuth` scheme — the bearer token is the `sessionId`
+returned by `POST /api/auth/login`. CEO/role-gated routes carry an explicit
+`security` requirement; `POST /api/auth/login` and `POST /api/auth/2fa/verify`
+are the only public routes.
+
 ## Authentication
 
 ### Bearer Token

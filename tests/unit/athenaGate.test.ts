@@ -30,7 +30,7 @@ Snapshots:   0 total
 `;
 
 function approvingVerdict(over: Partial<AthenaVerdict> = {}): AthenaVerdict {
-  return { featureWorks: true, reviewedTests: true, approve: true, feedback: [], ...over };
+  return { featureWorks: true, reviewedTests: true, standardsAdhered: true, approve: true, feedback: [], ...over };
 }
 
 describe('parseJestSummary', () => {
@@ -116,6 +116,12 @@ describe('decideGate', () => {
     const d = decideGate({ jest: greenUnit, verdict: approvingVerdict({ reviewedTests: false }) });
     expect(d.approved).toBe(false);
     expect(d.blocking.join(' ')).toMatch(/reviewed the unit/i);
+  });
+
+  it('BLOCKS when the branch violates coding standards, even with green tests', () => {
+    const d = decideGate({ jest: greenUnit, verdict: approvingVerdict({ standardsAdhered: false }) });
+    expect(d.approved).toBe(false);
+    expect(d.blocking.join(' ')).toMatch(/CODING-STANDARDS/i);
   });
 
   it('BLOCKS when Athena requests changes even if tests are green', () => {

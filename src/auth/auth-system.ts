@@ -155,7 +155,15 @@ export class AuthSystem {
   /** Usable plaintext TOTP secret for a user (decrypts at-rest ciphertext). */
   private readTotpSecret(user: User): string | undefined {
     if (!user.totpSecret) return undefined;
-    return this.fieldCrypto ? this.fieldCrypto.decryptField(user.totpSecret) as string : user.totpSecret;
+    if (!this.fieldCrypto) return user.totpSecret;
+    try {
+      return this.fieldCrypto.decryptField(user.totpSecret) as string;
+    } catch (error) {
+      // Corrupted/undecryptable secret at rest: fail closed (treated as no
+      // secret -> "Invalid 2FA state") rather than throwing a 500.
+      logger.error('readTotpSecret: failed to decrypt stored TOTP secret', error);
+      return undefined;
+    }
   }
 
   /**
@@ -308,7 +316,10 @@ export class AuthSystem {
    * Exchange a 2FA challenge + TOTP code for a real session token.
    * Single-use: the challenge is consumed whether or not the code matches.
    */
-  verifyTwoFactor(challengeId: string, code: string): { success: boolean; token?: AuthToken; error?: string } {
+  verifyTwoFactor(
+    challengeId: string,
+    code: string
+  ): { success: boolean; token?: AuthToken; error?: string; username?: string } {
     const challenge = this.twoFactorChallenges.get(challengeId);
     if (!challenge) {
       return { success: false, error: 'Invalid or expired 2FA challenge' };
@@ -322,16 +333,19 @@ export class AuthSystem {
 
     const user = this.users.get(challenge.userId);
     if (!user || !user.totpEnabled || !user.totpSecret) {
-      return { success: false, error: 'Invalid 2FA state' };
+      return { success: false, error: 'Invalid 2FA state', username: user?.username };
     }
 
-    if (!verifyTotp(this.readTotpSecret(user)!, code)) {
+    const secret = this.readTotpSecret(user);
+    // username is surfaced on both paths so the caller can feed the attempt to
+    // anomaly monitoring even when the code is wrong (TOTP brute-force defence).
+    if (!secret || !verifyTotp(secret, code)) {
       logger.warn(`❌ 2FA failed for ${user.username} from ${challenge.ipAddress}`);
-      return { success: false, error: 'Invalid 2FA code' };
+      return { success: false, error: 'Invalid 2FA code', username: user.username };
     }
 
     logger.info(`✅ 2FA passed: ${user.username} from ${challenge.ipAddress} [${challenge.deviceId}]`);
-    return { success: true, token: this.issueSession(user) };
+    return { success: true, token: this.issueSession(user), username: user.username };
   }
 
   /**
@@ -443,6 +457,70 @@ export class AuthSystem {
   }
 
   /**
+   * List active (non-expired) sessions with safe metadata for admin views
+   * (backlog 6.5.14). Expired sessions are pruned as a side effect.
+   */
+  getActiveSessions(): Array<{
+    sessionId: string;
+    userId: string;
+    username: string;
+    role: UserRole;
+    issuedAt: Date;
+    expiresAt: Date;
+  }> {
+    const now = Date.now();
+    const active: Array<{
+      sessionId: string;
+      userId: string;
+      username: string;
+      role: UserRole;
+      issuedAt: Date;
+      expiresAt: Date;
+    }> = [];
+    for (const [sessionId, token] of this.sessions.entries()) {
+      if (token.expiresAt.getTime() <= now) {
+        this.sessions.delete(sessionId); // prune expired
+        continue;
+      }
+      active.push({
+        sessionId,
+        userId: token.userId,
+        username: token.username,
+        role: token.role,
+        issuedAt: token.issuedAt,
+        expiresAt: token.expiresAt,
+      });
+    }
+    return active;
+  }
+
+  /**
+   * Admin: revoke a single session by id. Returns true if a session was
+   * actually removed (false if the id was unknown / already gone).
+   */
+  revokeSession(sessionId: string): boolean {
+    const existed = this.sessions.delete(sessionId);
+    if (existed) logger.info(`✓ Session revoked: ${sessionId}`);
+    return existed;
+  }
+
+  /**
+   * Admin: revoke every active session for a username (e.g. on compromise).
+   * Returns the number of sessions removed.
+   */
+  revokeUserSessions(username: string): number {
+    let removed = 0;
+    for (const [sessionId, token] of this.sessions.entries()) {
+      if (token.username === username) {
+        this.sessions.delete(sessionId);
+        removed++;
+      }
+    }
+    if (removed) logger.info(`✓ Revoked ${removed} session(s) for user: ${username}`);
+    return removed;
+  }
+
+  /**
    * Get user by ID
    */
   getUser(userId: string): User | null {
@@ -498,6 +576,77 @@ export class AuthSystem {
     logger.info(`✓ User created: ${username} (${role})`);
 
     return { success: true, user };
+  }
+
+  /**
+   * Role privilege levels for hierarchy enforcement. Higher = more privileged.
+   * A user may manage (suspend/delete) targets of equal-or-lower privilege but
+   * never one ranked above them — so a CTO cannot touch a CEO. The dangerous
+   * equal-rank case (a CEO acting on another CEO) is bounded separately by the
+   * last-active-CEO lockout guard below.
+   */
+  private static readonly PRIVILEGE: Record<UserRole, number> = {
+    ceo: 3,
+    cto: 2,
+    developer: 1,
+    artist: 1,
+    tech_artist: 1,
+  };
+
+  /** True if actorRole may manage targetRole (equal or higher privilege than the target). */
+  canManage(actorRole: UserRole, targetRole: UserRole): boolean {
+    return AuthSystem.PRIVILEGE[actorRole] >= AuthSystem.PRIVILEGE[targetRole];
+  }
+
+  /** Count active users holding a given role (used for lockout protection). */
+  private countActiveByRole(role: UserRole): number {
+    return Array.from(this.users.values()).filter(u => u.role === role && u.status === 'active').length;
+  }
+
+  /**
+   * Change a user's status (active/inactive/suspended). Enforces role
+   * hierarchy and, when deactivating, revokes that user's active sessions so a
+   * suspended account can't keep using an existing token.
+   */
+  setUserStatus(
+    actorRole: UserRole,
+    userId: string,
+    status: 'active' | 'inactive' | 'suspended'
+  ): { success: boolean; error?: string } {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found' };
+    if (!this.canManage(actorRole, user.role)) {
+      return { success: false, error: 'Insufficient privilege to manage this user' };
+    }
+    // Don't allow deactivating the last active CEO (lockout protection).
+    if (user.role === 'ceo' && status !== 'active' && this.countActiveByRole('ceo') <= 1) {
+      return { success: false, error: 'Cannot deactivate the last active CEO' };
+    }
+    user.status = status;
+    if (status !== 'active') {
+      this.revokeUserSessions(user.username);
+    }
+    logger.info(`✓ User status changed: ${user.username} -> ${status}`);
+    return { success: true };
+  }
+
+  /**
+   * Delete a user. Enforces role hierarchy, blocks deleting the last active
+   * CEO, and revokes the user's sessions.
+   */
+  deleteUser(actorRole: UserRole, userId: string): { success: boolean; error?: string } {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found' };
+    if (!this.canManage(actorRole, user.role)) {
+      return { success: false, error: 'Insufficient privilege to delete this user' };
+    }
+    if (user.role === 'ceo' && this.countActiveByRole('ceo') <= 1) {
+      return { success: false, error: 'Cannot delete the last active CEO' };
+    }
+    this.revokeUserSessions(user.username);
+    this.users.delete(userId);
+    logger.info(`✓ User deleted: ${user.username}`);
+    return { success: true };
   }
 
   /**
