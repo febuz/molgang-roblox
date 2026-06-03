@@ -2,6 +2,7 @@ import {
   estimateHours,
   capitalizeFeature,
   balanceSheet,
+  featureROI,
   CapitalizationPolicy,
   FeatureRecord,
 } from '../../src/finance/feature-capitalization';
@@ -71,6 +72,28 @@ describe('capitalizeFeature', () => {
     );
     expect(c.accumulatedAmortization).toBe(800);
     expect(c.netBookValue).toBe(0);
+  });
+});
+
+describe('featureROI (token-aware economic reasoning)', () => {
+  it('says build when business value clears the cost (incl. tokens)', () => {
+    const f: FeatureRecord = { id: 'x', title: 'High value', phase: 'development', effort: { hours: 10 }, businessValue: 5000 };
+    const r = featureROI(f, policy);            // cost 1000, value 5000 → roi 5
+    expect(r.cost).toBe(1000);
+    expect(r.roi).toBe(5);
+    expect(r.verdict).toBe('build');
+  });
+  it('says skip when value cannot justify the token/effort spend', () => {
+    const f: FeatureRecord = { id: 'y', title: 'Token sink', phase: 'development', effort: { hours: 10, tokens: 0 }, businessValue: 300 };
+    const r = featureROI(f, policy);            // cost 1000, value 300 → roi 0.3
+    expect(r.verdict).toBe('skip');
+  });
+  it('counts tokens as cost so a token-heavy feature has lower ROI', () => {
+    const tokenPolicy = { ...policy, tokensPerHour: 100 };
+    const cheap = featureROI({ id: 'a', title: 'a', phase: 'development', effort: { hours: 5 }, businessValue: 1000 }, tokenPolicy);
+    const tokenHeavy = featureROI({ id: 'b', title: 'b', phase: 'development', effort: { hours: 5, tokens: 50000 }, businessValue: 1000 }, tokenPolicy);
+    expect(tokenHeavy.cost).toBeGreaterThan(cheap.cost);   // 50000 tokens add labor-hours → cost
+    expect(tokenHeavy.roi).toBeLessThan(cheap.roi);
   });
 });
 

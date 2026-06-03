@@ -13,6 +13,7 @@
 import logger from './utils/logger';
 import { execFile } from 'child_process';
 import { bestEffortPublish } from './integrations/kafka/shared';
+import { secretOrEnv } from './security/secretsBootstrap';
 
 // Lazy-imported to avoid the chicken-and-egg between token-tracker (also
 // imports from agent-registry like this module does). Re-imported inside
@@ -149,7 +150,7 @@ function claudeAuthLikelyOk(): boolean {
   // path. Caches the result so repeat calls don't shell out per check.
   if (_claudeAuthChecked) return _claudeAuthOk;
   _claudeAuthChecked = true;
-  _claudeAuthOk = !!process.env.ANTHROPIC_API_KEY;
+  _claudeAuthOk = !!secretOrEnv('api', 'ANTHROPIC_API_KEY');
   if (!_claudeAuthOk) {
     logger.warn('Claude CLI: ANTHROPIC_API_KEY not set in virtualpc env — designer-agent calls will fall back to LM Studio. Set the key + restart to enable Claude routing.');
   }

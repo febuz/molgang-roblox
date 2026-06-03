@@ -59,3 +59,29 @@ export function readSecret(
 ): string | undefined {
   return secrets.for(agent).get(layer, key);
 }
+
+/**
+ * Process-wide active SecretsManager, set once at startup. Lets scattered call
+ * sites read secrets without threading the manager through every constructor.
+ */
+let _active: SecretsManager | null = null;
+export function setActiveSecrets(secrets: SecretsManager | null): void {
+  _active = secrets;
+}
+export function getActiveSecrets(): SecretsManager | null {
+  return _active;
+}
+
+/**
+ * Trusted-core secret read: prefer the active SecretsManager (Infisical), and
+ * fall back to process.env during the migration (removed once .env is dropped).
+ *
+ * Unscoped on purpose — the core server process is trusted and may hold all
+ * layers; the per-agent access model (`SecretsManager.for(role)`) is what gates
+ * secrets DELEGATED to sub-agents (e.g. a scraper). Returns undefined if unset.
+ */
+export function secretOrEnv(layer: SecretLayer, key: string): string | undefined {
+  const fromVault = _active?.get(layer, key);
+  if (fromVault !== undefined) return fromVault;
+  return process.env[key];
+}

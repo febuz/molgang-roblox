@@ -3,6 +3,9 @@ import {
   loadSecrets,
   resolveFieldCrypto,
   readSecret,
+  setActiveSecrets,
+  getActiveSecrets,
+  secretOrEnv,
 } from '../../src/security/secretsBootstrap';
 import { SecretsManager, InMemorySecretsProvider } from '../../src/security/secrets';
 
@@ -58,6 +61,37 @@ describe('secretsBootstrap', () => {
     it('enforces the access model (scraper is denied)', async () => {
       const m = await loadedManager({ api: { ANTHROPIC_API_KEY: 'sk' } });
       expect(() => readSecret(m, 'scraper', 'api', 'ANTHROPIC_API_KEY')).toThrow(/Access denied/);
+    });
+  });
+
+  describe('secretOrEnv (active accessor)', () => {
+    afterEach(() => {
+      setActiveSecrets(null); // avoid cross-test pollution of the module singleton
+      delete process.env.__TEST_SECRET__;
+    });
+
+    it('prefers the active SecretsManager (Infisical) over env', async () => {
+      const m = await loadedManager({ api: { __TEST_SECRET__: 'from-vault' } });
+      setActiveSecrets(m);
+      process.env.__TEST_SECRET__ = 'from-env';
+      expect(secretOrEnv('api', '__TEST_SECRET__')).toBe('from-vault');
+    });
+
+    it('falls back to process.env during the transition (no active manager)', () => {
+      setActiveSecrets(null);
+      process.env.__TEST_SECRET__ = 'from-env';
+      expect(secretOrEnv('api', '__TEST_SECRET__')).toBe('from-env');
+    });
+
+    it('returns undefined when set nowhere', () => {
+      setActiveSecrets(null);
+      expect(secretOrEnv('money', '__TEST_SECRET__')).toBeUndefined();
+    });
+
+    it('getActiveSecrets reflects what was set', async () => {
+      const m = await loadedManager({ api: {} });
+      setActiveSecrets(m);
+      expect(getActiveSecrets()).toBe(m);
     });
   });
 });
