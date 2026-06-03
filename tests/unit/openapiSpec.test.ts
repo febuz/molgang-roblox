@@ -116,4 +116,20 @@ describe('OpenAPI spec (public/openapi.json)', () => {
     expect(loaded.openapi).toBe(spec.openapi);
     expect(Object.keys(loaded.paths).sort()).toEqual(Object.keys(spec.paths).sort());
   });
+
+  it('loadOpenApiSpec() returns a deep-frozen object (no cache poisoning)', () => {
+    const loaded = loadOpenApiSpec();
+    expect(Object.isFrozen(loaded)).toBe(true);
+    expect(Object.isFrozen(loaded.paths)).toBe(true);
+    expect(Object.isFrozen(loaded.components.schemas)).toBe(true);
+    // Mutating a frozen object is a silent no-op in non-strict mode — assert
+    // the value is unchanged so a caller can't poison the shared cache.
+    const before = loaded.info.title;
+    try {
+      (loaded as any).info.title = 'HACKED';
+    } catch {
+      /* strict mode throws — also acceptable */
+    }
+    expect(loadOpenApiSpec().info.title).toBe(before);
+  });
 });

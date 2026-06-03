@@ -72,6 +72,12 @@ export class FieldCrypto {
     if (iv.length !== IV_BYTES) {
       throw new Error('FieldCrypto.decrypt: bad IV length');
     }
+    // A valid GCM tag is always 16 bytes. (Note: ciphertext CAN legitimately be
+    // 0 bytes — that's the encryption of an empty string — so length is not
+    // checked here; the auth tag still guarantees integrity.)
+    if (tag.length !== 16) {
+      throw new Error('FieldCrypto.decrypt: bad auth tag length');
+    }
     const decipher = createDecipheriv(ALGO, this.key, iv);
     decipher.setAuthTag(tag);
     // .final() throws if the auth tag does not verify (tamper / wrong key).

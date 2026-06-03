@@ -87,6 +87,19 @@ describe('FieldCrypto', () => {
       expect(() => fc.decrypt('v2:a:b:c')).toThrow(/unsupported|malformed/);
       expect(() => fc.decrypt('v1:only:three')).toThrow(/malformed/);
     });
+
+    it('rejects a token whose auth tag is the wrong length', () => {
+      const token = fc.encrypt('topsecret');
+      const parts = token.split(':');
+      // Truncate the tag to 8 bytes (valid GCM tag is 16).
+      parts[2] = Buffer.from(parts[2], 'base64').subarray(0, 8).toString('base64');
+      expect(() => fc.decrypt(parts.join(':'))).toThrow(/auth tag length/);
+    });
+
+    it('still round-trips an empty string (0-byte ciphertext is valid)', () => {
+      // Guards against over-eager "empty ciphertext" rejection.
+      expect(fc.decrypt(fc.encrypt(''))).toBe('');
+    });
   });
 
   describe('isEncrypted', () => {

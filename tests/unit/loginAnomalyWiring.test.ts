@@ -86,4 +86,31 @@ describe('processLoginAttempt', () => {
     expect(r!.level).toBe('medium');
     expect(audit.getAllEvents()).toHaveLength(0); // separate logger, untouched
   });
+
+  it('never throws (returns null) when the audit logger throws — login is unaffected', () => {
+    monitor.record({ username: 'alice', ipAddress: '1.1.1.1', deviceId: 'mac', outcome: 'success' });
+    jest.spyOn(audit, 'logEvent').mockImplementation(() => {
+      throw new Error('audit backend down');
+    });
+    let result: any;
+    expect(() => {
+      result = processLoginAttempt(
+        { username: 'alice', ipAddress: '9.9.9.9', deviceId: 'burner', outcome: 'success' },
+        { anomalyMonitor: monitor, auditLogger: audit }
+      );
+    }).not.toThrow();
+    expect(result).toBeNull(); // swallowed
+  });
+
+  it('tags the audit event with the stage (2fa) when scoring a 2FA attempt', () => {
+    monitor.record({ username: 'alice', ipAddress: '1.1.1.1', deviceId: 'mac', outcome: 'success' });
+    processLoginAttempt(
+      { username: 'alice', ipAddress: '9.9.9.9', deviceId: 'burner', outcome: 'failure', stage: '2fa' },
+      { anomalyMonitor: monitor, auditLogger: audit }
+    );
+    const ev = audit.getAllEvents()[0];
+    expect(ev.action).toBe('2fa_anomaly');
+    expect(ev.details?.stage).toBe('2fa');
+    expect(ev.description).toMatch(/Anomalous 2fa/);
+  });
 });

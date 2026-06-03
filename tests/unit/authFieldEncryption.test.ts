@@ -60,4 +60,28 @@ describe('AuthSystem TOTP secret at rest', () => {
     // 2FA still works on the plaintext path.
     expect(auth.enableTotp(CEO, generateTotp(secret!)).success).toBe(true);
   });
+
+  it('surfaces the username on a failed 2FA verification (for anomaly scoring)', () => {
+    const auth = new AuthSystem();
+    const { secret } = auth.setupTotp(CEO);
+    auth.enableTotp(CEO, generateTotp(secret!));
+    const login = auth.login({ username: 'ceo', password: 'ceo123' });
+    const bad = auth.verifyTwoFactor(login.challengeId!, '000000');
+    expect(bad.success).toBe(false);
+    expect(bad.username).toBe('ceo'); // available even though the code was wrong
+  });
+
+  it('fails closed (no throw) if a stored secret is corrupted and cannot be decrypted', () => {
+    const auth = new AuthSystem({ fieldCrypto: new FieldCrypto(HEX_KEY) });
+    const { secret } = auth.setupTotp(CEO);
+    auth.enableTotp(CEO, generateTotp(secret!));
+    // Corrupt the at-rest secret to an undecryptable token.
+    auth.getUser(CEO)!.totpSecret = 'v1:AAAA:BBBB:CCCC';
+    const login = auth.login({ username: 'ceo', password: 'ceo123' });
+    let res: any;
+    expect(() => {
+      res = auth.verifyTwoFactor(login.challengeId!, generateTotp(secret!));
+    }).not.toThrow();
+    expect(res.success).toBe(false); // can't verify against a corrupted secret
+  });
 });

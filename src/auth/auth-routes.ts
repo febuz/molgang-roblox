@@ -26,39 +26,54 @@ export interface AuthRouteDeps {
  * Returns the assessment, or null if no monitor was wired.
  */
 export function processLoginAttempt(
-  attempt: { username: string; ipAddress: string; deviceId: string; location?: string; outcome: 'success' | 'failure' },
+  attempt: {
+    username: string;
+    ipAddress: string;
+    deviceId: string;
+    location?: string;
+    outcome: 'success' | 'failure';
+    /** Which auth step this attempt is — distinguishes login vs 2FA in the audit trail. */
+    stage?: 'login' | '2fa';
+  },
   deps: AuthRouteDeps
 ): LoginRiskAssessment | null {
   const { anomalyMonitor, auditLogger } = deps;
   if (!anomalyMonitor) return null;
 
-  const assessment = anomalyMonitor.assess({
-    username: attempt.username,
-    ipAddress: attempt.ipAddress,
-    deviceId: attempt.deviceId,
-    outcome: attempt.outcome,
-  });
+  // Best-effort by contract: anomaly scoring / audit logging must NEVER break
+  // the authentication flow. Any failure here is swallowed (and logged).
+  try {
+    const assessment = anomalyMonitor.assess({
+      username: attempt.username,
+      ipAddress: attempt.ipAddress,
+      deviceId: attempt.deviceId,
+      outcome: attempt.outcome,
+    });
 
-  if (auditLogger && assessment.level !== 'low') {
-    auditLogger.logEvent(
-      attempt.username,
-      attempt.username,
-      'unknown',
-      'invalid_access',
-      attempt.ipAddress,
-      attempt.deviceId,
-      attempt.location || 'unknown-location',
-      `Anomalous login (${assessment.level} risk): ${assessment.flags.join(', ') || 'no flags'}`,
-      attempt.outcome,
-      {
-        severity: assessment.level === 'high' ? 'critical' : 'warning',
-        action: 'login_anomaly',
-        details: { score: assessment.score, flags: assessment.flags },
-      }
-    );
+    if (auditLogger && assessment.level !== 'low') {
+      auditLogger.logEvent(
+        attempt.username,
+        attempt.username,
+        'unknown',
+        'invalid_access',
+        attempt.ipAddress,
+        attempt.deviceId,
+        attempt.location || 'unknown-location',
+        `Anomalous ${attempt.stage || 'login'} (${assessment.level} risk): ${assessment.flags.join(', ') || 'no flags'}`,
+        attempt.outcome,
+        {
+          severity: assessment.level === 'high' ? 'critical' : 'warning',
+          action: `${attempt.stage || 'login'}_anomaly`,
+          details: { score: assessment.score, flags: assessment.flags, stage: attempt.stage || 'login' },
+        }
+      );
+    }
+
+    return assessment;
+  } catch (error) {
+    logger.error('processLoginAttempt: anomaly scoring failed (login unaffected)', error);
+    return null;
   }
-
-  return assessment;
 }
 
 export function setupAuthRoutes(
@@ -147,6 +162,23 @@ export function setupAuthRoutes(
     try {
       const { challengeId, code } = req.body;
       const result = authSystem.verifyTwoFactor(challengeId, code);
+
+      // Score the 2FA step too — TOTP codes are only 6 digits, so rapid-fire
+      // verification attempts must feed the velocity/burst anomaly checks.
+      if (deps.anomalyMonitor && result.username) {
+        processLoginAttempt(
+          {
+            username: result.username,
+            ipAddress: req.ip || 'unknown',
+            deviceId: (req.headers['x-device-id'] as string) || 'unknown-device',
+            location: (req.headers['x-location'] as string) || 'unknown-location',
+            outcome: result.success ? 'success' : 'failure',
+            stage: '2fa',
+          },
+          deps
+        );
+      }
+
       if (!result.success) {
         return res.status(401).json({ success: false, error: result.error });
       }

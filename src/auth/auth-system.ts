@@ -155,7 +155,15 @@ export class AuthSystem {
   /** Usable plaintext TOTP secret for a user (decrypts at-rest ciphertext). */
   private readTotpSecret(user: User): string | undefined {
     if (!user.totpSecret) return undefined;
-    return this.fieldCrypto ? this.fieldCrypto.decryptField(user.totpSecret) as string : user.totpSecret;
+    if (!this.fieldCrypto) return user.totpSecret;
+    try {
+      return this.fieldCrypto.decryptField(user.totpSecret) as string;
+    } catch (error) {
+      // Corrupted/undecryptable secret at rest: fail closed (treated as no
+      // secret -> "Invalid 2FA state") rather than throwing a 500.
+      logger.error('readTotpSecret: failed to decrypt stored TOTP secret', error);
+      return undefined;
+    }
   }
 
   /**
@@ -308,7 +316,10 @@ export class AuthSystem {
    * Exchange a 2FA challenge + TOTP code for a real session token.
    * Single-use: the challenge is consumed whether or not the code matches.
    */
-  verifyTwoFactor(challengeId: string, code: string): { success: boolean; token?: AuthToken; error?: string } {
+  verifyTwoFactor(
+    challengeId: string,
+    code: string
+  ): { success: boolean; token?: AuthToken; error?: string; username?: string } {
     const challenge = this.twoFactorChallenges.get(challengeId);
     if (!challenge) {
       return { success: false, error: 'Invalid or expired 2FA challenge' };
@@ -322,16 +333,19 @@ export class AuthSystem {
 
     const user = this.users.get(challenge.userId);
     if (!user || !user.totpEnabled || !user.totpSecret) {
-      return { success: false, error: 'Invalid 2FA state' };
+      return { success: false, error: 'Invalid 2FA state', username: user?.username };
     }
 
-    if (!verifyTotp(this.readTotpSecret(user)!, code)) {
+    const secret = this.readTotpSecret(user);
+    // username is surfaced on both paths so the caller can feed the attempt to
+    // anomaly monitoring even when the code is wrong (TOTP brute-force defence).
+    if (!secret || !verifyTotp(secret, code)) {
       logger.warn(`❌ 2FA failed for ${user.username} from ${challenge.ipAddress}`);
-      return { success: false, error: 'Invalid 2FA code' };
+      return { success: false, error: 'Invalid 2FA code', username: user.username };
     }
 
     logger.info(`✅ 2FA passed: ${user.username} from ${challenge.ipAddress} [${challenge.deviceId}]`);
-    return { success: true, token: this.issueSession(user) };
+    return { success: true, token: this.issueSession(user), username: user.username };
   }
 
   /**
