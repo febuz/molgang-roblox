@@ -68,6 +68,8 @@ import * as corpus from './integrations/corpus';
 import { registerPlanRoutes } from './plan-review';
 import { registerDataQualityRoutes } from './data-quality';
 import { registerFinanceRoutes } from './finance';
+import { registerGpuRoutes, getGpuAvailable } from './gpu';
+import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
@@ -98,6 +100,9 @@ registerPlanRoutes(app);
 registerDataQualityRoutes(app);
 // Finance — intangible-asset (immateriële activa) capitalization report + ROI.
 registerFinanceRoutes(app);
+// GPU daemon — availability detection (3h), dynamic no-GPU model fallback, and
+// LM Studio auto-boot when a GPU returns.
+registerGpuRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
@@ -3301,15 +3306,20 @@ function setupRoutes(app: express.Express, components: any) {
       // Policy (2026-06-03): every agent runs on Claude Sonnet as primary;
       // Athena (Principal Reviewer) is the lone Opus 4.8 PR gate. Derived
       // from the registry so the map can never drift from the roster.
-      const agents: Record<string, { primary: string; fallback: string }> = {};
+      // GPU-aware resolution: when the GPU is down, agents whose lead model is a
+      // local GPU model dynamically switch to a no-GPU flux fallback.
+      const gpuUp = getGpuAvailable();
+      const agents: Record<string, { primary: string; fallback: string; switched?: boolean }> = {};
       for (const meta of AGENT_META) {
-        const primary = meta.models[0] || 'claude-sonnet';
-        const fallback = meta.models.find(m => m !== primary) || 'claude-opus';
-        agents[meta.name.toLowerCase()] = { primary, fallback };
+        const lead = meta.models[0] || 'claude-sonnet';
+        const r = resolveModel(meta.models, gpuUp);
+        const fallback = meta.models.find(m => m !== lead) || 'claude-opus';
+        agents[meta.name.toLowerCase()] = { primary: r.model, fallback, ...(r.switched ? { switched: true } : {}) };
       }
       const config = {
         success: true,
-        policy: 'sonnet-everywhere; Athena=opus reviewer',
+        policy: 'sonnet-everywhere; Athena=opus reviewer' + (gpuUp ? '' : '; GPU DOWN — local-model agents on flux fallback'),
+        gpuAvailable: gpuUp,
         agents,
         tier1_models: ['qwen-27b', 'qwen-14b', 'qwen-7b', 'deepseek-r1-8b', 'phi-4-15b', 'mistral-7b'],
         tier3_models: ['claude-opus', 'claude-sonnet', 'claude-haiku'],
