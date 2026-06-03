@@ -108,10 +108,15 @@ INFISICAL_ENV_API / _INFRA / _MONEY  (Infisical environment slugs; default apis/
   provider, Zod per-layer validation, default-deny per-agent access — with 12
   unit tests. Field-level encryption at rest (`src/security/fieldCrypto.ts`,
   AES-256-GCM) already protects sensitive *stored* fields (e.g. TOTP secrets).
-- **Remaining to go live (needs owner):** (1) create the 3 Infisical
-  environments + populate secrets, provision a machine identity, and inject the
-  `INFISICAL_*` bootstrap vars; (2) migrate existing `process.env` secret reads
-  (`ANTHROPIC_API_KEY`, `STRIPE_*`, `FIELD_ENCRYPTION_KEY`, Neo4j, Alpaca in
-  `src/integrations/numerai/data-fetcher.ts`) to
-  `secretsManager.for(<agent>).get(layer, key)`; (3) delete the legacy `.env`
-  once all call sites are migrated.
+- **Go-live progress (CEO veto: BUILD):**
+  - **Step 2 started** — `src/security/secretsBootstrap.ts` wires the
+    SecretsManager into `index.ts` startup; the first secret
+    (`FIELD_ENCRYPTION_KEY`) now sources from the Infisical infra layer
+    (non-breaking: prior env behavior persists until Infisical is provisioned).
+    Remaining call sites (`ANTHROPIC_API_KEY`, `STRIPE_*`, `NEO4J_PASSWORD`)
+    follow the same `readSecret(secrets, agent, layer, key)` pattern.
+  - **Step 1 (needs owner):** create the 3 Infisical environments + populate
+    secrets, provision a machine identity, inject `INFISICAL_*`. Code cannot do
+    this — no access to the Infisical account.
+  - **Step 3 (gated):** delete legacy `.env` only once ALL call sites are
+    migrated AND Infisical actually supplies the values.

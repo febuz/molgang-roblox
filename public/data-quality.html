@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VirtualPC — Data Quality</title>
+<style>
+  :root{--bg:#0b1020;--panel:#141a2e;--line:#26304d;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;--text:#e5ecff;--muted:#90a0c8;--primary:#60a5fa}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;padding:22px 26px}
+  h1{font-size:19px;margin-bottom:4px} .sub{color:var(--muted);font-size:12.5px;margin-bottom:18px}
+  .summary{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:120px}
+  .kpi .n{font-size:24px;font-weight:700} .kpi .l{color:var(--muted);font-size:11.5px}
+  .btn{background:var(--primary);color:#04122e;border:none;border-radius:7px;padding:7px 13px;cursor:pointer;font-weight:600}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line);font-size:13px}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em}
+  .bar{height:7px;border-radius:5px;background:#26304d;overflow:hidden;width:120px;display:inline-block;vertical-align:middle}
+  .bar > i{display:block;height:100%}
+  .pill{font-size:10.5px;padding:1px 7px;border-radius:20px;border:1px solid var(--line)}
+  .pill.ok{color:var(--ok);border-color:var(--ok)} .pill.breach{color:var(--danger);border-color:var(--danger)}
+  .f{color:var(--muted);font-size:12px} .f b{color:var(--warn)}
+</style></head>
+<body>
+<h1>📊 Data Quality — continuous monitoring</h1>
+<div class="sub">Profiling, nulls, type consistency, duplicates, outliers + SLA across the platform datasets. <button class="btn" onclick="rescan()">Rescan now</button></div>
+<div class="summary" id="summary"></div>
+<table><thead><tr><th>Dataset</th><th>Rows</th><th>Score</th><th>SLA</th><th>Findings</th></tr></thead><tbody id="rows"></tbody></table>
+<script>
+const color=s=>s>=85?'#22c55e':s>=70?'#f59e0b':'#ef4444';
+async function load(rescan){
+  const r=await fetch('/api/dataquality/'+(rescan?'scan':'report'),{method:rescan?'POST':'GET'}).then(r=>r.json());
+  const rep=r.report,s=rep.summary;
+  document.getElementById('summary').innerHTML=`
+    <div class="kpi"><div class="n">${s.datasets}</div><div class="l">datasets</div></div>
+    <div class="kpi"><div class="n" style="color:${color(s.avgScore)}">${s.avgScore}</div><div class="l">avg quality score</div></div>
+    <div class="kpi"><div class="n" style="color:${s.breaches?'#ef4444':'#22c55e'}">${s.breaches}</div><div class="l">SLA breaches</div></div>
+    <div class="kpi"><div class="n">${s.totalFindings}</div><div class="l">findings</div></div>
+    <div class="kpi"><div class="l">scanned</div><div class="l">${new Date(rep.scannedAt).toLocaleString()}</div></div>`;
+  document.getElementById('rows').innerHTML=rep.datasets.map(d=>`<tr>
+    <td><b>${d.dataset}</b> <span class="muted" style="color:#90a0c8">${d.recordsPath}</span></td>
+    <td>${d.rowCount}</td>
+    <td><span class="bar"><i style="width:${d.qualityScore}%;background:${color(d.qualityScore)}"></i></span> ${d.qualityScore}</td>
+    <td><span class="pill ${d.slaBreached?'breach':'ok'}">${d.slaBreached?'BREACH':'ok'}</span></td>
+    <td class="f">${d.findings.map(f=>`<b>${f.kind}</b>${f.column?' ('+f.column+')':''}: ${f.message}`).join('<br>')||'—'}</td>
+  </tr>`).join('');
+}
+function rescan(){load(true)} load(false);
+</script>
+</body></html>
