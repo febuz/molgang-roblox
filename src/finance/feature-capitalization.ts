@@ -46,6 +46,8 @@ export interface FeatureRecord {
   effort: EffortInputs;
   /** Months since the feature was delivered (drives amortization). */
   deliveredMonthsAgo?: number;
+  /** Optional independent business value of the feature (for ROI reasoning). */
+  businessValue?: number;
 }
 
 export interface CapitalizedFeature {
@@ -117,6 +119,37 @@ export interface BalanceSheet {
   netIntangibleAssets: number;
   /** Cost expensed to the P&L (research + non-capitalizable). */
   totalExpensed: number;
+}
+
+export interface FeatureROI {
+  id: string;
+  title: string;
+  cost: number;            // total labor cost incl. tokens
+  value: number;           // businessValue if given, else capitalized value
+  roi: number;             // value / cost
+  verdict: 'build' | 'marginal' | 'skip';
+}
+
+/**
+ * Economic-reasoning helper: the ROI of a feature given the effort (incl.
+ * tokens) it costs versus the value it creates. This is what makes agents
+ * token-aware — a token is a booked cost, and work whose value can't justify
+ * the spend is skipped. Value = explicit businessValue when supplied, else the
+ * capitalized asset value (the recognition view).
+ */
+export function featureROI(
+  f: FeatureRecord,
+  policy: CapitalizationPolicy,
+  thresholds: { build?: number; skip?: number } = {},
+): FeatureROI {
+  const c = capitalizeFeature(f, policy);
+  const cost = c.laborCost;
+  const value = typeof f.businessValue === 'number' ? f.businessValue : c.capitalizedValue;
+  const roi = cost > 0 ? Number((value / cost).toFixed(3)) : (value > 0 ? Infinity : 0);
+  const build = thresholds.build ?? 1.0;   // value ≥ cost → worth building
+  const skip = thresholds.skip ?? 0.5;      // value < half the cost → skip
+  const verdict: FeatureROI['verdict'] = roi >= build ? 'build' : roi <= skip ? 'skip' : 'marginal';
+  return { id: f.id, title: f.title, cost, value, roi, verdict };
 }
 
 /** Roll features up into the intangible-asset section of the balance sheet. */

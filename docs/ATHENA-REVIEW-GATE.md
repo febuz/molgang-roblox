@@ -84,6 +84,33 @@ ts-node scripts/worker-delivery-overview.ts
 The runner **never pushes to GitHub itself** — on approval it prints the release
 command for the Product Owner's explicit step.
 
+## Token-efficient review (Codex-first, single fix, light Opus)
+
+Review must not become a token sink. Development loops are **tiered and cheap by
+design** — the expensive multi-model debate is *not* used here:
+
+1. **Codex review (cheap, first).** A code-model review pass (Sonnet / advanced
+   coder) catches the bulk of issues — bugs, standards, missing tests.
+2. **Developer fixes in one pass.** The feedback goes back to the engineer who
+   built it; they resolve it **in a single iteration**, not an open-ended loop.
+3. **Opus reviewer (light, last).** Athena (Opus 4.8) usually **approves** — her
+   pass is for the **bigger-picture overview and follow-ups** (architecture fit,
+   what to build next, debt to log), not line-by-line nitpicking the Codex pass
+   already covered.
+
+```
+Codex review ──▶ developer fixes once ──▶ Opus overview/approve ──▶ complete
+   (cheap)            (single pass)            (light, big-picture)
+```
+
+**Reserve the token-hungry pattern for trading, not dev.** The two-model
+**dialogue-consensus** (two models debating until they converge) is valuable for
+*trading decisions* where the stakes justify the spend — but it is **banned from
+development loops**, which would otherwise burn tokens re-deriving what one Codex
+pass + one fix already settles. This is the economic rule from
+[FEATURE-CAPITALIZATION.md](FEATURE-CAPITALIZATION.md): spend tokens like money,
+keep build-cost low, keep ROI high.
+
 ## Why Opus for the gate, advanced workers for the build
 
 A spread of fast advanced coding models builds well-scoped backlog items at
