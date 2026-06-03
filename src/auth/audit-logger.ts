@@ -206,6 +206,39 @@ export class CEOAuditLogger {
   }
 
   /**
+   * Combined audit search: filter by any subset of criteria (AND semantics),
+   * returning the most recent `limit` matches. Powers the CEO audit search UI
+   * (username / IP / action / type / severity / outcome + date range).
+   */
+  search(
+    filter: {
+      username?: string;
+      ipAddress?: string;
+      eventType?: AuditEventType;
+      severity?: AuditEventSeverity;
+      outcome?: 'success' | 'failure';
+      action?: string;
+      startTime?: Date;
+      endTime?: Date;
+    } = {},
+    limit: number = 100
+  ): AuditEvent[] {
+    return this.events
+      .filter(e => {
+        if (filter.username && e.username !== filter.username) return false;
+        if (filter.ipAddress && e.ipAddress !== filter.ipAddress) return false;
+        if (filter.eventType && e.eventType !== filter.eventType) return false;
+        if (filter.severity && e.severity !== filter.severity) return false;
+        if (filter.outcome && e.outcome !== filter.outcome) return false;
+        if (filter.action && e.action !== filter.action) return false;
+        if (filter.startTime && e.timestamp < filter.startTime) return false;
+        if (filter.endTime && e.timestamp > filter.endTime) return false;
+        return true;
+      })
+      .slice(-limit);
+  }
+
+  /**
    * Get audit statistics
    */
   getStatistics(): Record<string, any> {

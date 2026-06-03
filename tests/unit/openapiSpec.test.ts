@@ -35,6 +35,7 @@ const INVENTORY = [
   'get /api/audit/export/csv',
   'get /api/audit/export/json',
   'post /api/audit/clear-old',
+  'get /api/audit/search',
   'get /api/dashboard/my',
   'get /api/dashboard/ceo',
   'get /api/dashboard/cto',
