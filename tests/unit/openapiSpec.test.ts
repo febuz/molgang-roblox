@@ -23,6 +23,8 @@ const INVENTORY = [
   'get /api/auth/profile',
   'get /api/auth/users',
   'post /api/auth/users',
+  'post /api/auth/users/{userId}/status',
+  'delete /api/auth/users/{userId}',
   'get /api/auth/sessions',
   'delete /api/auth/sessions/{sessionId}',
   'post /api/auth/sessions/revoke-user',

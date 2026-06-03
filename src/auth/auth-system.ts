@@ -579,6 +579,77 @@ export class AuthSystem {
   }
 
   /**
+   * Role privilege levels for hierarchy enforcement. Higher = more privileged.
+   * A user may manage (suspend/delete) targets of equal-or-lower privilege but
+   * never one ranked above them — so a CTO cannot touch a CEO. The dangerous
+   * equal-rank case (a CEO acting on another CEO) is bounded separately by the
+   * last-active-CEO lockout guard below.
+   */
+  private static readonly PRIVILEGE: Record<UserRole, number> = {
+    ceo: 3,
+    cto: 2,
+    developer: 1,
+    artist: 1,
+    tech_artist: 1,
+  };
+
+  /** True if actorRole may manage targetRole (equal or higher privilege than the target). */
+  canManage(actorRole: UserRole, targetRole: UserRole): boolean {
+    return AuthSystem.PRIVILEGE[actorRole] >= AuthSystem.PRIVILEGE[targetRole];
+  }
+
+  /** Count active users holding a given role (used for lockout protection). */
+  private countActiveByRole(role: UserRole): number {
+    return Array.from(this.users.values()).filter(u => u.role === role && u.status === 'active').length;
+  }
+
+  /**
+   * Change a user's status (active/inactive/suspended). Enforces role
+   * hierarchy and, when deactivating, revokes that user's active sessions so a
+   * suspended account can't keep using an existing token.
+   */
+  setUserStatus(
+    actorRole: UserRole,
+    userId: string,
+    status: 'active' | 'inactive' | 'suspended'
+  ): { success: boolean; error?: string } {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found' };
+    if (!this.canManage(actorRole, user.role)) {
+      return { success: false, error: 'Insufficient privilege to manage this user' };
+    }
+    // Don't allow deactivating the last active CEO (lockout protection).
+    if (user.role === 'ceo' && status !== 'active' && this.countActiveByRole('ceo') <= 1) {
+      return { success: false, error: 'Cannot deactivate the last active CEO' };
+    }
+    user.status = status;
+    if (status !== 'active') {
+      this.revokeUserSessions(user.username);
+    }
+    logger.info(`✓ User status changed: ${user.username} -> ${status}`);
+    return { success: true };
+  }
+
+  /**
+   * Delete a user. Enforces role hierarchy, blocks deleting the last active
+   * CEO, and revokes the user's sessions.
+   */
+  deleteUser(actorRole: UserRole, userId: string): { success: boolean; error?: string } {
+    const user = this.users.get(userId);
+    if (!user) return { success: false, error: 'User not found' };
+    if (!this.canManage(actorRole, user.role)) {
+      return { success: false, error: 'Insufficient privilege to delete this user' };
+    }
+    if (user.role === 'ceo' && this.countActiveByRole('ceo') <= 1) {
+      return { success: false, error: 'Cannot delete the last active CEO' };
+    }
+    this.revokeUserSessions(user.username);
+    this.users.delete(userId);
+    logger.info(`✓ User deleted: ${user.username}`);
+    return { success: true };
+  }
+
+  /**
    * Change password
    */
   changePassword(userId: string, oldPassword: string, newPassword: string): { success: boolean; error?: string } {

@@ -361,6 +361,54 @@ export function setupAuthRoutes(
   });
 
   /**
+   * Change a user's status (CEO only): active | inactive | suspended.
+   * Enforces role hierarchy + last-CEO lockout; deactivation revokes sessions.
+   */
+  app.post(
+    '/api/auth/users/:userId/status',
+    mutationLimiter,
+    authMiddleware.requireRole('ceo'),
+    (req: AuthRequest, res: express.Response) => {
+      try {
+        const { status } = req.body || {};
+        if (!['active', 'inactive', 'suspended'].includes(status)) {
+          return res.status(400).json({ success: false, error: 'status must be active|inactive|suspended' });
+        }
+        const result = authSystem.setUserStatus(req.user!.role, req.params.userId, status);
+        if (!result.success) {
+          const code = result.error === 'User not found' ? 404 : 403;
+          return res.status(code).json({ success: false, error: result.error });
+        }
+        return res.json({ success: true, status });
+      } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  /**
+   * Delete a user (CEO only). Enforces role hierarchy + last-CEO lockout;
+   * revokes the user's sessions.
+   */
+  app.delete(
+    '/api/auth/users/:userId',
+    mutationLimiter,
+    authMiddleware.requireRole('ceo'),
+    (req: AuthRequest, res: express.Response) => {
+      try {
+        const result = authSystem.deleteUser(req.user!.role, req.params.userId);
+        if (!result.success) {
+          const code = result.error === 'User not found' ? 404 : 403;
+          return res.status(code).json({ success: false, error: result.error });
+        }
+        return res.json({ success: true });
+      } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  /**
    * Get session statistics (CEO & CTO only)
    */
   app.get('/api/auth/sessions', authMiddleware.requireRole('ceo', 'cto'), (req: AuthRequest, res: express.Response) => {
