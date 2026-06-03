@@ -27,7 +27,14 @@ export const SECRET_LAYERS: SecretLayer[] = ['api', 'infra', 'money'];
 export const LAYER_KEYS: Record<SecretLayer, string[]> = {
   api: ['ANTHROPIC_API_KEY'],
   infra: ['FIELD_ENCRYPTION_KEY', 'NEO4J_PASSWORD', 'KAFKA_BROKERS'],
-  money: ['ALPACA_API_KEY', 'ALPACA_API_SECRET', 'STRIPE_PAYMENT_METHOD_ID'],
+  money: [
+    'ALPACA_API_KEY',
+    'ALPACA_API_SECRET',
+    'STRIPE_API_KEY',
+    'STRIPE_CUSTOMER_ID',
+    'STRIPE_PAYMENT_METHOD_ID',
+    'STRIPE_STATEMENT_DESCRIPTOR',
+  ],
 };
 
 /**
@@ -48,7 +55,10 @@ const LAYER_SCHEMAS = {
   money: z.object({
     ALPACA_API_KEY: z.string().min(1).optional(),
     ALPACA_API_SECRET: z.string().min(1).optional(),
+    STRIPE_API_KEY: z.string().min(1).optional(),
+    STRIPE_CUSTOMER_ID: z.string().min(1).optional(),
     STRIPE_PAYMENT_METHOD_ID: z.string().min(1).optional(),
+    STRIPE_STATEMENT_DESCRIPTOR: z.string().min(1).optional(),
   }),
 } satisfies Record<SecretLayer, unknown>;
 
