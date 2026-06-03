@@ -26,7 +26,7 @@ export const SECRET_LAYERS: SecretLayer[] = ['api', 'infra', 'money'];
 /** Known secret keys per layer (the migration target from process.env). */
 export const LAYER_KEYS: Record<SecretLayer, string[]> = {
   api: ['ANTHROPIC_API_KEY'],
-  infra: ['FIELD_ENCRYPTION_KEY', 'NEO4J_PASSWORD', 'KAFKA_BROKERS'],
+  infra: ['FIELD_ENCRYPTION_KEY', 'NEO4J_URI', 'NEO4J_USER', 'NEO4J_PASSWORD', 'KAFKA_BROKERS'],
   money: [
     'ALPACA_API_KEY',
     'ALPACA_API_SECRET',
