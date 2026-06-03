@@ -82,15 +82,22 @@ See `src/finance/feature-capitalization.ts` for the v1 capitalisation engine and
 
 ## 5. Prioritised gaps (PO backlog)
 
-1. **Data-quality daemon** — profiling + drift + per-dataset SLA, findings →
-   remediation tasks (data-management relevance, real-life grade). *critical*
-2. **Saved/parameterised queries + versioning** — query building as a
-   first-class, governed artifact. *high*
-3. **Feature capitalisation reporting** — surface the intangible-asset balance
-   sheet on a dashboard (effort → activa). *high*
-4. **Spectral ingest schema + peak detection** (Engel) — QChem/spectroscopy
-   payload, fuzzy-neural denoise. *high*
-5. **Requirements register + use-case artifacts** (USDP) per backlog item. *med*
+1. ✅ **Data-quality daemon** — DELIVERED: `src/data-quality`, `/api/dataquality/*`,
+   `/data-quality.html`, per-dataset SLA, 15-min scan. *(was critical)*
+2. ✅ **Saved/parameterised queries + versioning** — DELIVERED: `src/query-builder`,
+   `/api/queries/*` (render/validate/version/run over corpus/wiki/codegraph/memory).
+3. ✅ **Feature capitalisation reporting** — DELIVERED: `src/finance`,
+   `/api/finance/capitalization`, `/capitalization.html` (effort → immateriële activa).
+4. ✅ **Spectral ingest + peak detection** (Engel) — DELIVERED: `src/spectroscopy`,
+   `/api/spectroscopy/{analyze,ingest,runs}` (robust noise threshold + prominence).
+5. **Requirements register + use-case artifacts** (USDP) per backlog item. *med — open*
+
+New (from the 2026-06-03 coordination run + GPU policy):
+6. **GPU availability + dynamic fallback** — DELIVERED: `src/gpu`, `/api/gpu/*`,
+   3-h checks, no-GPU flux fallback, LM Studio auto-boot.
+7. **Asset pipeline remediation** — *open*: 96 orphan assets + 0 web-mirrored
+   (Pixel/Luna/Governor).
+8. **Fuzzy-neural denoise on spectra** — *open*: builds on §4.
 
 The charter is reviewed each sprint; capabilities move 🟢 only when there is a
 tested surface, an owner, and a dashboard/endpoint — same Definition of Done as
