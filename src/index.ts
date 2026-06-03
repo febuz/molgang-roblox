@@ -35,7 +35,7 @@ import { killSwitch } from './openclaw-kill-switch';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
 import AuthSystem from './auth/auth-system';
-import { loadSecrets, resolveFieldCrypto, setActiveSecrets } from './security/secretsBootstrap';
+import { loadSecrets, resolveFieldCrypto, setActiveSecrets, secretOrEnv } from './security/secretsBootstrap';
 import AuthMiddleware from './auth/auth-middleware';
 import CEOAuditLogger from './auth/audit-logger';
 import SpecialistDashboards from './auth/specialist-dashboards';
@@ -1979,12 +1979,18 @@ async function initialize() {
   killSwitch.initialize();
 
   try {
+    // 0. Load secrets first (Infisical, no .env) so every downstream component
+    //    sources credentials from the active SecretsManager. Returns null until
+    //    Infisical is provisioned — non-breaking (env fallback meanwhile).
+    const secrets = await loadSecrets();
+    setActiveSecrets(secrets);
+
     // 1. Initialize LightRAG (shared memory)
     logger.info('📊 Initializing LightRAG...');
     const lightrag = new LightRAGClient({
-      neo4j_url: process.env.NEO4J_URI || 'bolt://localhost:7687',
-      neo4j_username: process.env.NEO4J_USER || 'neo4j',
-      neo4j_password: process.env.NEO4J_PASSWORD || 'password'
+      neo4j_url: secretOrEnv('infra', 'NEO4J_URI') || 'bolt://localhost:7687',
+      neo4j_username: secretOrEnv('infra', 'NEO4J_USER') || 'neo4j',
+      neo4j_password: secretOrEnv('infra', 'NEO4J_PASSWORD') || 'password'
     });
     await lightrag.connect();
     logger.info('✓ LightRAG connected');
@@ -2154,11 +2160,9 @@ async function initialize() {
 
     // 5c. Initialize Authentication System (employee auth + roles)
     logger.info('🔐 Initializing Authentication System...');
-    // Secrets via Infisical (no .env): source the field-encryption key from the
-    // infra layer. loadSecrets() returns null until Infisical is provisioned, so
-    // this is non-breaking — AuthSystem keeps its prior env behavior meanwhile.
-    const secrets = await loadSecrets();
-    setActiveSecrets(secrets); // process-wide accessor for migrated call sites (secretOrEnv)
+    // Field-encryption key sourced from the infra layer (secrets were loaded at
+    // the top of initialize()); falls back to AuthSystem's env behavior when
+    // Infisical isn't configured yet.
     const authSystem = new AuthSystem({ fieldCrypto: secrets ? resolveFieldCrypto(secrets) : undefined });
     const authMiddleware = new AuthMiddleware(authSystem);
     const ceoAuditLogger = new CEOAuditLogger();

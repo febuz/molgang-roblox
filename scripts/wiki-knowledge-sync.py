@@ -24,6 +24,7 @@ ENTRIES = [
     ("head",  "product-catalog",     "Product Catalog (P1/P2/P3)",            "PRODUCTS.md",                   True),
     ("head",  "capability-charter",  "Capability & Data-Maturity Charter",    "CAPABILITY-CHARTER.md",         True),
     ("hands", "headroom",            "Headroom token-saver",                  "HEADROOM.md",                   False),
+    ("head",  "feature-capitalization", "Features as immateriële activa (token economics)", "FEATURE-CAPITALIZATION.md", True),
     ("hands", "architecture",        "VirtualPC Architecture",                "VIRTUALPC-ARCHITECTURE.md",     True),
     ("hands", "scrum-charters",      "Scrum Charters",                        "SCRUM-CHARTERS.md",             False),
     ("hands", "coding-standards",    "Coding Standards",                      "CODING-STANDARDS.md",           False),

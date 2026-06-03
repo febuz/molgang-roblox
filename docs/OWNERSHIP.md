@@ -109,14 +109,19 @@ INFISICAL_ENV_API / _INFRA / _MONEY  (Infisical environment slugs; default apis/
   unit tests. Field-level encryption at rest (`src/security/fieldCrypto.ts`,
   AES-256-GCM) already protects sensitive *stored* fields (e.g. TOTP secrets).
 - **Go-live progress (CEO veto: BUILD):**
-  - **Step 2 started** — `src/security/secretsBootstrap.ts` wires the
-    SecretsManager into `index.ts` startup; the first secret
-    (`FIELD_ENCRYPTION_KEY`) now sources from the Infisical infra layer
-    (non-breaking: prior env behavior persists until Infisical is provisioned).
-    Remaining call sites (`ANTHROPIC_API_KEY`, `STRIPE_*`, `NEO4J_PASSWORD`)
-    follow the same `readSecret(secrets, agent, layer, key)` pattern.
+  - **Step 2 — DONE.** Secrets load at the top of `initialize()`
+    (`setActiveSecrets`), and ALL secret call sites now prefer the active
+    Infisical SecretsManager via `secretOrEnv(layer, key)` /
+    `resolveFieldCrypto()`:
+    - `FIELD_ENCRYPTION_KEY` (infra) → AuthSystem DI
+    - `ANTHROPIC_API_KEY` (api) → `unified-executor`, `lmstudio`
+    - `STRIPE_API_KEY` / `_CUSTOMER_ID` / `_PAYMENT_METHOD_ID` / `_STATEMENT_DESCRIPTOR` (money) → `commercialization` (lazy getters)
+    - `NEO4J_URI` / `_USER` / `_PASSWORD` (infra) → `index.ts` LightRAG init
+    Every read keeps a transitional `process.env` fallback, so this is
+    non-breaking until Infisical is provisioned.
   - **Step 1 (needs owner):** create the 3 Infisical environments + populate
     secrets, provision a machine identity, inject `INFISICAL_*`. Code cannot do
     this — no access to the Infisical account.
-  - **Step 3 (gated):** delete legacy `.env` only once ALL call sites are
-    migrated AND Infisical actually supplies the values.
+  - **Step 3 (gated on step 1):** once Infisical supplies the values, delete the
+    legacy `.env` and remove the transitional `process.env` fallbacks
+    (`secretOrEnv` env branch, `FieldCrypto.fromEnv` auto-init).
