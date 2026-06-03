@@ -53,10 +53,13 @@ as the final backstop.
 *As directed by the owner. Marked **TARGET** where not yet implemented so the
 doc reflects intent vs. current reality.*
 
-## Secrets management — Infisical, three layers (TARGET)
+## Secrets management — Infisical, three layers (IMPLEMENTED: foundation)
 
-The intended model uses **Infisical** (https://eu.infisical.com, EU instance,
-free tier) as the single source of truth for secrets — **no `.env` files**.
+Implemented in **`src/security/secrets.ts`** (`SecretsManager`,
+`InfisicalSecretsProvider`). Uses **Infisical** (https://eu.infisical.com, EU
+instance, free tier) as the single source of truth for secrets — **no `.env`
+files**. `createSecretsManager()` deliberately throws if Infisical bootstrap
+creds are absent — it never silently falls back to the environment.
 Secrets are organised into **three layers by blast radius**:
 
 | Layer | Scope | Examples |
@@ -71,14 +74,16 @@ _output_** — RAG chunks, wiki text, and logs are routed so retrieved content i
 provably secret-free. (This is the insight both Headroom security reviews
 converged on: compress/route at the MCP output boundary, secrets only at input.)
 
-## Config/secret validation — Zod (TARGET)
+## Config/secret validation — Zod (IMPLEMENTED)
 
-A **Zod schema** validates the secret/config bundle at startup: fail-fast on
-missing or malformed values, with typed access throughout the code.
+A **Zod schema per layer** (`LAYER_SCHEMAS` in `src/security/secrets.ts`)
+validates each loaded bundle: fail-fast on malformed values (e.g.
+`FIELD_ENCRYPTION_KEY` must be ≥16 chars), tolerant of unknown keys.
 
-## Per-agent access model (FUTURE / aspirational)
+## Per-agent access model (IMPLEMENTED)
 
-Least-privilege binding of **which agent may reach which secret layer**:
+Least-privilege binding of **which agent may reach which secret layer**
+(`AGENT_ACCESS` + `ScopedSecrets` in `src/security/secrets.ts`), default-deny:
 
 - A **scraper agent** that crawls the open internet gets **no secret access at
   all** — not APIs, not infra, not money.
@@ -86,15 +91,27 @@ Least-privilege binding of **which agent may reach which secret layer**:
   (Alpaca), nothing broader.
 - Default-deny: an agent reaches a layer only if explicitly granted.
 
+## Bootstrap (the only environment it reads)
+
+The Infisical machine identity is injected by the platform/systemd unit — these
+are NOT app secrets and are NOT a committed `.env` file:
+
+```
+INFISICAL_PROJECT_ID, INFISICAL_CLIENT_ID, INFISICAL_CLIENT_SECRET
+INFISICAL_API_URL   (default https://eu.infisical.com)
+INFISICAL_ENV_API / _INFRA / _MONEY  (Infisical environment slugs; default apis/infra/money)
+```
+
 ## Current state vs. target (2026-06-03)
 
-- **Current:** the codebase reads secrets from **`.env` / `process.env`**
-  (e.g. `ANTHROPIC_API_KEY`, `STRIPE_*`, `FIELD_ENCRYPTION_KEY`, Neo4j creds).
-  `.env` is git-ignored; `.env.example` documents the keys. Infisical and Zod
-  are **not yet wired in**; Alpaca is referenced in
-  `src/integrations/numerai/data-fetcher.ts`.
-- **Target sequence:** (1) migrate secrets to the Infisical 3-layer model →
-  (2) add Zod validation → (3) implement the per-agent access model.
-- **Already in place:** field-level encryption at rest
-  (`src/security/fieldCrypto.ts`, AES-256-GCM) protects sensitive *stored*
-  fields (e.g. TOTP secrets) — complementary to secrets-in-transit management.
+- **Done:** the secrets foundation (`src/security/secrets.ts`) — Infisical REST
+  provider, Zod per-layer validation, default-deny per-agent access — with 12
+  unit tests. Field-level encryption at rest (`src/security/fieldCrypto.ts`,
+  AES-256-GCM) already protects sensitive *stored* fields (e.g. TOTP secrets).
+- **Remaining to go live (needs owner):** (1) create the 3 Infisical
+  environments + populate secrets, provision a machine identity, and inject the
+  `INFISICAL_*` bootstrap vars; (2) migrate existing `process.env` secret reads
+  (`ANTHROPIC_API_KEY`, `STRIPE_*`, `FIELD_ENCRYPTION_KEY`, Neo4j, Alpaca in
+  `src/integrations/numerai/data-fetcher.ts`) to
+  `secretsManager.for(<agent>).get(layer, key)`; (3) delete the legacy `.env`
+  once all call sites are migrated.
