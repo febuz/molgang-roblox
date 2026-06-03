@@ -1,0 +1,3644 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "VirtualPC Admin API \u2014 Auth/Audit/Dashboard/Security",
+    "version": "1.0.0",
+    "description": "Role-based admin API. Bearer auth via sessionId from POST /api/auth/login."
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "sessionId returned by /api/auth/login"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "error": {
+            "type": "string",
+            "description": "Human-readable error message."
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "description": "Standard minimal success envelope.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "ceo",
+          "cto",
+          "developer",
+          "artist",
+          "tech_artist"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "ceo"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "example": "ceo123"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ]
+      },
+      "AuthUserSummary": {
+        "type": "object",
+        "description": "Compact user identity returned alongside a session token.",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "ceo"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        },
+        "required": [
+          "username",
+          "role"
+        ]
+      },
+      "AuthTokenResponse": {
+        "type": "object",
+        "description": "Successful authentication. The `token` is the sessionId to send as 'Authorization: Bearer <token>'. Sessions expire after 8 hours.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          },
+          "token": {
+            "type": "string",
+            "description": "Session ID / Bearer token.",
+            "example": "session_1717400000000_a1b2c3d4e"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserSummary"
+          }
+        },
+        "required": [
+          "success",
+          "token",
+          "user"
+        ]
+      },
+      "TwoFactorRequiredResponse": {
+        "type": "object",
+        "description": "Returned by POST /api/auth/login with HTTP 200 when the account has 2FA enabled. No session is issued; exchange the challengeId via POST /api/auth/2fa/verify. Challenge expires after 5 minutes and is single-use.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              false
+            ],
+            "example": false
+          },
+          "requires2fa": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          },
+          "challengeId": {
+            "type": "string",
+            "example": "2fa_1717400000000_abcdef0123456789abcdef01"
+          }
+        },
+        "required": [
+          "success",
+          "requires2fa",
+          "challengeId"
+        ]
+      },
+      "TwoFactorVerifyRequest": {
+        "type": "object",
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "description": "challengeId from the login response.",
+            "example": "2fa_1717400000000_abcdef0123456789abcdef01"
+          },
+          "code": {
+            "type": "string",
+            "description": "6-digit TOTP code from the authenticator app.",
+            "example": "123456"
+          }
+        },
+        "required": [
+          "challengeId",
+          "code"
+        ]
+      },
+      "TwoFactorSetupResponse": {
+        "type": "object",
+        "description": "Fresh TOTP secret and provisioning URI. Render the URI as a QR code.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          },
+          "secret": {
+            "type": "string",
+            "description": "Base32 TOTP secret.",
+            "example": "JBSWY3DPEHPK3PXP"
+          },
+          "uri": {
+            "type": "string",
+            "description": "otpauth:// provisioning URI.",
+            "example": "otpauth://totp/VirtualPC:ceo@virtualpc.local?secret=JBSWY3DPEHPK3PXP&issuer=VirtualPC"
+          }
+        },
+        "required": [
+          "success",
+          "secret",
+          "uri"
+        ]
+      },
+      "TwoFactorCodeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "6-digit TOTP code generated from the setup secret.",
+            "example": "123456"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "TwoFactorDisableRequest": {
+        "type": "object",
+        "description": "Disabling 2FA requires both the current password and a valid TOTP code.",
+        "properties": {
+          "password": {
+            "type": "string",
+            "format": "password"
+          },
+          "code": {
+            "type": "string",
+            "description": "6-digit TOTP code.",
+            "example": "123456"
+          }
+        },
+        "required": [
+          "password",
+          "code"
+        ]
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "oldPassword": {
+            "type": "string",
+            "format": "password"
+          },
+          "newPassword": {
+            "type": "string",
+            "format": "password"
+          }
+        },
+        "required": [
+          "oldPassword",
+          "newPassword"
+        ]
+      },
+      "RolePermissions": {
+        "type": "object",
+        "description": "Boolean capability matrix for a role.",
+        "properties": {
+          "canAccessDashboard": {
+            "type": "boolean"
+          },
+          "canManageUsers": {
+            "type": "boolean"
+          },
+          "canViewAuditLog": {
+            "type": "boolean"
+          },
+          "canModifyConfig": {
+            "type": "boolean"
+          },
+          "canExecuteCommands": {
+            "type": "boolean"
+          },
+          "canViewSensitiveData": {
+            "type": "boolean"
+          },
+          "canAssignTasks": {
+            "type": "boolean"
+          },
+          "canApproveDeployments": {
+            "type": "boolean"
+          },
+          "canAccessFinancials": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "canAccessDashboard",
+          "canManageUsers",
+          "canViewAuditLog",
+          "canModifyConfig",
+          "canExecuteCommands",
+          "canViewSensitiveData",
+          "canAssignTasks",
+          "canApproveDeployments",
+          "canAccessFinancials"
+        ]
+      },
+      "UserProfile": {
+        "type": "object",
+        "description": "User account details (no password hash).",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "user_ceo_001"
+          },
+          "username": {
+            "type": "string",
+            "example": "ceo"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "ceo@virtualpc.local"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "suspended"
+            ],
+            "example": "active"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastLogin": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "role",
+          "status",
+          "createdAt"
+        ]
+      },
+      "ProfileResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserProfile"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/RolePermissions"
+          }
+        },
+        "required": [
+          "success",
+          "user",
+          "permissions"
+        ]
+      },
+      "UserListItem": {
+        "type": "object",
+        "description": "User entry as returned by GET /api/auth/users (no password hash).",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "user_dev_001"
+          },
+          "username": {
+            "type": "string",
+            "example": "zip"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "zip@virtualpc.local"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive",
+              "suspended"
+            ],
+            "example": "active"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastLogin": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "role",
+          "status",
+          "createdAt"
+        ]
+      },
+      "UserListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserListItem"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "users"
+        ]
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "newdev"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "newdev@virtualpc.local"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          }
+        },
+        "required": [
+          "username",
+          "email",
+          "role",
+          "password"
+        ]
+      },
+      "CreateUserResponse": {
+        "type": "object",
+        "description": "Newly created user (subset of fields).",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "example": "user_developer_1717400000000"
+              },
+              "username": {
+                "type": "string",
+                "example": "newdev"
+              },
+              "email": {
+                "type": "string",
+                "format": "email",
+                "example": "newdev@virtualpc.local"
+              },
+              "role": {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            },
+            "required": [
+              "id",
+              "username",
+              "email",
+              "role"
+            ]
+          }
+        },
+        "required": [
+          "success",
+          "user"
+        ]
+      },
+      "RoleCountBreakdown": {
+        "type": "object",
+        "description": "Count per role.",
+        "properties": {
+          "ceo": {
+            "type": "integer"
+          },
+          "cto": {
+            "type": "integer"
+          },
+          "developer": {
+            "type": "integer"
+          },
+          "artist": {
+            "type": "integer"
+          },
+          "tech_artist": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ceo",
+          "cto",
+          "developer",
+          "artist",
+          "tech_artist"
+        ]
+      },
+      "SessionStatsResponse": {
+        "type": "object",
+        "description": "Aggregate session/user statistics. The stats fields are spread onto the success envelope.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true
+          },
+          "totalActiveSessions": {
+            "type": "integer",
+            "example": 3
+          },
+          "totalUsers": {
+            "type": "integer",
+            "example": 5
+          },
+          "roleBreakdown": {
+            "$ref": "#/components/schemas/RoleCountBreakdown"
+          },
+          "usersByRole": {
+            "$ref": "#/components/schemas/RoleCountBreakdown"
+          }
+        },
+        "required": [
+          "success",
+          "totalActiveSessions",
+          "totalUsers",
+          "roleBreakdown",
+          "usersByRole"
+        ]
+      },
+      "AuditEventType": {
+        "type": "string",
+        "description": "Category of audited action.",
+        "enum": [
+          "login",
+          "logout",
+          "data_access",
+          "sensitive_data_access",
+          "config_change",
+          "user_create",
+          "user_modify",
+          "user_delete",
+          "command_execute",
+          "permission_escalation",
+          "permission_denied",
+          "invalid_access",
+          "session_timeout",
+          "password_change"
+        ]
+      },
+      "AuditEventSeverity": {
+        "type": "string",
+        "description": "Severity classification of an audit event.",
+        "enum": [
+          "info",
+          "warning",
+          "critical"
+        ]
+      },
+      "AuditEvent": {
+        "type": "object",
+        "description": "A single immutable audit-trail record.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Generated id, e.g. audit_<timestamp>_<random>"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "description": "Role of the acting user (ceo, cto, developer, artist, tech_artist)"
+          },
+          "eventType": {
+            "$ref": "#/components/schemas/AuditEventType"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AuditEventSeverity"
+          },
+          "ipAddress": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "resource": {
+            "type": "string",
+            "description": "What was accessed or modified (optional)"
+          },
+          "action": {
+            "type": "string",
+            "description": "What was done (optional)"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure"
+            ]
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Arbitrary structured context (optional)"
+          },
+          "durationMs": {
+            "type": "number",
+            "description": "Operation duration in milliseconds (optional)"
+          }
+        },
+        "required": [
+          "id",
+          "timestamp",
+          "userId",
+          "username",
+          "role",
+          "eventType",
+          "severity",
+          "ipAddress",
+          "deviceId",
+          "location",
+          "description",
+          "outcome"
+        ]
+      },
+      "AuditStatistics": {
+        "type": "object",
+        "description": "Aggregated counts computed from the in-memory audit event buffer.",
+        "properties": {
+          "total_events": {
+            "type": "integer"
+          },
+          "total_users": {
+            "type": "integer",
+            "description": "Count of unique usernames"
+          },
+          "total_ips": {
+            "type": "integer",
+            "description": "Count of unique IP addresses"
+          },
+          "by_type": {
+            "type": "object",
+            "description": "Event counts keyed by AuditEventType",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "by_severity": {
+            "type": "object",
+            "properties": {
+              "info": {
+                "type": "integer"
+              },
+              "warning": {
+                "type": "integer"
+              },
+              "critical": {
+                "type": "integer"
+              }
+            }
+          },
+          "by_user": {
+            "type": "object",
+            "description": "Event counts keyed by username",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "by_outcome": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "integer"
+              },
+              "failure": {
+                "type": "integer"
+              }
+            }
+          },
+          "failed_logins_by_ip": {
+            "type": "array",
+            "description": "IPs with 3+ failed logins, sorted by count descending (brute-force detection)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ip": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "ip",
+                "count"
+              ]
+            }
+          }
+        },
+        "required": [
+          "total_events",
+          "total_users",
+          "total_ips",
+          "by_type",
+          "by_severity",
+          "by_user",
+          "by_outcome",
+          "failed_logins_by_ip"
+        ]
+      },
+      "AuditStatsResponse": {
+        "type": "object",
+        "description": "Response for GET /api/audit/stats.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "stats": {
+            "$ref": "#/components/schemas/AuditStatistics"
+          },
+          "security_score": {
+            "type": "number",
+            "description": "Computed security health score, 0-100"
+          },
+          "score_grade": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "description": "A>=80, B>=60, C>=40, else D"
+          }
+        },
+        "required": [
+          "success",
+          "stats",
+          "security_score",
+          "score_grade"
+        ]
+      },
+      "AuditEventsResponse": {
+        "type": "object",
+        "description": "Response for GET /api/audit/events.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of events returned"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "count",
+          "events"
+        ]
+      },
+      "AuditEventsByUserResponse": {
+        "type": "object",
+        "description": "Response for GET /api/audit/events/user/{username}.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "user": {
+            "type": "string",
+            "description": "Echoed username path parameter"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "user",
+          "count",
+          "events"
+        ]
+      },
+      "AuditEventsByTypeResponse": {
+        "type": "object",
+        "description": "Response for GET /api/audit/events/type/{type}.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "Echoed type path parameter"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "type",
+          "count",
+          "events"
+        ]
+      },
+      "AuditEventsBySeverityResponse": {
+        "type": "object",
+        "description": "Response for GET /api/audit/events/severity/{severity}.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "description": "Echoed severity path parameter"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "severity",
+          "count",
+          "events"
+        ]
+      },
+      "AuditEventsByIpResponse": {
+        "type": "object",
+        "description": "Response for GET /api/audit/events/ip/{ip}.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "ip": {
+            "type": "string",
+            "description": "Echoed ip path parameter"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "ip",
+          "count",
+          "events"
+        ]
+      },
+      "ClearOldAuditRequest": {
+        "type": "object",
+        "description": "Body for POST /api/audit/clear-old.",
+        "properties": {
+          "daysOld": {
+            "type": "integer",
+            "minimum": 7,
+            "description": "Delete events older than this many days. Must be >= 7."
+          }
+        },
+        "required": [
+          "daysOld"
+        ]
+      },
+      "ClearOldAuditResponse": {
+        "type": "object",
+        "description": "Response for POST /api/audit/clear-old.",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "deleted": {
+            "type": "integer",
+            "description": "Number of events removed"
+          }
+        },
+        "required": [
+          "success",
+          "deleted"
+        ]
+      },
+      "MyDashboardResponse": {
+        "description": "Response from GET /api/dashboard/my. On success it carries the success flag, the role-resolved dashboard, and the caller's role. For an unrecognized role the handler returns the ErrorResponse 'Unknown role' shape instead.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "success",
+              "dashboard",
+              "role"
+            ],
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "ceo",
+                  "cto",
+                  "developer",
+                  "artist",
+                  "tech_artist"
+                ],
+                "description": "The caller's role, echoed back."
+              },
+              "dashboard": {
+                "description": "Role-specific dashboard. The concrete shape matches the caller's role.",
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CEODashboard"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CTODashboard"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeveloperDashboard"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ArtistDashboard"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TechArtistDashboard"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "CEODashboard": {
+        "type": "object",
+        "description": "Full system view for the CEO. NOTE: the per-employee field is literally named 'teamEmpployeeStatus' (double-p typo) in the source and emitted JSON.",
+        "required": [
+          "totalAgents",
+          "activeAgents",
+          "systemHealth",
+          "auditAlerts",
+          "criticalIssues",
+          "costThisMonth",
+          "taskCompletion",
+          "teamEmpployeeStatus"
+        ],
+        "properties": {
+          "totalAgents": {
+            "type": "integer",
+            "example": 5
+          },
+          "activeAgents": {
+            "type": "integer",
+            "example": 4
+          },
+          "systemHealth": {
+            "type": "number",
+            "description": "0-100 health score.",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 96
+          },
+          "auditAlerts": {
+            "type": "integer",
+            "example": 0
+          },
+          "criticalIssues": {
+            "type": "integer",
+            "example": 0
+          },
+          "costThisMonth": {
+            "type": "number",
+            "format": "float",
+            "example": 125.43
+          },
+          "taskCompletion": {
+            "type": "number",
+            "description": "Percent of tasks complete.",
+            "example": 87
+          },
+          "teamEmpployeeStatus": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "username",
+                "role",
+                "status",
+                "lastSeen"
+              ],
+              "properties": {
+                "username": {
+                  "type": "string",
+                  "example": "kai"
+                },
+                "role": {
+                  "type": "string",
+                  "example": "cto"
+                },
+                "status": {
+                  "type": "string",
+                  "example": "working"
+                },
+                "lastSeen": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CTODashboard": {
+        "type": "object",
+        "description": "Infrastructure and operations view for the CTO.",
+        "required": [
+          "systemUptime",
+          "infrastructure",
+          "performance",
+          "security",
+          "latestDeployment"
+        ],
+        "properties": {
+          "systemUptime": {
+            "type": "number",
+            "description": "Uptime percentage.",
+            "example": 99.98
+          },
+          "infrastructure": {
+            "type": "object",
+            "required": [
+              "databases",
+              "services",
+              "deployments"
+            ],
+            "properties": {
+              "databases": {
+                "type": "object",
+                "required": [
+                  "count",
+                  "healthy"
+                ],
+                "properties": {
+                  "count": {
+                    "type": "integer",
+                    "example": 3
+                  },
+                  "healthy": {
+                    "type": "integer",
+                    "example": 3
+                  }
+                }
+              },
+              "services": {
+                "type": "object",
+                "required": [
+                  "count",
+                  "healthy"
+                ],
+                "properties": {
+                  "count": {
+                    "type": "integer",
+                    "example": 8
+                  },
+                  "healthy": {
+                    "type": "integer",
+                    "example": 8
+                  }
+                }
+              },
+              "deployments": {
+                "type": "object",
+                "required": [
+                  "count",
+                  "successful"
+                ],
+                "properties": {
+                  "count": {
+                    "type": "integer",
+                    "example": 12
+                  },
+                  "successful": {
+                    "type": "integer",
+                    "example": 12
+                  }
+                }
+              }
+            }
+          },
+          "performance": {
+            "type": "object",
+            "required": [
+              "avgLatency",
+              "errorRate",
+              "throughput"
+            ],
+            "properties": {
+              "avgLatency": {
+                "type": "number",
+                "description": "Average latency in ms.",
+                "example": 45.2
+              },
+              "errorRate": {
+                "type": "number",
+                "example": 0.001
+              },
+              "throughput": {
+                "type": "number",
+                "example": 1250
+              }
+            }
+          },
+          "security": {
+            "type": "object",
+            "required": [
+              "failedLogins",
+              "suspiciousActivities",
+              "securityScore"
+            ],
+            "properties": {
+              "failedLogins": {
+                "type": "integer",
+                "example": 0
+              },
+              "suspiciousActivities": {
+                "type": "integer",
+                "example": 0
+              },
+              "securityScore": {
+                "type": "number",
+                "example": 95
+              }
+            }
+          },
+          "latestDeployment": {
+            "type": "object",
+            "required": [
+              "timestamp",
+              "status"
+            ],
+            "properties": {
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string",
+                "example": "successful"
+              }
+            }
+          }
+        }
+      },
+      "DeveloperDashboard": {
+        "type": "object",
+        "description": "Task and code view for a Developer. `currentTask` is optional.",
+        "required": [
+          "assignedTasks",
+          "tasksCompleted",
+          "codeReviews",
+          "pullRequests",
+          "buildStatus",
+          "recentCommits"
+        ],
+        "properties": {
+          "assignedTasks": {
+            "type": "integer",
+            "example": 8
+          },
+          "tasksCompleted": {
+            "type": "integer",
+            "example": 23
+          },
+          "currentTask": {
+            "type": "object",
+            "required": [
+              "title",
+              "priority",
+              "dueDate"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "example": "Implement payment integration"
+              },
+              "priority": {
+                "type": "string",
+                "example": "high"
+              },
+              "dueDate": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "codeReviews": {
+            "type": "integer",
+            "example": 5
+          },
+          "pullRequests": {
+            "type": "integer",
+            "example": 3
+          },
+          "buildStatus": {
+            "type": "string",
+            "example": "passing"
+          },
+          "recentCommits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "message",
+                "timestamp"
+              ],
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "example": "Fix bug in user authentication"
+                },
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ArtistDashboard": {
+        "type": "object",
+        "description": "Creative work view for an Artist.",
+        "required": [
+          "activeProjects",
+          "designTasks",
+          "feedbackItems",
+          "assetLibrary",
+          "collaborators",
+          "recentDesigns"
+        ],
+        "properties": {
+          "activeProjects": {
+            "type": "integer",
+            "example": 3
+          },
+          "designTasks": {
+            "type": "integer",
+            "example": 12
+          },
+          "feedbackItems": {
+            "type": "integer",
+            "example": 4
+          },
+          "assetLibrary": {
+            "type": "object",
+            "required": [
+              "total",
+              "recentlyAdded"
+            ],
+            "properties": {
+              "total": {
+                "type": "integer",
+                "example": 247
+              },
+              "recentlyAdded": {
+                "type": "integer",
+                "example": 12
+              }
+            }
+          },
+          "collaborators": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "role"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "Kai"
+                },
+                "role": {
+                  "type": "string",
+                  "example": "CTO"
+                }
+              }
+            }
+          },
+          "recentDesigns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "updatedAt"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "UI mockup v2.3"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "TechArtistDashboard": {
+        "type": "object",
+        "description": "Performance and optimization view for a Tech Artist.",
+        "required": [
+          "performanceMetrics",
+          "optimizationOpportunities",
+          "activeOptimizations",
+          "shaderCompilationStatus",
+          "benchmarks",
+          "recommendations"
+        ],
+        "properties": {
+          "performanceMetrics": {
+            "type": "object",
+            "required": [
+              "gpuUsage",
+              "memoryUsage",
+              "cpuUsage"
+            ],
+            "properties": {
+              "gpuUsage": {
+                "type": "number",
+                "description": "Percent GPU usage.",
+                "example": 67
+              },
+              "memoryUsage": {
+                "type": "number",
+                "description": "Percent memory usage.",
+                "example": 52
+              },
+              "cpuUsage": {
+                "type": "number",
+                "description": "Percent CPU usage.",
+                "example": 38
+              }
+            }
+          },
+          "optimizationOpportunities": {
+            "type": "integer",
+            "example": 7
+          },
+          "activeOptimizations": {
+            "type": "integer",
+            "example": 2
+          },
+          "shaderCompilationStatus": {
+            "type": "string",
+            "example": "success"
+          },
+          "benchmarks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "fps"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "example": "Main scene (1080p)"
+                },
+                "fps": {
+                  "type": "number",
+                  "example": 144
+                }
+              }
+            }
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "Optimize main battle shader (potential 15% FPS gain)"
+            ]
+          }
+        }
+      },
+      "ThreatIndicator": {
+        "type": "object",
+        "required": [
+          "level",
+          "category",
+          "message"
+        ],
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "description": "Threat category, e.g. brute_force, 2fa_adoption."
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          }
+        }
+      },
+      "SecurityDashboardSnapshot": {
+        "type": "object",
+        "required": [
+          "score",
+          "grade",
+          "computed_at",
+          "signals",
+          "threats",
+          "user_breakdown"
+        ],
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Weighted composite security score (0-100): 0.7*audit_score + 0.3*twofa_adoption, minus threat penalties."
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D",
+              "F"
+            ],
+            "description": "Letter grade derived from score."
+          },
+          "computed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO timestamp the snapshot was computed."
+          },
+          "signals": {
+            "type": "object",
+            "required": [
+              "audit_score",
+              "twofa_adoption_pct",
+              "failed_login_rate_24h",
+              "critical_events_24h",
+              "suspicious_ips",
+              "active_sessions"
+            ],
+            "properties": {
+              "audit_score": {
+                "type": "number",
+                "description": "0-100 score from the audit logger."
+              },
+              "twofa_adoption_pct": {
+                "type": "number",
+                "description": "Percentage of users with 2FA enabled (0-100)."
+              },
+              "failed_login_rate_24h": {
+                "type": "number",
+                "description": "Failed logins per active user over the last 24h."
+              },
+              "critical_events_24h": {
+                "type": "integer",
+                "description": "Count of critical-severity audit events in the last 24h."
+              },
+              "suspicious_ips": {
+                "type": "integer",
+                "description": "Number of IPs with >=3 failed logins in the last 24h."
+              },
+              "active_sessions": {
+                "type": "integer",
+                "description": "Currently active sessions."
+              }
+            }
+          },
+          "threats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ThreatIndicator"
+            },
+            "description": "Lifted threat indicators needing attention."
+          },
+          "user_breakdown": {
+            "type": "object",
+            "required": [
+              "total_users",
+              "twofa_enabled",
+              "twofa_pct",
+              "by_role"
+            ],
+            "properties": {
+              "total_users": {
+                "type": "integer"
+              },
+              "twofa_enabled": {
+                "type": "integer",
+                "description": "Number of users with 2FA armed."
+              },
+              "twofa_pct": {
+                "type": "number",
+                "description": "Percentage of users with 2FA enabled."
+              },
+              "by_role": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "description": "User count keyed by role (ceo, cto, developer, artist, tech_artist)."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login with username and password",
+        "description": "Authenticates a user and issues a Bearer session token (valid 8h). Rate limited to 10 attempts per 15 minutes per (IP, username) pair, on top of a per-username brute-force lockout (5 failures -> 15 min cooldown). If the account has 2FA enabled the password check still passes but no session is issued: the response is HTTP 200 with { success:false, requires2fa:true, challengeId } and the client must call POST /api/auth/2fa/verify with the challengeId and a TOTP code.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Device-Id",
+            "in": "header",
+            "required": false,
+            "description": "Client device identifier, recorded against the session / 2FA challenge. Defaults to 'unknown-device'.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Location",
+            "in": "header",
+            "required": false,
+            "description": "Client location hint, recorded against the session / 2FA challenge. Defaults to 'unknown-location'.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Either a successful login (session token issued) OR a 2FA challenge requiring a second step. The HTTP status is 200 in both cases; distinguish via the `success` and `requires2fa` fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthTokenResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TwoFactorRequiredResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials, inactive account, or brute-force lockout.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (10 login attempts per 15 minutes per IP+username).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/verify": {
+      "post": {
+        "summary": "Complete a 2FA-required login",
+        "description": "Exchanges the single-use challengeId returned by POST /api/auth/login (when requires2fa is true) together with a 6-digit TOTP code for a real session token. The challenge is consumed whether or not the code matches and expires 5 minutes after issuance. Shares the login rate limiter (10 attempts / 15 min per IP+username).",
+        "tags": [
+          "Auth",
+          "2FA"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorVerifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA verified; session token issued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid/expired challenge, invalid 2FA state, or invalid TOTP code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/setup": {
+      "post": {
+        "summary": "Begin 2FA (TOTP) setup",
+        "description": "Generates a fresh TOTP secret and otpauth:// URI for the authenticated user to render as a QR code. Must be followed by POST /api/auth/2fa/enable to actually arm 2FA. Calling setup again before enable rotates the secret. Rate limited to 30 mutations/min per IP.",
+        "tags": [
+          "Auth",
+          "2FA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Setup initiated; returns the secret and otpauth URI.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorSetupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Setup could not be initiated (e.g. user not found).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired Bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/enable": {
+      "post": {
+        "summary": "Confirm and arm 2FA",
+        "description": "Confirms TOTP setup by submitting a code generated from the secret returned by POST /api/auth/2fa/setup, then arms 2FA on the account. Fails if setup has not been run. Rate limited to 30 mutations/min per IP.",
+        "tags": [
+          "Auth",
+          "2FA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorCodeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA enabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Setup not run, or invalid 2FA code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired Bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/2fa/disable": {
+      "post": {
+        "summary": "Disable 2FA",
+        "description": "Disarms 2FA for the authenticated user. Requires BOTH the current password and a valid TOTP code, so a stolen session alone cannot disable 2FA. Rate limited to 30 mutations/min per IP.",
+        "tags": [
+          "Auth",
+          "2FA"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TwoFactorDisableRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA disabled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Password incorrect or invalid 2FA code.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired Bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Logout / invalidate the current session",
+        "description": "Invalidates the session associated with the supplied Bearer token. Idempotent.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session invalidated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired Bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/profile": {
+      "get": {
+        "summary": "Get current user profile",
+        "description": "Returns the authenticated user's profile plus their role-based permission matrix.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile and permissions for the current user.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired Bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Authenticated user record not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "summary": "Change the current user's password",
+        "description": "Changes the authenticated user's password after verifying the old password. Rate limited to 30 mutations/min per IP.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Current password incorrect or user not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, or expired Bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/users": {
+      "get": {
+        "summary": "List all users (CEO only)",
+        "description": "Returns all user accounts (without password hashes). Restricted to the CEO role via requireRole('ceo').",
+        "tags": [
+          "Auth",
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing Bearer token (requireRole returns 401 when req.user is unset).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not the CEO role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new user (CEO only)",
+        "description": "Creates a new user account. Restricted to the CEO role via requireRole('ceo'). Rate limited to 30 mutations/min per IP. Username must be unique.",
+        "tags": [
+          "Auth",
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateUserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (e.g. username already exists).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing Bearer token (requireRole returns 401 when req.user is unset).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not the CEO role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sessions": {
+      "get": {
+        "summary": "Get session statistics (CEO & CTO only)",
+        "description": "Returns aggregate session and user statistics including active session counts and per-role breakdowns. Restricted to CEO and CTO roles via requireRole('ceo','cto').",
+        "tags": [
+          "Auth",
+          "Sessions"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session statistics.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing Bearer token (requireRole returns 401 when req.user is unset).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not a CEO or CTO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/stats": {
+      "get": {
+        "summary": "Get audit statistics and security score (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit statistics with computed security score and letter grade",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/events": {
+      "get": {
+        "summary": "Get all audit events (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of most-recent events to return (default 100)",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of audit events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEventsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/events/user/{username}": {
+      "get": {
+        "summary": "Get audit events for a specific user (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "description": "Username to filter events by (matches AuditEvent.username)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of most-recent matching events to return (default 100)",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events filtered by user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEventsByUserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/events/type/{type}": {
+      "get": {
+        "summary": "Get audit events of a specific event type (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "description": "Audit event type to filter by",
+            "schema": {
+              "$ref": "#/components/schemas/AuditEventType"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of most-recent matching events to return (default 100)",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events filtered by type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEventsByTypeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/events/severity/{severity}": {
+      "get": {
+        "summary": "Get audit events of a specific severity (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "severity",
+            "in": "path",
+            "required": true,
+            "description": "Audit event severity to filter by",
+            "schema": {
+              "$ref": "#/components/schemas/AuditEventSeverity"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of most-recent matching events to return (default 100)",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events filtered by severity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEventsBySeverityResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/events/ip/{ip}": {
+      "get": {
+        "summary": "Get audit events originating from a specific IP address (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ip",
+            "in": "path",
+            "required": true,
+            "description": "IP address to filter events by (matches AuditEvent.ipAddress)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of most-recent matching events to return (default 100)",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events filtered by IP address",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEventsByIpResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/export/csv": {
+      "get": {
+        "summary": "Export the full audit log as a CSV file download (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV file attachment (Content-Disposition: attachment; filename=audit-log.csv)",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/export/json": {
+      "get": {
+        "summary": "Export the full audit log as a JSON file download (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON file attachment (Content-Disposition: attachment; filename=audit-log.json); body is a JSON array of AuditEvent objects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEvent"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit/clear-old": {
+      "post": {
+        "summary": "Delete audit events older than N days; the deletion is itself audited as a critical config_change (CEO only)",
+        "tags": [
+          "Audit"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Device-Id",
+            "in": "header",
+            "required": false,
+            "description": "Device identifier recorded on the audit event generated for this clear operation (defaults to 'unknown')",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Location",
+            "in": "header",
+            "required": false,
+            "description": "Location recorded on the audit event generated for this clear operation (defaults to 'unknown')",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearOldAuditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Old events cleared; returns count of deleted events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClearOldAuditResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request: daysOld missing or less than 7",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but not CEO",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/my": {
+      "get": {
+        "summary": "Get the dashboard for the currently authenticated user (role-resolved)",
+        "description": "Returns the dashboard appropriate to the caller's role, derived from the session token. The shape of the returned `dashboard` varies by role (CEO/CTO/Developer/Artist/TechArtist). Requires any valid session.",
+        "tags": [
+          "Specialist Dashboards"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "description": "Bearer session token: `Bearer <sessionId>` where sessionId is returned by POST /api/auth/login.",
+            "schema": {
+              "type": "string",
+              "example": "Bearer session_1717400000000_ab12cd34e"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role-specific dashboard payload. `dashboard` is one of the per-role schemas; `role` echoes the caller's role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyDashboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token provided, token invalid/expired, or req.user not populated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "noToken": {
+                    "value": {
+                      "success": false,
+                      "error": "No token provided"
+                    }
+                  },
+                  "invalidToken": {
+                    "value": {
+                      "success": false,
+                      "error": "Invalid or expired token"
+                    }
+                  },
+                  "notAuthenticated": {
+                    "value": {
+                      "success": false,
+                      "error": "Not authenticated"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error while building the dashboard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/ceo": {
+      "get": {
+        "summary": "Get the CEO dashboard (CEO role only)",
+        "description": "Full system view: agent counts, system health, audit alerts, cost, task completion, and per-employee status. Gated by requireRole('ceo').",
+        "tags": [
+          "Specialist Dashboards"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "description": "Bearer session token: `Bearer <sessionId>`.",
+            "schema": {
+              "type": "string",
+              "example": "Bearer session_1717400000000_ab12cd34e"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CEO dashboard payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "dashboard"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "dashboard": {
+                      "$ref": "#/components/schemas/CEODashboard"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token present on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "No authentication token"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but the caller's role is not 'ceo'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Access denied. Required roles: ceo"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error while building the dashboard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/cto": {
+      "get": {
+        "summary": "Get the CTO dashboard (CTO role only)",
+        "description": "Infrastructure, uptime, performance, and security metrics plus the latest deployment. Gated by requireRole('cto').",
+        "tags": [
+          "Specialist Dashboards"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "description": "Bearer session token: `Bearer <sessionId>`.",
+            "schema": {
+              "type": "string",
+              "example": "Bearer session_1717400000000_ab12cd34e"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CTO dashboard payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "dashboard"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "dashboard": {
+                      "$ref": "#/components/schemas/CTODashboard"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token present on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "No authentication token"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but the caller's role is not 'cto'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Access denied. Required roles: cto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error while building the dashboard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/developer": {
+      "get": {
+        "summary": "Get the Developer dashboard (Developer role only)",
+        "description": "Assigned/completed tasks, current task, code reviews, pull requests, build status, and recent commits. Gated by requireRole('developer').",
+        "tags": [
+          "Specialist Dashboards"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "description": "Bearer session token: `Bearer <sessionId>`.",
+            "schema": {
+              "type": "string",
+              "example": "Bearer session_1717400000000_ab12cd34e"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Developer dashboard payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "dashboard"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "dashboard": {
+                      "$ref": "#/components/schemas/DeveloperDashboard"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token present on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "No authentication token"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but the caller's role is not 'developer'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Access denied. Required roles: developer"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error while building the dashboard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/artist": {
+      "get": {
+        "summary": "Get the Artist dashboard (Artist role only)",
+        "description": "Active projects, design tasks, feedback items, asset library counts, collaborators, and recent designs. Gated by requireRole('artist').",
+        "tags": [
+          "Specialist Dashboards"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "description": "Bearer session token: `Bearer <sessionId>`.",
+            "schema": {
+              "type": "string",
+              "example": "Bearer session_1717400000000_ab12cd34e"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Artist dashboard payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "dashboard"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "dashboard": {
+                      "$ref": "#/components/schemas/ArtistDashboard"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token present on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "No authentication token"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but the caller's role is not 'artist'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Access denied. Required roles: artist"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error while building the dashboard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/tech-artist": {
+      "get": {
+        "summary": "Get the Tech Artist dashboard (Tech Artist role only)",
+        "description": "Performance metrics (GPU/memory/CPU), optimization opportunities, shader compilation status, benchmarks, and recommendations. Gated by requireRole('tech_artist'). Note the path segment is hyphenated 'tech-artist' while the underlying role enum value is the underscore form 'tech_artist'.",
+        "tags": [
+          "Specialist Dashboards"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "description": "Bearer session token: `Bearer <sessionId>`.",
+            "schema": {
+              "type": "string",
+              "example": "Bearer session_1717400000000_ab12cd34e"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tech Artist dashboard payload.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "dashboard"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "dashboard": {
+                      "$ref": "#/components/schemas/TechArtistDashboard"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token present on the request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "No authentication token"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but the caller's role is not 'tech_artist'.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Access denied. Required roles: tech_artist"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error while building the dashboard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/security/dashboard": {
+      "get": {
+        "summary": "CEO security dashboard snapshot (composite security posture: weighted score/grade, signals, threat indicators, and user/2FA breakdown).",
+        "tags": [
+          "Security"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "description": "Bearer session token: 'Bearer <sessionId>' from POST /api/auth/login. CEO role required.",
+            "schema": {
+              "type": "string",
+              "example": "Bearer session_1717420800000_ab12cd34e"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Security dashboard snapshot returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "dashboard"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "dashboard": {
+                      "$ref": "#/components/schemas/SecurityDashboardSnapshot"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No authentication token / invalid or expired token (requireRole returns 401 when no authenticated user is present).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "No authentication token"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authenticated but caller is not CEO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Access denied. Required roles: ceo"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to build the dashboard snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

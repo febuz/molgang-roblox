@@ -42,6 +42,7 @@ import setupAuthRoutes from './auth/auth-routes';
 import setupAuditRoutes from './auth/audit-routes';
 import setupSpecialistRoutes from './auth/specialist-routes';
 import { AuditRetentionScheduler } from './auth/audit-retention';
+import { setupOpenApiRoutes } from './api/openapi';
 import GitHubSync from './automation/github-sync';
 import setupGitHubRoutes from './automation/github-routes';
 import { SecurityDashboard } from './security/securityDashboard';
@@ -2184,6 +2185,9 @@ async function initialize() {
     // 5g. Security dashboard (CEO composite view of audit + auth signals)
     const securityDashboard = new SecurityDashboard(authSystem, ceoAuditLogger);
     setupSecurityRoutes(app, securityDashboard, authMiddleware);
+
+    // 5g-bis. OpenAPI spec + Swagger UI (public) for the auth/audit/dashboard/security API
+    setupOpenApiRoutes(app);
 
     // 5h. Quality dashboard (CEO view of QA gate reports — mirrors the
     // security dashboard pattern but reads <project>/build/qa/*.json
