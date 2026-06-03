@@ -35,6 +35,7 @@ import { killSwitch } from './openclaw-kill-switch';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
 import AuthSystem from './auth/auth-system';
+import { loadSecrets, resolveFieldCrypto } from './security/secretsBootstrap';
 import AuthMiddleware from './auth/auth-middleware';
 import CEOAuditLogger from './auth/audit-logger';
 import SpecialistDashboards from './auth/specialist-dashboards';
@@ -65,6 +66,7 @@ import * as forum from './integrations/forum';
 import * as kami from './integrations/kami';
 import * as corpus from './integrations/corpus';
 import { registerPlanRoutes } from './plan-review';
+import { registerDataQualityRoutes } from './data-quality';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
@@ -91,6 +93,8 @@ app.use(express.json({ limit: '6mb' }));
 // Plan review — make plans available from VirtualPC + per-section human comments
 // that relay back to the agents. See src/plan-review + /plan-review.html.
 registerPlanRoutes(app);
+// Data-quality daemon — continuous profiling + SLA on the platform's datasets.
+registerDataQualityRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
@@ -2150,7 +2154,11 @@ async function initialize() {
 
     // 5c. Initialize Authentication System (employee auth + roles)
     logger.info('🔐 Initializing Authentication System...');
-    const authSystem = new AuthSystem();
+    // Secrets via Infisical (no .env): source the field-encryption key from the
+    // infra layer. loadSecrets() returns null until Infisical is provisioned, so
+    // this is non-breaking — AuthSystem keeps its prior env behavior meanwhile.
+    const secrets = await loadSecrets();
+    const authSystem = new AuthSystem({ fieldCrypto: secrets ? resolveFieldCrypto(secrets) : undefined });
     const authMiddleware = new AuthMiddleware(authSystem);
     const ceoAuditLogger = new CEOAuditLogger();
     const specialistDashboards = new SpecialistDashboards();
