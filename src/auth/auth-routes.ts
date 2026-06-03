@@ -366,11 +366,55 @@ export function setupAuthRoutes(
   app.get('/api/auth/sessions', authMiddleware.requireRole('ceo', 'cto'), (req: AuthRequest, res: express.Response) => {
     try {
       const stats = authSystem.getSessionStats();
-      return res.json({ success: true, ...stats });
+      // Additive: include the active-session detail list for the management UI.
+      return res.json({ success: true, ...stats, active: authSystem.getActiveSessions() });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
     }
   });
+
+  /**
+   * Revoke a specific session by id (CEO only). Used by the session-management
+   * UI to force-logout a device.
+   */
+  app.delete(
+    '/api/auth/sessions/:sessionId',
+    mutationLimiter,
+    authMiddleware.requireRole('ceo'),
+    (req: AuthRequest, res: express.Response) => {
+      try {
+        const revoked = authSystem.revokeSession(req.params.sessionId);
+        if (!revoked) {
+          return res.status(404).json({ success: false, error: 'Session not found' });
+        }
+        return res.json({ success: true, revoked: 1 });
+      } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  /**
+   * Revoke ALL active sessions for a user (CEO only) — e.g. on account
+   * compromise. Body: { username }.
+   */
+  app.post(
+    '/api/auth/sessions/revoke-user',
+    mutationLimiter,
+    authMiddleware.requireRole('ceo'),
+    (req: AuthRequest, res: express.Response) => {
+      try {
+        const { username } = req.body || {};
+        if (!username || typeof username !== 'string') {
+          return res.status(400).json({ success: false, error: 'username is required' });
+        }
+        const revoked = authSystem.revokeUserSessions(username);
+        return res.json({ success: true, revoked });
+      } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
 
   logger.info('✓ Auth routes configured');
 }

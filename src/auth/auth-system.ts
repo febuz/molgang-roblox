@@ -457,6 +457,70 @@ export class AuthSystem {
   }
 
   /**
+   * List active (non-expired) sessions with safe metadata for admin views
+   * (backlog 6.5.14). Expired sessions are pruned as a side effect.
+   */
+  getActiveSessions(): Array<{
+    sessionId: string;
+    userId: string;
+    username: string;
+    role: UserRole;
+    issuedAt: Date;
+    expiresAt: Date;
+  }> {
+    const now = Date.now();
+    const active: Array<{
+      sessionId: string;
+      userId: string;
+      username: string;
+      role: UserRole;
+      issuedAt: Date;
+      expiresAt: Date;
+    }> = [];
+    for (const [sessionId, token] of this.sessions.entries()) {
+      if (token.expiresAt.getTime() <= now) {
+        this.sessions.delete(sessionId); // prune expired
+        continue;
+      }
+      active.push({
+        sessionId,
+        userId: token.userId,
+        username: token.username,
+        role: token.role,
+        issuedAt: token.issuedAt,
+        expiresAt: token.expiresAt,
+      });
+    }
+    return active;
+  }
+
+  /**
+   * Admin: revoke a single session by id. Returns true if a session was
+   * actually removed (false if the id was unknown / already gone).
+   */
+  revokeSession(sessionId: string): boolean {
+    const existed = this.sessions.delete(sessionId);
+    if (existed) logger.info(`✓ Session revoked: ${sessionId}`);
+    return existed;
+  }
+
+  /**
+   * Admin: revoke every active session for a username (e.g. on compromise).
+   * Returns the number of sessions removed.
+   */
+  revokeUserSessions(username: string): number {
+    let removed = 0;
+    for (const [sessionId, token] of this.sessions.entries()) {
+      if (token.username === username) {
+        this.sessions.delete(sessionId);
+        removed++;
+      }
+    }
+    if (removed) logger.info(`✓ Revoked ${removed} session(s) for user: ${username}`);
+    return removed;
+  }
+
+  /**
    * Get user by ID
    */
   getUser(userId: string): User | null {
