@@ -74,7 +74,12 @@ model_list:
   # don't break LiteLLM startup.
   - model_name: claude-sonnet
     litellm_params:
-      model: anthropic/claude-sonnet-4-5
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+  # Athena (Principal Reviewer) runs on Opus 4.8 max — the single PR gate.
+  - model_name: claude-opus
+    litellm_params:
+      model: anthropic/claude-opus-4-8
       api_key: os.environ/ANTHROPIC_API_KEY
   - model_name: gpt-4o-mini
     litellm_params:
