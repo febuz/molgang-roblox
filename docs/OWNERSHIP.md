@@ -45,3 +45,56 @@ as the final backstop.
 - Example in-flight contribution: branch `claude/security-hardening` (3 confirmed
   security fixes + CEO IP allowlist) + tag `claude-remediation-a782c799`, awaiting
   review/merge under this model.
+
+---
+
+# Security architecture
+
+*As directed by the owner. Marked **TARGET** where not yet implemented so the
+doc reflects intent vs. current reality.*
+
+## Secrets management — Infisical, three layers (TARGET)
+
+The intended model uses **Infisical** (https://eu.infisical.com, EU instance,
+free tier) as the single source of truth for secrets — **no `.env` files**.
+Secrets are organised into **three layers by blast radius**:
+
+| Layer | Scope | Examples |
+|-------|-------|----------|
+| **1. APIs** | Third-party API keys (read/fetch) | model providers, data feeds |
+| **2. Infra** | Infrastructure credentials | databases, brokers, services |
+| **3. Real-money** | Anything that can move **actual money** | **Alpaca** (trading) — most restricted |
+
+**Injection principle (key invariant):** secrets enter at **tool _input_**
+(Infisical-injected keys used to `fetch`) and must **never appear in LLM
+_output_** — RAG chunks, wiki text, and logs are routed so retrieved content is
+provably secret-free. (This is the insight both Headroom security reviews
+converged on: compress/route at the MCP output boundary, secrets only at input.)
+
+## Config/secret validation — Zod (TARGET)
+
+A **Zod schema** validates the secret/config bundle at startup: fail-fast on
+missing or malformed values, with typed access throughout the code.
+
+## Per-agent access model (FUTURE / aspirational)
+
+Least-privilege binding of **which agent may reach which secret layer**:
+
+- A **scraper agent** that crawls the open internet gets **no secret access at
+  all** — not APIs, not infra, not money.
+- A **trading executor** gets scoped access to **only** the real-money layer
+  (Alpaca), nothing broader.
+- Default-deny: an agent reaches a layer only if explicitly granted.
+
+## Current state vs. target (2026-06-03)
+
+- **Current:** the codebase reads secrets from **`.env` / `process.env`**
+  (e.g. `ANTHROPIC_API_KEY`, `STRIPE_*`, `FIELD_ENCRYPTION_KEY`, Neo4j creds).
+  `.env` is git-ignored; `.env.example` documents the keys. Infisical and Zod
+  are **not yet wired in**; Alpaca is referenced in
+  `src/integrations/numerai/data-fetcher.ts`.
+- **Target sequence:** (1) migrate secrets to the Infisical 3-layer model →
+  (2) add Zod validation → (3) implement the per-agent access model.
+- **Already in place:** field-level encryption at rest
+  (`src/security/fieldCrypto.ts`, AES-256-GCM) protects sensitive *stored*
+  fields (e.g. TOTP secrets) — complementary to secrets-in-transit management.
