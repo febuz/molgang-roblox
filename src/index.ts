@@ -71,6 +71,7 @@ import { registerFinanceRoutes } from './finance';
 import { registerGpuRoutes, getGpuAvailable } from './gpu';
 import { registerQueryRoutes } from './query-builder';
 import { registerSpectroscopyRoutes } from './spectroscopy';
+import { registerAssetMirrorRoutes } from './assets';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -109,6 +110,8 @@ registerGpuRoutes(app);
 registerQueryRoutes(app);
 // Spectroscopy — ingest + peak detection for real spectra (Engel QChem payload).
 registerSpectroscopyRoutes(app);
+// Asset mirror coverage — Roblox→Web cross-platform remediation plan for designers.
+registerAssetMirrorRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
