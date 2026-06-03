@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VirtualPC — Plan Review</title>
+<style>
+  :root { --bg:#0b1020; --panel:#141a2e; --panel2:#1b2238; --line:#26304d; --primary:#60a5fa;
+          --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444; --text:#e5ecff; --muted:#90a0c8; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font:14px/1.55 -apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
+  header h1 { font-size:18px; font-weight:650; } header .sub { color:var(--muted); font-size:12px; }
+  .wrap { display:grid; grid-template-columns:300px 1fr; gap:0; height:calc(100vh - 61px); }
+  .side { border-right:1px solid var(--line); overflow:auto; padding:14px; }
+  .main { overflow:auto; padding:22px 28px; }
+  .btn { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:7px;
+         padding:6px 11px; cursor:pointer; font-size:12.5px; } .btn:hover { border-color:var(--primary); }
+  .btn.p { background:var(--primary); color:#04122e; border-color:var(--primary); font-weight:600; }
+  .btn.ok { border-color:var(--ok); color:var(--ok); } .btn.warn { border-color:var(--warn); color:var(--warn); }
+  .plan-item { padding:10px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; cursor:pointer; background:var(--panel); }
+  .plan-item:hover { border-color:var(--primary); } .plan-item.active { border-color:var(--primary); background:var(--panel2); }
+  .plan-item .t { font-weight:600; } .plan-item .m { color:var(--muted); font-size:11.5px; margin-top:3px; }
+  .pill { display:inline-block; font-size:10.5px; padding:1px 7px; border-radius:20px; border:1px solid var(--line); }
+  .pill.approved { color:var(--ok); border-color:var(--ok); } .pill.changes-requested { color:var(--warn); border-color:var(--warn); }
+  .pill.in-review { color:var(--muted); }
+  .section { border:1px solid var(--line); border-radius:10px; margin-bottom:14px; background:var(--panel); }
+  .section.accepted { border-color:#1f5f3a; } .section.needs-changes { border-color:#7a4a12; }
+  .section .h { padding:11px 15px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .section .h b { font-size:14.5px; } .section .body { padding:12px 15px; white-space:pre-wrap; color:#cdd7f5; font-size:13px; }
+  .section .acts { margin-left:auto; display:flex; gap:6px; }
+  .cmts { padding:0 15px 12px; } .cmt { background:var(--panel2); border:1px solid var(--line); border-radius:7px; padding:7px 10px; margin-top:7px; font-size:12.5px; }
+  .cmt .who { color:var(--primary); font-weight:600; } .cmt .x { float:right; color:var(--muted); cursor:pointer; }
+  .cbox { display:flex; gap:6px; margin-top:8px; } .cbox input { flex:1; background:var(--bg); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:6px 9px; }
+  textarea,input.ti { width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:9px; font:inherit; }
+  .new { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:18px; }
+  .row { display:flex; gap:10px; align-items:center; margin-bottom:9px; }
+  .muted { color:var(--muted); } .bar { display:flex; gap:10px; align-items:center; margin-bottom:16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🗂️ VirtualPC — Plan Review</h1>
+  <span class="sub">Opus posts a plan · you comment on specific sections · feedback relays back to the agents</span>
+</header>
+<div class="wrap">
+  <div class="side">
+    <div class="row"><b>Plans</b><button class="btn" style="margin-left:auto" onclick="toggleNew()">+ New</button></div>
+    <div id="newForm" style="display:none" class="new">
+      <input class="ti" id="nTitle" placeholder="Plan title (e.g. Persistence tier)"><div style="height:8px"></div>
+      <input class="ti" id="nAuthor" placeholder="Author (default: Coordinator)"><div style="height:8px"></div>
+      <textarea id="nMd" rows="7" placeholder="# Goal&#10;...&#10;## Data layer&#10;...&#10;## API&#10;..."></textarea>
+      <div style="height:8px"></div>
+      <button class="btn p" onclick="createPlan()">Create plan</button>
+    </div>
+    <div id="planList"></div>
+  </div>
+  <div class="main" id="main"><p class="muted">Select or create a plan to review its sections.</p></div>
+</div>
+<script>
+const api = (p,o) => fetch(p,o).then(r=>r.json());
+let current = null;
+
+async function loadPlans(){
+  const d = await api('/api/plans');
+  const el = document.getElementById('planList');
+  el.innerHTML = (d.plans||[]).map(p=>`
+    <div class="plan-item ${p.id===current?'active':''}" onclick="openPlan('${p.id}')">
+      <div class="t">${esc(p.title)}</div>
+      <div class="m">${esc(p.author)}${p.model?' · '+esc(p.model):''} · ${p.sections} sections · ${p.openComments} open
+        <span class="pill ${p.status}">${p.status}</span></div>
+    </div>`).join('') || '<p class="muted">No plans yet.</p>';
+}
+async function openPlan(id){
+  current = id; await loadPlans();
+  const d = await api('/api/plans/'+id); if(!d.success){return;}
+  const p = d.plan;
+  document.getElementById('main').innerHTML = `
+    <div class="bar">
+      <h2>${esc(p.title)}</h2><span class="pill ${d.status}">${d.status}</span>
+      <span class="muted">by ${esc(p.author)}${p.model?' ('+esc(p.model)+')':''}</span>
+      <button class="btn p" style="margin-left:auto" onclick="relay('${p.id}')">Relay feedback → agents</button>
+    </div>
+    ${p.sections.map(s=>section(p,s)).join('')}`;
+}
+function section(p,s){
+  const cmts = p.comments.filter(c=>c.sectionId===s.id);
+  return `<div class="section ${s.status}">
+    <div class="h"><b>${esc(s.heading)}</b> <span class="pill ${s.status==='accepted'?'approved':s.status==='needs-changes'?'changes-requested':'in-review'}">${s.status}</span>
+      <span class="acts">
+        <button class="btn ok" onclick="setStatus('${p.id}','${s.id}','accepted')">✓ Accept</button>
+        <button class="btn warn" onclick="setStatus('${p.id}','${s.id}','needs-changes')">✎ Needs changes</button>
+      </span></div>
+    <div class="body">${esc(s.body)||'<span class="muted">(no detail)</span>'}</div>
+    <div class="cmts">
+      ${cmts.map(c=>`<div class="cmt"><span class="who">${esc(c.author)}</span>${c.resolved?' <span class="muted">(resolved)</span>':''}
+        ${c.resolved?'':`<span class="x" title="resolve" onclick="resolve('${p.id}','${c.id}')">✕</span>`} ${esc(c.text)}</div>`).join('')}
+      <div class="cbox"><input id="ci-${s.id}" placeholder="Comment on this section…"
+        onkeydown="if(event.key==='Enter')comment('${p.id}','${s.id}')">
+        <button class="btn" onclick="comment('${p.id}','${s.id}')">Comment</button></div>
+    </div></div>`;
+}
+async function setStatus(pid,sid,st){ await api(`/api/plans/${pid}/sections/${sid}/status`,post({status:st})); openPlan(pid); }
+async function comment(pid,sid){ const i=document.getElementById('ci-'+sid); if(!i.value.trim())return;
+  await api(`/api/plans/${pid}/comments`,post({sectionId:sid,text:i.value,author:'Operator'})); openPlan(pid); }
+async function resolve(pid,cid){ await api(`/api/plans/${pid}/comments/${cid}/resolve`,post({})); openPlan(pid); }
+async function relay(pid){ const r=await api(`/api/plans/${pid}/relay`,post({}));
+  alert(r.relayed?`Relayed to agents — ${r.actionable} section(s) flagged, status ${r.status}.`:`Feedback built (${r.actionable} flagged), forum unavailable.`); }
+async function createPlan(){ const title=document.getElementById('nTitle').value.trim();
+  if(!title){alert('title required');return;}
+  const r=await api('/api/plans',post({title,author:document.getElementById('nAuthor').value||'Coordinator',markdown:document.getElementById('nMd').value}));
+  if(r.success){toggleNew();document.getElementById('nTitle').value='';document.getElementById('nMd').value='';openPlan(r.plan.id);} }
+function toggleNew(){ const f=document.getElementById('newForm'); f.style.display=f.style.display==='none'?'block':'none'; }
+function post(b){ return {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+loadPlans();
+</script>
+</body>
+</html>
