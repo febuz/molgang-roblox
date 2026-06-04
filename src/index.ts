@@ -72,6 +72,7 @@ import { registerGpuRoutes, getGpuAvailable } from './gpu';
 import { registerQueryRoutes } from './query-builder';
 import { registerSpectroscopyRoutes } from './spectroscopy';
 import { registerAssetMirrorRoutes } from './assets';
+import { registerRequirementRoutes } from './requirements';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -112,6 +113,9 @@ registerQueryRoutes(app);
 registerSpectroscopyRoutes(app);
 // Asset mirror coverage — Roblox→Web cross-platform remediation plan for designers.
 registerAssetMirrorRoutes(app);
+// Requirements register — USDP use-case-driven requirements with traceability
+// (coverage/verification) from requirement → feature/commit/test. See src/requirements.
+registerRequirementRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
