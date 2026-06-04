@@ -22,9 +22,10 @@ function mockRes() {
   return res;
 }
 
-function mockReq(opts: { origin?: string; method?: string } = {}) {
+function mockReq(opts: { origin?: string; method?: string; secure?: boolean } = {}) {
   return {
     method: opts.method ?? 'GET',
+    secure: opts.secure ?? false,
     get: (h: string) => (h.toLowerCase() === 'origin' ? opts.origin : undefined),
   } as any;
 }
@@ -45,10 +46,40 @@ describe('securityHeaders (gated — TOP_100 #2)', () => {
     expect(res.headers['X-Content-Type-Options']).toBe('nosniff');
     expect(res.headers['X-XSS-Protection']).toBe('1; mode=block');
     expect(res.headers['Referrer-Policy']).toBe('strict-origin-when-cross-origin');
-    expect(res.headers['Strict-Transport-Security']).toContain('max-age=31536000');
-    expect(res.headers['Strict-Transport-Security']).toContain('includeSubDomains');
     expect(res.headers['Permissions-Policy']).toContain('camera=()');
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends HSTS only on secure (HTTPS) requests, never on plain HTTP', () => {
+    delete process.env.ENFORCE_STRICT_SECURITY;
+    const http = mockRes();
+    securityHeaders(mockReq({ secure: false }), http, jest.fn());
+    expect(http.headers['Strict-Transport-Security']).toBeUndefined();
+
+    const https = mockRes();
+    securityHeaders(mockReq({ secure: true }), https, jest.fn());
+    expect(https.headers['Strict-Transport-Security']).toContain('max-age=31536000');
+  });
+
+  it('hardens the CSP with object-src/base-uri/frame-ancestors and connect-src in both modes', () => {
+    delete process.env.ENFORCE_STRICT_SECURITY;
+    const def = mockRes();
+    securityHeaders(mockReq(), def, jest.fn());
+    const defCsp = def.headers['Content-Security-Policy'];
+    expect(defCsp).toContain("object-src 'none'");
+    expect(defCsp).toContain("base-uri 'self'");
+    expect(defCsp).toContain("frame-ancestors 'self'");
+    // default connect-src must allow the cross-port localhost fetches + ws.
+    expect(defCsp).toContain('connect-src');
+    expect(defCsp).toContain('http://127.0.0.1:*');
+    expect(defCsp).toContain('ws:');
+
+    process.env.ENFORCE_STRICT_SECURITY = 'true';
+    const strict = mockRes();
+    securityHeaders(mockReq(), strict, jest.fn());
+    const strictCsp = strict.headers['Content-Security-Policy'];
+    expect(strictCsp).toContain("object-src 'none'");
+    expect(strictCsp).toContain("connect-src 'self'");
   });
 
   describe('default (permissive) mode — must not break the live dashboards', () => {

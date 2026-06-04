@@ -82,7 +82,13 @@ export function internalWriteAuth(opts: InternalWriteAuthOptions = {}) {
   const protectedPaths = opts.protectedPaths ?? PROTECTED_WRITE_PATHS;
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (req.method !== 'POST' || !protectedPaths.has(req.path)) {
+    // Normalise the path the SAME way Express routes it, or the guard can be
+    // bypassed: Express matches routes case-insensitively (caseSensitive off)
+    // and ignores a trailing slash (strict off), so `POST /API/wiki/` reaches
+    // the /api/wiki handler while a raw req.path lookup would miss the Set.
+    // Lower-case and strip trailing slash(es) before matching.
+    const normalizedPath = (req.path || '').toLowerCase().replace(/\/+$/, '') || '/';
+    if (req.method !== 'POST' || !protectedPaths.has(normalizedPath)) {
       next();
       return;
     }

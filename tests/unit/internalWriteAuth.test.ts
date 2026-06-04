@@ -94,6 +94,35 @@ describe('internalWriteAuth (TOP_100 #19)', () => {
     expect(res.statusCode).toBe(200);
   });
 
+  // Regression: Express routes case-insensitively and ignores a trailing slash,
+  // so the guard must normalise the path or it can be bypassed entirely.
+  it('blocks the trailing-slash bypass (/api/wiki/) under enforce', () => {
+    const { res, nexted } = run(
+      internalWriteAuth({ enforce: true }),
+      mockReq({ path: '/api/wiki/', ip: '203.0.113.7' }),
+    );
+    expect(nexted).toBe(false);
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('blocks the case-variant bypass (/API/Wiki) under enforce', () => {
+    const { res, nexted } = run(
+      internalWriteAuth({ enforce: true }),
+      mockReq({ path: '/API/Wiki', ip: '203.0.113.7' }),
+    );
+    expect(nexted).toBe(false);
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('still allows localhost through the normalised path', () => {
+    const { res, nexted } = run(
+      internalWriteAuth({ enforce: true }),
+      mockReq({ path: '/api/Corpus/Ingest/', ip: '127.0.0.1' }),
+    );
+    expect(nexted).toBe(true);
+    expect(res.statusCode).toBe(200);
+  });
+
   it('empty service token never authorises a non-local caller (no accidental open door)', () => {
     // enforce + empty token + a caller that sends an empty key must NOT pass.
     const mw = internalWriteAuth({ enforce: true, serviceToken: '' });
