@@ -88,8 +88,15 @@ config();
 
 const app = express();
 const server = http.createServer(app);
+// Restrict WebSocket CORS to the local dashboards. `origin: '*'` let any
+// website on the internet open a socket to this server, violating the
+// local-only posture. Override with SOCKET_CORS_ORIGINS (comma-separated)
+// if the dashboard is ever served from another origin.
+const SOCKET_CORS_ORIGINS = (process.env.SOCKET_CORS_ORIGINS ||
+  'http://localhost:3000,http://localhost:3100,http://127.0.0.1:3000,http://127.0.0.1:3100')
+  .split(',').map(o => o.trim()).filter(Boolean);
 const io = new SocketIOServer(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { origin: SOCKET_CORS_ORIGINS, methods: ['GET', 'POST'] }
 });
 const PORT = process.env.PORT || 3100;
 
@@ -249,7 +256,9 @@ function ghPathAllowed(p: string): boolean {
 function ghApiFetch(repoPath: string): Promise<{ path: string; content: string; size: number; html_url: string; encoding: string }> {
   return new Promise((resolve, reject) => {
     const { execFile } = require('child_process');
-    execFile('gh', ['api', `repos/${GH_REPO}/contents/${repoPath}`], { maxBuffer: 4 * 1024 * 1024 }, (err: any, stdout: string, stderr: string) => {
+    // 15s timeout so a slow/hung `gh` call can't block the request indefinitely
+    // (the event loop isn't blocked, but the awaiting request would hang forever).
+    execFile('gh', ['api', `repos/${GH_REPO}/contents/${repoPath}`], { maxBuffer: 4 * 1024 * 1024, timeout: 15000 }, (err: any, stdout: string, stderr: string) => {
       if (err) { reject(new Error(stderr || err.message)); return; }
       try {
         const j = JSON.parse(stdout);
