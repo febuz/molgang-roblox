@@ -72,6 +72,7 @@ import { registerGpuRoutes, getGpuAvailable } from './gpu';
 import { registerQueryRoutes } from './query-builder';
 import { registerSpectroscopyRoutes } from './spectroscopy';
 import { registerAssetMirrorRoutes } from './assets';
+import { registerCodexRoutes } from './codex';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -112,6 +113,10 @@ registerQueryRoutes(app);
 registerSpectroscopyRoutes(app);
 // Asset mirror coverage — Roblox→Web cross-platform remediation plan for designers.
 registerAssetMirrorRoutes(app);
+// Codex bridge — run coding/review tasks on the signed-in ChatGPT subscription
+// (no per-token API cost) via `codex exec`. Backs the GPT-5.5 dev leg + the
+// PhD reviewer. See src/codex.
+registerCodexRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
