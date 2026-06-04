@@ -16,7 +16,7 @@ describe('org wiring', () => {
   });
   it('puts the reviewer on Codex/GPT-5.5 xhigh and the PO on Claude Opus max', () => {
     expect(REVIEWER.provider).toBe('codex');
-    expect(REVIEWER.model).toBe('gpt-5.5-codex');
+    expect(REVIEWER.model).toBe('gpt-5.5');
     expect(REVIEWER.effort).toBe('xhigh');
     expect(COORDINATOR.model).toBe('claude-opus-4-8');
     expect(COORDINATOR.effort).toBe('max');
@@ -35,8 +35,8 @@ describe('org wiring', () => {
   });
   it('seniors run hotter than their junior teams', () => {
     const gpt = DEV_LEGS.find(l => l.id === 'gpt')!;
-    expect(gpt.senior.model).toBe('gpt-5.5-codex');
-    expect(gpt.juniors.model).toBe('gpt-5.4-codex');
+    expect(gpt.senior.model).toBe('gpt-5.5');
+    expect(gpt.juniors.model).toBe('gpt-5.4');
     const claude = DEV_LEGS.find(l => l.id === 'claude')!;
     expect(claude.senior.model).toBe('claude-opus-4-8');
     expect(claude.juniors.model).toBe('claude-sonnet-4-6');

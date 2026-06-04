@@ -26,7 +26,7 @@ export type Effort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface ModelSpec {
   provider: Provider;
-  /** Model id or alias (e.g. gpt-5.5-codex, claude-opus-4-8, qwen-coder-32b). */
+  /** Model id or alias (e.g. gpt-5.5, claude-opus-4-8, qwen-coder-32b). */
   model: string;
   effort: Effort;
 }
@@ -56,14 +56,14 @@ export const COORDINATOR: ModelSpec & { role: string } = {
 /** The single PhD-level reviewer that reviews every leg's branch. */
 export const REVIEWER: ModelSpec & { role: string } = {
   role: 'Principal Reviewer · senior PhD-level engineer',
-  provider: 'codex', model: 'gpt-5.5-codex', effort: 'xhigh',
+  provider: 'codex', model: 'gpt-5.5', effort: 'xhigh',
 };
 
 export const DEV_LEGS: DeveloperLeg[] = [
   {
     id: 'gpt', label: 'GPT-5.5 leg (Codex)',
-    senior:  { provider: 'codex', model: 'gpt-5.5-codex', effort: 'xhigh' },
-    juniors: { provider: 'codex', model: 'gpt-5.4-codex', effort: 'high' },
+    senior:  { provider: 'codex', model: 'gpt-5.5', effort: 'xhigh' },
+    juniors: { provider: 'codex', model: 'gpt-5.4', effort: 'high' },
     juniorCount: JUNIORS_PER_LEG,
     branchPrefix: 'dev/gpt',
   },

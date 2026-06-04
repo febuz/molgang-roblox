@@ -79,7 +79,7 @@ export const AGENT_META: AgentMeta[] = [
   // branch; the Product Owner (Claude Opus, max) reads the reviews and selects
   // exactly one winner. She never writes feature code — review, standards, and
   // gate only. See docs/DEV-TOURNAMENT.md and docs/ATHENA-REVIEW-GATE.md.
-  { name: 'Athena',        role: 'Principal Reviewer · senior PhD-level engineer · GPT-5.5 (Codex, xhigh) PR gate · owns coding standards', avatar: '🦉', color: '#9333ea', kind: 'reviewer', models: ['gpt-5.5-codex'], teams: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'], tools: ['codegraph.*', 'scrum.bug', 'scrum.standup', 'governance.lineage', 'forum.*', 'wiki.lookup'] },
+  { name: 'Athena',        role: 'Principal Reviewer · senior PhD-level engineer · GPT-5.5 (Codex, xhigh) PR gate · owns coding standards', avatar: '🦉', color: '#9333ea', kind: 'reviewer', models: ['gpt-5.5'], teams: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'], tools: ['codegraph.*', 'scrum.bug', 'scrum.standup', 'governance.lineage', 'forum.*', 'wiki.lookup'] },
 
   // ─── Tester agents — synthetic users who play the games + file bugs ───
   // Testers — get scrum.bug + forum.* (the forum is where they share tips/tricks).
