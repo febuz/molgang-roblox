@@ -677,6 +677,14 @@ app.post('/api/mcp/call', async (req, res) => {
 app.post('/api/docs/regenerate', async (req, res) => {
   try {
     const scope = String(req.body?.scope || 'all');
+    // Allow-list the scope before it reaches the spawned script as a CLI arg.
+    // regenerate-docs.js only understands these four values; anything else is
+    // either a typo or an injection attempt and must not be forwarded.
+    const ALLOWED_SCOPES = ['all', 'readme', 'architecture', 'wiki'];
+    if (!ALLOWED_SCOPES.includes(scope)) {
+      res.status(400).json({ success: false, error: `invalid scope; allowed: ${ALLOWED_SCOPES.join(', ')}` });
+      return;
+    }
     const { spawn } = require('child_process');
     const script = path.join(REPO_ROOT, 'scripts', 'regenerate-docs.js');
     if (!require('fs').existsSync(script)) {
@@ -1271,7 +1279,21 @@ app.get('/api/tracks', (req, res) => {
 app.get('/api/tracks/:id', (req, res) => {
   try {
     const fs = require('fs');
-    const file = path.resolve(__dirname, '..', 'public', 'assets', 'tracks', `${req.params.id}.json`);
+    // Path-traversal guard: a track id is a flat slug, never a path. Reject
+    // anything outside [A-Za-z0-9_-] so encoded "../" sequences can't escape
+    // the tracks directory and read arbitrary files (e.g. /etc/passwd).
+    const id = String(req.params.id);
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+      res.status(400).json({ success: false, error: 'invalid track id' });
+      return;
+    }
+    const tracksDir = path.resolve(__dirname, '..', 'public', 'assets', 'tracks');
+    const file = path.resolve(tracksDir, `${id}.json`);
+    // Defence in depth: confirm the resolved path is still inside tracksDir.
+    if (file !== path.join(tracksDir, `${id}.json`) || !file.startsWith(tracksDir + path.sep)) {
+      res.status(400).json({ success: false, error: 'invalid track id' });
+      return;
+    }
     if (!fs.existsSync(file)) {
       res.status(404).json({ success: false, error: 'track not found' });
       return;

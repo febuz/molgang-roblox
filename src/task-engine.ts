@@ -774,6 +774,12 @@ interface WorkLogEntry {
 }
 
 const workLog: WorkLogEntry[] = [];
+// Hard cap on retained work-log entries. The array had no bound, which grew
+// task-state.json to 196 MB — every 5s save tick then serialized the whole
+// file and blocked the event loop, and startup loaded the entire blob into
+// memory. Keep only the most recent MAX_WORKLOG entries; analytics here only
+// look at recent windows / last-N slices, so older entries carry no value.
+const MAX_WORKLOG = 10000;
 // Replay any work-log entries that were restored from the persisted state.
 // Use a manual loop instead of `push(...arr)` because the persisted log can
 // be 100k+ entries and V8's variadic-call argument limit (~125k) blows the
@@ -781,7 +787,10 @@ const workLog: WorkLogEntry[] = [];
 // at startup when the log grew past the threshold.
 if ((globalThis as any).__virtualpcPersistedWorkLog) {
   const persisted = (globalThis as any).__virtualpcPersistedWorkLog as WorkLogEntry[];
-  for (let i = 0; i < persisted.length; i++) workLog.push(persisted[i]);
+  // Only replay the tail — a previously-unbounded log on disk could hold
+  // hundreds of thousands of entries; keep the newest MAX_WORKLOG.
+  const start = Math.max(0, persisted.length - MAX_WORKLOG);
+  for (let i = start; i < persisted.length; i++) workLog.push(persisted[i]);
   delete (globalThis as any).__virtualpcPersistedWorkLog;
 }
 const PROJECT_NAME = 'VirtualPC platform';
@@ -801,6 +810,11 @@ export function logWork(agent: string, taskId: string, taskTitle: string, subtas
     project: PROJECT_NAME,
     registeredFor: REGISTERED_FOR,
   });
+  // Rolling eviction — never let the in-memory log (and therefore the persisted
+  // snapshot) grow without bound. Splice the oldest overflow in one shot.
+  if (workLog.length > MAX_WORKLOG) {
+    workLog.splice(0, workLog.length - MAX_WORKLOG);
+  }
 }
 
 export function getWorkLog(agent?: string, limit?: number): WorkLogEntry[] {
