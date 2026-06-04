@@ -19,9 +19,10 @@ The reviewer reviews each leg's branch and enforces the coding standards.
 
 ## The three developer legs
 
-Each leg has a **senior developer**, a **junior team** (lower-tier model running
-the leg's own scrum), its **own branch namespace**, and its **own development
-resources**.
+Each leg has a **senior developer**, a **junior team of 2** (lower-tier model
+running the leg's own scrum), its **own branch namespace**, and its **own
+development resources**. That is 3 legs × (1 senior + 2 juniors) = **9 developer
+agents** plus the PhD reviewer and the PO.
 
 | Leg | Senior | Juniors | Branch namespace |
 |-----|--------|---------|------------------|

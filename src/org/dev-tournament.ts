@@ -38,9 +38,14 @@ export interface DeveloperLeg {
   senior: ModelSpec;
   /** The junior team — lower-tier models doing the leg's own scrum. */
   juniors: ModelSpec;
+  /** How many juniors report to the senior on this leg. */
+  juniorCount: number;
   /** Git branch namespace this leg builds on (one branch per feature). */
   branchPrefix: string;
 }
+
+/** How many juniors each senior leads (each team runs its own scrum). */
+export const JUNIORS_PER_LEG = 2;
 
 /** Coordinator / Product Owner / Scrum Master — selects the winner. */
 export const COORDINATOR: ModelSpec & { role: string } = {
@@ -59,21 +64,39 @@ export const DEV_LEGS: DeveloperLeg[] = [
     id: 'gpt', label: 'GPT-5.5 leg (Codex)',
     senior:  { provider: 'codex', model: 'gpt-5.5-codex', effort: 'xhigh' },
     juniors: { provider: 'codex', model: 'gpt-5.4-codex', effort: 'high' },
+    juniorCount: JUNIORS_PER_LEG,
     branchPrefix: 'dev/gpt',
   },
   {
     id: 'claude', label: 'Claude Opus 4.8 leg',
     senior:  { provider: 'anthropic', model: 'claude-opus-4-8', effort: 'xhigh' },
     juniors: { provider: 'anthropic', model: 'claude-sonnet-4-6', effort: 'high' },
+    juniorCount: JUNIORS_PER_LEG,
     branchPrefix: 'dev/claude',
   },
   {
     id: 'virtualpc', label: 'VirtualPC native leg (local/LiteLLM)',
     senior:  { provider: 'litellm', model: 'qwen-coder-32b', effort: 'high' },
     juniors: { provider: 'litellm', model: 'devstral', effort: 'medium' },
+    juniorCount: JUNIORS_PER_LEG,
     branchPrefix: 'dev/virtualpc',
   },
 ];
+
+export interface TeamMember {
+  agent: string;          // e.g. "gpt-senior", "gpt-junior-1"
+  seat: 'senior' | 'junior';
+  spec: ModelSpec;
+}
+
+/** The full roster for a leg: one senior + its juniors (each runs the scrum). */
+export function teamRoster(leg: DeveloperLeg): TeamMember[] {
+  const members: TeamMember[] = [{ agent: `${leg.id}-senior`, seat: 'senior', spec: leg.senior }];
+  for (let i = 1; i <= leg.juniorCount; i++) {
+    members.push({ agent: `${leg.id}-junior-${i}`, seat: 'junior', spec: leg.juniors });
+  }
+  return members;
+}
 
 export const LEG_IDS = DEV_LEGS.map(l => l.id);
 
@@ -147,7 +170,11 @@ export interface FeatureItem {
   stage: FeatureStage;
   poker?: PokerResult;
   builds: LegBuild[];
+  /** The reviewer's per-leg verdicts (filled at the review stage). */
+  reviews?: ReviewVerdict[];
   winner?: DeveloperLeg['id'];
+  /** Append-only audit trail — every stage transition is recorded. */
+  log: Array<{ at: string; event: string }>;
 }
 
 /** Produce the per-leg branch assignments for a feature (one branch per leg). */

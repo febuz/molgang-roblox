@@ -1,6 +1,6 @@
 import {
-  DEV_LEGS, LEG_IDS, COORDINATOR, REVIEWER,
-  pokerConsensus, planBuilds, selectWinner,
+  DEV_LEGS, LEG_IDS, COORDINATOR, REVIEWER, JUNIORS_PER_LEG,
+  pokerConsensus, planBuilds, selectWinner, teamRoster,
   TeamEstimate, ReviewVerdict,
 } from '../../src/org/dev-tournament';
 
@@ -20,6 +20,18 @@ describe('org wiring', () => {
     expect(REVIEWER.effort).toBe('xhigh');
     expect(COORDINATOR.model).toBe('claude-opus-4-8');
     expect(COORDINATOR.effort).toBe('max');
+  });
+  it('gives each leg a senior + 2 juniors running their own scrum', () => {
+    expect(JUNIORS_PER_LEG).toBe(2);
+    for (const leg of DEV_LEGS) {
+      const roster = teamRoster(leg);
+      expect(roster).toHaveLength(3);                       // 1 senior + 2 juniors
+      expect(roster.filter(m => m.seat === 'senior')).toHaveLength(1);
+      expect(roster.filter(m => m.seat === 'junior')).toHaveLength(2);
+      expect(roster[0].agent).toBe(`${leg.id}-senior`);
+      expect(roster[0].spec).toEqual(leg.senior);
+      expect(roster[2].spec).toEqual(leg.juniors);
+    }
   });
   it('seniors run hotter than their junior teams', () => {
     const gpt = DEV_LEGS.find(l => l.id === 'gpt')!;

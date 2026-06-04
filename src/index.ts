@@ -72,6 +72,7 @@ import { registerGpuRoutes, getGpuAvailable } from './gpu';
 import { registerQueryRoutes } from './query-builder';
 import { registerSpectroscopyRoutes } from './spectroscopy';
 import { registerAssetMirrorRoutes } from './assets';
+import { registerTournamentRoutes } from './org/tournament-routes';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -112,6 +113,10 @@ registerQueryRoutes(app);
 registerSpectroscopyRoutes(app);
 // Asset mirror coverage — Roblox→Web cross-platform remediation plan for designers.
 registerAssetMirrorRoutes(app);
+// Dev tournament — the 3-developer competing-branch regime: backlog item →
+// planning poker → 3 legs build → reviewer reviews → PO picks one winner.
+// See src/org/dev-tournament + docs/DEV-TOURNAMENT.md.
+registerTournamentRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
