@@ -85,6 +85,11 @@ import * as commitAudit from './commit-audit';
 
 // Load environment
 config();
+// Re-load credentials now that dotenv has populated process.env: the module's
+// boot-time load ran at import (before config()), so FIELD_ENCRYPTION_KEY from
+// .env was not yet visible. This pass decrypts api_keys and migrates any
+// plaintext-at-rest to encrypted (no-op when the key is unset). See #31.
+credentials.loadCredentials();
 
 const app = express();
 const server = http.createServer(app);
