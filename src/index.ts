@@ -2291,6 +2291,20 @@ async function initialize() {
     setupVitalsRoutes(app, vitals, inferenceAudit, selfRepair);
     setupGuardrailsRoutes(app);
 
+    // 6c. Global JSON error handler — must be registered after every route.
+    // Without it, an error thrown (or forwarded via next(err)) in any handler
+    // falls through to Express's default handler, which returns an HTML page
+    // and leaks the stack trace, breaking the JSON API contract. Log the full
+    // error server-side; return a terse JSON 500 to the caller.
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (res.headersSent) return next(err);
+      logger.error(`Unhandled error on ${req.method} ${req.path}: ${err?.stack || err?.message || err}`);
+      res.status(err?.status || 500).json({
+        success: false,
+        error: err?.message || 'internal server error',
+      });
+    });
+
     // 7. Start server
     server.listen(PORT, () => {
       logger.info(`
