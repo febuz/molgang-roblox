@@ -1,36 +1,49 @@
 import { Request, Response, NextFunction } from 'express';
 
+// Strict mode gates the headers that can break the live dashboards. It is OFF
+// by default so wiring this middleware is non-breaking; turn it on in a
+// hardened deployment that has verified no cross-origin resources are loaded.
+//
+// Why each gated header is risky by default (see the 2026-06-04 recon):
+//   - X-Frame-Options: DENY blocks dashboard.html's same-origin <iframe> of
+//     /agents.html. SAMEORIGIN keeps clickjacking protection without breaking it.
+//   - Cross-Origin-Embedder-Policy: require-corp blocks the Three.js modules the
+//     demo pages import from https://unpkg.com (no CORP headers there). It is
+//     also unnecessary without SharedArrayBuffer, which the app doesn't use.
+//   - A 'self'-only CSP blocks those same unpkg.com scripts.
+function strictModeEnabled(): boolean {
+  return (process.env.ENFORCE_STRICT_SECURITY || 'false').toLowerCase() === 'true';
+}
+
 export const securityHeaders = (_req: Request, res: Response, next: NextFunction) => {
-  // Content Security Policy
-  res.setHeader(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:"
-  );
+  const strict = strictModeEnabled();
 
-  // X-Content-Type-Options
+  // --- Always-safe headers (no known dashboard impact) ---
   res.setHeader('X-Content-Type-Options', 'nosniff');
-
-  // X-Frame-Options (Clickjacking protection)
-  res.setHeader('X-Frame-Options', 'DENY');
-
-  // X-XSS-Protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
-
-  // Referrer-Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-
-  // Permissions-Policy
-  res.setHeader(
-    'Permissions-Policy',
-    'geolocation=(), microphone=(), camera=()'
-  );
-
-  // Strict-Transport-Security (HSTS)
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 
-  // Cross-Origin policies
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  // Clickjacking protection: SAMEORIGIN by default (allows the dashboard's own
+  // iframes); DENY only under strict mode.
+  res.setHeader('X-Frame-Options', strict ? 'DENY' : 'SAMEORIGIN');
+
+  // Content Security Policy: permissive-but-meaningful by default (self + the
+  // one external origin the demos use); locked to 'self' under strict mode.
+  res.setHeader(
+    'Content-Security-Policy',
+    strict
+      ? "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      : "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:",
+  );
+
+  // Cross-origin isolation headers — only under strict mode (they break the
+  // unpkg.com Three.js imports and external-link window.open()).
+  if (strict) {
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  }
 
   next();
 };
