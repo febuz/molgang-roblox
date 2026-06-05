@@ -82,6 +82,7 @@ import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
 import { guardrailsAgent } from './guardrails/guardrails-agent';
 import { containmentGuard, setupContainmentRoutes } from './containment';
+import { setupPlaytestRoutes } from './playtest';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
@@ -2360,6 +2361,7 @@ async function initialize() {
     setupGuardrailsRoutes(app);
     setupContainmentRoutes(app);
     console.log(`🛡️  ContainmentGuard MEGA active (mode: ${containmentGuard.mode}, ${containmentGuard.getPolicy().commandRules.length} command rules)`);
+    setupPlaytestRoutes(app);
 
     // 6c. Global JSON error handler — must be registered after every route.
     // Without it, an error thrown (or forwarded via next(err)) in any handler
