@@ -2145,6 +2145,47 @@ async function initialize() {
       logger.warn(`governance-graph init failed: ${e.message}`);
     }
 
+    // 1c. Ingest the Familie knowledge graph — een aparte, verbergbare graaf
+    //     met personen / bedrijven / hardware / software / projecten. Zelfde
+    //     graceful-offline gedrag. De /api/family/* surface hieronder serveert
+    //     'm in 3D-force-graph formaat met een verberg-toggle.
+    try {
+      const fam = await import('./integrations/lightrag/family-graph');
+      const r = await fam.ingestFamilyGraph(lightrag);
+      if (r.offline) logger.warn('family-graph: LightRAG offline — skip ingest');
+      else logger.info(`✓ family-graph: ${r.entities} objecten, ${r.categories} categorieën, ${r.structuralEdges} structureel + ${r.semanticEdges} afgeleid + ${r.verifiedEdges} geverifieerd (hidden=${r.hidden})`);
+    } catch (e: any) {
+      logger.warn(`family-graph init failed: ${e.message}`);
+    }
+
+    // Familie-graaf endpoints. GET /graph → 3D node-link JSON (respecteert de
+    // verberg-toggle); GET/POST /visibility → toggle uitlezen/zetten.
+    const familyApi = await import('./integrations/lightrag/family-graph');
+    app.get('/api/family/graph', async (_req, res) => {
+      try { res.json({ success: true, lightrag_connected: lightrag.isConnected(), ...(await familyApi.getFamilyGraph3D(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/family/entities', async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.listFamilyEntities(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/family/visibility', (_req, res) => {
+      res.json({ success: true, ...familyApi.getFamilyVisibility() });
+    });
+    app.post('/api/family/visibility', async (req, res) => {
+      try {
+        const hidden = req.body?.hidden === true || req.body?.hidden === 'true';
+        res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, hidden)) });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Verberg-toggle als losse "flip" (geen body nodig).
+    app.post('/api/family/toggle', async (_req, res) => {
+      try {
+        const cur = familyApi.getFamilyVisibility();
+        res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, !cur.hidden)) });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+
     // Asset query endpoints — read straight from the LightRAG graph so
     // designers (Mira, Luna) can ask "which 3D models from Roblox are not
     // yet ported to web?" without scanning the filesystem each time.
