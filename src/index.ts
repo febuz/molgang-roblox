@@ -2201,6 +2201,10 @@ async function initialize() {
     app.get('/api/family/categories', (_req, res) => {
       res.json({ success: true, categories: familyApi.getCategories() });
     });
+    // i18n-woordenboek (NL/EN/CN) voor de taal-toggle in het portaal.
+    app.get('/api/family/i18n', (_req, res) => {
+      res.json({ success: true, ...familyApi.getI18n() });
+    });
     // Localhost-only: het privé portal-token uitlezen (de eigenaar leest 'm
     // lokaal en voert 'm één keer in op zijn Quest). Externe LAN-clients krijgen 403.
     app.get('/api/family/portal-token', (req, res) => {

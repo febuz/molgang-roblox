@@ -20,6 +20,8 @@
     button { cursor:pointer; border:0; border-radius:9px; padding:9px 12px; font-size:12.5px; font-weight:600; color:#fff; background:var(--accent); transition:filter .15s; }
     button:hover { filter:brightness(1.1); } button.sec { background:#2a3550; } button.danger { background:var(--hidden); } button.full { width:100%; }
     button.hidden-state { background:var(--hidden); }
+    .lng { background:#1a2336; padding:5px 9px; font-size:11px; opacity:.6; }
+    .lng.on { background:var(--accent); opacity:1; }
     input,select { width:100%; background:#0f1626; border:1px solid #2a3550; color:var(--ink); border-radius:8px; padding:8px 9px; font-size:12.5px; margin:4px 0; }
     label.f { font-size:11px; color:var(--muted); display:block; margin-top:6px; }
     .cat { display:flex; align-items:center; gap:8px; font-size:12px; padding:4px 0; cursor:pointer; user-select:none; }
@@ -42,14 +44,19 @@
   <div id="left" class="panel">
     <h1>Familie <span style="opacity:.5;font-weight:400">— portaal</span></h1>
     <div class="sub">3D · categorie-filters · bewerken · VR (Quest)</div>
+    <div class="row" style="margin:2px 0 8px"><div id="langToggle" style="display:flex;gap:5px">
+      <button class="lng on" data-l="nl" onclick="setLang('nl')">NL</button>
+      <button class="lng" data-l="en" onclick="setLang('en')">EN</button>
+      <button class="lng" data-l="cn" onclick="setLang('cn')">中文 (粵)</button>
+    </div></div>
     <div class="row"><span class="stat">Graaf</span><span id="visBadge" class="badge vis">● zichtbaar</span></div>
     <div class="row"><span class="stat">Zichtbaar</span><span class="stat"><b id="shownCount">–</b> / <span id="totalCount">–</span> objecten</span></div>
     <div class="row"><button id="toggleBtn" class="sec" style="flex:1" onclick="toggleWholeGraph()">Hele graaf verbergen</button></div>
 
-    <h2>Categorieën aan/uit</h2>
+    <h2 id="catsHdr">Categorieën aan/uit</h2>
     <div class="catbtns">
-      <button class="sec" onclick="allCats(true)">Alles aan</button>
-      <button class="sec" onclick="allCats(false)">Alles uit</button>
+      <button class="sec" id="allOnBtn" onclick="allCats(true)">Alles aan</button>
+      <button class="sec" id="allOffBtn" onclick="allCats(false)">Alles uit</button>
     </div>
     <div id="cats"></div>
   </div>
@@ -96,16 +103,23 @@
     let RAW = { nodes: [], links: [] };       // full graph from API
     const enabledCats = {};                    // category label -> bool
     let tokenVal = localStorage.getItem('familyToken') || '';
+    // i18n: NL/EN/CN (Kantonees = 繁體). Grouping stays on the NL category label;
+    // only the display is translated.
+    let LANG = localStorage.getItem('familyLang') || 'nl';
+    let I18N = { categories:{}, relations:{}, ui:{} };
+    const dispName = n => (n.i18n && n.i18n[LANG]) || n.name;
+    const catLabel = c => (I18N.categories[c] && I18N.categories[c][LANG]) || c;
+    const relLabel = r => (I18N.relations[r] && I18N.relations[r][LANG]) || r;
 
     const Graph = ForceGraph3D()(document.getElementById('graph'))
       .backgroundColor('#0b0e14')
-      .nodeLabel(n => `<div style="padding:4px 8px;background:#11182b;border:1px solid #2a3550;border-radius:6px;font-size:12px"><b>${n.name}</b><br/><span style="color:#8b98ad">${n.category||n.type}${n.note?' · '+n.note:''}</span></div>`)
+      .nodeLabel(n => `<div style="padding:4px 8px;background:#11182b;border:1px solid #2a3550;border-radius:6px;font-size:12px"><b>${dispName(n)}</b><br/><span style="color:#8b98ad">${catLabel(n.category||n.type)}${n.note?' · '+n.note:''}</span></div>`)
       .nodeColor(n => GROUP_COLORS[n.group] || '#cfd8e3')
       .nodeVal(n => n.val || 2)
       .linkColor(l => l.inferred ? 'rgba(255,209,102,.35)' : 'rgba(120,150,220,.55)')
       .linkWidth(l => l.inferred ? .6 : 1.1)
       .linkDirectionalArrowLength(3).linkDirectionalArrowRelPos(1)
-      .linkLabel(l => `${l.type}${l.share?' <b>'+l.share+'</b>':''}${l.evidence?'<br/><i style="color:#8b98ad">"'+l.evidence+'"</i>':''}`)
+      .linkLabel(l => `${relLabel(l.type)}${l.share?' <b>'+l.share+'</b>':''}${l.evidence?'<br/><i style="color:#8b98ad">"'+l.evidence+'"</i>':''}`)
       .onNodeClick(n => { const d=70, r=1+d/Math.hypot(n.x||1,n.y||1,n.z||1); Graph.cameraPosition({x:(n.x||0)*r,y:(n.y||0)*r,z:(n.z||0)*r}, n, 800); });
 
     function toast(msg, cls) { const t=document.getElementById('toast'); t.innerHTML=cls?`<span class="${cls}">${msg}</span>`:msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
@@ -113,9 +127,10 @@
     function headers() { return tokenVal ? {'content-type':'application/json','x-family-token':tokenVal} : {'content-type':'application/json'}; }
 
     function applyVisUI(hidden) {
+      const u=(I18N.ui&&I18N.ui[LANG])||{};
       const b=document.getElementById('visBadge'), btn=document.getElementById('toggleBtn');
-      if (hidden) { b.className='badge hid'; b.textContent='● verborgen'; btn.textContent='Hele graaf tonen'; btn.classList.add('hidden-state'); }
-      else { b.className='badge vis'; b.textContent='● zichtbaar'; btn.textContent='Hele graaf verbergen'; btn.classList.remove('hidden-state'); }
+      if (hidden) { b.className='badge hid'; b.textContent='● '+(u.hidden||'verborgen'); btn.textContent=u.showGraph||'Hele graaf tonen'; btn.classList.add('hidden-state'); }
+      else { b.className='badge vis'; b.textContent='● '+(u.visible||'zichtbaar'); btn.textContent=u.hideGraph||'Hele graaf verbergen'; btn.classList.remove('hidden-state'); }
     }
 
     function rebuildCats() {
@@ -129,7 +144,7 @@
         const color = GROUP_COLORS[sample?sample.group:0] || '#cfd8e3';
         const id='cat_'+c.replace(/\W/g,'_');
         const row=document.createElement('label'); row.className='cat';
-        row.innerHTML = `<input type="checkbox" id="${id}" ${enabledCats[c]?'checked':''}/><span class="dot" style="background:${color}"></span>${c}<span class="ct">${counts[c]}</span>`;
+        row.innerHTML = `<input type="checkbox" id="${id}" ${enabledCats[c]?'checked':''}/><span class="dot" style="background:${color}"></span>${catLabel(c)}<span class="ct">${counts[c]}</span>`;
         row.querySelector('input').addEventListener('change', e=>{ enabledCats[c]=e.target.checked; render(); });
         box.appendChild(row);
       });
@@ -148,6 +163,15 @@
       document.getElementById('nodeList').innerHTML = RAW.nodes.filter(n=>n.kind==='entity').map(n=>`<option value="${n.name}">`).join('');
     }
     function allCats(v){ Object.keys(enabledCats).forEach(c=>enabledCats[c]=v); document.querySelectorAll('#cats input').forEach(i=>i.checked=v); render(); }
+    function applyUiText(){
+      const u=(I18N.ui&&I18N.ui[LANG])||{};
+      document.querySelectorAll('.lng').forEach(b=>b.classList.toggle('on', b.dataset.l===LANG));
+      const set=(id,t)=>{const el=document.getElementById(id); if(el&&t) el.textContent=t;};
+      set('catsHdr',u.categories); set('allOnBtn',u.allOn); set('allOffBtn',u.allOff); set('editHdr',u.edit);
+      applyVisUI(document.getElementById('visBadge').className.includes('hid'));
+    }
+    function setLang(l){ LANG=l; localStorage.setItem('familyLang',l); applyUiText(); rebuildCats(); render(); }
+    async function loadI18n(){ try{ const d=await (await fetch('/api/family/i18n')).json(); I18N={categories:d.categories||{},relations:d.relations||{},ui:d.ui||{}}; applyUiText(); }catch(e){} }
 
     async function load() {
       try {
@@ -190,7 +214,7 @@
     }
 
     document.getElementById('token').value = tokenVal; saveToken();
-    loadCats(); load();
+    loadI18n(); loadCats(); load();
     window.addEventListener('resize', ()=>Graph.width(window.innerWidth).height(window.innerHeight));
   </script>
 </body>

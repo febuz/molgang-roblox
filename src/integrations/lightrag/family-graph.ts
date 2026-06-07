@@ -594,6 +594,97 @@ export function getCategories() {
   return CATEGORY_KEYS.map((k) => ({ key: k, label: CATEGORIES[k].label, group: CATEGORIES[k].group }));
 }
 
+// ---------------------------------------------------------------------------
+// i18n — NL / EN / CN (Kantonees = Traditioneel Chinees 繁體)
+// ---------------------------------------------------------------------------
+// Sleutel op de NL-categorielabel (= node.category) zodat de portal de filter-
+// groepering stabiel houdt en alleen de weergave vertaalt. Hub/root ook.
+export const CATEGORY_I18N: Record<string, { nl: string; en: string; cn: string }> = {
+  'Personen': { nl: 'Personen', en: 'People', cn: '人物' },
+  'Bedrijven': { nl: 'Bedrijven', en: 'Companies', cn: '公司' },
+  'Hardware': { nl: 'Hardware', en: 'Hardware', cn: '硬件' },
+  'Software / OS': { nl: 'Software / OS', en: 'Software / OS', cn: '軟件' },
+  'Diensten': { nl: 'Diensten', en: 'Services', cn: '服務' },
+  'Projecten': { nl: 'Projecten', en: 'Projects', cn: '項目' },
+  'Winning': { nl: 'Winning', en: 'Extraction', cn: '提取' },
+  'Materialen': { nl: 'Materialen', en: 'Materials', cn: '材料' },
+  'Game-engines': { nl: 'Game-engines', en: 'Game engines', cn: '遊戲引擎' },
+  'Studio / Tools': { nl: 'Studio / Tools', en: 'Studios / Tools', cn: '工具' },
+  'Locaties': { nl: 'Locaties', en: 'Locations', cn: '地點' },
+  'Activiteiten': { nl: 'Activiteiten', en: 'Activities', cn: '活動' },
+  'Onderwerpen': { nl: 'Onderwerpen', en: 'Topics', cn: '主題' },
+  'Chats': { nl: 'Chats', en: 'Chats', cn: '對話' },
+  'Personages (Molgang)': { nl: 'Personages (Molgang)', en: 'Characters (Molgang)', cn: '角色（Molgang）' },
+  'Game-zones (Molgang)': { nl: 'Game-zones (Molgang)', en: 'Game zones (Molgang)', cn: '遊戲區域（Molgang）' },
+  'Elementen': { nl: 'Elementen', en: 'Elements', cn: '元素' },
+  'Verbindingen': { nl: 'Verbindingen', en: 'Compounds', cn: '化合物' },
+  'Fasen': { nl: 'Fasen', en: 'Phases', cn: '物相' },
+  'Reacties': { nl: 'Reacties', en: 'Reactions', cn: '反應' },
+  'Processen': { nl: 'Processen', en: 'Processes', cn: '工藝' },
+  'Parameters': { nl: 'Parameters', en: 'Parameters', cn: '參數' },
+  'Categorie': { nl: 'Categorie', en: 'Category', cn: '類別' },
+  'Graaf': { nl: 'Graaf', en: 'Graph', cn: '圖' },
+};
+
+export const RELATION_I18N: Record<string, { nl: string; en: string; cn: string }> = {
+  IN_CATEGORIE: { nl: 'in categorie', en: 'in category', cn: '屬類別' },
+  DEEL_VAN: { nl: 'deel van', en: 'part of', cn: '屬於' },
+  CEO_VAN: { nl: 'CEO van', en: 'CEO of', cn: '行政總裁' },
+  OPRICHTER_VAN: { nl: 'oprichter van', en: 'founder of', cn: '創辦人' },
+  HEEFT_DOCHTER: { nl: 'heeft dochter', en: 'has subsidiary', cn: '子公司' },
+  CONTROLEERT: { nl: 'controleert', en: 'controls', cn: '控制' },
+  AANDEELHOUDER_VAN: { nl: 'aandeelhouder van', en: 'shareholder of', cn: '股東' },
+  BESTUURDER_VAN: { nl: 'bestuurder van', en: 'director of', cn: '董事' },
+  GESCHIL_MET: { nl: 'geschil met', en: 'dispute with', cn: '糾紛' },
+  BEZIT: { nl: 'bezit', en: 'owns', cn: '擁有' },
+  ONDERDEEL_VAN: { nl: 'onderdeel van', en: 'part of', cn: '部分' },
+  DRAAIT: { nl: 'draait', en: 'runs', cn: '運行' },
+  DRAAIT_OP: { nl: 'draait op', en: 'runs on', cn: '運行於' },
+  GEBRUIKT: { nl: 'gebruikt', en: 'uses', cn: '使用' },
+  DIENST_VAN: { nl: 'dienst van', en: 'service of', cn: '服務' },
+  WERKT_AAN: { nl: 'werkt aan', en: 'works on', cn: '參與' },
+  VENNOOT_IN: { nl: 'vennoot in', en: 'partner in', cn: '合夥人' },
+  ONTWIKKELT: { nl: 'ontwikkelt', en: 'develops', cn: '開發' },
+  LEVERT_AAN: { nl: 'levert aan', en: 'supplies', cn: '供應' },
+  DETACHERING_VIA: { nl: 'detachering via', en: 'contracted via', cn: '外派' },
+  PRODUCT_VAN: { nl: 'product van', en: 'product of', cn: '產物' },
+  GEBOUWD_MET: { nl: 'gebouwd met', en: 'built with', cn: '建於' },
+  TOOL_VOOR: { nl: 'tool voor', en: 'tool for', cn: '工具' },
+  GENOEMD_IN: { nl: 'genoemd in', en: 'mentioned in', cn: '提及於' },
+  SAMEN_GENOEMD: { nl: 'samen genoemd', en: 'co-mentioned', cn: '共同提及' },
+  PERSONAGE_IN: { nl: 'personage in', en: 'character in', cn: '角色' },
+  ZONE_VAN: { nl: 'zone van', en: 'zone of', cn: '區域' },
+  AR_ANKER: { nl: 'AR-anker', en: 'AR anchor', cn: 'AR錨點' },
+  SIMULEERT: { nl: 'simuleert', en: 'simulates', cn: '模擬' },
+  VALORISEERT: { nl: 'valoriseert', en: 'valorises', cn: '增值' },
+  BEVAT_FASE: { nl: 'bevat fase', en: 'contains phase', cn: '含物相' },
+  BESTAAT_UIT: { nl: 'bestaat uit', en: 'consists of', cn: '由…組成' },
+  BEVAT_ELEMENT: { nl: 'bevat element', en: 'contains element', cn: '含元素' },
+  GEBRUIKT_PROCES: { nl: 'gebruikt proces', en: 'uses process', cn: '用工藝' },
+  HEEFT_PARAMETER: { nl: 'heeft parameter', en: 'has parameter', cn: '有參數' },
+  PRODUCEERT: { nl: 'produceert', en: 'produces', cn: '生產' },
+  REDUCEERT: { nl: 'reduceert', en: 'reduces', cn: '還原' },
+  WINT: { nl: 'wint', en: 'extracts', cn: '提取' },
+  OMVAT: { nl: 'omvat', en: 'includes', cn: '包括' },
+  IS_CHEMISCH: { nl: 'is chemisch', en: 'is chemically', cn: '化學上為' },
+  MEET: { nl: 'meet', en: 'measures', cn: '量度' },
+  GEBRUIKT_APPARAAT: { nl: 'gebruikt apparaat', en: 'uses device', cn: '用設備' },
+  BETREFT: { nl: 'betreft', en: 'concerns', cn: '關於' },
+};
+
+/** i18n-woordenboek voor de portal (UI-zinnen + categorie + relatie). */
+export function getI18n() {
+  return {
+    categories: CATEGORY_I18N,
+    relations: RELATION_I18N,
+    ui: {
+      nl: { title: 'Familie — portaal', categories: 'Categorieën aan/uit', allOn: 'Alles aan', allOff: 'Alles uit', hideGraph: 'Hele graaf verbergen', showGraph: 'Hele graaf tonen', edit: 'Bewerken (privé)', visible: 'zichtbaar', hidden: 'verborgen', objects: 'objecten' },
+      en: { title: 'Family — portal', categories: 'Categories on/off', allOn: 'All on', allOff: 'All off', hideGraph: 'Hide whole graph', showGraph: 'Show whole graph', edit: 'Edit (private)', visible: 'visible', hidden: 'hidden', objects: 'objects' },
+      cn: { title: '家族 — 入口', categories: '類別開關', allOn: '全開', allOff: '全關', hideGraph: '隱藏整圖', showGraph: '顯示整圖', edit: '編輯（私人）', visible: '可見', hidden: '隱藏', objects: '物件' },
+    },
+  };
+}
+
 export interface OverrideEntity { name: string; cat: string; note?: string; }
 export interface OverrideEdge { from: string; to: string; rel: string; confidence?: 'stated' | 'inferred'; evidence?: string; }
 interface Overrides {
