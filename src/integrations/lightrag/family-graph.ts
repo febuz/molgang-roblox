@@ -69,6 +69,11 @@ const CATEGORIES: Record<string, Category> = {
   materiaal: { label: 'Materialen',      nodeLabel: 'Materiaal', group: 8 },
   engine:    { label: 'Game-engines',    nodeLabel: 'Engine',    group: 9 },
   tool:      { label: 'Studio / Tools',  nodeLabel: 'Tool',      group: 10 },
+  // Categorieën uit de chat-extractie (getagd source='chat'); toggle-baar.
+  locatie:    { label: 'Locaties',     nodeLabel: 'Locatie',    group: 11 },
+  activiteit: { label: 'Activiteiten', nodeLabel: 'Activiteit', group: 12 },
+  onderwerp:  { label: 'Onderwerpen',  nodeLabel: 'Onderwerp',  group: 13 },
+  chat:       { label: 'Chats',        nodeLabel: 'Chat',       group: 14 },
 };
 
 interface Entity {
@@ -773,4 +778,87 @@ export function checkPortalToken(provided?: string): boolean {
   // constant-time vergelijk
   const a = Buffer.from(provided); const b = Buffer.from(expected);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// ---------------------------------------------------------------------------
+// Chat-extractie ingest — data/family-extract.json (uit scripts/family-extract.py)
+// ---------------------------------------------------------------------------
+//
+// Voegt de uit 809 chats ontlede entiteiten/locaties/onderwerpen + chat-knopen
+// toe. Alles getagd source='chat' (toggle-baar). Overlappende namen MERGEn op
+// de bestaande curated knoop (zonder die te overschrijven — alleen een
+// `inchat`-vlag). Co-occurrence/mention-randen zijn inferred=true (geen feiten).
+// Idempotent: ruimt eerst de vorige source='chat' delta op, dan herbouw.
+
+const EXTRACT_FILE = path.resolve(__dirname, '..', '..', '..', 'data', 'family-extract.json');
+
+export interface ExtractResult { entities: number; chats: number; edges: number; offline?: boolean; missing?: boolean; }
+
+export async function ingestExtract(client: LightRAGClient): Promise<ExtractResult> {
+  if (!client.isConnected()) return { entities: 0, chats: 0, edges: 0, offline: true };
+  if (!fs.existsSync(EXTRACT_FILE)) return { entities: 0, chats: 0, edges: 0, missing: true };
+  let doc: any;
+  try { doc = JSON.parse(fs.readFileSync(EXTRACT_FILE, 'utf8')); }
+  catch (e: any) { logger.warn(`family-graph: extract lezen mislukt: ${e.message}`); return { entities: 0, chats: 0, edges: 0, missing: true }; }
+
+  const vis = getFamilyVisibility();
+  const session = (client as any).driver.session();
+  let entities = 0, chats = 0, edges = 0;
+  try {
+    // Reconciliatie: verwijder de vorige chat-delta (alleen pure extract-data).
+    await session.run(`MATCH (:Familie)-[r]->(:Familie) WHERE r.source = 'chat' DELETE r`);
+    await session.run(`MATCH (n:Familie) WHERE n.source = 'chat' DETACH DELETE n`);
+
+    // Entiteiten: nieuw → eigen label/categorie; bestaand (curated) → alleen
+    // een inchat-vlag + mentions, niet overschrijven.
+    for (const e of (doc.entities || [])) {
+      const c = CATEGORIES[e.category];
+      if (!c) continue;
+      await session.run(
+        `MERGE (n:Familie {name: $name})
+         ON CREATE SET n:\`${assertSafeIdent(c.nodeLabel)}\`, n.graph = $graph, n.hidden = $hidden,
+             n.category = $catLabel, n.group = $group, n.kind = 'entity', n.source = 'chat', n.mentions = $mentions
+         ON MATCH SET n.inchat = true, n.mentions = coalesce(n.mentions,0) + $mentions`,
+        { name: e.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: c.label, group: c.group, mentions: e.mentions || 0 },
+      );
+      entities++;
+    }
+
+    // Chat-knopen (merge op chatId zodat dubbele titels niet samenvallen).
+    const chatCat = CATEGORIES['chat'];
+    for (const ch of (doc.chats || [])) {
+      await session.run(
+        `MERGE (c:Familie:\`${assertSafeIdent(chatCat.nodeLabel)}\` {chatId: $uuid})
+         SET c.name = $name, c.graph = $graph, c.hidden = $hidden, c.category = $catLabel,
+             c.group = $group, c.kind = 'chat', c.source = 'chat', c.date = $date, c.entityCount = $ents
+         WITH c MATCH (cat:Familie:Categorie {name: $catLabel}) MERGE (c)-[:IN_CATEGORIE]->(cat)`,
+        { uuid: ch.uuid, name: ch.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: chatCat.label, group: chatCat.group, date: ch.date || '', ents: ch.entities || 0 },
+      );
+      chats++;
+    }
+
+    // Randen: GENOEMD_IN (entiteit→chat) en SAMEN_GENOEMD (entiteit↔entiteit).
+    for (const ed of (doc.edges || [])) {
+      const rel = assertSafeIdent(ed.rel);
+      if (ed.kind === 'mention') {
+        await session.run(
+          `MATCH (a:Familie {name: $from}), (c:Familie:Chat {chatId: $to})
+           MERGE (a)-[r:\`${rel}\`]->(c) SET r.source = 'chat', r.inferred = true`,
+          { from: ed.from, to: ed.to },
+        );
+      } else {
+        await session.run(
+          `MATCH (a:Familie {name: $from}), (b:Familie {name: $to})
+           MERGE (a)-[r:\`${rel}\`]->(b) SET r.source = 'chat', r.inferred = true, r.weight = $weight`,
+          { from: ed.from, to: ed.to, weight: ed.weight || 1 },
+        );
+      }
+      edges++;
+    }
+
+    logger.info(`✓ family-graph: chat-extractie geïngest — ${entities} entiteiten, ${chats} chats, ${edges} randen`);
+    return { entities, chats, edges };
+  } finally {
+    await session.close();
+  }
 }

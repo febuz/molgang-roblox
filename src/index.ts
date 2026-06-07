@@ -2154,6 +2154,10 @@ async function initialize() {
       const r = await fam.ingestFamilyGraph(lightrag);
       if (r.offline) logger.warn('family-graph: LightRAG offline — skip ingest');
       else logger.info(`✓ family-graph: ${r.entities} objecten, ${r.categories} categorieën, ${r.structuralEdges} structureel + ${r.semanticEdges} afgeleid + ${r.verifiedEdges} geverifieerd (hidden=${r.hidden})`);
+      // Chat-extractie delta (data/family-extract.json) — idempotent, getagd source='chat'.
+      const ex = await fam.ingestExtract(lightrag);
+      if (ex.missing) logger.info('family-graph: geen chat-extractie (run scripts/family-extract.py)');
+      else if (!ex.offline) logger.info(`✓ family-graph: chat-extractie — ${ex.entities} entiteiten, ${ex.chats} chats, ${ex.edges} randen`);
     } catch (e: any) {
       logger.warn(`family-graph init failed: ${e.message}`);
     }
@@ -2224,6 +2228,11 @@ async function initialize() {
     app.post('/api/family/edge/delete', requireFamilyToken, async (req, res) => {
       try { res.json({ success: true, ...(await familyApi.removeEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel })) }); }
       catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Chat-extractie opnieuw inladen (na het draaien van scripts/family-extract.py).
+    app.post('/api/family/ingest-extract', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestExtract(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
     });
 
     // Asset query endpoints — read straight from the LightRAG graph so
