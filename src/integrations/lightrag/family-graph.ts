@@ -1066,6 +1066,14 @@ export async function exportAndSync(client: LightRAGClient): Promise<{ dir: stri
   fs.writeFileSync(path.join(EXPORT_DIR, 'familie-nodes.csv'), toCsv(nodes, ['id', 'category', 'group', 'kind', 'note', 'source']));
   fs.writeFileSync(path.join(EXPORT_DIR, 'familie-edges.csv'), toCsv(links, ['source', 'target', 'rel', 'confidence', 'evidence', 'share']));
 
+  // Houd de MacBook-Air deploy-zip ook vers (best-effort) zodat één Drive-sync
+  // de complete bundel meeneemt.
+  await new Promise<void>((resolve) => {
+    const script = path.resolve(__dirname, '..', '..', '..', 'scripts', 'build-mac-deploy.py');
+    if (!fs.existsSync(script)) { resolve(); return; }
+    exec(`python3 '${script.replace(/'/g, "'\\''")}'`, { timeout: 60000 }, () => resolve());
+  });
+
   const synced = await syncDrive(EXPORT_DIR);
   logger.info(`✓ family-graph: snapshot ge-exporteerd (${nodes.length} nodes, ${links.length} links) → ${EXPORT_DIR} [drive: ${synced}]`);
   return { dir: EXPORT_DIR, nodes: nodes.length, links: links.length, synced };
