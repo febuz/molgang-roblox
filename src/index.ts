@@ -2162,6 +2162,10 @@ async function initialize() {
       const mg = await fam.ingestMolgang(lightrag);
       if (mg.missing) logger.info('family-graph: geen molgang-extractie (run scripts/molgang-extract.py)');
       else if (!mg.offline) logger.info(`✓ family-graph: molgang — ${mg.entities} entiteiten, ${mg.edges} randen`);
+      // Chemie/fysica staalslak-valorisatie (data/slag-chemistry.json) — source='chem'.
+      const ch = await fam.ingestChemistry(lightrag);
+      if (ch.missing) logger.info('family-graph: geen chemie-data (data/slag-chemistry.json ontbreekt)');
+      else if (!ch.offline) logger.info(`✓ family-graph: chemie — ${ch.entities} entiteiten, ${ch.edges} randen`);
     } catch (e: any) {
       logger.warn(`family-graph init failed: ${e.message}`);
     }
@@ -2241,6 +2245,11 @@ async function initialize() {
     // Molgang-extractie opnieuw inladen (na scripts/molgang-extract.py).
     app.post('/api/family/ingest-molgang', requireFamilyToken, async (_req, res) => {
       try { res.json({ success: true, ...(await familyApi.ingestMolgang(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Chemie/fysica data opnieuw inladen (na bewerken van data/slag-chemistry.json).
+    app.post('/api/family/ingest-chemistry', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestChemistry(lightrag)) }); }
       catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
     });
 

@@ -79,6 +79,13 @@ const CATEGORIES: Record<string, Category> = {
   // zijn game-layout, bewust NIET als 'locatie' getagd.
   personage:  { label: 'Personages (Molgang)', nodeLabel: 'Personage', group: 15 },
   gamezone:   { label: 'Game-zones (Molgang)', nodeLabel: 'GameZone',  group: 16 },
+  // Chemie/fysica — staalslak-valorisatie (source='chem'), trilinguaal gelabeld.
+  element:    { label: 'Elementen',    nodeLabel: 'Element',    group: 17 },
+  verbinding: { label: 'Verbindingen', nodeLabel: 'Verbinding', group: 18 },
+  fase:       { label: 'Fasen',        nodeLabel: 'Fase',       group: 19 },
+  reactie:    { label: 'Reacties',     nodeLabel: 'Reactie',    group: 20 },
+  proces:     { label: 'Processen',    nodeLabel: 'Proces',     group: 21 },
+  parameter:  { label: 'Parameters',   nodeLabel: 'Parameter',  group: 22 },
 };
 
 interface Entity {
@@ -479,7 +486,7 @@ export async function ingestFamilyGraph(client: LightRAGClient): Promise<IngestR
 export interface Graph3D {
   graph: string;
   hidden: boolean;
-  nodes: Array<{ id: string; name: string; type: string; category: string; group: number; kind: string; note?: string; val: number }>;
+  nodes: Array<{ id: string; name: string; type: string; category: string; group: number; kind: string; note?: string; i18n?: { nl?: string; en?: string; cn?: string }; val: number }>;
   links: Array<{ source: string; target: string; type: string; inferred?: boolean; verified?: boolean; confidence?: string; evidence?: string; share?: string; review?: string }>;
 }
 
@@ -501,7 +508,8 @@ export async function getFamilyGraph3D(client: LightRAGClient): Promise<Graph3D>
        WHERE coalesce(n.hidden, false) = false
        RETURN n.name AS name, labels(n) AS labels, coalesce(n.category,'') AS category,
               coalesce(n.group,0) AS group, coalesce(n.kind,'entity') AS kind,
-              coalesce(n.note,'') AS note`,
+              coalesce(n.note,'') AS note,
+              coalesce(n.label_nl,'') AS label_nl, coalesce(n.label_en,'') AS label_en, coalesce(n.label_cn,'') AS label_cn`,
     );
     const nodes = nodeRes.records.map((r: any) => {
       const o = r.toObject();
@@ -509,6 +517,9 @@ export async function getFamilyGraph3D(client: LightRAGClient): Promise<Graph3D>
       // primair type = het niet-'Familie' label (Persoon/Bedrijf/Categorie/Graaf...)
       const type = labels.find((l) => l !== 'Familie') || 'Familie';
       const group = typeof o.group === 'object' && o.group?.low !== undefined ? o.group.low : Number(o.group) || 0;
+      const i18n = (o.label_nl || o.label_en || o.label_cn)
+        ? { nl: o.label_nl || undefined, en: o.label_en || undefined, cn: o.label_cn || undefined }
+        : undefined;
       return {
         id: o.name,
         name: o.name,
@@ -517,6 +528,7 @@ export async function getFamilyGraph3D(client: LightRAGClient): Promise<Graph3D>
         group,
         kind: o.kind,
         note: o.note || undefined,
+        i18n,
         // hubs/root groter dan losse objecten zodat de 3D-layout structuur toont
         val: o.kind === 'graph-root' ? 12 : o.kind === 'category' ? 6 : 2,
       };
@@ -797,6 +809,7 @@ export function checkPortalToken(provided?: string): boolean {
 
 const EXTRACT_FILE = path.resolve(__dirname, '..', '..', '..', 'data', 'family-extract.json');
 const MOLGANG_FILE = path.resolve(__dirname, '..', '..', '..', 'data', 'molgang-extract.json');
+const CHEMISTRY_FILE = path.resolve(__dirname, '..', '..', '..', 'data', 'slag-chemistry.json');
 
 export interface ExtractResult { entities: number; chats: number; edges: number; source?: string; offline?: boolean; missing?: boolean; }
 
@@ -827,13 +840,16 @@ async function ingestDelta(client: LightRAGClient, file: string, source: string)
     for (const e of (doc.entities || [])) {
       const c = CATEGORIES[e.category];
       if (!c) continue;
+      const i18n = e.i18n || {};
       await session.run(
         `MERGE (n:Familie {name: $name})
          ON CREATE SET n:\`${assertSafeIdent(c.nodeLabel)}\`, n.graph = $graph, n.hidden = $hidden,
              n.category = $catLabel, n.group = $group, n.kind = 'entity', n.source = $source,
-             n.mentions = $mentions, n.note = $note
+             n.mentions = $mentions, n.note = $note,
+             n.label_nl = $label_nl, n.label_en = $label_en, n.label_cn = $label_cn
          ON MATCH SET n.\`${flag}\` = true, n.mentions = coalesce(n.mentions,0) + $mentions`,
-        { name: e.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: c.label, group: c.group, mentions: e.mentions || 0, source, note: e.note || '' },
+        { name: e.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: c.label, group: c.group, mentions: e.mentions || 0, source, note: e.note || '',
+          label_nl: i18n.nl || '', label_en: i18n.en || '', label_cn: i18n.cn || '' },
       );
       entities++;
     }
@@ -885,4 +901,9 @@ export function ingestExtract(client: LightRAGClient): Promise<ExtractResult> {
 /** Molgang-game extractie (data/molgang-extract.json) — getagd source='molgang'. */
 export function ingestMolgang(client: LightRAGClient): Promise<ExtractResult> {
   return ingestDelta(client, MOLGANG_FILE, 'molgang');
+}
+
+/** Chemie/fysica staalslak-valorisatie (data/slag-chemistry.json) — getagd source='chem'. */
+export function ingestChemistry(client: LightRAGClient): Promise<ExtractResult> {
+  return ingestDelta(client, CHEMISTRY_FILE, 'chem');
 }
