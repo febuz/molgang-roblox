@@ -92,6 +92,7 @@ const ENTITIES: Entity[] = [
   { name: 'Adrie', cat: 'persoon' },
   { name: 'Gonny', cat: 'persoon' },
   { name: 'Karin', cat: 'persoon' },
+  { name: 'X.Wu', cat: 'persoon', note: '51% meerderheidsaandeelhouder Slag B.V. (nieuwe situatie)' },
 
   // --- Kern: bedrijven (holdings / B.V. / VOF) ------------------------------
   { name: 'VirtualV Holding B.V.',     cat: 'bedrijf', note: 'Holding' },
@@ -193,20 +194,37 @@ const SEMANTIC_EDGES: SemanticEdge[] = [
  * speculatieve randen — Optane→GPU Server 1 en Edwin→MOLGANG — zijn bewust
  * afgewezen tijdens verificatie).
  */
-interface VerifiedEdge { from: string; to: string; rel: string; confidence: 'stated' | 'inferred'; evidence: string; }
+interface VerifiedEdge {
+  from: string; to: string; rel: string;
+  confidence: 'stated' | 'inferred'; evidence: string;
+  /** Aandeel-percentage als string (bv '51%') — zet r.aandeel + r.meerderheid. */
+  share?: string;
+  /** Open punt dat herziening vraagt — zet r.review zodat de tensie in-graph zichtbaar is. */
+  review?: string;
+}
 const VERIFIED_EDGES: VerifiedEdge[] = [
   // Edwin ↔ holding / bedrijven
   { from: 'Edwin', to: 'VirtualV Holding B.V.', rel: 'CEO_VAN',       confidence: 'stated',   evidence: 'Edwin Hauwert is CEO/founder of VirtualV Holding B.V.' },
   { from: 'Edwin', to: 'VirtualV Holding B.V.', rel: 'OPRICHTER_VAN', confidence: 'stated',   evidence: 'Edwin Hauwert is CEO/founder of VirtualV Holding B.V.' },
-  { from: 'Edwin', to: 'SLAG B.V.',             rel: 'CONTROLEERT',   confidence: 'inferred', evidence: 'the dispute is between Slag B.V./Edwin and Uniforce Group B.V.' },
   { from: 'Edwin', to: 'Uniforce Group B.V.',   rel: 'GESCHIL_MET',   confidence: 'stated',   evidence: 'Edwin pursues a civil lawsuit (dagvaarding) against Uniforce Group B.V.' },
+  // NB: 'Edwin -CONTROLEERT-> SLAG B.V.' (was inferred) is bewust vervallen —
+  // in de nieuwe situatie krijgt X.Wu 51% (meerderheid), dus Edwin heeft geen
+  // zeggenschapsmeerderheid meer.
+  // Nieuwe situatie: X.Wu meerderheidsaandeelhouder Slag B.V.
+  { from: 'X.Wu', to: 'SLAG B.V.', rel: 'AANDEELHOUDER_VAN', confidence: 'stated', share: '51%',
+    evidence: 'In de nieuwe situatie krijgt X.Wu 51% aandeel in Slag B.V. om ook werk aan te nemen waarvoor geen zelfstandigen in aanmerking komen' },
   // Holding-structuur
   { from: 'VirtualV Holding B.V.', to: 'EHMAC B.V.', rel: 'HEEFT_DOCHTER', confidence: 'stated', evidence: 'VirtualV Holding B.V. has subsidiaries EHMAC B.V. and Slag B.V.' },
-  { from: 'VirtualV Holding B.V.', to: 'SLAG B.V.',  rel: 'HEEFT_DOCHTER', confidence: 'stated', evidence: 'VirtualV Holding B.V. has subsidiaries EHMAC B.V. and Slag B.V.' },
+  { from: 'VirtualV Holding B.V.', to: 'SLAG B.V.',  rel: 'HEEFT_DOCHTER', confidence: 'stated', evidence: 'VirtualV Holding B.V. has subsidiaries EHMAC B.V. and Slag B.V.',
+    review: 'X.Wu 51% in nieuwe situatie → VirtualV houdt ≤49%: herzie of SLAG nog dochter (>50%) is of een deelneming (≤49%).' },
   { from: 'SLAG B.V.', to: 'Uniforce Group B.V.',   rel: 'GESCHIL_MET',   confidence: 'stated', evidence: 'the dispute is between Slag B.V./Edwin and Uniforce Group B.V.' },
   // Edwin ↔ hardware / software
   { from: 'Edwin', to: 'GPU Server 1', rel: 'BEZIT',    confidence: 'stated',   evidence: 'Edwin owns a Supermicro 4029GP-TRT server with 4× RTX 3090 GPUs' },
   { from: 'Edwin', to: 'Optane nvram', rel: 'BEZIT',    confidence: 'stated',   evidence: 'Edwin evaluated/purchased Optane DCPMM for the X11DPG-OT-CPU server board' },
+  // Door gebruiker bevestigd (was eerder afgewezen bij verificatie): de Optane
+  // zit zowel in het X11DPG-bord als in het Supermicro-serverbord (= GPU Server 1).
+  { from: 'Optane nvram', to: 'GPU Server 1', rel: 'ONDERDEEL_VAN', confidence: 'stated',
+    evidence: 'Optane hoort bij zowel het X11DPG bord als ook de Supermicro Server bord (= GPU Server 1)' },
   { from: 'GPU Server 1', to: 'Python', rel: 'DRAAIT',  confidence: 'stated',   evidence: 'Local server runs an 8-model expert LLM team and ML stack (Python)' },
   { from: 'Edwin', to: 'Python',       rel: 'GEBRUIKT', confidence: 'inferred', evidence: 'The ML/data work is in Python and Rust' },
   // Projecten / SmartSlag3
@@ -368,6 +386,17 @@ export async function ingestFamilyGraph(client: LightRAGClient): Promise<IngestR
       structuralEdges++; // IN_CATEGORIE
     }
 
+    // Reconciliatie — maak de afgeleide + geverifieerde randen DECLARATIEF.
+    // MERGE voegt alleen toe; een rand die uit de bron-arrays verdwijnt (bv. de
+    // vervallen 'Edwin -CONTROLEERT-> SLAG B.V.') zou anders in Neo4j blijven
+    // hangen. Daarom verwijderen we eerst alle door deze module gezette randen
+    // (die dragen r.verified) en herbouwen ze daarna 1-op-1 uit de arrays.
+    // Structurele randen (IN_CATEGORIE/DEEL_VAN) hebben deze property niet en
+    // blijven dus onaangeroerd.
+    await session.run(
+      `MATCH (:Familie)-[r]->(:Familie) WHERE r.verified IS NOT NULL DELETE r`,
+    );
+
     // Afgeleide semantische randen (naam-afleiding → inferred=true).
     for (const s of SEMANTIC_EDGES) {
       await session.run(
@@ -383,12 +412,20 @@ export async function ingestFamilyGraph(client: LightRAGClient): Promise<IngestR
     // `inferred` = niet expliciet gesteld (confidence === 'inferred'), zodat de
     // 3D-viewer geverifieerd-maar-afgeleid visueel kan onderscheiden.
     for (const v of VERIFIED_EDGES) {
+      const pct = v.share ? parseInt(v.share, 10) : null;
       await session.run(
         `MATCH (a:Familie {name: $from}), (b:Familie {name: $to})
          MERGE (a)-[r:\`${assertSafeIdent(v.rel)}\`]->(b)
          SET r.verified = true, r.confidence = $confidence,
-             r.evidence = $evidence, r.inferred = $inferred`,
-        { from: v.from, to: v.to, confidence: v.confidence, evidence: v.evidence, inferred: v.confidence === 'inferred' },
+             r.evidence = $evidence, r.inferred = $inferred,
+             r.aandeel = $share, r.meerderheid = $meerderheid, r.review = $review`,
+        {
+          from: v.from, to: v.to, confidence: v.confidence, evidence: v.evidence,
+          inferred: v.confidence === 'inferred',
+          share: v.share || null,
+          meerderheid: pct == null ? null : pct > 50,
+          review: v.review || null,
+        },
       );
       verifiedEdges++;
     }
@@ -415,7 +452,7 @@ export interface Graph3D {
   graph: string;
   hidden: boolean;
   nodes: Array<{ id: string; name: string; type: string; category: string; group: number; kind: string; note?: string; val: number }>;
-  links: Array<{ source: string; target: string; type: string; inferred?: boolean; verified?: boolean; confidence?: string; evidence?: string }>;
+  links: Array<{ source: string; target: string; type: string; inferred?: boolean; verified?: boolean; confidence?: string; evidence?: string; share?: string; review?: string }>;
 }
 
 /**
@@ -462,7 +499,8 @@ export async function getFamilyGraph3D(client: LightRAGClient): Promise<Graph3D>
        WHERE coalesce(a.hidden,false) = false AND coalesce(b.hidden,false) = false
        RETURN a.name AS source, b.name AS target, type(r) AS type,
               coalesce(r.inferred,false) AS inferred, coalesce(r.verified,false) AS verified,
-              coalesce(r.confidence,'') AS confidence, coalesce(r.evidence,'') AS evidence`,
+              coalesce(r.confidence,'') AS confidence, coalesce(r.evidence,'') AS evidence,
+              coalesce(r.aandeel,'') AS share, coalesce(r.review,'') AS review`,
     );
     const links = linkRes.records.map((r: any) => {
       const o = r.toObject();
@@ -470,6 +508,7 @@ export async function getFamilyGraph3D(client: LightRAGClient): Promise<Graph3D>
         source: o.source, target: o.target, type: o.type,
         inferred: !!o.inferred, verified: !!o.verified,
         confidence: o.confidence || undefined, evidence: o.evidence || undefined,
+        share: o.share || undefined, review: o.review || undefined,
       };
     });
 

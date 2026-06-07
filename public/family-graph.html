@@ -114,9 +114,10 @@
       .linkLabel(l => {
         const tag = l.verified ? (l.confidence === 'inferred' ? 'geverifieerd · afgeleid' : 'geverifieerd · gesteld')
                   : (l.inferred ? 'naam-afleiding' : '');
-        return `<div style="padding:4px 8px;background:#11182b;border:1px solid #2a3550;border-radius:6px;font-size:12px;max-width:260px">
-            <b>${l.type}</b>${tag ? ' · <span style="color:#8b98ad">' + tag + '</span>' : ''}
-            ${l.evidence ? '<br/><span style="color:#8b98ad;font-style:italic">"' + l.evidence + '"</span>' : ''}</div>`;
+        return `<div style="padding:4px 8px;background:#11182b;border:1px solid #2a3550;border-radius:6px;font-size:12px;max-width:280px">
+            <b>${l.type}</b>${l.share ? ' <b style="color:#ffd166">' + l.share + '</b>' : ''}${tag ? ' · <span style="color:#8b98ad">' + tag + '</span>' : ''}
+            ${l.evidence ? '<br/><span style="color:#8b98ad;font-style:italic">"' + l.evidence + '"</span>' : ''}
+            ${l.review ? '<br/><span style="color:#ff9f5b">⚠ ' + l.review + '</span>' : ''}</div>`;
       })
       .onNodeClick(node => {
         // Focus camera op de aangeklikte knoop
