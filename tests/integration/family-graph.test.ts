@@ -21,11 +21,12 @@ import {
   FAMILY_GRAPH_NAME,
 } from '../../src/integrations/lightrag/family-graph';
 
-// Current locked snapshot of the graph size. Bump these when the object/edge
-// set intentionally changes (that's the point of the regression lock).
-const EXPECTED_ENTITIES = 56;
-const EXPECTED_CATEGORIES = 10;
-const EXPECTED_NODES = EXPECTED_ENTITIES + EXPECTED_CATEGORIES + 1; // + root = 62
+// Curated baseline (ingestFamilyGraph only — excludes the chat/molgang deltas
+// which are layered in separately and depend on optional data files). Bump when
+// the curated object/category set intentionally changes.
+const EXPECTED_CURATED_ENTITIES = 56;
+const EXPECTED_CATEGORIES = 16;            // 10 curated + 4 chat + 2 molgang
+const MIN_CURATED_NODES = EXPECTED_CURATED_ENTITIES + EXPECTED_CATEGORIES + 1;
 
 describe('Familie knowledge graph', () => {
   let client: LightRAGClient;
@@ -52,7 +53,7 @@ describe('Familie knowledge graph', () => {
     if (!connected) return;
     const r1 = await ingestFamilyGraph(client);
     expect(r1.offline).toBeFalsy();
-    expect(r1.entities).toBe(EXPECTED_ENTITIES);
+    expect(r1.entities).toBe(EXPECTED_CURATED_ENTITIES);
     expect(r1.categories).toBe(EXPECTED_CATEGORIES);
     expect(r1.verifiedEdges).toBeGreaterThan(0);
 
@@ -69,8 +70,10 @@ describe('Familie knowledge graph', () => {
     const g = await getFamilyGraph3D(client);
     expect(g.graph).toBe(FAMILY_GRAPH_NAME);
     expect(g.hidden).toBe(false);
-    expect(g.nodes.length).toBe(EXPECTED_NODES);
-    expect(g.links.length).toBeGreaterThan(EXPECTED_NODES); // structural + semantic + verified
+    // Live graph includes any layered chat/molgang deltas, so assert the curated
+    // baseline as a lower bound rather than an exact total.
+    expect(g.nodes.length).toBeGreaterThanOrEqual(MIN_CURATED_NODES);
+    expect(g.links.length).toBeGreaterThan(MIN_CURATED_NODES); // structural + semantic + verified
     // Every node carries the fields the viewer needs.
     for (const n of g.nodes) {
       expect(typeof n.id).toBe('string');
@@ -124,6 +127,7 @@ describe('Familie knowledge graph', () => {
 
   it('hide-toggle gates the entire graph', async () => {
     if (!connected) return;
+    const before = (await getFamilyGraph3D(client)).nodes.length;
     // Hide → empty graph + hidden flag.
     await setFamilyVisibility(client, true);
     expect(getFamilyVisibility().hidden).toBe(true);
@@ -135,11 +139,11 @@ describe('Familie knowledge graph', () => {
     expect(hiddenList.hidden).toBe(true);
     expect(hiddenList.count).toBe(0);
 
-    // Show → full graph back.
+    // Show → full graph back (same count as before hiding).
     await setFamilyVisibility(client, false);
     expect(getFamilyVisibility().hidden).toBe(false);
     const shownG = await getFamilyGraph3D(client);
     expect(shownG.hidden).toBe(false);
-    expect(shownG.nodes.length).toBe(EXPECTED_NODES);
+    expect(shownG.nodes.length).toBe(before);
   });
 });

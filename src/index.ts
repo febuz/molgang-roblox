@@ -2158,6 +2158,10 @@ async function initialize() {
       const ex = await fam.ingestExtract(lightrag);
       if (ex.missing) logger.info('family-graph: geen chat-extractie (run scripts/family-extract.py)');
       else if (!ex.offline) logger.info(`✓ family-graph: chat-extractie — ${ex.entities} entiteiten, ${ex.chats} chats, ${ex.edges} randen`);
+      // Molgang-game delta (data/molgang-extract.json) — getagd source='molgang'.
+      const mg = await fam.ingestMolgang(lightrag);
+      if (mg.missing) logger.info('family-graph: geen molgang-extractie (run scripts/molgang-extract.py)');
+      else if (!mg.offline) logger.info(`✓ family-graph: molgang — ${mg.entities} entiteiten, ${mg.edges} randen`);
     } catch (e: any) {
       logger.warn(`family-graph init failed: ${e.message}`);
     }
@@ -2232,6 +2236,11 @@ async function initialize() {
     // Chat-extractie opnieuw inladen (na het draaien van scripts/family-extract.py).
     app.post('/api/family/ingest-extract', requireFamilyToken, async (_req, res) => {
       try { res.json({ success: true, ...(await familyApi.ingestExtract(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Molgang-extractie opnieuw inladen (na scripts/molgang-extract.py).
+    app.post('/api/family/ingest-molgang', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestMolgang(lightrag)) }); }
       catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
     });
 

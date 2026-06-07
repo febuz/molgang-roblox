@@ -74,6 +74,11 @@ const CATEGORIES: Record<string, Category> = {
   activiteit: { label: 'Activiteiten', nodeLabel: 'Activiteit', group: 12 },
   onderwerp:  { label: 'Onderwerpen',  nodeLabel: 'Onderwerp',  group: 13 },
   chat:       { label: 'Chats',        nodeLabel: 'Chat',       group: 14 },
+  // Molgang-game (source='molgang'): fictieve personages mogen; locaties zijn
+  // UITSLUITEND echte plaatsen (categorie 'locatie') voor latere AR. Game-zones
+  // zijn game-layout, bewust NIET als 'locatie' getagd.
+  personage:  { label: 'Personages (Molgang)', nodeLabel: 'Personage', group: 15 },
+  gamezone:   { label: 'Game-zones (Molgang)', nodeLabel: 'GameZone',  group: 16 },
 };
 
 interface Entity {
@@ -791,74 +796,93 @@ export function checkPortalToken(provided?: string): boolean {
 // Idempotent: ruimt eerst de vorige source='chat' delta op, dan herbouw.
 
 const EXTRACT_FILE = path.resolve(__dirname, '..', '..', '..', 'data', 'family-extract.json');
+const MOLGANG_FILE = path.resolve(__dirname, '..', '..', '..', 'data', 'molgang-extract.json');
 
-export interface ExtractResult { entities: number; chats: number; edges: number; offline?: boolean; missing?: boolean; }
+export interface ExtractResult { entities: number; chats: number; edges: number; source?: string; offline?: boolean; missing?: boolean; }
 
-export async function ingestExtract(client: LightRAGClient): Promise<ExtractResult> {
-  if (!client.isConnected()) return { entities: 0, chats: 0, edges: 0, offline: true };
-  if (!fs.existsSync(EXTRACT_FILE)) return { entities: 0, chats: 0, edges: 0, missing: true };
+/**
+ * Generieke per-bron delta-ingest. `source` ('chat' | 'molgang' | ...) tagt en
+ * scheidt de data zodat hij apart te reconcileren/togglen is. Idempotent:
+ * verwijdert eerst de vorige delta van deze bron, dan herbouw. Entiteiten die
+ * al curated bestaan worden niet overschreven (alleen een in<bron>-vlag).
+ */
+async function ingestDelta(client: LightRAGClient, file: string, source: string): Promise<ExtractResult> {
+  if (!client.isConnected()) return { entities: 0, chats: 0, edges: 0, source, offline: true };
+  if (!fs.existsSync(file)) return { entities: 0, chats: 0, edges: 0, source, missing: true };
   let doc: any;
-  try { doc = JSON.parse(fs.readFileSync(EXTRACT_FILE, 'utf8')); }
-  catch (e: any) { logger.warn(`family-graph: extract lezen mislukt: ${e.message}`); return { entities: 0, chats: 0, edges: 0, missing: true }; }
+  try { doc = JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (e: any) { logger.warn(`family-graph: ${source}-delta lezen mislukt: ${e.message}`); return { entities: 0, chats: 0, edges: 0, source, missing: true }; }
 
   const vis = getFamilyVisibility();
   const session = (client as any).driver.session();
+  const flag = `in_${source}`; // bv. in_chat / in_molgang op een curated knoop
   let entities = 0, chats = 0, edges = 0;
   try {
-    // Reconciliatie: verwijder de vorige chat-delta (alleen pure extract-data).
-    await session.run(`MATCH (:Familie)-[r]->(:Familie) WHERE r.source = 'chat' DELETE r`);
-    await session.run(`MATCH (n:Familie) WHERE n.source = 'chat' DETACH DELETE n`);
+    // Reconciliatie: verwijder de vorige delta van deze bron.
+    await session.run(`MATCH (:Familie)-[r]->(:Familie) WHERE r.source = $source DELETE r`, { source });
+    await session.run(`MATCH (n:Familie) WHERE n.source = $source DETACH DELETE n`, { source });
 
     // Entiteiten: nieuw → eigen label/categorie; bestaand (curated) → alleen
-    // een inchat-vlag + mentions, niet overschrijven.
+    // een in<bron>-vlag + mentions, niet overschrijven.
     for (const e of (doc.entities || [])) {
       const c = CATEGORIES[e.category];
       if (!c) continue;
       await session.run(
         `MERGE (n:Familie {name: $name})
          ON CREATE SET n:\`${assertSafeIdent(c.nodeLabel)}\`, n.graph = $graph, n.hidden = $hidden,
-             n.category = $catLabel, n.group = $group, n.kind = 'entity', n.source = 'chat', n.mentions = $mentions
-         ON MATCH SET n.inchat = true, n.mentions = coalesce(n.mentions,0) + $mentions`,
-        { name: e.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: c.label, group: c.group, mentions: e.mentions || 0 },
+             n.category = $catLabel, n.group = $group, n.kind = 'entity', n.source = $source,
+             n.mentions = $mentions, n.note = $note
+         ON MATCH SET n.\`${flag}\` = true, n.mentions = coalesce(n.mentions,0) + $mentions`,
+        { name: e.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: c.label, group: c.group, mentions: e.mentions || 0, source, note: e.note || '' },
       );
       entities++;
     }
 
-    // Chat-knopen (merge op chatId zodat dubbele titels niet samenvallen).
+    // Optionele chat-knopen (merge op chatId zodat dubbele titels niet samenvallen).
     const chatCat = CATEGORIES['chat'];
     for (const ch of (doc.chats || [])) {
       await session.run(
         `MERGE (c:Familie:\`${assertSafeIdent(chatCat.nodeLabel)}\` {chatId: $uuid})
          SET c.name = $name, c.graph = $graph, c.hidden = $hidden, c.category = $catLabel,
-             c.group = $group, c.kind = 'chat', c.source = 'chat', c.date = $date, c.entityCount = $ents
+             c.group = $group, c.kind = 'chat', c.source = $source, c.date = $date, c.entityCount = $ents
          WITH c MATCH (cat:Familie:Categorie {name: $catLabel}) MERGE (c)-[:IN_CATEGORIE]->(cat)`,
-        { uuid: ch.uuid, name: ch.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: chatCat.label, group: chatCat.group, date: ch.date || '', ents: ch.entities || 0 },
+        { uuid: ch.uuid, name: ch.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: chatCat.label, group: chatCat.group, date: ch.date || '', ents: ch.entities || 0, source },
       );
       chats++;
     }
 
-    // Randen: GENOEMD_IN (entiteit→chat) en SAMEN_GENOEMD (entiteit↔entiteit).
+    // Randen: kind 'mention' → entiteit→chat (op chatId); anders entiteit↔entiteit (op naam).
     for (const ed of (doc.edges || [])) {
       const rel = assertSafeIdent(ed.rel);
       if (ed.kind === 'mention') {
         await session.run(
           `MATCH (a:Familie {name: $from}), (c:Familie:Chat {chatId: $to})
-           MERGE (a)-[r:\`${rel}\`]->(c) SET r.source = 'chat', r.inferred = true`,
-          { from: ed.from, to: ed.to },
+           MERGE (a)-[r:\`${rel}\`]->(c) SET r.source = $source, r.inferred = true`,
+          { from: ed.from, to: ed.to, source },
         );
       } else {
         await session.run(
           `MATCH (a:Familie {name: $from}), (b:Familie {name: $to})
-           MERGE (a)-[r:\`${rel}\`]->(b) SET r.source = 'chat', r.inferred = true, r.weight = $weight`,
-          { from: ed.from, to: ed.to, weight: ed.weight || 1 },
+           MERGE (a)-[r:\`${rel}\`]->(b) SET r.source = $source, r.inferred = true, r.weight = $weight`,
+          { from: ed.from, to: ed.to, weight: ed.weight || 1, source },
         );
       }
       edges++;
     }
 
-    logger.info(`✓ family-graph: chat-extractie geïngest — ${entities} entiteiten, ${chats} chats, ${edges} randen`);
-    return { entities, chats, edges };
+    logger.info(`✓ family-graph: ${source}-delta geïngest — ${entities} entiteiten, ${chats} chats, ${edges} randen`);
+    return { entities, chats, edges, source };
   } finally {
     await session.close();
   }
+}
+
+/** Chat-extractie (data/family-extract.json) inladen — getagd source='chat'. */
+export function ingestExtract(client: LightRAGClient): Promise<ExtractResult> {
+  return ingestDelta(client, EXTRACT_FILE, 'chat');
+}
+
+/** Molgang-game extractie (data/molgang-extract.json) — getagd source='molgang'. */
+export function ingestMolgang(client: LightRAGClient): Promise<ExtractResult> {
+  return ingestDelta(client, MOLGANG_FILE, 'molgang');
 }
