@@ -40,7 +40,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import * as crypto from 'crypto';
+import { exec } from 'child_process';
 import logger from '../../utils/logger';
 import type { LightRAGClient } from './client';
 
@@ -783,6 +785,7 @@ export async function upsertEntity(client: LightRAGClient, e: OverrideEntity): P
     );
   } finally { await session.close(); }
   logger.info(`✓ family-graph: object toegevoegd/bijgewerkt '${e.name}' (${e.cat})`);
+  scheduleExport(client);
   return { ok: true, entity: { name: e.name, cat: e.cat, note: e.note || '' } };
 }
 
@@ -814,6 +817,7 @@ export async function upsertEdge(client: LightRAGClient, ed: OverrideEdge): Prom
     );
   } finally { await session.close(); }
   logger.info(`✓ family-graph: rand toegevoegd ${ed.from} -[${rel}]-> ${ed.to}`);
+  scheduleExport(client);
   return { ok: true, edge: { from: ed.from, to: ed.to, rel, confidence: ed.confidence || 'stated', evidence: ed.evidence || '' } };
 }
 
@@ -829,6 +833,7 @@ export async function removeEntity(client: LightRAGClient, name: string): Promis
     await session.run(`MATCH (n:Familie {name:$name}) WHERE n.kind = 'entity' DETACH DELETE n`, { name });
   } finally { await session.close(); }
   logger.info(`✓ family-graph: object verwijderd '${name}'`);
+  scheduleExport(client);
   return { ok: true, removed: name };
 }
 
@@ -850,6 +855,7 @@ export async function removeEdge(client: LightRAGClient, ed: { from: string; to:
     );
   } finally { await session.close(); }
   logger.info(`✓ family-graph: rand verwijderd ${ed.from} -[${rel}]-> ${ed.to}`);
+  scheduleExport(client);
   return { ok: true };
 }
 
@@ -978,6 +984,7 @@ async function ingestDelta(client: LightRAGClient, file: string, source: string)
     }
 
     logger.info(`✓ family-graph: ${source}-delta geïngest — ${entities} entiteiten, ${chats} chats, ${edges} randen`);
+    scheduleExport(client);
     return { entities, chats, edges, source };
   } finally {
     await session.close();
@@ -997,4 +1004,84 @@ export function ingestMolgang(client: LightRAGClient): Promise<ExtractResult> {
 /** Chemie/fysica staalslak-valorisatie (data/slag-chemistry.json) — getagd source='chem'. */
 export function ingestChemistry(client: LightRAGClient): Promise<ExtractResult> {
   return ingestDelta(client, CHEMISTRY_FILE, 'chem');
+}
+
+// ---------------------------------------------------------------------------
+// Externe kopie up-to-date houden bij elke graafwijziging (o.a. Google Drive)
+// ---------------------------------------------------------------------------
+//
+// Bij elke mutatie (toevoegen/verwijderen/ingest) schrijven we — gedebounced —
+// een verse snapshot (JSON + CSV) naar EXPORT_DIR, en pushen die naar een
+// externe bestemming als die geconfigureerd is:
+//   FAMILY_RCLONE_REMOTE  bv. "gdrive:Familie-Kennisgraaf"  → rclone copy
+//   FAMILY_DRIVE_DIR      een (Drive-gesyncte) map          → cp
+//   FAMILY_DRIVE_SYNC_CMD een eigen commando ({dir} = exportmap)
+// Zonder configuratie blijft alleen de lokale kopie vers (en logt 'niet
+// geconfigureerd'); de Google-Drive-leg vraagt eenmalig rclone/credentials.
+
+const EXPORT_DIR = process.env.FAMILY_EXPORT_DIR || path.join(os.homedir(), 'familie-export');
+let exportTimer: NodeJS.Timeout | null = null;
+let exportClient: LightRAGClient | null = null;
+
+/** Gedebouncede export+sync: plan 3 s na de laatste wijziging (coalescing). */
+export function scheduleExport(client: LightRAGClient): void {
+  exportClient = client;
+  if (exportTimer) return;
+  exportTimer = setTimeout(() => {
+    exportTimer = null;
+    const c = exportClient;
+    if (c) exportAndSync(c).catch((e) => logger.warn(`family-graph: export-sync faalde: ${e.message}`));
+  }, 3000);
+}
+
+function toCsv(rows: any[], cols: string[]): string {
+  const esc = (v: any) => { const s = (v ?? '') + ''; return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return cols.join(',') + '\n' + rows.map((r) => cols.map((c) => esc(r[c])).join(',')).join('\n') + '\n';
+}
+
+/** Schrijf JSON+CSV-snapshot naar EXPORT_DIR en push naar de externe bestemming. */
+export async function exportAndSync(client: LightRAGClient): Promise<{ dir: string; nodes: number; links: number; synced: string }> {
+  if (!client.isConnected()) return { dir: EXPORT_DIR, nodes: 0, links: 0, synced: 'offline' };
+  const session = (client as any).driver.session();
+  let nodes: any[] = [], links: any[] = [];
+  try {
+    const nr = await session.run(
+      `MATCH (n:Familie) RETURN n.name AS id, coalesce(n.category,'') AS category,
+              coalesce(n.group,0) AS group, coalesce(n.kind,'entity') AS kind,
+              coalesce(n.note,'') AS note, coalesce(n.source,'curated') AS source`,
+    );
+    nodes = nr.records.map((r: any) => r.toObject());
+    const lr = await session.run(
+      `MATCH (a:Familie)-[r]->(b:Familie) RETURN a.name AS source, b.name AS target, type(r) AS rel,
+              coalesce(r.confidence,'') AS confidence, coalesce(r.evidence,'') AS evidence, coalesce(r.aandeel,'') AS share`,
+    );
+    links = lr.records.map((r: any) => r.toObject());
+  } finally { await session.close(); }
+  // Neo4j-integers afvlakken.
+  for (const n of nodes) if (n.group && typeof n.group === 'object' && 'low' in n.group) n.group = n.group.low;
+
+  fs.mkdirSync(EXPORT_DIR, { recursive: true });
+  fs.writeFileSync(path.join(EXPORT_DIR, 'familie-graph.json'),
+    JSON.stringify({ graph: FAMILY_GRAPH_NAME, exported_at: new Date().toISOString(), nodes, links }, null, 1));
+  fs.writeFileSync(path.join(EXPORT_DIR, 'familie-nodes.csv'), toCsv(nodes, ['id', 'category', 'group', 'kind', 'note', 'source']));
+  fs.writeFileSync(path.join(EXPORT_DIR, 'familie-edges.csv'), toCsv(links, ['source', 'target', 'rel', 'confidence', 'evidence', 'share']));
+
+  const synced = await syncDrive(EXPORT_DIR);
+  logger.info(`✓ family-graph: snapshot ge-exporteerd (${nodes.length} nodes, ${links.length} links) → ${EXPORT_DIR} [drive: ${synced}]`);
+  return { dir: EXPORT_DIR, nodes: nodes.length, links: links.length, synced };
+}
+
+function syncDrive(dir: string): Promise<string> {
+  return new Promise((resolve) => {
+    const cmdTpl = process.env.FAMILY_DRIVE_SYNC_CMD;
+    const remote = process.env.FAMILY_RCLONE_REMOTE;
+    const driveDir = process.env.FAMILY_DRIVE_DIR;
+    const q = (s: string) => `'${s.replace(/'/g, "'\\''")}'`;
+    let run: string | null = null;
+    if (cmdTpl) run = cmdTpl.replace('{dir}', dir);
+    else if (remote) run = `rclone copy ${q(dir)} ${q(remote)}`;
+    else if (driveDir) run = `mkdir -p ${q(driveDir)} && cp -f ${q(dir)}/familie-graph.json ${q(dir)}/familie-nodes.csv ${q(dir)}/familie-edges.csv ${q(driveDir)}/`;
+    if (!run) { resolve('niet geconfigureerd (zet FAMILY_RCLONE_REMOTE / FAMILY_DRIVE_DIR / FAMILY_DRIVE_SYNC_CMD)'); return; }
+    exec(run, { timeout: 60000 }, (err) => resolve(err ? `fout: ${err.message}` : 'ok'));
+  });
 }

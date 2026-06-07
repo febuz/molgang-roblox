@@ -2256,6 +2256,11 @@ async function initialize() {
       try { res.json({ success: true, ...(await familyApi.ingestChemistry(lightrag)) }); }
       catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
     });
+    // Forceer een snapshot-export + Drive-sync (los van de auto-trigger bij wijzigingen).
+    app.post('/api/family/export-sync', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.exportAndSync(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
 
     // Asset query endpoints — read straight from the LightRAG graph so
     // designers (Mira, Luna) can ask "which 3D models from Roblox are not
