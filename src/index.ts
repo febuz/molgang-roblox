@@ -2185,6 +2185,46 @@ async function initialize() {
         res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, !cur.hidden)) });
       } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
     });
+    // Categorieën (voor de portal-dropdown).
+    app.get('/api/family/categories', (_req, res) => {
+      res.json({ success: true, categories: familyApi.getCategories() });
+    });
+    // Localhost-only: het privé portal-token uitlezen (de eigenaar leest 'm
+    // lokaal en voert 'm één keer in op zijn Quest). Externe LAN-clients krijgen 403.
+    app.get('/api/family/portal-token', (req, res) => {
+      const ip = (req.socket.remoteAddress || '').replace('::ffff:', '');
+      if (ip !== '127.0.0.1' && ip !== '::1') { res.status(403).json({ success: false, error: 'alleen via localhost' }); return; }
+      res.json({ success: true, token: familyApi.getOrCreatePortalToken() });
+    });
+
+    // Privé schrijf-gate: alle update-endpoints vereisen het token
+    // (header x-family-token of ?token=). Zo is de graaf op het LAN te
+    // raadplegen maar alleen met token te wijzigen.
+    const requireFamilyToken: import('express').RequestHandler = (req, res, next) => {
+      const tok = (req.headers['x-family-token'] as string) || (req.query.token as string) || (req.body && req.body.token);
+      if (!familyApi.checkPortalToken(tok)) { res.status(401).json({ success: false, error: 'ongeldig of ontbrekend portal-token' }); return; }
+      next();
+    };
+    // Object toevoegen/bijwerken.
+    app.post('/api/family/node', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.upsertEntity(lightrag, { name: req.body?.name, cat: req.body?.cat, note: req.body?.note })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Object verwijderen.
+    app.delete('/api/family/node/:name', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.removeEntity(lightrag, req.params.name)) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Rand toevoegen.
+    app.post('/api/family/edge', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.upsertEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel, confidence: req.body?.confidence, evidence: req.body?.evidence })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Rand verwijderen.
+    app.post('/api/family/edge/delete', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.removeEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
 
     // Asset query endpoints — read straight from the LightRAG graph so
     // designers (Mira, Luna) can ask "which 3D models from Roblox are not

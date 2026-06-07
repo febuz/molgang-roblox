@@ -40,6 +40,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import logger from '../../utils/logger';
 import type { LightRAGClient } from './client';
 
@@ -443,13 +444,17 @@ export async function ingestFamilyGraph(client: LightRAGClient): Promise<IngestR
       verifiedEdges++;
     }
 
-    logger.info(`✓ family-graph: ${ENTITIES.length} objecten, ${Object.keys(CATEGORIES).length} categorieën, ${structuralEdges} structurele + ${semanticEdges} afgeleide + ${verifiedEdges} geverifieerde randen (hidden=${vis.hidden})`);
+    // Persistente gebruikers-delta uit het webportaal toepassen (na de
+    // statische arrays), zodat portal-bewerkingen een herstart overleven.
+    const ov = await applyOverrides(session, vis.hidden);
+
+    logger.info(`✓ family-graph: ${ENTITIES.length} objecten, ${Object.keys(CATEGORIES).length} categorieën, ${structuralEdges} structurele + ${semanticEdges} afgeleide + ${verifiedEdges} geverifieerde randen + ${ov.entities} user-objecten/${ov.edges} user-randen (hidden=${vis.hidden})`);
     return {
-      entities: ENTITIES.length,
+      entities: ENTITIES.length + ov.entities,
       categories: Object.keys(CATEGORIES).length,
       structuralEdges,
       semanticEdges,
-      verifiedEdges,
+      verifiedEdges: verifiedEdges + ov.edges,
       hidden: vis.hidden,
     };
   } finally {
@@ -547,4 +552,225 @@ export async function listFamilyEntities(client: LightRAGClient): Promise<{ hidd
   } finally {
     await session.close();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Schrijf-laag — de graaf bijwerken vanuit het webportaal (Quest 3S / browser)
+// ---------------------------------------------------------------------------
+//
+// Gebruikers-bewerkingen moeten een herstart/declaratieve re-ingest overleven.
+// Daarom persisteren we ze in data/family-overrides.json en passen ze bij elke
+// ingest opnieuw toe (na de statische arrays). Live schrijven gaat direct naar
+// Neo4j zodat de portal-bewerking meteen zichtbaar is.
+
+const OVERRIDES_FILE = path.resolve(__dirname, '..', '..', '..', 'data', 'family-overrides.json');
+const PORTAL_TOKEN_FILE = path.resolve(__dirname, '..', '..', '..', 'data', 'family-portal-token.json');
+
+export const CATEGORY_KEYS = Object.keys(CATEGORIES);
+/** Categorieën voor de portal-dropdown ({key,label,group}). */
+export function getCategories() {
+  return CATEGORY_KEYS.map((k) => ({ key: k, label: CATEGORIES[k].label, group: CATEGORIES[k].group }));
+}
+
+export interface OverrideEntity { name: string; cat: string; note?: string; }
+export interface OverrideEdge { from: string; to: string; rel: string; confidence?: 'stated' | 'inferred'; evidence?: string; }
+interface Overrides {
+  entities: OverrideEntity[];
+  edges: OverrideEdge[];
+  removedEntities: string[];
+  removedEdges: { from: string; to: string; rel: string }[];
+}
+
+function loadOverrides(): Overrides {
+  try {
+    if (fs.existsSync(OVERRIDES_FILE)) {
+      const o = JSON.parse(fs.readFileSync(OVERRIDES_FILE, 'utf8'));
+      return {
+        entities: o.entities || [], edges: o.edges || [],
+        removedEntities: o.removedEntities || [], removedEdges: o.removedEdges || [],
+      };
+    }
+  } catch (e: any) { logger.warn(`family-graph: overrides lezen mislukt: ${e.message}`); }
+  return { entities: [], edges: [], removedEntities: [], removedEdges: [] };
+}
+
+function saveOverrides(o: Overrides): void {
+  try {
+    fs.mkdirSync(path.dirname(OVERRIDES_FILE), { recursive: true });
+    fs.writeFileSync(OVERRIDES_FILE, JSON.stringify(o, null, 2));
+  } catch (e: any) { logger.warn(`family-graph: overrides schrijven mislukt: ${e.message}`); }
+}
+
+/** Aantal door de gebruiker toegevoegde objecten/randen (voor de boot-log). */
+export function overridesSummary(): { entities: number; edges: number; removedEntities: number; removedEdges: number } {
+  const o = loadOverrides();
+  return { entities: o.entities.length, edges: o.edges.length, removedEntities: o.removedEntities.length, removedEdges: o.removedEdges.length };
+}
+
+/** Pas de persistente gebruikers-delta toe binnen een lopende ingest-sessie. */
+async function applyOverrides(session: any, hidden: boolean): Promise<{ entities: number; edges: number }> {
+  const o = loadOverrides();
+  for (const e of o.entities) {
+    const c = CATEGORIES[e.cat];
+    if (!c) continue; // onbekende categorie → overslaan
+    await session.run(
+      `MERGE (n:Familie:\`${assertSafeIdent(c.nodeLabel)}\` {name: $name})
+       SET n.graph = $graph, n.hidden = $hidden, n.category = $catLabel,
+           n.group = $group, n.note = $note, n.kind = 'entity', n.usercreated = true
+       WITH n MATCH (cat:Familie:Categorie {name: $catLabel}) MERGE (n)-[:IN_CATEGORIE]->(cat)`,
+      { name: e.name, graph: FAMILY_GRAPH_NAME, hidden, catLabel: c.label, group: c.group, note: e.note || '' },
+    );
+  }
+  for (const ed of o.edges) {
+    await session.run(
+      `MATCH (a:Familie {name: $from}), (b:Familie {name: $to})
+       MERGE (a)-[r:\`${assertSafeIdent(ed.rel)}\`]->(b)
+       SET r.verified = true, r.usercreated = true, r.confidence = $confidence,
+           r.evidence = $evidence, r.inferred = $inferred`,
+      { from: ed.from, to: ed.to, confidence: ed.confidence || 'stated', evidence: ed.evidence || '', inferred: ed.confidence === 'inferred' },
+    );
+  }
+  // Verwijderingen winnen — als laatste toegepast.
+  for (const ed of o.removedEdges) {
+    await session.run(
+      `MATCH (:Familie {name: $from})-[r:\`${assertSafeIdent(ed.rel)}\`]->(:Familie {name: $to}) DELETE r`,
+      { from: ed.from, to: ed.to },
+    );
+  }
+  for (const name of o.removedEntities) {
+    await session.run(`MATCH (n:Familie {name: $name}) DETACH DELETE n`, { name });
+  }
+  return { entities: o.entities.length, edges: o.edges.length };
+}
+
+function ensureConnected(client: LightRAGClient) {
+  if (!client.isConnected()) throw new Error('Neo4j niet verbonden — kan de graaf niet bijwerken');
+}
+
+/** Voeg een object toe of werk het bij (portal). Persisteert + schrijft live. */
+export async function upsertEntity(client: LightRAGClient, e: OverrideEntity): Promise<{ ok: true; entity: OverrideEntity }> {
+  ensureConnected(client);
+  if (!e.name || !e.name.trim()) throw new Error('naam is verplicht');
+  const c = CATEGORIES[e.cat];
+  if (!c) throw new Error(`onbekende categorie '${e.cat}' (kies uit: ${CATEGORY_KEYS.join(', ')})`);
+  const o = loadOverrides();
+  o.removedEntities = o.removedEntities.filter((n) => n !== e.name);
+  o.entities = o.entities.filter((x) => x.name !== e.name);
+  o.entities.push({ name: e.name, cat: e.cat, note: e.note || '' });
+  saveOverrides(o);
+  const vis = getFamilyVisibility();
+  const session = (client as any).driver.session();
+  try {
+    await session.run(
+      `MERGE (n:Familie:\`${assertSafeIdent(c.nodeLabel)}\` {name: $name})
+       SET n.graph = $graph, n.hidden = $hidden, n.category = $catLabel,
+           n.group = $group, n.note = $note, n.kind = 'entity', n.usercreated = true
+       WITH n MATCH (cat:Familie:Categorie {name: $catLabel}) MERGE (n)-[:IN_CATEGORIE]->(cat)`,
+      { name: e.name, graph: FAMILY_GRAPH_NAME, hidden: vis.hidden, catLabel: c.label, group: c.group, note: e.note || '' },
+    );
+  } finally { await session.close(); }
+  logger.info(`✓ family-graph: object toegevoegd/bijgewerkt '${e.name}' (${e.cat})`);
+  return { ok: true, entity: { name: e.name, cat: e.cat, note: e.note || '' } };
+}
+
+/** Voeg een rand toe (portal). Beide eindpunten moeten bestaan. */
+export async function upsertEdge(client: LightRAGClient, ed: OverrideEdge): Promise<{ ok: true; edge: OverrideEdge }> {
+  ensureConnected(client);
+  if (!ed.from || !ed.to || !ed.rel) throw new Error('from, to en rel zijn verplicht');
+  const rel = assertSafeIdent(ed.rel.toUpperCase().replace(/\s+/g, '_'));
+  const session = (client as any).driver.session();
+  try {
+    const exists = await session.run(
+      `MATCH (a:Familie {name:$from}), (b:Familie {name:$to}) RETURN count(*) AS c`,
+      { from: ed.from, to: ed.to },
+    );
+    const c = exists.records[0]?.get('c');
+    const cn = typeof c === 'object' && c?.low !== undefined ? c.low : Number(c);
+    if (!cn) throw new Error(`beide objecten moeten bestaan ('${ed.from}', '${ed.to}')`);
+    const o = loadOverrides();
+    o.removedEdges = o.removedEdges.filter((x) => !(x.from === ed.from && x.to === ed.to && x.rel === rel));
+    o.edges = o.edges.filter((x) => !(x.from === ed.from && x.to === ed.to && x.rel === rel));
+    o.edges.push({ from: ed.from, to: ed.to, rel, confidence: ed.confidence || 'stated', evidence: ed.evidence || '' });
+    saveOverrides(o);
+    await session.run(
+      `MATCH (a:Familie {name:$from}), (b:Familie {name:$to})
+       MERGE (a)-[r:\`${rel}\`]->(b)
+       SET r.verified = true, r.usercreated = true, r.confidence = $confidence,
+           r.evidence = $evidence, r.inferred = $inferred`,
+      { from: ed.from, to: ed.to, confidence: ed.confidence || 'stated', evidence: ed.evidence || '', inferred: ed.confidence === 'inferred' },
+    );
+  } finally { await session.close(); }
+  logger.info(`✓ family-graph: rand toegevoegd ${ed.from} -[${rel}]-> ${ed.to}`);
+  return { ok: true, edge: { from: ed.from, to: ed.to, rel, confidence: ed.confidence || 'stated', evidence: ed.evidence || '' } };
+}
+
+/** Verwijder een object (+ zijn randen). Persisteert de verwijdering. */
+export async function removeEntity(client: LightRAGClient, name: string): Promise<{ ok: true; removed: string }> {
+  ensureConnected(client);
+  const o = loadOverrides();
+  o.entities = o.entities.filter((x) => x.name !== name);
+  if (!o.removedEntities.includes(name)) o.removedEntities.push(name);
+  saveOverrides(o);
+  const session = (client as any).driver.session();
+  try {
+    await session.run(`MATCH (n:Familie {name:$name}) WHERE n.kind = 'entity' DETACH DELETE n`, { name });
+  } finally { await session.close(); }
+  logger.info(`✓ family-graph: object verwijderd '${name}'`);
+  return { ok: true, removed: name };
+}
+
+/** Verwijder een rand. Persisteert de verwijdering. */
+export async function removeEdge(client: LightRAGClient, ed: { from: string; to: string; rel: string }): Promise<{ ok: true }> {
+  ensureConnected(client);
+  const rel = assertSafeIdent(ed.rel.toUpperCase().replace(/\s+/g, '_'));
+  const o = loadOverrides();
+  o.edges = o.edges.filter((x) => !(x.from === ed.from && x.to === ed.to && x.rel === rel));
+  if (!o.removedEdges.find((x) => x.from === ed.from && x.to === ed.to && x.rel === rel)) {
+    o.removedEdges.push({ from: ed.from, to: ed.to, rel });
+  }
+  saveOverrides(o);
+  const session = (client as any).driver.session();
+  try {
+    await session.run(
+      `MATCH (:Familie {name:$from})-[r:\`${rel}\`]->(:Familie {name:$to}) DELETE r`,
+      { from: ed.from, to: ed.to },
+    );
+  } finally { await session.close(); }
+  logger.info(`✓ family-graph: rand verwijderd ${ed.from} -[${rel}]-> ${ed.to}`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Privé toegang — gedeeld token voor schrijf-acties vanuit de portal
+// ---------------------------------------------------------------------------
+//
+// "Liefst privé": schrijf-endpoints vereisen een token. Bij eerste boot wordt
+// er één gegenereerd en op schijf bewaard; de eigenaar leest 'm via de
+// localhost-only route /api/family/portal-token of uit data/family-portal-token.json.
+// Env FAMILY_PORTAL_TOKEN overschrijft de file.
+
+export function getOrCreatePortalToken(): string {
+  const envTok = process.env.FAMILY_PORTAL_TOKEN;
+  if (envTok && envTok.trim()) return envTok.trim();
+  try {
+    if (fs.existsSync(PORTAL_TOKEN_FILE)) {
+      const t = JSON.parse(fs.readFileSync(PORTAL_TOKEN_FILE, 'utf8'));
+      if (t?.token) return t.token;
+    }
+  } catch { /* ignore, regenerate */ }
+  const token = crypto.randomBytes(24).toString('base64url');
+  try {
+    fs.mkdirSync(path.dirname(PORTAL_TOKEN_FILE), { recursive: true });
+    fs.writeFileSync(PORTAL_TOKEN_FILE, JSON.stringify({ token, created_at: new Date().toISOString() }, null, 2));
+  } catch (e: any) { logger.warn(`family-graph: portal-token schrijven mislukt: ${e.message}`); }
+  return token;
+}
+
+/** True als het meegegeven token klopt. */
+export function checkPortalToken(provided?: string): boolean {
+  if (!provided) return false;
+  const expected = getOrCreatePortalToken();
+  // constant-time vergelijk
+  const a = Buffer.from(provided); const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
