@@ -23,7 +23,7 @@ import {
 
 // Current locked snapshot of the graph size. Bump these when the object/edge
 // set intentionally changes (that's the point of the regression lock).
-const EXPECTED_ENTITIES = 51;
+const EXPECTED_ENTITIES = 56;
 const EXPECTED_CATEGORIES = 10;
 const EXPECTED_NODES = EXPECTED_ENTITIES + EXPECTED_CATEGORIES + 1; // + root = 62
 

@@ -93,6 +93,8 @@ const ENTITIES: Entity[] = [
   { name: 'Gonny', cat: 'persoon' },
   { name: 'Karin', cat: 'persoon' },
   { name: 'X.Wu', cat: 'persoon', note: '51% meerderheidsaandeelhouder Slag B.V. (nieuwe situatie)' },
+  { name: 'Diederik Fierig', cat: 'persoon', note: 'metallurg, 50/50 vennoot Slakkenspoor VOF' },
+  { name: 'Witteveen', cat: 'persoon', note: 'bestuurder Uniforce Group B.V. (mede-gedaagde)' },
 
   // --- Kern: bedrijven (holdings / B.V. / VOF) ------------------------------
   { name: 'VirtualV Holding B.V.',     cat: 'bedrijf', note: 'Holding' },
@@ -102,6 +104,9 @@ const ENTITIES: Entity[] = [
   { name: "Zack's Holding B.V.",       cat: 'bedrijf', note: 'Holding' },
   { name: "Zack's Consultancy B.V.",   cat: 'bedrijf' },
   { name: 'Uniforce Group B.V.',       cat: 'bedrijf' },
+  { name: 'Slakkenspoor VOF',          cat: 'bedrijf', note: 'R&D-vehikel SmartSlag3 (50/50 Edwin/Diederik Fierig)' },
+  { name: 'Tata Steel IJmuiden',       cat: 'bedrijf', note: 'leverancier BOF-staalslak' },
+  { name: 'Magnit',                    cat: 'bedrijf', note: 'detacheringsbureau (contract data steward)' },
 
   // --- Kern: hardware -------------------------------------------------------
   { name: 'GPU Server 1', cat: 'hardware', note: '2×3090 ML/Ollama server' },
@@ -215,8 +220,8 @@ const VERIFIED_EDGES: VerifiedEdge[] = [
     evidence: 'In de nieuwe situatie krijgt X.Wu 51% aandeel in Slag B.V. om ook werk aan te nemen waarvoor geen zelfstandigen in aanmerking komen' },
   // Holding-structuur
   { from: 'VirtualV Holding B.V.', to: 'EHMAC B.V.', rel: 'HEEFT_DOCHTER', confidence: 'stated', evidence: 'VirtualV Holding B.V. has subsidiaries EHMAC B.V. and Slag B.V.' },
-  { from: 'VirtualV Holding B.V.', to: 'SLAG B.V.',  rel: 'HEEFT_DOCHTER', confidence: 'stated', evidence: 'VirtualV Holding B.V. has subsidiaries EHMAC B.V. and Slag B.V.',
-    review: 'X.Wu 51% in nieuwe situatie → VirtualV houdt ≤49%: herzie of SLAG nog dochter (>50%) is of een deelneming (≤49%).' },
+  { from: 'VirtualV Holding B.V.', to: 'SLAG B.V.',  rel: 'HEEFT_DOCHTER', confidence: 'stated', share: '49%',
+    evidence: 'VirtualV Holding houdt 49% in Slag B.V. (X.Wu 51%) en blijft die als dochter boeken (besluit gebruiker 2026-06-07).' },
   { from: 'SLAG B.V.', to: 'Uniforce Group B.V.',   rel: 'GESCHIL_MET',   confidence: 'stated', evidence: 'the dispute is between Slag B.V./Edwin and Uniforce Group B.V.' },
   // Edwin ↔ hardware / software
   { from: 'Edwin', to: 'GPU Server 1', rel: 'BEZIT',    confidence: 'stated',   evidence: 'Edwin owns a Supermicro 4029GP-TRT server with 4× RTX 3090 GPUs' },
@@ -236,6 +241,14 @@ const VERIFIED_EDGES: VerifiedEdge[] = [
   { from: 'Vanadium ijzer',     to: 'Vanadium winning', rel: 'PRODUCT_VAN', confidence: 'stated', evidence: 'Vanadium baar/elektrolyt/ijzer are vanadium products derived from the vanadium extraction' },
   // Game
   { from: 'MOLGANG', to: 'Roblox', rel: 'GEBOUWD_MET', confidence: 'stated', evidence: 'MOLGANG: Roblox/Three.js game development' },
+  // Uitbreiding uit werkcontext (gebruiker akkoord 2026-06-07) — alleen gegronde relaties
+  { from: 'Edwin', to: 'Slakkenspoor VOF', rel: 'VENNOOT_IN', confidence: 'stated', evidence: 'Edwin operates Slakkenspoor VOF (50/50 with metallurgist Diederik Fierig)' },
+  { from: 'Diederik Fierig', to: 'Slakkenspoor VOF', rel: 'VENNOOT_IN', confidence: 'stated', evidence: 'Slakkenspoor VOF (50/50 with metallurgist Diederik Fierig)' },
+  { from: 'Slakkenspoor VOF', to: 'SmartSlag3', rel: 'ONTWIKKELT', confidence: 'stated', evidence: 'Edwin operates Slakkenspoor VOF ... for the SmartSlag³ R&D venture' },
+  { from: 'Tata Steel IJmuiden', to: 'SmartSlag3', rel: 'LEVERT_AAN', confidence: 'stated', evidence: 'hydrometallurgical processing of BOF steel slag from Tata Steel IJmuiden' },
+  { from: 'Witteveen', to: 'Uniforce Group B.V.', rel: 'BESTUURDER_VAN', confidence: 'stated', evidence: 'director Witteveen' },
+  { from: 'Edwin', to: 'Witteveen', rel: 'GESCHIL_MET', confidence: 'stated', evidence: 'civil lawsuit against Uniforce Group B.V. and director Witteveen (co-defendant, joint liability)' },
+  { from: 'Edwin', to: 'Magnit', rel: 'DETACHERING_VIA', confidence: 'stated', evidence: 'Active contract work runs through Magnit/APG as a senior data steward' },
 ];
 
 // Defense-in-depth: elk dynamisch geïnterpoleerd Neo4j-label/relatietype moet
