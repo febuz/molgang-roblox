@@ -14,6 +14,8 @@ import { KafkaOrchestrator } from './integrations/kafka/orchestrator';
 import { LightRAGClient } from './integrations/lightrag/client';
 import { AgentAPIWrapper } from './integrations/lightrag/agent-api';
 import { P2PSync } from './integrations/lightrag/p2p-sync';
+import { FactValidator } from './integrations/lightrag/fact-validator';
+import { seedQuantumAlgorithms } from './integrations/lightrag/quantum-schema';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -2123,6 +2125,42 @@ async function initialize() {
     p2pSync.start().catch((e: any) => logger.warn(`P2PSync start error: ${e.message}`));
     app.get('/api/lightrag/p2p', (_req, res) => res.json({ success: true, ...p2pSync.getStats() }));
     logger.info('✓ P2P knowledge-graph sync started');
+
+    // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
+    const factValidator = new FactValidator(lightrag);
+    app.get('/api/lightrag/facts', (_req, res) => res.json({ success: true, ...factValidator.getStats() }));
+    app.get('/api/lightrag/facts/list', (req, res) => {
+      const state = req.query.state as any;
+      res.json({ success: true, facts: factValidator.listFacts(state) });
+    });
+    app.post('/api/lightrag/facts/submit', async (req, res) => {
+      try {
+        const { agent, ...fact } = req.body;
+        const id = await factValidator.submit(agent, fact);
+        res.json({ success: true, factId: id });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    app.post('/api/lightrag/facts/:id/validate', async (req, res) => {
+      try {
+        const state = await factValidator.validate(req.body.agent, req.params.id);
+        res.json({ success: true, state });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    app.post('/api/lightrag/facts/:id/challenge', async (req, res) => {
+      try {
+        const state = await factValidator.challenge(req.body.agent, req.params.id, req.body.reason);
+        res.json({ success: true, state });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    logger.info('✓ P2P fact-validation graph ready');
+
+    // 1e. Seed well-known quantum algorithms for quantum-information readiness.
+    try {
+      const seeded = await seedQuantumAlgorithms(lightrag);
+      logger.info(`✓ Quantum schema: ${seeded} algorithms seeded`);
+    } catch (e: any) {
+      logger.warn(`Quantum seed failed (non-fatal): ${e.message}`);
+    }
 
     // 2. Initialize Kafka (message orchestration) - DISABLED for now
     logger.info('🔄 Kafka disabled (development mode) - running single-node');
