@@ -13,6 +13,7 @@ import logger from './utils/logger';
 import { KafkaOrchestrator } from './integrations/kafka/orchestrator';
 import { LightRAGClient } from './integrations/lightrag/client';
 import { AgentAPIWrapper } from './integrations/lightrag/agent-api';
+import { P2PSync } from './integrations/lightrag/p2p-sync';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -2113,6 +2114,15 @@ async function initialize() {
     logger.info('📦 Initializing Agent API Wrapper...');
     const agentAPI = new AgentAPIWrapper(lightrag);
     logger.info('✓ Agent API Wrapper ready (caching + rate limiting)');
+
+    // 1c. Start P2P knowledge-graph sync — subscribes to lightrag.updates
+    //     Kafka topic and materialises remote graph events into local Neo4j.
+    //     Best-effort: if Kafka is offline the sync disables itself gracefully.
+    const kafkaBrokers = (secretOrEnv('infra', 'KAFKA_BROKERS') || 'localhost:9092').split(',');
+    const p2pSync = new P2PSync(kafkaBrokers, lightrag);
+    p2pSync.start().catch((e: any) => logger.warn(`P2PSync start error: ${e.message}`));
+    app.get('/api/lightrag/p2p', (_req, res) => res.json({ success: true, ...p2pSync.getStats() }));
+    logger.info('✓ P2P knowledge-graph sync started');
 
     // 2. Initialize Kafka (message orchestration) - DISABLED for now
     logger.info('🔄 Kafka disabled (development mode) - running single-node');
