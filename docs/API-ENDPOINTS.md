@@ -258,49 +258,24 @@ Complete documentation of all 70+ API endpoints in the VirtualPC autonomous agen
 
 ---
 
-## 🔒 Security & Audit Logging (5 endpoints)
+## 🔒 Audit Logging
 
-### Log Audit Event
-**POST** `/api/audit/log`
-```json
-{
-  "user_id": "user123",
-  "action": "login|logout|file-access|permission-change",
-  "resource": "system|file|user",
-  "status": "success|failure",
-  "details": {
-    "ip_address": "192.168.1.1",
-    "user_agent": "Mozilla/...",
-    "changes": {}
-  }
-}
-```
-- Response: `{ success, event: {id, timestamp, userId, action, status, ...} }`
+### Commit audit trail (development provenance)
+- **POST** `/api/audit/commit` — record a commit audit entry
+- **GET** `/api/audit/commits` — list recorded commits
+- **GET** `/api/audit/summary` — aggregate commit statistics
+- **POST** `/api/audit/backfill` — backfill audit entries from git history
 
-### Get User Audit Log
-**GET** `/api/audit/user/:userId?limit=100`
-- Returns audit log for specific user
-- Response: `{ success, log: [{timestamp, action, resource, status, ipAddress}, ...] }`
-
-### Get Resource Audit Log
-**GET** `/api/audit/resource/:resource?limit=100`
-- Returns all access/modification events for resource
-- Response: `{ success, log: [{timestamp, userId, action, status, changes}, ...] }`
-
-### Get Security Alerts
-**GET** `/api/security/alerts?level=warning|critical&limit=100`
-- Returns security alerts filtered by level
-- Response: `{ success, alerts: [{id, timestamp, level, type, description, action}, ...] }`
-
-### Get Compliance Report
-**GET** `/api/compliance/report?days=30`
-- Returns compliance report for period
-- Response: `{ success, period: "30 days", totalEvents: N, successRate: %, uniqueUsers: N, uniqueResources: N, failedAttempts: {...}, alerts: N }`
-
-### Get Security Health
-**GET** `/api/security/health`
-- Returns security health score (0-100)
-- Response: `{ success, score: N, status: "secure|at-risk|critical", failureRate: %, alerts24h: N, criticalAlerts: N }`
+### Security audit events (requires `ceo` role)
+- **GET** `/api/audit/stats` — event statistics
+- **GET** `/api/audit/events?limit=100` — recent events
+- **GET** `/api/audit/events/user/:username` — events for a user
+- **GET** `/api/audit/events/type/:type` — events by type
+- **GET** `/api/audit/events/severity/:severity` — events by severity
+- **GET** `/api/audit/events/ip/:ip` — events from an IP
+- **GET** `/api/audit/search?q=...` — full-text search
+- **GET** `/api/audit/export/csv` · **GET** `/api/audit/export/json` — export
+- **POST** `/api/audit/clear-old` — prune old events
 
 ---
 
@@ -434,6 +409,60 @@ Complete documentation of all 70+ API endpoints in the VirtualPC autonomous agen
 **GET** `/api/issues?status=open`
 - Returns issues, optionally filtered by status
 - Response: `{ success, issues: [...], total: N, open: N, in_progress: N, resolved: N }`
+
+---
+
+## 🕸️ P2P Knowledge Graph — Newsgroup 2.0
+
+The sovereign P2P stack (see `docs/P2P-THREAT-MODEL.md`). All routes are
+registered from `src/integrations/lightrag/`.
+
+### Sovereign identity (`identity.ts`)
+- **POST** `/api/identity/register` — register a handle, returns a self-certifying `did:vpc:` DID
+- **GET** `/api/identity` — list identities
+- **GET** `/api/identity/resolve/:did` · **GET** `/api/identity/handle/:handle` — resolve
+- **POST** `/api/identity/:did/rotate` — hash-chained Ed25519 key rotation
+- **POST** `/api/identity/credentials` · **POST** `/api/identity/credentials/verify` — verifiable credentials
+
+### Value chain (`value-chain.ts`)
+- **GET** `/api/value/balance/:did` — BigInt token balance
+- **GET** `/api/value/supply` — supply + conservation invariant
+- **POST** `/api/value/transfer` — node-signed transfer
+- **POST** `/api/value/transfer/submit` — self-custodied (client-signed) transfer
+- **GET** `/api/value/transfers/:did` — history
+- **GET** `/api/value/blocks` · **POST** `/api/value/blocks/seal` — block log
+- **GET** `/api/value/state-root` — current sparse-Merkle state root
+- **GET** `/api/value/proof/:did` — O(log n) SMT account proof, verifiable against any block's `stateRoot`
+
+### BFT consensus (`consensus.ts` + `consensus-network.ts`)
+- **GET** `/api/consensus/status` — height, round, phase, leader, quorum
+- **GET** `/api/consensus/chain` — finalized blocks with quorum certificates
+- **GET** `/api/consensus/validators` · **POST** `/api/consensus/validators` — validator set
+- **POST** `/api/consensus/propose` — receive a signed block proposal (peer-to-peer)
+- **POST** `/api/consensus/vote` — receive a signed vote; follow-up votes propagate to peers
+
+### Users & wallet (`user-api.ts`)
+- **POST** `/api/users/register` — one-field onboarding: DID + welcome bonus + session token
+- **GET** `/api/users/:handle` — profile
+- **GET** `/api/users/:handle/challenge` · **POST** `/api/users/:handle/session` · **DELETE** `/api/users/:handle/session` — Ed25519 challenge-response or node-held login
+- **GET** `/api/users/:handle/wallet` — balance + history
+- **POST** `/api/users/:handle/send` — send tokens by handle
+- **GET** `/api/users/:handle/credentials` — exportable identity proof
+- **GET** `/api/node/status` — node health, supply, conservation, consensus state
+
+### Feed (`feed-api.ts`)
+- **GET** `/api/feed?orderBy=attention|time` — enriched feed (attention scores, reaction counts)
+- **GET** `/api/feed/stream` — Server-Sent Events live stream
+- **GET** `/api/feed/trending?hours=24` · **GET** `/api/feed/search?q=...`
+- **POST** `/api/feed/publish` — publish a claim
+- **GET** `/api/feed/:id` · **GET** `/api/feed/:id/reactions`
+- **POST** `/api/feed/:id/react` — like/share/reply/validate; mints a token reward to the author; 409 on duplicate
+
+### Sovereign voting (`sovereign-voting.ts`)
+- **POST** `/api/sovereign-votes/proposals` — create proposal (identity or stake weighted)
+- **GET** `/api/sovereign-votes/proposals` · **GET** `/api/sovereign-votes/proposals/:id`
+- **POST** `/api/sovereign-votes/proposals/:id/vote` — signed vote
+- **POST** `/api/sovereign-votes/proposals/:id/close` — close + Merkle-certified tally
 
 ---
 

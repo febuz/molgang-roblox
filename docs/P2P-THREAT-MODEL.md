@@ -94,10 +94,14 @@ monotonicity and causality are preserved (fuzz-tested, P6).
 
 ## 4. Explicit non-guarantees
 
-1. **No consensus finality.** Each node's ledger is linearizable locally
-   (nonces) but nodes do not yet run a settlement consensus; conflicting
-   cross-node histories are detectable (anchored roots diverge) but not
-   automatically resolved.
+1. **Consensus finality requires a configured validator set.** Nodes run a
+   two-phase HotStuff BFT engine (`consensus.ts` + `consensus-network.ts`):
+   a block is final once it carries a ⌊2n/3⌋+1 COMMIT quorum certificate,
+   tolerating f < n/3 Byzantine validators. The guarantee is conditional —
+   a single-node deployment self-finalizes (no Byzantine tolerance), and
+   validator-set membership is currently administrative (REST), not
+   on-chain governance. Histories that fork outside the validator set
+   remain detectable via anchored roots but are not automatically resolved.
 2. **No vote secrecy** (§3.4).
 3. **No global identity uniqueness** (§3.3).
 4. **No transport encryption requirement** — gossip authenticates content,

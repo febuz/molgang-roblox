@@ -35,7 +35,7 @@ cd /home/knight2/virtualpc
 ./scripts/setup.sh              # Install dependencies
 docker-compose up -d    # Start infrastructure
 ./scripts/start.sh             # Start application
-./health-check.sh      # Verify all services
+./scripts/health-check.sh      # Verify all services
 ```
 
 ### 2. Access System
@@ -368,7 +368,7 @@ Before running agents full-time:
 
 ## 📞 Support
 
-- **System Status**: `./health-check.sh`
+- **System Status**: `./scripts/health-check.sh`
 - **Logs**: `tail -f logs/virtualpc.log`
 - **Kafka Monitor**: `docker exec virtualpc-kafka kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list`
 - **Neo4j Console**: http://localhost:7474
