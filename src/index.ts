@@ -36,6 +36,8 @@ import { SovereignVotingService, registerSovereignVotingRoutes } from './integra
 import { ConsensusEngine, registerConsensusRoutes } from './integrations/lightrag/consensus';
 import { ConsensusNetwork } from './integrations/lightrag/consensus-network';
 import { ChainStore, defaultSnapshotPath } from './integrations/lightrag/chain-store';
+import { UserApiService, registerUserRoutes } from './integrations/lightrag/user-api';
+import { FeedService, registerFeedRoutes } from './integrations/lightrag/feed-api';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2278,6 +2280,16 @@ async function initialize() {
     // Flush the snapshot on shutdown so the last debounce window is not lost.
     process.once('SIGTERM', () => chainStore.flush());
     process.once('SIGINT', () => chainStore.flush());
+
+    // 1c-iv-b. User API + Feed API — wired AFTER consensus so node-status
+    //   can report consensus state; wired AFTER restore so sessions and
+    //   profiles reflect the recovered ledger.
+    const userApi = new UserApiService(identityService, valueChain, attentionService, newsService, sovereignVoting);
+    registerUserRoutes(app, userApi, consensusEngine, valueChain);
+
+    const feedService = new FeedService(newsService, attentionService, identityService, valueChain);
+    registerFeedRoutes(app, feedService);
+    logger.info('✓ User + Feed APIs ready (/api/users/*, /api/feed/*, /api/node/status)');
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
