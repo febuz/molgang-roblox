@@ -30,6 +30,7 @@ quick start. Read that first if you're new.
 | [P2P-THREAT-MODEL.md](P2P-THREAT-MODEL.md) | Formal threat model: Dolev-Yao adversary, goal/mechanism matrix, known-attack dispositions, explicit non-guarantees |
 | [POST-QUANTUM-WALLET.md](POST-QUANTUM-WALLET.md) | Quantum threat analysis (Shor/Grover, harvest-now-decrypt-later), hash-based signature design, encrypted vault, phased migration plan |
 | [NEWSGROUP-FRONTEND-LESSONS.md](NEWSGROUP-FRONTEND-LESSONS.md) | Design analysis of ten predecessor systems (Usenet → Bluesky) and the ten rules derived from them |
+| [IDEAGRAPH-BENCHMARK.md](IDEAGRAPH-BENCHMARK.md) | Reproducible benchmark: VV graph (20k-company sparse news matrix) + ChemGraph (spectroscopy retrieval) + settlement footprint — quantified case for developers, investors, and users |
 
 ## Research → derived code
 
@@ -47,6 +48,7 @@ justified it.
 | Graph-as-hub (contributor backlog) | `src/integrations/lightrag/backlog.ts` (graph-authoritative backlog, cross-links, proposal-close bridge), `src/integrations/backlog/github-sync.ts` + `gitlab-sync.ts` (bidirectional GitHub/GitLab Issues sync, verified webhooks); tests in `tests/unit/backlog.test.ts` |
 | [NEWSGROUP-FRONTEND-LESSONS.md](NEWSGROUP-FRONTEND-LESSONS.md) | `public/newsgroup.html`; design-rule contract tests in `tests/unit/newsgroupFrontend.test.ts` |
 | [P2P-THREAT-MODEL.md](P2P-THREAT-MODEL.md) §5 (fork safety) + Lightning (BOLT §2/3/4) | `src/integrations/lightrag/lightning.ts` (LightningService: channels, HTLC routing, Dijkstra, breach remedy, PQ-safe commitments, 9 REST routes); `src/integrations/lightrag/protocol-version.ts` (SemVer, BOLT #9 feature bits, ForkSpec registry, peer negotiation, migration hooks, 5 REST routes); tests in `tests/unit/lightning.test.ts`, `protocolVersion.test.ts` |
+| [IDEAGRAPH-BENCHMARK.md](IDEAGRAPH-BENCHMARK.md) | `src/benchmarks/ideagraph-benchmark.ts` (VV-graph + ChemGraph + settlement scenarios), `scripts/run-ideagraph-benchmark.ts` (`npm run bench:ideagraph`), `data/benchmarks/sparse-news-matrix-20k.csv.gz` (89 591-nonzero COO fixture); CI contract in `tests/unit/ideagraphBenchmark.test.ts` |
 | [ID_COLLISION_AUDIT.md](ID_COLLISION_AUDIT.md) | `Date.now()`-only ID fixes applied in four modules (audit lists them) |
 | [AGENT-INFRA-RESEARCH.md](AGENT-INFRA-RESEARCH.md) | Infrastructure decisions: what was adopted, what was deliberately rejected (gitnexus, Symphony) and why |
 | [AGENT-MODEL-ROSTER.md](AGENT-MODEL-ROSTER.md) | Model choices behind `src/orchestration/model-router.ts` and `scripts/ollama-bench.sh` |
