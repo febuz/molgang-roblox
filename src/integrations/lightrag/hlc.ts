@@ -35,8 +35,10 @@ export function hlcNow(state: HLCTimestamp): HLCTimestamp {
 
 /**
  * Advance the HLC upon receiving a remote message.
- * The result satisfies: result > state AND result > remote.
- * Rejects remote timestamps more than MAX_DRIFT_MS ahead of wall clock.
+ * The result satisfies: result > state AND result > remote — EXCEPT when the
+ * remote timestamp is more than MAX_DRIFT_MS ahead of the local wall clock.
+ * In that case the remote value is deliberately ignored (drift attack guard)
+ * and the clock advances locally, so result > remote does NOT hold.
  */
 export function hlcRecv(state: HLCTimestamp, remote: HLCTimestamp): HLCTimestamp {
   if (remote.l - Date.now() > MAX_DRIFT_MS) {

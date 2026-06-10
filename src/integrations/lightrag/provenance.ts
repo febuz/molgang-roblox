@@ -83,10 +83,10 @@ export function buildProvenanceChain(
   nodeId: string,
   maxDepth = 5,
   visited = new Set<string>(),
-  depth = 0,
 ): ProvenanceChain {
   const records: ProvenanceRecord[] = [];
   const queue: Array<{ id: string; d: number }> = [{ id: nodeId, d: 0 }];
+  let deepest = 0;
 
   while (queue.length > 0) {
     const { id, d } = queue.shift()!;
@@ -94,6 +94,7 @@ export function buildProvenanceChain(
     visited.add(id);
 
     const nodeRecords = getProvenance(id);
+    if (nodeRecords.length > 0) deepest = Math.max(deepest, d);
     records.push(...nodeRecords);
 
     // Walk up to source nodes
@@ -113,7 +114,7 @@ export function buildProvenanceChain(
     sourceTypes[r.type] = (sourceTypes[r.type] ?? 0) + 1;
   }
 
-  return { nodeId, depth: records.length > 0 ? maxDepth : 0, records, sourceTypes };
+  return { nodeId, depth: deepest, records, sourceTypes };
 }
 
 /**

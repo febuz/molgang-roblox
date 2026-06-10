@@ -79,6 +79,8 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
       const result = await session.run('MATCH (r:NFCRegistry) RETURN r ORDER BY r.issued_at DESC LIMIT 100');
       const registries = result.records.map((rec: any) => toProps(rec, 'r')).filter(Boolean);
       res.json({ registries, count: registries.length });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     } finally { await session.close(); }
   });
 
@@ -115,6 +117,8 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
       );
       const tokens = result.records.map((rec: any) => toProps(rec, 't')).filter(Boolean);
       res.json({ tokens, count: tokens.length });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     } finally { await session.close(); }
   });
 
@@ -125,6 +129,8 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
       const result = await session.run('MATCH (t:NFCToken {id: $id}) RETURN t', { id: req.params.id });
       if (result.records.length === 0) { res.status(404).json({ success: false, error: 'Not found' }); return; }
       res.json({ success: true, token: toProps(result.records[0], 't') });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     } finally { await session.close(); }
   });
 
@@ -143,6 +149,8 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
         await persistNFCToken(lightrag, sub).catch(e => logger.warn(`granularise persist: ${e.message}`));
       }
       res.status(201).json({ success: true, subTokens, count: subTokens.length });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     } finally { await session.close(); }
   });
 
@@ -185,6 +193,8 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
       );
       const lockups = result.records.map((rec: any) => toProps(rec, 'l')).filter(Boolean);
       res.json({ lockups, count: lockups.length });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     } finally { await session.close(); }
   });
 
@@ -195,17 +205,23 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
       const result = await session.run('MATCH (l:LockupContract {id: $id}) RETURN l', { id: req.params.id });
       if (result.records.length === 0) { res.status(404).json({ success: false, error: 'Not found' }); return; }
       res.json({ success: true, lockup: toProps(result.records[0], 'l') });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     } finally { await session.close(); }
   });
 
   app.post('/api/nfc/lockups/:id/redeem', async (req: Request, res: Response): Promise<void> => {
     if (!lightrag.isConnected()) { res.status(503).json({ success: false, error: 'Offline' }); return; }
-    await lightrag.mergeTypedNode(req.params.id, 'LockupContract', {
-      status: 'redeemed',
-      redeemed_at: new Date().toISOString(),
-      redeemed_by: req.body?.agent ?? 'unknown',
-    }).catch(e => { throw e; });
-    res.json({ success: true, id: req.params.id, status: 'redeemed' });
+    try {
+      await lightrag.mergeTypedNode(req.params.id, 'LockupContract', {
+        status: 'redeemed',
+        redeemed_at: new Date().toISOString(),
+        redeemed_by: req.body?.agent ?? 'unknown',
+      });
+      res.json({ success: true, id: req.params.id, status: 'redeemed' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
   });
 
   // ── Market data ──────────────────────────────────────────────────────────────
@@ -219,6 +235,8 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
       );
       const markets = result.records.map((rec: any) => toProps(rec, 'm')).filter(Boolean);
       res.json({ markets, count: markets.length });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     } finally { await session.close(); }
   });
 
@@ -245,6 +263,8 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
         activeLockups: toN(lockupsRes),
         offline: false,
       });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
     } finally { await session.close(); }
   });
 

@@ -199,29 +199,25 @@ function buildCypher(q: GraphQuery): { cypher: string; params: Record<string, an
   const params: Record<string, any> = {};
   const conditions: string[] = [];
 
-  // Label filter — build MATCH clause dynamically
+  // Label filter — build MATCH clause dynamically.
+  // Labels/types come from the REST body and cannot be parameterized in Cypher,
+  // so they MUST pass through sanitizeLabel before interpolation.
   let matchLabel = '';
   if (q.labels && q.labels.length > 0) {
-    matchLabel = `:${q.labels[0]}`;
+    matchLabel = `:${sanitizeLabel(q.labels[0])}`;
   } else if (q.types && q.types.length > 0) {
     // Map type strings to labels
     const labelMap: Record<string, string> = {
       decision: 'Decision', risk: 'Risk', precedent: 'Precedent',
       context: 'Context', fact: 'Fact', node: 'Node',
     };
-    const mapped = q.types.map(t => labelMap[t.toLowerCase()] ?? t);
+    const mapped = q.types.map(t => labelMap[t.toLowerCase()] ?? sanitizeLabel(t));
     if (mapped.length === 1) {
       matchLabel = `:${mapped[0]}`;
     }
     // For multiple types we use a WHERE filter below
     if (q.types.length > 1) {
-      const labelConditions = q.types
-        .map(t => {
-          const l = (({ decision: 'Decision', risk: 'Risk', precedent: 'Precedent',
-            context: 'Context', fact: 'Fact' }) as any)[t.toLowerCase()] ?? t;
-          return `n:${l}`;
-        })
-        .join(' OR ');
+      const labelConditions = mapped.map(l => `n:${l}`).join(' OR ');
       conditions.push(`(${labelConditions})`);
     }
   }
@@ -293,14 +289,14 @@ function buildCypher(q: GraphQuery): { cypher: string; params: Record<string, an
     }
   }
 
-  // Pagination
-  const limit = Math.min(q.limit ?? 50, 500);
-  const skip = q.skip ?? 0;
+  // Pagination — floor to integers: Neo4j rejects floats in SKIP/LIMIT
+  const limit = Math.max(1, Math.floor(Math.min(q.limit ?? 50, 500)) || 50);
+  const skip = Math.max(0, Math.floor(q.skip ?? 0) || 0);
   params.limit = limit;
   params.skip = skip;
 
-  // Order by
-  const orderField = q.orderBy ?? 'created_at';
+  // Order by — field name cannot be parameterized, sanitize before interpolation
+  const orderField = sanitizeIdentifier(q.orderBy ?? 'created_at') || 'created_at';
   const orderDir = q.sortDir === 'asc' ? 'ASC' : 'DESC';
 
   // Assemble
@@ -318,6 +314,16 @@ function buildCypher(q: GraphQuery): { cypher: string; params: Record<string, an
 
 function sanitizeRelType(t: string): string {
   return t.replace(/[^A-Z0-9_]/gi, '_').toUpperCase();
+}
+
+/** Strip anything that is not a valid Neo4j label character. */
+function sanitizeLabel(l: string): string {
+  return String(l).replace(/[^A-Za-z0-9_]/g, '_');
+}
+
+/** Strip anything that is not a valid property identifier character. */
+function sanitizeIdentifier(f: string): string {
+  return String(f).replace(/[^A-Za-z0-9_]/g, '');
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

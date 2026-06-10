@@ -109,10 +109,11 @@ export async function computeGraphStateRoot(lightrag: LightRAGClient): Promise<G
   while (true) {
     const session = driver.session();
     try {
-      // ORDER BY n.id gives deterministic paging even without pagination cursors
+      // ORDER BY n.id gives deterministic paging even without pagination cursors.
+      // Plain JS integers pack as Bolt INTEGER — safe for SKIP/LIMIT.
       const result = await session.run(
         'MATCH (n) RETURN n.id AS id, properties(n) AS props ORDER BY n.id SKIP $skip LIMIT $limit',
-        { skip: { low: skip, high: 0, toNumber: () => skip }, limit: { low: pageSize, high: 0, toNumber: () => pageSize } },
+        { skip, limit: pageSize },
       );
       const records: any[] = result.records;
       if (records.length === 0) break;
