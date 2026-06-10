@@ -33,6 +33,14 @@
 
 import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
+import {
+  findSimilar,
+  detectDuplicates,
+  suggestEdges,
+  clusterNodes,
+  rankAgents,
+  MLNode,
+} from './graph-ml';
 import logger from '../../utils/logger';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -376,6 +384,134 @@ export function registerGraphRoutes(app: Express, lightrag: LightRAGClient): voi
         nodeCount: graphNodes.length,
         edgeCount: graphEdges.length,
       });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    } finally {
+      await session.close();
+    }
+  });
+
+  // ── ML endpoints ─────────────────────────────────────────────────────────────
+
+  /** Load up to `limit` nodes from Neo4j as MLNode objects for ML operations. */
+  async function loadMLNodes(limit = 500): Promise<MLNode[]> {
+    if (!lightrag.isConnected()) return [];
+    const session = neo4jSession(lightrag);
+    try {
+      const result = await session.run(
+        'MATCH (n) WHERE n.content IS NOT NULL RETURN n LIMIT $limit',
+        { limit },
+      );
+      return result.records.map((rec: any) => {
+        const node = toObj(rec, 'n');
+        return {
+          id: node.id,
+          type: node.type ?? (node.labels?.[0] ?? 'Node').toLowerCase(),
+          content: node.content ?? '',
+          created_by: node.created_by,
+          affects: node.affects ?? [],
+        } as MLNode;
+      });
+    } finally {
+      await session.close();
+    }
+  }
+
+  /** GET /api/graph/ml/similar/:id — top-K most similar nodes */
+  app.get('/api/graph/ml/similar/:id', async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const topK = Math.min(parseInt(String(req.query.k ?? '10'), 10), 50);
+    if (!lightrag.isConnected()) {
+      res.json({ id, similar: [], offline: true }); return;
+    }
+    try {
+      const nodes = await loadMLNodes();
+      const target = nodes.find(n => n.id === id);
+      if (!target) { res.status(404).json({ success: false, error: 'Node not found' }); return; }
+      const similar = findSimilar(target, nodes, topK);
+      res.json({ id, similar, count: similar.length });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** GET /api/graph/ml/duplicates — near-duplicate node pairs */
+  app.get('/api/graph/ml/duplicates', async (req: Request, res: Response): Promise<void> => {
+    const threshold = parseFloat(String(req.query.threshold ?? '0.8'));
+    if (!lightrag.isConnected()) {
+      res.json({ duplicates: [], offline: true }); return;
+    }
+    try {
+      const nodes = await loadMLNodes();
+      const duplicates = detectDuplicates(nodes, threshold);
+      res.json({ duplicates, count: duplicates.length, threshold });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** GET /api/graph/ml/suggest-edges — ML-suggested new relationships */
+  app.get('/api/graph/ml/suggest-edges', async (req: Request, res: Response): Promise<void> => {
+    const minScore = parseFloat(String(req.query.minScore ?? '0.4'));
+    if (!lightrag.isConnected()) {
+      res.json({ suggestions: [], offline: true }); return;
+    }
+    try {
+      const nodes = await loadMLNodes(200);
+      const suggestions = suggestEdges(nodes, minScore).slice(0, 50);
+      res.json({ suggestions, count: suggestions.length });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** GET /api/graph/ml/clusters — k-means topic clusters */
+  app.get('/api/graph/ml/clusters', async (req: Request, res: Response): Promise<void> => {
+    const k = Math.min(parseInt(String(req.query.k ?? '6'), 10), 20);
+    if (!lightrag.isConnected()) {
+      res.json({ clusters: [], offline: true }); return;
+    }
+    try {
+      const nodes = await loadMLNodes();
+      const clusters = clusterNodes(nodes, k);
+      res.json({
+        clusters: clusters.map(c => ({
+          id: c.id,
+          size: c.nodes.length,
+          topTerms: c.topTerms,
+          nodeIds: c.nodes,
+        })),
+        k,
+        totalNodes: nodes.length,
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  /** GET /api/graph/ml/reputation — agent reputation rankings from fact-vote history */
+  app.get('/api/graph/ml/reputation', async (req: Request, res: Response): Promise<void> => {
+    if (!lightrag.isConnected()) {
+      res.json({ agents: [], offline: true }); return;
+    }
+    const session = neo4jSession(lightrag);
+    try {
+      const result = await session.run(`
+        MATCH (fv:FactVote)
+        RETURN fv.voter AS voter, fv.vote AS vote,
+               fv.factId AS factId, fv.factFinalState AS factFinalState,
+               fv.submittedBy AS submittedBy
+        LIMIT 5000
+      `);
+      const history = result.records.map((r: any) => ({
+        factId: r.get('factId'),
+        voter: r.get('voter'),
+        vote: r.get('vote'),
+        factFinalState: r.get('factFinalState'),
+        submittedBy: r.get('submittedBy'),
+      }));
+      const agents = rankAgents(history);
+      res.json({ agents, count: agents.length });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     } finally {

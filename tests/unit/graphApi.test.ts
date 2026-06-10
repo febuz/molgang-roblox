@@ -154,4 +154,34 @@ describe('Graph API — offline mode', () => {
     expect(body.graph.nodes).toHaveLength(0);
     expect(body.graph.edges).toHaveLength(0);
   });
+
+  it('GET /api/graph/ml/similar/:id returns offline flag', async () => {
+    const { body } = await callRoute(app, 'get', '/api/graph/ml/similar/any-id');
+    expect(body.offline).toBe(true);
+    expect(body.similar).toHaveLength(0);
+  });
+
+  it('GET /api/graph/ml/duplicates returns offline flag', async () => {
+    const { body } = await callRoute(app, 'get', '/api/graph/ml/duplicates');
+    expect(body.offline).toBe(true);
+    expect(body.duplicates).toHaveLength(0);
+  });
+
+  it('GET /api/graph/ml/suggest-edges returns offline flag', async () => {
+    const { body } = await callRoute(app, 'get', '/api/graph/ml/suggest-edges');
+    expect(body.offline).toBe(true);
+    expect(body.suggestions).toHaveLength(0);
+  });
+
+  it('GET /api/graph/ml/clusters returns offline flag', async () => {
+    const { body } = await callRoute(app, 'get', '/api/graph/ml/clusters');
+    expect(body.offline).toBe(true);
+    expect(body.clusters).toHaveLength(0);
+  });
+
+  it('GET /api/graph/ml/reputation returns offline flag', async () => {
+    const { body } = await callRoute(app, 'get', '/api/graph/ml/reputation');
+    expect(body.offline).toBe(true);
+    expect(body.agents).toHaveLength(0);
+  });
 });
