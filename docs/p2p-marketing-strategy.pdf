@@ -14,7 +14,7 @@ endobj
 endobj
 
 4 0 obj
-<< /Length 3528 >>
+<< /Length 3478 >>
 stream
 BT
 /F1 22 Tf
@@ -64,245 +64,248 @@ BT
 (  11. Unified P2P Health Monitor) Tj
 /F2 10 Tf
 60 528 Td
-(  12. Key Risks & Mitigations) Tj
+(  12. Verifiable News & On-Chain Anchoring) Tj
 /F2 10 Tf
 60 514 Td
-(  13. Success Metrics) Tj
+(  13. Key Risks & Mitigations) Tj
+/F2 10 Tf
+60 500 Td
+(  14. Success Metrics) Tj
 /F1 13 Tf
-60 482 Td
+60 468 Td
 (Executive Summary) Tj
 /F2 10 Tf
-60 460 Td
+60 446 Td
 (VirtualPC operates a distributed multi-agent AI platform underpinned by a P2P knowledge) Tj
 /F2 10 Tf
-60 447 Td
+60 433 Td
 (graph: a shared Neo4j graph that 40+ autonomous agents read and write in real time. This) Tj
 /F2 10 Tf
-60 434 Td
+60 420 Td
 (document outlines the commercial opportunity, target segments, positioning, and a 90-day) Tj
 /F2 10 Tf
-60 421 Td
+60 407 Td
 (launch roadmap for bringing the platform to market.) Tj
 /F2 10 Tf
-60 408 Td
+60 394 Td
 (Key value drivers: 87% LLM cost reduction via local-first routing, zero-trust P2P fact) Tj
 /F2 10 Tf
-60 395 Td
+60 381 Td
 (validation with quorum consensus, quantum-information-ready schema, and Kafka-backed) Tj
 /F2 10 Tf
-60 382 Td
+60 368 Td
 (eventual consistency across all nodes.) Tj
 /F1 13 Tf
-60 357 Td
+60 343 Td
 (Market Opportunity) Tj
 /F2 10 Tf
-60 335 Td
+60 321 Td
 (The enterprise AI orchestration market is projected to exceed USD 28 billion by 2028 \(CAGR) Tj
 /F2 10 Tf
-60 322 Td
+60 308 Td
 (36%\). Within this, distributed knowledge graph platforms represent a high-growth) Tj
 /F2 10 Tf
-60 309 Td
+60 295 Td
 (sub-segment driven by demand for explainable AI, audit trails, and multi-agent) Tj
 /F2 10 Tf
-60 296 Td
+60 282 Td
 (coordination.) Tj
 /F2 10 Tf
-60 283 Td
+60 269 Td
 (Three primary vectors:) Tj
 /F2 10 Tf
-60 270 Td
+60 256 Td
 (                1. Game studios and interactive media companies needing multi-agent content pipelines) Tj
 /F2 10 Tf
-60 257 Td
+60 243 Td
 (                \(addressable market: USD 4.2 B\).) Tj
 /F2 10 Tf
-60 244 Td
+60 230 Td
 (                2. Financial services requiring provenance-tracked decisions with regulatory audit) Tj
 /F2 10 Tf
-60 231 Td
+60 217 Td
 (                trails \(addressable market: USD 6.8 B\).) Tj
 /F2 10 Tf
-60 218 Td
+60 204 Td
 (                3. Research institutions adopting P2P AI collaboration for quantum computing simulation) Tj
 /F2 10 Tf
-60 205 Td
+60 191 Td
 (                and chemistry modelling \(addressable market: USD 2.1 B\).) Tj
 /F1 13 Tf
-60 180 Td
+60 166 Td
 (Product Positioning) Tj
 /F2 10 Tf
-60 158 Td
+60 144 Td
 (Positioning: 'The only AI orchestration platform where every agent decision is) Tj
 /F2 10 Tf
-60 145 Td
+60 131 Td
 (P2P-validated, graph-provenance-tracked, and quantum-information-ready - at 87% lower cost) Tj
 /F2 10 Tf
-60 132 Td
+60 118 Td
 (than closed-model stacks.') Tj
 /F2 10 Tf
-60 119 Td
+60 105 Td
 (Against LangChain / AutoGen: VirtualPC is infrastructure-grade \(Kafka, Neo4j, Docker\), not) Tj
 /F2 10 Tf
-60 106 Td
+60 92 Td
 (a prototyping library. Graph persistence, quorum fact-validation, and Kafka-backed P2P sync) Tj
 /F2 10 Tf
-60 93 Td
+60 79 Td
 (are production features, not bolt-ons.) Tj
-/F2 10 Tf
-60 80 Td
-(Against proprietary platforms \(Microsoft Copilot Studio, AWS Bedrock Agents\): VirtualPC is) Tj
 ET
 endstream
 endobj
 
 5 0 obj
-<< /Length 4486 >>
+<< /Length 4603 >>
 stream
 BT
 /F2 10 Tf
 60 782 Td
-(open-extensible - bring your own models \(Qwen, DeepSeek, local Ollama\) with zero per-token) Tj
+(Against proprietary platforms \(Microsoft Copilot Studio, AWS Bedrock Agents\): VirtualPC is) Tj
 /F2 10 Tf
 60 769 Td
+(open-extensible - bring your own models \(Qwen, DeepSeek, local Ollama\) with zero per-token) Tj
+/F2 10 Tf
+60 756 Td
 (lock-in.) Tj
 /F1 13 Tf
-60 744 Td
+60 731 Td
 (P2P Network Effect Strategy) Tj
 /F2 10 Tf
-60 722 Td
+60 709 Td
 (The core moat is the P2P knowledge graph itself: every node that joins the cluster enriches) Tj
 /F2 10 Tf
-60 709 Td
+60 696 Td
 (the shared fact base, increasing validation quorum coverage and reducing hallucination) Tj
 /F2 10 Tf
-60 696 Td
+60 683 Td
 (rates for all participants. This creates a classic network effect.) Tj
 /F2 10 Tf
-60 683 Td
+60 670 Td
 (Growth flywheel:) Tj
 /F2 10 Tf
-60 670 Td
+60 657 Td
 (                Step 1 - Seed: onboard 5 design-partner studios; each contributes domain-specific) Tj
 /F2 10 Tf
-60 657 Td
+60 644 Td
 (                Decisions, Risks, and Precedents to the shared graph.) Tj
 /F2 10 Tf
-60 644 Td
+60 631 Td
 (                Step 2 - Compound: new nodes bootstrap faster because confirmed facts reduce cold-start) Tj
 /F2 10 Tf
-60 631 Td
+60 618 Td
 (                errors by an estimated 60%.) Tj
 /F2 10 Tf
-60 618 Td
+60 605 Td
 (                Step 3 - Lock-in: the graph becomes the institutional memory; switching cost =) Tj
 /F2 10 Tf
-60 605 Td
+60 592 Td
 (                re-validating all confirmed facts on a new platform.) Tj
 /F2 10 Tf
-60 592 Td
+60 579 Td
 (Incentive structure: nodes that contribute > 50 confirmed facts per month receive priority) Tj
 /F2 10 Tf
-60 579 Td
+60 566 Td
 (access to Tier-1 model capacity and reduced per-seat pricing.) Tj
 /F1 13 Tf
-60 554 Td
+60 541 Td
 (Quantum Information Readiness as Differentiator) Tj
 /F2 10 Tf
-60 532 Td
+60 519 Td
 (The platform's quantum-schema extension \(QuantumCircuit, Qubit, QuantumAlgorithm,) Tj
 /F2 10 Tf
-60 519 Td
+60 506 Td
 (EntanglementPair node types + THREATENS / ENTANGLED_WITH relationships\) positions VirtualPC) Tj
 /F2 10 Tf
-60 506 Td
+60 493 Td
 (ahead of the post-quantum cryptography migration wave.) Tj
 /F2 10 Tf
-60 493 Td
+60 480 Td
 (Target segment: enterprises mandated by NIST PQC standards \(FIPS 203/204/205\) to audit and) Tj
 /F2 10 Tf
-60 480 Td
+60 467 Td
 (migrate classical cryptographic resources. VirtualPC's graph can track migration_status for) Tj
 /F2 10 Tf
-60 467 Td
+60 454 Td
 (every key, hash, and signature resource and auto-flag those threatened by Shor's algorithm.) Tj
 /F2 10 Tf
-60 454 Td
+60 441 Td
 (Marketing message: 'Know exactly which cryptographic assets Shor's algorithm can break -) Tj
 /F2 10 Tf
-60 441 Td
+60 428 Td
 (before a quantum adversary does. VirtualPC maps every dependency in your stack.') Tj
 /F1 13 Tf
-60 416 Td
+60 403 Td
 (Go-To-Market Channels) Tj
 /F2 10 Tf
-60 394 Td
+60 381 Td
 (1. Developer Community \(Month 1-2\):) Tj
 /F2 10 Tf
-60 381 Td
+60 368 Td
 (                Open-source the lightrag/ and p2p-sync/ modules on GitHub. Target Hacker News,) Tj
 /F2 10 Tf
-60 368 Td
+60 355 Td
 (                r/MachineLearning, and the Neo4j community. Goal: 500 GitHub stars, 3 design-partner) Tj
 /F2 10 Tf
-60 355 Td
+60 342 Td
 (                commitments.) Tj
 /F2 10 Tf
-60 342 Td
+60 329 Td
 (2. Conference & Demo Track \(Month 2-3\):) Tj
 /F2 10 Tf
-60 329 Td
+60 316 Td
 (                Submit talks to QIP 2027, NeurIPS Workshops, and GameDev Summit. Demo: live P2P) Tj
 /F2 10 Tf
-60 316 Td
+60 303 Td
 (                fact-validation across 3 nodes with quorum consensus visible in the Neo4j browser.) Tj
 /F2 10 Tf
-60 303 Td
+60 290 Td
 (3. Enterprise Direct Sales \(Month 3+\):) Tj
 /F2 10 Tf
-60 290 Td
+60 277 Td
 (                Target: financial services \(post-quantum audit use case\), game studios \(multi-agent) Tj
 /F2 10 Tf
-60 277 Td
+60 264 Td
 (                content pipeline\), and research labs \(quantum chemistry simulation\). ACV target: EUR) Tj
 /F2 10 Tf
-60 264 Td
+60 251 Td
 (                120k per enterprise seat.) Tj
 /F2 10 Tf
-60 251 Td
+60 238 Td
 (4. Partner Ecosystem:) Tj
 /F2 10 Tf
-60 238 Td
+60 225 Td
 (                Neo4j ISV partner programme, Anthropic startup credits, Kafka / Confluent marketplace) Tj
 /F2 10 Tf
-60 225 Td
+60 212 Td
 (                listing.) Tj
 /F1 13 Tf
-60 200 Td
+60 187 Td
 (Pricing Model) Tj
 /F2 10 Tf
-60 178 Td
+60 165 Td
 (Tier 0 - Open Source: core graph + P2P sync modules, free. Community support.) Tj
 /F2 10 Tf
-60 165 Td
+60 152 Td
 (Tier 1 - Studio \(up to 10 agents, 1 Neo4j node\): EUR 499/month. Includes fact-validation) Tj
 /F2 10 Tf
-60 152 Td
+60 139 Td
 (dashboard, Kafka integration, email support.) Tj
 /F2 10 Tf
-60 139 Td
+60 126 Td
 (Tier 2 - Enterprise \(unlimited agents, multi-node cluster\): EUR 2 999/month. Includes) Tj
 /F2 10 Tf
-60 126 Td
+60 113 Td
 (quantum-schema module, SLA 99.9%, dedicated CS.) Tj
 /F2 10 Tf
-60 113 Td
+60 100 Td
 (Tier 3 - Sovereign \(on-prem, air-gapped\): EUR 24 000/year. Full source license,) Tj
 /F2 10 Tf
-60 100 Td
+60 87 Td
 (quantum-readiness assessment, custom onboarding.) Tj
 /F2 10 Tf
-60 87 Td
+60 74 Td
 (Expected blended ARPU at 50 customers: EUR 1 800/month -> EUR 1.08 M ARR.) Tj
 ET
 endstream
@@ -467,7 +470,7 @@ endstream
 endobj
 
 7 0 obj
-<< /Length 1779 >>
+<< /Length 3653 >>
 stream
 BT
 /F2 10 Tf
@@ -478,54 +481,111 @@ BT
 (Can be polled by Prometheus, Grafana, or any HTTP monitoring stack for alerting.) Tj
 /F1 13 Tf
 60 744 Td
-(Key Risks & Mitigations) Tj
+(Verifiable News & On-Chain Anchoring) Tj
 /F2 10 Tf
 60 722 Td
-(Risk: Neo4j licence cost at scale - Mitigation: evaluate Apache AGE \(PostgreSQL extension\)) Tj
+(Newsgroup 2.0: every agent can publish a news CLAIM instantly - claimed fact, source,) Tj
 /F2 10 Tf
 60 709 Td
-(as a free alternative for Tier-0 deployments; keep Neo4j for Tier 2+.) Tj
+(claimer, claimed fact-time in nanoseconds \(agent-attested\), and a sparse semantic position) Tj
 /F2 10 Tf
 60 696 Td
-(Risk: Kafka operational complexity scares SME buyers - Mitigation: ship a single-binary) Tj
+(of up to 888 million dimensions. Items go live as 'unverified' with zero latency, propagate) Tj
 /F2 10 Tf
 60 683 Td
-(mode \(in-process event bus\) for Tier-0/1 that transparently upgrades to Kafka at scale.) Tj
+(over P2P gossip, and are anchored on-chain afterwards.) Tj
 /F2 10 Tf
 60 670 Td
-(Risk: Quantum differentiation is premature for most buyers - Mitigation: position quantum) Tj
+(Honest trust model: the chain proves only an upper bound \('this claim existed before block) Tj
 /F2 10 Tf
 60 657 Td
-(readiness as 'insurance' not 'immediate need'; keep it as a Tier-2 feature.) Tj
+(N'\). Fine-grained ordering comes from agent-signed Hybrid Logical Clock timestamps) Tj
 /F2 10 Tf
 60 644 Td
-(Risk: P2P network effect requires critical mass - Mitigation: federated graph mode allows) Tj
+(\(Kulkarni 2014\) inside the graph - we deliberately do NOT claim nanosecond) Tj
 /F2 10 Tf
 60 631 Td
-(nodes to share only explicit namespaces, reducing privacy concerns for early adopters.) Tj
+(chain-timestamps.) Tj
 /F2 10 Tf
 60 618 Td
-(Risk: ML layer accuracy without deep learning - Mitigation: TF-IDF is intentionally) Tj
+(Asymmetric anchoring cadence keeps costs near zero: Tron every 15 minutes \(USD 0.05-1.00\),) Tj
 /F2 10 Tf
 60 605 Td
-(lightweight and runs offline; add optional embedding models \(OpenAI, local\) as a Tier-2) Tj
+(Ethereum hourly via an event-only AnchorRegistry contract \(sub-cent at low base fee\), and) Tj
 /F2 10 Tf
 60 592 Td
+(Bitcoin for free through OpenTimestamps calendar aggregation.) Tj
+/F2 10 Tf
+60 579 Td
+(Vote results are news: fact-validation quorums produce Ed25519 multi-signature certificates) Tj
+/F2 10 Tf
+60 566 Td
+(that are re-verifiable by any peer and published as signed news claims. The certificate) Tj
+/F2 10 Tf
+60 553 Td
+(format reserves a drop-in slot for BLS12-381 aggregation \(one 96-byte signature per) Tj
+/F2 10 Tf
+60 540 Td
+(quorum\).) Tj
+/F2 10 Tf
+60 527 Td
+(Commodity tokenization uses ERC-3525 semi-fungible semantics: anchored claim tokens share a) Tj
+/F2 10 Tf
+60 514 Td
+('slot' per series \(fungible within a series, unique across series\), with 1:10 Bitcoin-based) Tj
+/F2 10 Tf
+60 501 Td
+(granularity and pension-grade 24-month lockup contracts.) Tj
+/F1 13 Tf
+60 476 Td
+(Key Risks & Mitigations) Tj
+/F2 10 Tf
+60 454 Td
+(Risk: Neo4j licence cost at scale - Mitigation: evaluate Apache AGE \(PostgreSQL extension\)) Tj
+/F2 10 Tf
+60 441 Td
+(as a free alternative for Tier-0 deployments; keep Neo4j for Tier 2+.) Tj
+/F2 10 Tf
+60 428 Td
+(Risk: Kafka operational complexity scares SME buyers - Mitigation: ship a single-binary) Tj
+/F2 10 Tf
+60 415 Td
+(mode \(in-process event bus\) for Tier-0/1 that transparently upgrades to Kafka at scale.) Tj
+/F2 10 Tf
+60 402 Td
+(Risk: Quantum differentiation is premature for most buyers - Mitigation: position quantum) Tj
+/F2 10 Tf
+60 389 Td
+(readiness as 'insurance' not 'immediate need'; keep it as a Tier-2 feature.) Tj
+/F2 10 Tf
+60 376 Td
+(Risk: P2P network effect requires critical mass - Mitigation: federated graph mode allows) Tj
+/F2 10 Tf
+60 363 Td
+(nodes to share only explicit namespaces, reducing privacy concerns for early adopters.) Tj
+/F2 10 Tf
+60 350 Td
+(Risk: ML layer accuracy without deep learning - Mitigation: TF-IDF is intentionally) Tj
+/F2 10 Tf
+60 337 Td
+(lightweight and runs offline; add optional embedding models \(OpenAI, local\) as a Tier-2) Tj
+/F2 10 Tf
+60 324 Td
 (upgrade.) Tj
 /F1 13 Tf
-60 567 Td
+60 299 Td
 (Success Metrics) Tj
 /F2 10 Tf
-60 545 Td
+60 277 Td
 (Month 1: 2 design partners signed, 200 GitHub stars, landing page live.) Tj
 /F2 10 Tf
-60 532 Td
+60 264 Td
 (Month 3: 5 paying customers, EUR 8 000 MRR, 500 GitHub stars.) Tj
 /F2 10 Tf
-60 519 Td
+60 251 Td
 (Month 6: EUR 25 000 MRR, 1 enterprise pilot active, quantum white paper cited >= 10 times.) Tj
 /F2 10 Tf
-60 506 Td
+60 238 Td
 (Month 12: EUR 90 000 MRR \(EUR 1.08 M ARR run-rate\), 3 enterprise accounts.) Tj
 ET
 endstream
@@ -562,17 +622,17 @@ xref
 0000000092 00000 n 
 0000000163 00000 n 
 0000000242 00000 n 
-0000003823 00000 n 
-0000008362 00000 n 
-0000013054 00000 n 
-0000014886 00000 n 
-0000015034 00000 n 
-0000015182 00000 n 
-0000015331 00000 n 
-0000015480 00000 n 
-0000015559 00000 n 
+0000003773 00000 n 
+0000008429 00000 n 
+0000013121 00000 n 
+0000016827 00000 n 
+0000016975 00000 n 
+0000017123 00000 n 
+0000017272 00000 n 
+0000017421 00000 n 
+0000017500 00000 n 
 trailer
 << /Size 14 /Root 13 0 R >>
 startxref
-15696
+17637
 %%EOF

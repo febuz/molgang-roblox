@@ -248,11 +248,11 @@ export function registerNFCRoutes(app: Express, lightrag: LightRAGClient): void 
     }
     const session = neo4jSession(lightrag);
     try {
-      const [tokensRes, lockedRes, lockupsRes] = await Promise.all([
-        session.run('MATCH (t:NFCToken) RETURN count(t) AS c'),
-        session.run('MATCH (t:NFCToken {locked: true}) RETURN count(t) AS c'),
-        session.run("MATCH (l:LockupContract {status: 'active'}) RETURN count(l) AS c"),
-      ]);
+      // Sequential on purpose: a Neo4j session supports one running query at
+      // a time — concurrent session.run() on the same session is undefined.
+      const tokensRes = await session.run('MATCH (t:NFCToken) RETURN count(t) AS c');
+      const lockedRes = await session.run('MATCH (t:NFCToken {locked: true}) RETURN count(t) AS c');
+      const lockupsRes = await session.run("MATCH (l:LockupContract {status: 'active'}) RETURN count(l) AS c");
       const toN = (r: any) => {
         const raw = r.records[0]?.get('c');
         return raw && typeof raw === 'object' && 'low' in raw ? raw.low : Number(raw ?? 0);

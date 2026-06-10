@@ -142,6 +142,24 @@ SECTIONS = [
         "Health tiers: 'healthy' (all green), 'degraded' (>10 component errors), 'offline' (no Neo4j).",
         "Can be polled by Prometheus, Grafana, or any HTTP monitoring stack for alerting.",
     ]),
+    ("Verifiable News & On-Chain Anchoring", [
+        "Newsgroup 2.0: every agent can publish a news CLAIM instantly - claimed fact, source, "
+        "claimer, claimed fact-time in nanoseconds (agent-attested), and a sparse semantic position "
+        "of up to 888 million dimensions. Items go live as 'unverified' with zero latency, propagate "
+        "over P2P gossip, and are anchored on-chain afterwards.",
+        "Honest trust model: the chain proves only an upper bound ('this claim existed before block N'). "
+        "Fine-grained ordering comes from agent-signed Hybrid Logical Clock timestamps (Kulkarni 2014) "
+        "inside the graph - we deliberately do NOT claim nanosecond chain-timestamps.",
+        "Asymmetric anchoring cadence keeps costs near zero: Tron every 15 minutes (USD 0.05-1.00), "
+        "Ethereum hourly via an event-only AnchorRegistry contract (sub-cent at low base fee), and "
+        "Bitcoin for free through OpenTimestamps calendar aggregation.",
+        "Vote results are news: fact-validation quorums produce Ed25519 multi-signature certificates "
+        "that are re-verifiable by any peer and published as signed news claims. The certificate format "
+        "reserves a drop-in slot for BLS12-381 aggregation (one 96-byte signature per quorum).",
+        "Commodity tokenization uses ERC-3525 semi-fungible semantics: anchored claim tokens share a "
+        "'slot' per series (fungible within a series, unique across series), with 1:10 Bitcoin-based "
+        "granularity and pension-grade 24-month lockup contracts.",
+    ]),
     ("Key Risks & Mitigations", [
         "Risk: Neo4j licence cost at scale  -  Mitigation: evaluate Apache AGE (PostgreSQL extension) "
         "as a free alternative for Tier-0 deployments; keep Neo4j for Tier 2+.",

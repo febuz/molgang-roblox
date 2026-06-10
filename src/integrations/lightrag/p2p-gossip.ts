@@ -170,15 +170,20 @@ export class P2PGossip {
     const peer = this.pickPeer();
     if (!peer) return;
 
+    // Capture the window boundary BEFORE the round: nodes written while the
+    // round is in flight must fall inside the NEXT window, not in a gap.
+    // The overlap re-sends a few entries; MERGE makes that harmless.
+    const roundStartedAt = new Date().toISOString();
+
     this.stats.lastPeerContacted = peer;
-    this.stats.lastGossipAt = new Date().toISOString();
+    this.stats.lastGossipAt = roundStartedAt;
 
     await Promise.allSettled([
       this.pushToPeer(peer),
       this.pullFromPeer(peer),
     ]);
 
-    this.lastPushAt = new Date().toISOString();
+    this.lastPushAt = roundStartedAt;
   }
 
   private pickPeer(): string | null {

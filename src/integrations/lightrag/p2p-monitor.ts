@@ -74,10 +74,10 @@ async function countNodesAndEdges(lightrag: LightRAGClient): Promise<{ nodeCount
   const driver = (lightrag as any).driver;
   const session = driver.session();
   try {
-    const [nodeRes, edgeRes] = await Promise.all([
-      session.run('MATCH (n) RETURN count(n) AS c'),
-      session.run('MATCH ()-[r]->() RETURN count(r) AS c'),
-    ]);
+    // Sequential on purpose: a Neo4j session supports one running query at
+    // a time — concurrent session.run() on the same session is undefined.
+    const nodeRes = await session.run('MATCH (n) RETURN count(n) AS c');
+    const edgeRes = await session.run('MATCH ()-[r]->() RETURN count(r) AS c');
     const toNum = (res: any) => {
       const raw = res.records[0]?.get('c');
       if (!raw) return 0;
