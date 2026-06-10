@@ -108,6 +108,13 @@ monotonicity and causality are preserved (fuzz-tested, P6).
    not channels. Deploy behind TLS for metadata privacy.
 5. **No availability guarantee under targeted DoS** — caps protect memory,
    not CPU; rate limiting is a deployment concern (reverse proxy).
+6. **Classical signatures are not quantum-resistant.** Ed25519 falls to
+   Shor's algorithm on a cryptographically relevant quantum computer. All
+   hash commitments (DIDs, SMT roots, block hashes) are already
+   quantum-safe, and accounts can enroll hash-based (SHA-256-only)
+   signature keys plus produce quantum-safe wallet proofs today — see
+   `POST-QUANTUM-WALLET.md` for the threat analysis and the phased
+   migration of transfer/consensus signatures.
 
 ## 5. Invariants under continuous test
 

@@ -28,6 +28,7 @@ quick start. Read that first if you're new.
 | File | Topic |
 |------|-------|
 | [P2P-THREAT-MODEL.md](P2P-THREAT-MODEL.md) | Formal threat model: Dolev-Yao adversary, goal/mechanism matrix, known-attack dispositions, explicit non-guarantees |
+| [POST-QUANTUM-WALLET.md](POST-QUANTUM-WALLET.md) | Quantum threat analysis (Shor/Grover, harvest-now-decrypt-later), hash-based signature design, encrypted vault, phased migration plan |
 | [NEWSGROUP-FRONTEND-LESSONS.md](NEWSGROUP-FRONTEND-LESSONS.md) | Design analysis of ten predecessor systems (Usenet → Bluesky) and the ten rules derived from them |
 
 ## Research → derived code
@@ -39,6 +40,7 @@ justified it.
 | Research doc | Derived scripts / modules |
 |--------------|---------------------------|
 | [P2P-THREAT-MODEL.md](P2P-THREAT-MODEL.md) | `src/integrations/lightrag/consensus.ts`, `consensus-network.ts`, `sparse-merkle.ts`, `chain-store.ts`; property fuzzing in `tests/unit/fuzz.properties.test.ts` |
+| [POST-QUANTUM-WALLET.md](POST-QUANTUM-WALLET.md) | `src/integrations/lightrag/pq-crypto.ts` (W-OTS+/Merkle hash-based signatures), `wallet-vault.ts` (AES-256-GCM vault + PQ wallet proofs); tests in `tests/unit/pqCrypto.test.ts`, `walletVault.test.ts` |
 | [NEWSGROUP-FRONTEND-LESSONS.md](NEWSGROUP-FRONTEND-LESSONS.md) | `public/newsgroup.html`; design-rule contract tests in `tests/unit/newsgroupFrontend.test.ts` |
 | [ID_COLLISION_AUDIT.md](ID_COLLISION_AUDIT.md) | `Date.now()`-only ID fixes applied in four modules (audit lists them) |
 | [AGENT-INFRA-RESEARCH.md](AGENT-INFRA-RESEARCH.md) | Infrastructure decisions: what was adopted, what was deliberately rejected (gitnexus, Symphony) and why |

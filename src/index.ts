@@ -38,6 +38,7 @@ import { ConsensusNetwork } from './integrations/lightrag/consensus-network';
 import { ChainStore, defaultSnapshotPath } from './integrations/lightrag/chain-store';
 import { UserApiService, registerUserRoutes } from './integrations/lightrag/user-api';
 import { FeedService, registerFeedRoutes } from './integrations/lightrag/feed-api';
+import { PqWalletService, registerPqRoutes } from './integrations/lightrag/wallet-vault';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2302,6 +2303,12 @@ async function initialize() {
     const feedService = new FeedService(newsService, attentionService, identityService, valueChain);
     registerFeedRoutes(app, feedService);
     logger.info('✓ User + Feed APIs ready (/api/users/*, /api/feed/*, /api/node/status)');
+
+    // 1c-iv-c. Post-quantum wallet layer — hash-based signatures (SHA-256
+    //   only: quantum-resistant) + AES-256-GCM encrypted vault export.
+    //   See docs/POST-QUANTUM-WALLET.md for the threat analysis.
+    const pqWallet = new PqWalletService(identityService, valueChain);
+    registerPqRoutes(app, pqWallet);
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);

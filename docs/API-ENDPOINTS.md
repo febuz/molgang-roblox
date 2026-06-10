@@ -458,6 +458,13 @@ registered from `src/integrations/lightrag/`.
 - **GET** `/api/feed/:id` · **GET** `/api/feed/:id/reactions`
 - **POST** `/api/feed/:id/react` — like/share/reply/validate; mints a token reward to the author; 409 on duplicate
 
+### Post-quantum wallet (`wallet-vault.ts` + `pq-crypto.ts`)
+- **POST** `/api/users/:handle/pq/enroll` — bind a hash-based (SHA-256, quantum-resistant) signature key to the account
+- **GET** `/api/users/:handle/pq/status` — PQ root + remaining one-time signatures
+- **POST** `/api/users/:handle/pq/prove` — quantum-safe wallet proof: account state + SMT proof + hash-based signature (no elliptic-curve assumption anywhere)
+- **POST** `/api/pq/verify` — stateless proof verification for third parties
+- **POST** `/api/users/:handle/vault/export` — `{passphrase}` → AES-256-GCM encrypted vault (scrypt KDF); see `docs/POST-QUANTUM-WALLET.md`
+
 ### Sovereign voting (`sovereign-voting.ts`)
 - **POST** `/api/sovereign-votes/proposals` — create proposal (identity or stake weighted)
 - **GET** `/api/sovereign-votes/proposals` · **GET** `/api/sovereign-votes/proposals/:id`
