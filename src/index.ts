@@ -167,6 +167,13 @@ function serveSPAFile(_req: express.Request, res: express.Response) {
   });
 }
 
+// Newsgroup 2.0 frontend — design rationale in docs/NEWSGROUP-FRONTEND-LESSONS.md
+app.get('/newsgroup', (_req, res) => {
+  res.type('html').sendFile(path.resolve(__dirname, '..', 'public', 'newsgroup.html'), (err: any) => {
+    if (err) res.status(500).send('Error loading newsgroup frontend');
+  });
+});
+
 // Dashboard is now served at root (localhost:3100) - no separate /dashboard route needed
 
 // Terminal Activity Monitor - Track what's happening in both terminals
