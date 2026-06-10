@@ -26,6 +26,7 @@
 
 import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
+import type { P2PSwarm } from './p2p-swarm';
 import logger from '../../utils/logger';
 
 export interface GossipNode {
@@ -40,6 +41,7 @@ export interface GossipPayload {
   nodes: GossipNode[];
   edges: Array<{ fromId: string; relType: string; toId: string; props?: Record<string, any> }>;
   timestamp: string;
+  knownPeers?: string[];          // PEX piggyback (BitTorrent PEX / Bitcoin addr)
 }
 
 export interface GossipStats {
@@ -60,6 +62,7 @@ export class P2PGossip {
   private lightrag: LightRAGClient;
   private peers: string[];
   private myUrl: string;
+  private swarm: P2PSwarm | null = null;
   private lastPushAt = new Date(0).toISOString();
   private localDelta: GossipNode[] = [];
   private localEdgeDelta: GossipPayload['edges'] = [];
@@ -75,10 +78,14 @@ export class P2PGossip {
     running: false,
   };
 
-  constructor(lightrag: LightRAGClient, peers: string[] = [], myUrl = '') {
+  constructor(lightrag: LightRAGClient, peers: string[] = [], myUrl = '', swarm?: P2PSwarm) {
     this.lightrag = lightrag;
     this.peers = peers.filter(p => p !== myUrl);
     this.myUrl = myUrl;
+    this.swarm = swarm ?? null;
+    if (this.swarm) {
+      for (const p of this.peers) this.swarm.addPeer(p, 'config');
+    }
     this.stats.peersConfigured = this.peers.length;
   }
 
@@ -91,6 +98,11 @@ export class P2PGossip {
     app.post('/api/lightrag/gossip/push', async (req: Request, res: Response) => {
       const payload: GossipPayload = req.body;
       if (!payload?.nodes) { res.status(400).json({ error: 'missing nodes' }); return; }
+      // PEX: adopt a couple of the sender's known peers (eclipse-guarded)
+      if (this.swarm && Array.isArray(payload.knownPeers)) {
+        this.swarm.offerPeers(payload.sourceUrl ?? 'unknown', payload.knownPeers);
+        this.syncPeersFromSwarm();
+      }
       const merged = await this.mergePayload(payload);
       res.json({ success: true, merged });
     });
@@ -106,6 +118,7 @@ export class P2PGossip {
         nodes: delta,
         edges: this.localEdgeDelta.slice(-100),
         timestamp: new Date().toISOString(),
+        knownPeers: this.swarm?.knownPeers(),
       };
       res.json({ success: true, ...out });
     });
@@ -142,9 +155,14 @@ export class P2PGossip {
    * Start the gossip timer.
    */
   start(): void {
-    if (this.peers.length === 0) {
+    if (this.peers.length === 0 && !this.swarm) {
       logger.info('P2PGossip: no peers configured — gossip disabled');
       return;
+    }
+    if (this.peers.length === 0) {
+      // Swarm mode: keep the timer alive — inbound pushes can deliver peers
+      // via PEX, after which rounds start flowing without a restart.
+      logger.info('P2PGossip: no peers yet — waiting for PEX discovery');
     }
     this.stats.running = true;
     this.timer = setInterval(() => this.gossipRound(), GOSSIP_INTERVAL_MS);
@@ -167,20 +185,36 @@ export class P2PGossip {
   // ─────────────────────────────────────────────────────────────────
 
   private async gossipRound(): Promise<void> {
-    const peer = this.pickPeer();
-    if (!peer) return;
-
     // Capture the window boundary BEFORE the round: nodes written while the
     // round is in flight must fall inside the NEXT window, not in a gap.
     // The overlap re-sends a few entries; MERGE makes that harmless.
     const roundStartedAt = new Date().toISOString();
 
-    this.stats.lastPeerContacted = peer;
+    // Swarm-managed selection: rechoke (tit-for-tat + optimistic unchoke),
+    // then pick push targets — several at once in endgame mode.
+    let pushTargets: string[];
+    let pullPeer: string | null;
+    if (this.swarm) {
+      this.swarm.rechoke();
+      this.syncPeersFromSwarm();
+      const deltaIds = this.localDelta
+        .filter(n => n.updatedAt >= this.lastPushAt)
+        .map(n => n.id);
+      pushTargets = this.swarm.selectPushTargets(deltaIds);
+      pullPeer = this.swarm.selectPeer();
+    } else {
+      const peer = this.pickPeer();
+      pushTargets = peer ? [peer] : [];
+      pullPeer = peer;
+    }
+    if (pushTargets.length === 0 && !pullPeer) return;
+
+    this.stats.lastPeerContacted = pushTargets[0] ?? pullPeer;
     this.stats.lastGossipAt = roundStartedAt;
 
     await Promise.allSettled([
-      this.pushToPeer(peer),
-      this.pullFromPeer(peer),
+      ...pushTargets.map(p => this.pushToPeer(p)),
+      ...(pullPeer ? [this.pullFromPeer(pullPeer)] : []),
     ]);
 
     this.lastPushAt = roundStartedAt;
@@ -191,12 +225,30 @@ export class P2PGossip {
     return this.peers[Math.floor(Math.random() * this.peers.length)];
   }
 
+  /** Adopt PEX-discovered peers from the swarm table into the gossip ring. */
+  private syncPeersFromSwarm(): void {
+    if (!this.swarm) return;
+    for (const url of this.swarm.peerUrls()) {
+      if (url !== this.myUrl && !this.peers.includes(url)) {
+        this.peers.push(url);
+      }
+    }
+    this.stats.peersConfigured = this.peers.length;
+  }
+
   private async pushToPeer(peer: string): Promise<void> {
+    let nodes = this.localDelta.filter(n => n.updatedAt >= this.lastPushAt);
+    // Rarest-first (BitTorrent piece selection): push the least-replicated
+    // items first so old-but-rare knowledge survives, not just the newest.
+    if (this.swarm) nodes = this.swarm.sortRarestFirst(nodes);
+
     const payload: GossipPayload = {
       sourceUrl: this.myUrl,
-      nodes: this.localDelta.filter(n => n.updatedAt >= this.lastPushAt),
+      nodes,
       edges: this.localEdgeDelta.slice(-50),
       timestamp: new Date().toISOString(),
+      // PEX piggyback: share a few known peers so the swarm grows trackerless
+      knownPeers: this.swarm?.knownPeers(),
     };
     if (payload.nodes.length === 0 && payload.edges.length === 0) return;
 
@@ -208,10 +260,15 @@ export class P2PGossip {
       }, PULL_TIMEOUT_MS);
       if ((resp as any).ok) {
         this.stats.pushCount++;
+        this.swarm?.recordPushOk(peer, payload.nodes.length);
+        for (const n of payload.nodes) this.swarm?.recordReplicated(n.id, peer);
         logger.debug(`P2PGossip: pushed ${payload.nodes.length} nodes to ${peer}`);
+      } else {
+        this.swarm?.recordPushFail(peer);
       }
     } catch (e: any) {
       this.stats.errorCount++;
+      this.swarm?.recordPushFail(peer);
       logger.debug(`P2PGossip: push to ${peer} failed: ${e.message}`);
     }
   }
@@ -220,15 +277,22 @@ export class P2PGossip {
     try {
       const url = `${peer}/api/lightrag/gossip/pull?since=${encodeURIComponent(this.lastPushAt)}`;
       const resp = await fetchWithTimeout(url, {}, PULL_TIMEOUT_MS);
-      if (!(resp as any).ok) return;
+      if (!(resp as any).ok) { this.swarm?.recordPullFail(peer); return; }
       const payload: GossipPayload = await (resp as any).json();
+      if (!payload || !Array.isArray(payload.nodes)) {
+        // Malformed payload — steepest penalty (Bitcoin banscore / gossipsub P4)
+        this.swarm?.recordInvalid(peer);
+        return;
+      }
       const merged = await this.mergePayload(payload);
+      this.swarm?.recordPullOk(peer, merged);
       if (merged > 0) {
         this.stats.pullCount++;
         logger.debug(`P2PGossip: pulled+merged ${merged} nodes from ${peer}`);
       }
     } catch (e: any) {
       this.stats.errorCount++;
+      this.swarm?.recordPullFail(peer);
       logger.debug(`P2PGossip: pull from ${peer} failed: ${e.message}`);
     }
   }

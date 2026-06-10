@@ -28,6 +28,7 @@ import { registerNFCRoutes } from './integrations/lightrag/nfc-api';
 import { NewsService, registerNewsRoutes } from './integrations/lightrag/news';
 import { VoteCertificateService, registerVoteCertRoutes } from './integrations/lightrag/vote-certificate';
 import { AttentionChainService, registerAttentionRoutes } from './integrations/lightrag/attention-chain';
+import { P2PSwarm, registerSwarmRoutes } from './integrations/lightrag/p2p-swarm';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2223,12 +2224,17 @@ async function initialize() {
     }
 
     // 1f. P2P Gossip — HTTP fallback sync when Kafka is unavailable.
+    //     Swarm-managed: tit-for-tat choking, optimistic unchoke, rarest-first
+    //     replication, endgame fanout, PEX peer discovery, misbehavior bans
+    //     (BitTorrent / Bitcoin Core / gossipsub v1.1 lessons).
     const gossipPeers = (secretOrEnv('infra', 'P2P_PEERS') || '').split(',').filter(Boolean);
     const myUrl = secretOrEnv('infra', 'MY_URL') || `http://localhost:${process.env.PORT || 3100}`;
-    const gossip = new P2PGossip(lightrag, gossipPeers, myUrl);
+    const swarm = new P2PSwarm({ myUrl });
+    registerSwarmRoutes(app, swarm);
+    const gossip = new P2PGossip(lightrag, gossipPeers, myUrl, swarm);
     gossip.registerExpressRoutes(app);
     gossip.start();
-    logger.info(`✓ P2PGossip configured (${gossipPeers.length} peers)`);
+    logger.info(`✓ P2PGossip configured (${gossipPeers.length} peers, swarm-managed)`);
 
     // 1g. Agent Bridge — wires task completions/failures into the knowledge graph.
     const agentBridge = new AgentBridge(agentAPI, factValidator);
