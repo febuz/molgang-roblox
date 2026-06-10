@@ -58,6 +58,7 @@ import type { SovereignIdentityService } from './identity';
 import { didFromPublicKey } from './identity';
 import { canonicalize, sha256, buildMerkleRoot } from './graph-state-root';
 import { constantTimeEqual } from './constant-time';
+import { SparseMerkleTree, smtKey, type SMTProof } from './sparse-merkle';
 import logger from '../../utils/logger';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -162,9 +163,19 @@ export interface Block {
   height: number;
   prevHash: string;
   txRoot: string;               // Merkle root over transfer hashes
+  stateRoot: string;            // SMT root over ALL account states after this block
   txIds: string[];
   sealedAt: string;
   hash: string;
+}
+
+/**
+ * The exact leaf value an account occupies in the state SMT. Light clients
+ * reconstruct this string from a claimed (balance, nonce) pair and verify the
+ * SMT proof against an anchored stateRoot — no chain replay needed.
+ */
+export function accountLeafValue(acc: Pick<Account, 'balance' | 'nonce'>): string {
+  return canonicalize({ balance: acc.balance.toString(), nonce: acc.nonce });
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -227,16 +238,27 @@ export class ValueChainService {
   private totalMintedUnits = 0n;
   private coinbaseNonce = 0;
   private maxTransfers: number;
+  /** SMT over account states — root committed in every sealed block. */
+  private stateTree = new SparseMerkleTree();
+
+  /** Fires for every applied transfer (mint or signed) — consensus + persistence hook. */
+  private onTransfer?: (tx: Transfer) => void;
 
   constructor(
     lightrag: LightRAGClient,
-    opts: { identity?: SovereignIdentityService; maxTransfers?: number } = {},
+    opts: { identity?: SovereignIdentityService; maxTransfers?: number; onTransfer?: (tx: Transfer) => void } = {},
   ) {
     this.lightrag = lightrag;
     this.identity = opts.identity;
+    this.onTransfer = opts.onTransfer;
     // DoS bound: the in-memory tx log is capped; past the cap the ledger
     // refuses new transfers until history is archived externally.
     this.maxTransfers = opts.maxTransfers ?? 1_000_000;
+  }
+
+  /** Late binding for the transfer hook (services are constructed in dependency order). */
+  setOnTransfer(hook: (tx: Transfer) => void): void {
+    this.onTransfer = hook;
   }
 
   // ── Accounts ────────────────────────────────────────────────────────────────
@@ -251,6 +273,26 @@ export class ValueChainService {
     const acc = this.accounts.get(did) ?? { did, balance: 0n, nonce: 0 };
     acc.balance += units;
     this.accounts.set(did, acc);
+    this.stateTree.set(smtKey(did), accountLeafValue(acc));
+  }
+
+  // ── State proofs (light clients) ────────────────────────────────────────────
+
+  /** SMT root over all account states — the anchor-able state commitment. */
+  getStateRoot(): string {
+    return this.stateTree.root;
+  }
+
+  /**
+   * O(log n) proof that `did` has exactly its current (balance, nonce) — or a
+   * non-inclusion proof when the account has never been touched. The proof
+   * verifies against `getStateRoot()` (or the stateRoot in any later block
+   * sealed before further mutations) without replaying the chain.
+   */
+  proveAccount(did: string): { account: ReturnType<ValueChainService['getAccount']>; proof: SMTProof; stateRoot: string } {
+    const acc = this.getAccount(did);
+    const proof = this.stateTree.proveWithValue(smtKey(did), accountLeafValue(acc));
+    return { account: acc, proof, stateRoot: this.stateTree.root };
   }
 
   /**
@@ -360,6 +402,7 @@ export class ValueChainService {
     sender.balance -= amount;
     sender.nonce = tx.nonce;
     this.accounts.set(tx.from, sender);
+    this.stateTree.set(smtKey(tx.from), accountLeafValue(sender));
     this.creditAccount(tx.to, amount);
     this.applyToLog(tx);
     return { applied: true };
@@ -392,6 +435,7 @@ export class ValueChainService {
       height: this.blocks.length,
       prevHash,
       txRoot: buildMerkleRoot(leaves),
+      stateRoot: this.stateTree.root,   // commitment to ALL account states
       txIds,
       sealedAt: new Date().toISOString(),
     };
@@ -427,6 +471,57 @@ export class ValueChainService {
     return this.blocks.slice(-limit).map(b => ({ ...b, txIds: [...b.txIds] }));
   }
 
+  // ── Persistence (export / restore) ──────────────────────────────────────────
+
+  /**
+   * Serializable chain state: the ordered transfer log plus sealed blocks.
+   * Accounts, supply and the state tree are NOT exported — they are derived
+   * state, rebuilt deterministically by replaying the log on restore.
+   */
+  exportState(): { transfers: Transfer[]; blocks: Block[] } {
+    return {
+      transfers: Array.from(this.transfers.values()).map(t => ({ ...t })),
+      blocks: this.blocks.map(b => ({ ...b, txIds: [...b.txIds] })),
+    };
+  }
+
+  /**
+   * Rebuild the ledger from an exported state by replaying every transfer in
+   * log order. Signed transfers are re-verified cryptographically; coinbase
+   * entries are re-applied through the internal mint path (the identity-
+   * registration gate is skipped — the recipient was registered when the
+   * mint originally happened). Throws if the replayed chain fails to verify.
+   */
+  restoreState(state: { transfers: Transfer[]; blocks: Block[] }): void {
+    if (this.transfers.size > 0) throw new Error('restoreState requires an empty ledger');
+    for (const tx of state.transfers) {
+      if (tx.from === COINBASE) {
+        const units = BigInt(tx.amount);
+        this.totalMintedUnits += units;
+        if (this.totalMintedUnits > SUPPLY_CAP_UNITS) throw new Error('restore: supply cap exceeded');
+        this.coinbaseNonce = Math.max(this.coinbaseNonce, tx.nonce);
+        this.creditAccount(tx.to, units);
+        this.transfers.set(tx.id, { ...tx });
+        this.pendingTxIds.push(tx.id);
+      } else {
+        const result = this.submitTransfer({ ...tx });
+        if (!result.applied) throw new Error(`restore: transfer ${tx.id} rejected: ${result.reason}`);
+      }
+    }
+    // Re-adopt the sealed blocks; whatever they cover leaves pending
+    const sealed = new Set<string>();
+    for (const b of state.blocks) {
+      this.blocks.push({ ...b, txIds: [...b.txIds] });
+      for (const id of b.txIds) sealed.add(id);
+    }
+    this.pendingTxIds = this.pendingTxIds.filter(id => !sealed.has(id));
+    const check = this.verifyChain();
+    if (!check.valid) throw new Error(`restore: chain verification failed: ${check.reason}`);
+    const conservation = this.checkConservation();
+    if (!conservation.holds) throw new Error('restore: conservation invariant broken');
+    logger.info(`💾 Ledger restored: ${this.transfers.size} tx, ${this.blocks.length} blocks, ${this.accounts.size} accounts`);
+  }
+
   // ── Supply stats ────────────────────────────────────────────────────────────
 
   getSupply() {
@@ -451,6 +546,7 @@ export class ValueChainService {
     this.transfers.set(tx.id, tx);
     this.pendingTxIds.push(tx.id);
     void this.persistTransfer(tx);
+    try { this.onTransfer?.(tx); } catch (e: any) { logger.warn(`onTransfer hook: ${e.message}`); }
   }
 
   private async persistTransfer(tx: Transfer): Promise<void> {
@@ -539,6 +635,21 @@ export function registerValueRoutes(app: Express, service: ValueChainService): v
     }
     const result = service.submitTransfer(tx);
     res.status(result.applied ? 201 : 409).json({ success: result.applied, ...result });
+  });
+
+  app.get('/api/value/state-root', (_req: Request, res: Response): void => {
+    res.json({ success: true, stateRoot: service.getStateRoot() });
+  });
+
+  app.get('/api/value/proof/:did', (req: Request, res: Response): void => {
+    const { account, proof, stateRoot } = service.proveAccount(req.params.did);
+    res.json({
+      success: true,
+      account: serializeAccount(account),
+      leafValue: accountLeafValue(account),
+      proof,
+      stateRoot,
+    });
   });
 
   app.get('/api/value/transfers/:did', (req: Request, res: Response): void => {

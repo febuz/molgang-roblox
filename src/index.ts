@@ -29,10 +29,13 @@ import { NewsService, registerNewsRoutes } from './integrations/lightrag/news';
 import { VoteCertificateService, registerVoteCertRoutes } from './integrations/lightrag/vote-certificate';
 import { AttentionChainService, registerAttentionRoutes } from './integrations/lightrag/attention-chain';
 import { P2PSwarm, registerSwarmRoutes } from './integrations/lightrag/p2p-swarm';
-import { SovereignIdentityService, registerIdentityRoutes } from './integrations/lightrag/identity';
+import { SovereignIdentityService, registerIdentityRoutes, didFromPublicKey } from './integrations/lightrag/identity';
+import * as nodeCrypto from 'crypto';
 import { ValueChainService, registerValueRoutes } from './integrations/lightrag/value-chain';
 import { SovereignVotingService, registerSovereignVotingRoutes } from './integrations/lightrag/sovereign-voting';
 import { ConsensusEngine, registerConsensusRoutes } from './integrations/lightrag/consensus';
+import { ConsensusNetwork } from './integrations/lightrag/consensus-network';
+import { ChainStore, defaultSnapshotPath } from './integrations/lightrag/chain-store';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2170,6 +2173,15 @@ async function initialize() {
     const valueChain = new ValueChainService(lightrag, { identity: identityService });
     registerValueRoutes(app, valueChain);
 
+    // Durability: restore ledger + identities from the last snapshot BEFORE any
+    // hooks are wired — replayed history must not re-trigger consensus or
+    // re-mint attention rewards. A corrupted snapshot fails the boot loudly.
+    const chainStore = new ChainStore(defaultSnapshotPath(), valueChain, identityService);
+    const restored = chainStore.load();
+    if (restored) {
+      logger.info(`💾 Chain restored from snapshot: ${restored.transfers} tx, ${restored.blocks} blocks, ${restored.identities} identities`);
+    }
+
     const attentionService = new AttentionChainService(lightrag, {
       onEvent: (e) => {
         // Attention mining: a registered agent's contribution mints tokens at
@@ -2225,10 +2237,47 @@ async function initialize() {
         if (sealed) {
           logger.info(`consensus→value-chain: sealed block #${sealed.height} with ${sealed.txIds.length} txs (consensus height=${block.proposal.payload.height})`);
         }
+        chainStore.scheduleSave();
       },
     });
     registerConsensusRoutes(app, consensusEngine);
     (app as any).locals.consensusEngine = consensusEngine;
+
+    // Every applied transfer: queue for consensus finality + snapshot to disk.
+    // Wired AFTER the restore above so replayed history is not re-queued.
+    valueChain.setOnTransfer((tx) => {
+      consensusEngine.queueTransfer(tx.id);
+      chainStore.scheduleSave();
+    });
+
+    // Self-validator bootstrap: a fresh node keypair makes single-node
+    // consensus work out of the box; multi-node deployments add the other
+    // validators via POST /api/consensus/validators.
+    {
+      const kp = nodeCrypto.generateKeyPairSync('ed25519', {
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      const nodeDid = didFromPublicKey(kp.publicKey);
+      consensusEngine.setSelf(nodeDid, kp.privateKey);
+      consensusEngine.addValidator({ did: nodeDid, stake: 0n, publicKeyPem: kp.publicKey });
+      logger.info(`✓ Consensus self-validator: ${nodeDid}`);
+    }
+
+    // Network driver: broadcast proposals/votes to CONSENSUS_PEERS and
+    // auto-propose when this node is the leader with pending transfers.
+    const consensusPeers = (process.env.CONSENSUS_PEERS ?? '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    const consensusNetwork = new ConsensusNetwork(consensusEngine, consensusPeers, {
+      proposeIntervalMs: parseInt(process.env.CONSENSUS_PROPOSE_INTERVAL_MS ?? '2000', 10),
+    });
+    consensusNetwork.start();
+    (app as any).locals.consensusNetwork = consensusNetwork;
+    (app as any).locals.chainStore = chainStore;
+
+    // Flush the snapshot on shutdown so the last debounce window is not lost.
+    process.once('SIGTERM', () => chainStore.flush());
+    process.once('SIGINT', () => chainStore.flush());
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);

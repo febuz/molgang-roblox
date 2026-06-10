@@ -78,15 +78,15 @@ export class SparseMerkleTree {
   // ─── Mutating operations ────────────────────────────────────────────────────
 
   /**
-   * Insert or update a key→value mapping and recompute the root.
-   * key must be a 64-char lowercase hex string.
+   * Insert or update a key→value mapping. The root is recomputed lazily on
+   * the next `root` read or `prove()` call — a transfer burst of N updates
+   * costs one tree rebuild, not N.
    */
   set(key: string, value: string): void {
     validateKey(key);
     const vh = sha256hex(value);
     this.leaves.set(key, vh);
     this.dirty = true;
-    this._root = this.computeRoot();
   }
 
   /**
@@ -97,12 +97,12 @@ export class SparseMerkleTree {
     if (!this.leaves.has(key)) return;
     this.leaves.delete(key);
     this.dirty = true;
-    this._root = this.computeRoot();
   }
 
   // ─── Queries ────────────────────────────────────────────────────────────────
 
   get root(): string {
+    this.refresh();
     return this._root;
   }
 
@@ -121,6 +121,7 @@ export class SparseMerkleTree {
    */
   prove(key: string): SMTProof {
     validateKey(key);
+    this.refresh();
     const bits = keyToBits(key);
     const siblings: string[] = [];
     // Walk from leaf to root collecting siblings
@@ -156,14 +157,47 @@ export class SparseMerkleTree {
 
   // ─── Internal ───────────────────────────────────────────────────────────────
 
-  /**
-   * Recompute the root from scratch (called after any mutation).
-   * In a production tree this would be incremental; here we use a recursive
-   * descent over the key set which is O(n × depth) but correct.
-   */
-  private computeRoot(): string {
+  /** Recompute the root if any mutation happened since the last read. */
+  private refresh(): void {
+    if (!this.dirty) return;
     this.cache.clear();
-    return this.getSubtreeHash('', 0);
+    // Sorted-by-bits descent: partitioning a sorted range by the bit at each
+    // depth makes the rebuild O(n × depth) instead of O(n² × depth).
+    const entries = [...this.leaves.entries()]
+      .map(([key, vh]) => ({ bits: keyToBits(key), key, vh }))
+      .sort((a, b) => (a.bits < b.bits ? -1 : 1));
+    this._root = this.buildSubtree(entries, 0, entries.length, '', 0);
+    this.dirty = false;
+  }
+
+  /** Build (and cache) the hash of the subtree at `path` from the sorted entry range [lo, hi). */
+  private buildSubtree(
+    entries: { bits: string; key: string; vh: string }[],
+    lo: number,
+    hi: number,
+    path: string,
+    depth: number
+  ): string {
+    if (lo >= hi) {
+      this.cache.set(path, SMT_EMPTY_HASH);
+      return SMT_EMPTY_HASH;
+    }
+    if (depth === TREE_DEPTH) {
+      const e = entries[lo];
+      const h = leafHash(e.key, e.vh);
+      this.cache.set(path, h);
+      return h;
+    }
+    // Find the partition point: first entry whose bit at `depth` is '1'
+    let mid = lo;
+    while (mid < hi && entries[mid].bits[depth] === '0') mid++;
+    const left = this.buildSubtree(entries, lo, mid, path + '0', depth + 1);
+    const right = this.buildSubtree(entries, mid, hi, path + '1', depth + 1);
+    const h = (left === SMT_EMPTY_HASH && right === SMT_EMPTY_HASH)
+      ? SMT_EMPTY_HASH
+      : nodeHash(left, right);
+    this.cache.set(path, h);
+    return h;
   }
 
   /**
