@@ -1,26 +1,28 @@
 /**
- * Non Fungable Commodity (NFC) Schema
+ * Anchored Claim Token (ACT) Schema — ERC-3525 semi-fungible semantics
  *
- * A new asset class distinct from both fungible tokens (Bitcoin/ETH) and
- * NFTs (digital collectibles). An NFC represents a real-world commodity
- * that retains its physical uniqueness when tokenized:
+ * Distinct from NFTs (unique, non-fungible) and ERC-20 tokens (fully fungible).
+ * An ACT represents a real-world commodity claim where:
  *
- *   - Physical identity is preserved: 10 kg of grain from farm A is NOT
- *     fungible with 10 kg of grain from farm B (different provenance,
- *     quality, delivery date). Hence "Non Fungable Commodity".
+ *   - Tokens with the same `slot` (= series_id) ARE fungible with each other
+ *     (one unit of "Amsterdam Grain 2026 Series A" is interchangeable with
+ *     any other unit in the same series). This fixes the "Non-Fungible Commodity"
+ *     oxymoron: commodities ARE fungible within a series/grade/provenance class.
  *
- *   - Bitcoin as the base settlement layer: 1 BTC → 10 NFC tokens at
- *     1:10 granularity. NFCTokens can be redeemed for BTC collateral or
- *     the underlying physical commodity.
+ *   - Tokens across different slots are NOT fungible (grain ≠ gold; Series A ≠ B).
+ *     The `slot` field is the ERC-3525 fungibility boundary.
+ *
+ *   - Bitcoin as the base settlement layer: 1 BTC → 10 ACT at 1:10 granularity.
+ *     Tokens can be redeemed for BTC collateral or the underlying commodity.
  *
  *   - Lockup contracts: pension-grade lockups (default 2 years) with
  *     conditional early-exit rules.
  *
  * Node types:
- *   NFCToken        — a tokenized commodity unit
+ *   NFCToken        — an anchored commodity claim (ACT node in the graph)
  *   LockupContract  — time-locked holding arrangement
  *   CommodityMarket — live price / volume feed for a commodity type
- *   NFCRegistry     — registry of all NFC series (similar to ERC-721 contract)
+ *   NFCRegistry     — registry of all ACT series (similar to ERC-3525 contract)
  *
  * Relationships:
  *   BACKED_BY       — NFCToken → Bitcoin (collateral) or physical commodity
@@ -59,8 +61,14 @@ export type BaseAsset = 'bitcoin' | 'ethereum' | 'usdc' | 'physical' | string;
 // Node interfaces
 // ──────────────────────────────────────────────────────────────────────────────
 
-export interface NFCToken {
+/**
+ * AnchoredClaimToken — the primary interface (ERC-3525 semi-fungible).
+ * `slot` = fungibility boundary: tokens with the same slot are interchangeable.
+ * `NFCToken` below is a backward-compatibility alias for graph/API consumers.
+ */
+export interface AnchoredClaimToken {
   id: string;
+  slot: string;                  // ERC-3525 slot = series_id (fungibility boundary)
   series_id: string;             // links to NFCRegistry
   commodity_type: CommodityType;
   base_asset: BaseAsset;
@@ -77,6 +85,9 @@ export interface NFCToken {
   created_at: string;
   content: string;               // for graph search indexing
 }
+
+/** @deprecated Use AnchoredClaimToken — kept for backward compatibility with existing graph/API consumers. */
+export type NFCToken = AnchoredClaimToken;
 
 export interface LockupContract {
   id: string;
@@ -167,7 +178,7 @@ export const NFC_INDEXES: Record<string, string> = {
 // Factory helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-/** Create a new NFCToken — returns the object but does NOT persist it. */
+/** Create a new AnchoredClaimToken — returns the object but does NOT persist it. */
 export function createNFCToken(params: {
   commodity_type: CommodityType;
   base_asset?: BaseAsset;
@@ -181,10 +192,11 @@ export function createNFCToken(params: {
   series_id: string;
   valuation_usd?: number;
   parent_token_id?: string;
-}): NFCToken {
+}): AnchoredClaimToken {
   const id = `nfc_${uuid()}`;
   return {
     id,
+    slot: params.series_id,      // ERC-3525: slot identifies the fungibility class
     series_id: params.series_id,
     commodity_type: params.commodity_type,
     base_asset: params.base_asset ?? 'bitcoin',
@@ -204,10 +216,10 @@ export function createNFCToken(params: {
 }
 
 /**
- * Granularise a parent NFCToken into 10 sub-tokens (1:10 ratio).
- * Each sub-token represents 1/10 of the parent's quantity.
+ * Granularise a parent AnchoredClaimToken into N sub-tokens (1:base_ratio).
+ * Sub-tokens inherit the parent's slot, so they remain fungible within the series.
  */
-export function granularise(parent: NFCToken, holder?: string): NFCToken[] {
+export function granularise(parent: AnchoredClaimToken, holder?: string): AnchoredClaimToken[] {
   const N = parent.base_ratio ?? 10;
   return Array.from({ length: N }, () =>
     createNFCToken({
@@ -287,8 +299,8 @@ export function createRegistry(params: {
 // Graph persistence helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-/** Persist an NFCToken to the knowledge graph. Idempotent. */
-export async function persistNFCToken(lightrag: LightRAGClient, token: NFCToken): Promise<void> {
+/** Persist an AnchoredClaimToken to the knowledge graph. Idempotent. */
+export async function persistNFCToken(lightrag: LightRAGClient, token: AnchoredClaimToken): Promise<void> {
   await lightrag.mergeTypedNode(token.id, 'NFCToken', { ...token });
   if (token.parent_token_id) {
     await lightrag.addEdge(token.id, NFC_RELATIONSHIPS.GRANULAR_OF, token.parent_token_id, {});
@@ -364,7 +376,7 @@ export const NFC_QUERIES = {
 // Type guards
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function isNFCToken(o: any): o is NFCToken {
+export function isNFCToken(o: any): o is AnchoredClaimToken {
   return o && typeof o.id === 'string' && typeof o.commodity_type === 'string' &&
     typeof o.quantity === 'number' && typeof o.holder === 'string';
 }
@@ -385,7 +397,7 @@ export function isNFCRegistry(o: any): o is NFCRegistry {
 
 export type ScaleTier = 'TB' | 'PB' | 'EB' | 'ZB';
 
-export interface StorageNFC extends NFCToken {
+export interface StorageNFC extends AnchoredClaimToken {
   commodity_type: 'storage_tb' | 'storage_pb' | 'storage_eb';
   scale_tier: ScaleTier;
   datacenter_region: string;

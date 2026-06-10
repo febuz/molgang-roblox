@@ -119,6 +119,13 @@ describe('createNFCToken', () => {
     const t2 = createNFCToken(params);
     expect(t1.id).not.toBe(t2.id);
   });
+
+  it('slot equals series_id (ERC-3525 fungibility boundary)', () => {
+    const t = createNFCToken({ commodity_type: 'grain', quantity: 100, unit: 'kg',
+      provenance: 'NL', holder: 'a', issuer: 'b', series_id: 'series-abc' });
+    expect(t.slot).toBe('series-abc');
+    expect(t.slot).toBe(t.series_id);
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -167,6 +174,13 @@ describe('granularise', () => {
     const subs = granularise(parent, 'new-holder');
     for (const sub of subs) {
       expect(sub.holder).toBe('new-holder');
+    }
+  });
+
+  it('sub-tokens inherit slot from parent (ERC-3525 fungibility preserved)', () => {
+    const subs = granularise(parent);
+    for (const sub of subs) {
+      expect(sub.slot).toBe(parent.slot);
     }
   });
 
