@@ -54,6 +54,13 @@ export const MAX_DIMENSIONS = 888_888_888;
 /** Cap on non-zero entries per item — keeps gossip payloads bounded. */
 export const MAX_SPARSE_ENTRIES = 1024;
 
+/** DoS bounds: field lengths + total in-memory items. Unauthenticated
+ *  publish/receive must not allow memory exhaustion. */
+export const MAX_FACT_LENGTH = 8192;
+export const MAX_SOURCE_LENGTH = 1024;
+export const MAX_CLAIMER_LENGTH = 256;
+export const MAX_NEWS_ITEMS = 100_000;
+
 export interface SparseCoordinate {
   dim: number;                    // 0 <= dim < MAX_DIMENSIONS, integer
   value: number;                  // non-zero coordinate value
@@ -121,6 +128,19 @@ export function validateCoordinates(coords: unknown): string | null {
     if (seen.has(c.dim)) return `duplicate dim ${c.dim}`;
     seen.add(c.dim);
   }
+  return null;
+}
+
+/** Field-length validation shared by publish() and receive(). */
+export function validateClaimFields(
+  item: Pick<NewsItem, 'claimedFact' | 'source' | 'claimer'>,
+): string | null {
+  if (typeof item.claimedFact !== 'string' || item.claimedFact.length === 0) return 'claimedFact required';
+  if (item.claimedFact.length > MAX_FACT_LENGTH) return `claimedFact exceeds ${MAX_FACT_LENGTH} chars`;
+  if (typeof item.source !== 'string' || item.source.length === 0) return 'source required';
+  if (item.source.length > MAX_SOURCE_LENGTH) return `source exceeds ${MAX_SOURCE_LENGTH} chars`;
+  if (typeof item.claimer !== 'string' || item.claimer.length === 0) return 'claimer required';
+  if (item.claimer.length > MAX_CLAIMER_LENGTH) return `claimer exceeds ${MAX_CLAIMER_LENGTH} chars`;
   return null;
 }
 
@@ -215,6 +235,9 @@ export class NewsService {
     factTimeNs?: string;          // defaults to "now" — claimed fact time
     coordinates?: SparseCoordinate[];
   }): Promise<NewsItem> {
+    const fieldError = validateClaimFields(params);
+    if (fieldError) throw new Error(fieldError);
+    if (this.items.size >= MAX_NEWS_ITEMS) throw new Error('news store full');
     const coordError = validateCoordinates(params.coordinates);
     if (coordError) throw new Error(coordError);
     const factTimeNs = params.factTimeNs ?? nowNs();
@@ -259,6 +282,11 @@ export class NewsService {
    * time, and stores it. Rejects invalid signatures and bad coordinates.
    */
   async receive(item: NewsItem): Promise<VerifyResult> {
+    const fieldError = validateClaimFields(item);
+    if (fieldError) return { valid: false, reason: fieldError };
+    if (!this.items.has(item.id) && this.items.size >= MAX_NEWS_ITEMS) {
+      return { valid: false, reason: 'news store full' };
+    }
     const coordError = validateCoordinates(item.coordinates);
     if (coordError) return { valid: false, reason: coordError };
     if (!isValidFactTimeNs(item.factTimeNs)) {

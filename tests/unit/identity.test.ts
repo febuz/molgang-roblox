@@ -418,3 +418,42 @@ describe('Identity REST API', () => {
     expect(body.identities).toHaveLength(1);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// DoS bounds
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('DoS caps', () => {
+  it('register() rejects beyond maxIdentities', async () => {
+    const client = makeOfflineClient();
+    const service = new SovereignIdentityService(client, { maxIdentities: 2 });
+    service.register('a');
+    service.register('b');
+    expect(() => service.register('c')).toThrow(/table full/);
+    await client.close();
+  });
+
+  it('receive() rejects NEW identities beyond the cap but still accepts updates', async () => {
+    const clientA = makeOfflineClient();
+    const clientB = makeOfflineClient();
+    const peerA = new SovereignIdentityService(clientA);
+    const peerB = new SovereignIdentityService(clientB, { maxIdentities: 1 });
+    const known = peerA.register('known');
+    expect(peerB.receive(JSON.parse(JSON.stringify(known))).accepted).toBe(true);
+    // Table is now full — a second NEW identity is rejected
+    const stranger = peerA.register('stranger');
+    expect(peerB.receive(stranger).reason).toMatch(/table full/);
+    // …but a rotation update for the KNOWN identity still lands
+    peerA.rotateKey(known.did);
+    expect(peerB.receive(peerA.resolve(known.did)!).accepted).toBe(true);
+    await clientA.close();
+    await clientB.close();
+  });
+
+  it('oversized handles are rejected', async () => {
+    const client = makeOfflineClient();
+    const service = new SovereignIdentityService(client);
+    expect(() => service.register('h'.repeat(65))).toThrow(/exceeds/);
+    await client.close();
+  });
+});

@@ -40,8 +40,15 @@ import type { SovereignIdentityService } from './identity';
 import type { ValueChainService } from './value-chain';
 import type { NewsService } from './news';
 import { keyHistory } from './identity';
+import { UNITS_PER_TOKEN } from './value-chain';
 import { canonicalize, sha256, buildMerkleRoot } from './graph-state-root';
 import logger from '../../utils/logger';
+
+// ── DoS bounds ────────────────────────────────────────────────────────────────
+export const MAX_PROPOSALS = 10_000;
+export const MAX_OPTIONS = 32;
+export const MAX_QUESTION_LENGTH = 2048;
+export const MAX_OPTION_LENGTH = 256;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -126,23 +133,36 @@ export class SovereignVotingService {
   private ballots = new Map<string, Ballot[]>();        // proposalId → ballots
   private voted = new Map<string, Set<string>>();       // proposalId → DIDs that voted
   private certificates = new Map<string, VotingCertificate>();
+  private maxProposals: number;
 
   constructor(
     lightrag: LightRAGClient,
-    opts: { identity: SovereignIdentityService; valueChain?: ValueChainService; news?: NewsService },
+    opts: {
+      identity: SovereignIdentityService;
+      valueChain?: ValueChainService;
+      news?: NewsService;
+      maxProposals?: number;
+    },
   ) {
     this.lightrag = lightrag;
     this.identity = opts.identity;
     this.valueChain = opts.valueChain;
     this.news = opts.news;
+    this.maxProposals = opts.maxProposals ?? MAX_PROPOSALS;
   }
 
   // ── Proposals ───────────────────────────────────────────────────────────────
 
   createProposal(params: { question: string; options: string[]; createdBy: string; mode?: WeightMode }): Proposal {
     if (!params.question?.trim()) throw new Error('question required');
+    if (params.question.length > MAX_QUESTION_LENGTH) throw new Error(`question exceeds ${MAX_QUESTION_LENGTH} chars`);
+    if (this.proposals.size >= this.maxProposals) throw new Error('proposal table full');
     const options = [...new Set(params.options ?? [])];
     if (options.length < 2) throw new Error('at least 2 distinct options required');
+    if (options.length > MAX_OPTIONS) throw new Error(`at most ${MAX_OPTIONS} options allowed`);
+    if (options.some(o => typeof o !== 'string' || o.length === 0 || o.length > MAX_OPTION_LENGTH)) {
+      throw new Error(`each option must be a non-empty string of at most ${MAX_OPTION_LENGTH} chars`);
+    }
     if (!this.identity.resolve(params.createdBy)) throw new Error(`proposer ${params.createdBy} is not a registered identity`);
     const mode = params.mode ?? 'identity';
     if (mode === 'stake' && !this.valueChain) throw new Error('stake mode requires a value chain');
@@ -228,10 +248,13 @@ export class SovereignVotingService {
     const votedSet = this.voted.get(ballot.proposalId)!;
     if (votedSet.has(ballot.voter)) return { accepted: false, reason: 'did already voted' };
 
-    // Weight is NEVER taken from the submitted ballot — server-derived only
+    // Weight is NEVER taken from the submitted ballot — server-derived only.
+    // Stake weight = WHOLE tokens (exact bigint balance floored to tokens):
+    // the ledger keeps full 10⁻⁸ precision, the vote quantizes to tokens by
+    // policy, and the quantized value stays far inside double precision.
     const weight = proposal.mode === 'identity'
       ? 1
-      : this.valueChain!.getAccount(ballot.voter).balance;
+      : Number(this.valueChain!.getAccount(ballot.voter).balance / UNITS_PER_TOKEN);
     if (proposal.mode === 'stake' && weight <= 0) {
       return { accepted: false, reason: 'stake mode: voter has zero balance' };
     }

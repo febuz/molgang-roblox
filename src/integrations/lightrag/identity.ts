@@ -34,7 +34,13 @@ import { v4 as uuid } from 'uuid';
 import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
 import { canonicalize, sha256 } from './graph-state-root';
+import { constantTimeEqual } from './constant-time';
 import logger from '../../utils/logger';
+
+/** DoS bound: the in-memory identity table is capped (unauthenticated
+ *  registration would otherwise allow memory exhaustion). */
+export const MAX_IDENTITIES = 100_000;
+export const MAX_HANDLE_LENGTH = 64;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -126,8 +132,8 @@ export function verifyIdentityDocument(doc: IdentityDocument): { valid: boolean;
     const r = doc.rotations[i];
     if (r.did !== doc.did) return { valid: false, reason: `rotation ${i}: wrong did` };
     if (r.prevKeyPem !== activeKey) return { valid: false, reason: `rotation ${i}: does not retire the active key` };
-    if (r.prev !== prev) return { valid: false, reason: `rotation ${i}: broken prev pointer` };
-    if (sha256(rotationBody(r)) !== r.hash) return { valid: false, reason: `rotation ${i}: bad hash` };
+    if (!constantTimeEqual(r.prev, prev)) return { valid: false, reason: `rotation ${i}: broken prev pointer` };
+    if (!constantTimeEqual(sha256(rotationBody(r)), r.hash)) return { valid: false, reason: `rotation ${i}: bad hash` };
     try {
       const key = createPublicKey(r.prevKeyPem);
       const ok = edVerify(null, Buffer.from(rotationBody(r), 'utf8'), key, Buffer.from(r.signature, 'base64'));
@@ -158,13 +164,21 @@ export class SovereignIdentityService {
   private docs = new Map<string, IdentityDocument>();
   private handles = new Map<string, string>();          // handle → did
   private privateKeys = new Map<string, KeyObject>();   // did → CURRENT private key (node-held)
+  private maxIdentities: number;
 
-  constructor(lightrag: LightRAGClient) {
+  constructor(lightrag: LightRAGClient, opts: { maxIdentities?: number } = {}) {
     this.lightrag = lightrag;
+    this.maxIdentities = opts.maxIdentities ?? MAX_IDENTITIES;
   }
 
   /** Create a fresh sovereign identity. The node holds the private key. */
   register(handle?: string): IdentityDocument {
+    if (this.docs.size >= this.maxIdentities) {
+      throw new Error('identity table full');
+    }
+    if (handle && handle.length > MAX_HANDLE_LENGTH) {
+      throw new Error(`handle exceeds ${MAX_HANDLE_LENGTH} chars`);
+    }
     if (handle && this.handles.has(handle)) {
       throw new Error(`handle "${handle}" already registered`);
     }
@@ -193,6 +207,12 @@ export class SovereignIdentityService {
    * document must verify end-to-end; this node never holds its private key.
    */
   receive(doc: IdentityDocument): { accepted: boolean; reason?: string } {
+    if (!this.docs.has(doc.did) && this.docs.size >= this.maxIdentities) {
+      return { accepted: false, reason: 'identity table full' };
+    }
+    if (doc.handle && doc.handle.length > MAX_HANDLE_LENGTH) {
+      return { accepted: false, reason: `handle exceeds ${MAX_HANDLE_LENGTH} chars` };
+    }
     const check = verifyIdentityDocument(doc);
     if (!check.valid) return { accepted: false, reason: check.reason };
     const existing = this.docs.get(doc.did);

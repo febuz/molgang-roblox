@@ -626,3 +626,39 @@ describe('Reputation and graph REST API', () => {
     expect(body.totalEvents).toBe(2);
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// DoS bounds
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('DoS caps', () => {
+  it('record() rejects beyond maxChainLength for one agent', async () => {
+    const client = makeOfflineClient();
+    const service = new AttentionChainService(client, { maxChainLength: 2 });
+    service.record({ itemId: 'a', agent: 'kai', kind: 'view' });
+    service.record({ itemId: 'b', agent: 'kai', kind: 'view' });
+    expect(() => service.record({ itemId: 'c', agent: 'kai', kind: 'view' })).toThrow(/chain full/);
+    await client.close();
+  });
+
+  it('record() rejects NEW agents beyond maxAgents', async () => {
+    const client = makeOfflineClient();
+    const service = new AttentionChainService(client, { maxAgents: 1 });
+    service.record({ itemId: 'a', agent: 'kai', kind: 'view' });
+    expect(() => service.record({ itemId: 'a', agent: 'zip', kind: 'view' })).toThrow(/agent table full/);
+    // …existing agents keep working
+    expect(() => service.record({ itemId: 'b', agent: 'kai', kind: 'view' })).not.toThrow();
+    await client.close();
+  });
+
+  it('receive() reports capacity errors instead of throwing', async () => {
+    const clientA = makeOfflineClient();
+    const clientB = makeOfflineClient();
+    const peerA = new AttentionChainService(clientA);
+    const peerB = new AttentionChainService(clientB, { maxAgents: 0 });
+    const e = peerA.record({ itemId: 'a', agent: 'kai', kind: 'view' });
+    expect(peerB.receive(e)).toEqual({ accepted: false, reason: 'agent table full' });
+    await clientA.close();
+    await clientB.close();
+  });
+});

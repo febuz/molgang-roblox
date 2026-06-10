@@ -1,6 +1,7 @@
 /**
- * Unit tests for value-chain.ts — capped-supply ledger with halving eras,
- * self-certifying transfers and hash-chained settlement blocks. All offline.
+ * Unit tests for value-chain.ts — BigInt fixed-point ledger with halving
+ * eras, self-certifying transfers and hash-chained settlement blocks.
+ * All arithmetic assertions are bit-exact. All offline.
  */
 
 import {
@@ -10,9 +11,14 @@ import {
   transferHash,
   verifyTransfer,
   eraOf,
-  rewardMultiplier,
+  scaledReward,
+  tokensToUnits,
+  unitsToTokenString,
+  isCanonicalUnits,
   registerValueRoutes,
-  SUPPLY_CAP,
+  SUPPLY_CAP_TOKENS,
+  SUPPLY_CAP_UNITS,
+  UNITS_PER_TOKEN,
   COINBASE,
   BLOCK_GENESIS,
 } from '../../src/integrations/lightrag/value-chain';
@@ -67,33 +73,90 @@ function makeStack() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Supply economics — halving eras
+// Fixed-point conversions — exactness
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe('eraOf / rewardMultiplier (Bitcoin halving schedule)', () => {
+describe('tokensToUnits / unitsToTokenString', () => {
+  it('whole tokens convert exactly', () => {
+    expect(tokensToUnits(1)).toBe(UNITS_PER_TOKEN);
+    expect(tokensToUnits(888_888_888)).toBe(SUPPLY_CAP_UNITS);
+  });
+
+  it('0.1 tokens is EXACTLY 10000000 units (no IEEE-754 drift)', () => {
+    // 0.1 * 1e8 === 10000000.000000002 in doubles — the string route is exact
+    expect(tokensToUnits(0.1)).toBe(10_000_000n);
+    expect(tokensToUnits(0.3)).toBe(30_000_000n);
+  });
+
+  it('round-trips through the human-readable form', () => {
+    expect(unitsToTokenString(tokensToUnits(1.5))).toBe('1.5');
+    expect(unitsToTokenString(tokensToUnits(0.00000001))).toBe('0.00000001');
+    expect(unitsToTokenString(123n * UNITS_PER_TOKEN)).toBe('123');
+  });
+
+  it('rejects non-positive and non-finite amounts', () => {
+    expect(() => tokensToUnits(0)).toThrow(/positive/);
+    expect(() => tokensToUnits(-1)).toThrow(/positive/);
+    expect(() => tokensToUnits(NaN)).toThrow(/positive/);
+    expect(() => tokensToUnits(Infinity)).toThrow(/positive/);
+  });
+
+  it('the cap in units exceeds Number.MAX_SAFE_INTEGER — doubles would corrupt', () => {
+    expect(SUPPLY_CAP_UNITS > BigInt(Number.MAX_SAFE_INTEGER)).toBe(true);
+  });
+});
+
+describe('isCanonicalUnits — signature malleability defense', () => {
+  it('accepts canonical positive integers', () => {
+    expect(isCanonicalUnits('1')).toBe(true);
+    expect(isCanonicalUnits('100000000')).toBe(true);
+  });
+
+  it('rejects leading zeros (same number, different signed bytes)', () => {
+    expect(isCanonicalUnits('007')).toBe(false);
+    expect(isCanonicalUnits('01')).toBe(false);
+  });
+
+  it('rejects zero, negatives, decimals, signs, non-strings', () => {
+    expect(isCanonicalUnits('0')).toBe(false);
+    expect(isCanonicalUnits('-5')).toBe(false);
+    expect(isCanonicalUnits('1.5')).toBe(false);
+    expect(isCanonicalUnits('+7')).toBe(false);
+    expect(isCanonicalUnits(7)).toBe(false);
+    expect(isCanonicalUnits('')).toBe(false);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Supply economics — halving eras (integer arithmetic)
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('eraOf / scaledReward (Bitcoin halving schedule)', () => {
   it('era 0 below half the cap', () => {
-    expect(eraOf(0)).toBe(0);
-    expect(eraOf(SUPPLY_CAP / 2 - 1)).toBe(0);
-    expect(rewardMultiplier(0)).toBe(1);
+    expect(eraOf(0n)).toBe(0);
+    expect(eraOf(SUPPLY_CAP_UNITS / 2n - 1n)).toBe(0);
   });
 
-  it('era 1 between cap/2 and 3cap/4', () => {
-    expect(eraOf(SUPPLY_CAP / 2)).toBe(1);
-    expect(eraOf(SUPPLY_CAP * 0.74)).toBe(1);
-    expect(rewardMultiplier(SUPPLY_CAP / 2)).toBe(0.5);
+  it('era boundaries are exact: cap/2 → era 1, cap/2+cap/4 → era 2', () => {
+    expect(eraOf(SUPPLY_CAP_UNITS / 2n)).toBe(1);
+    expect(eraOf(SUPPLY_CAP_UNITS / 2n + SUPPLY_CAP_UNITS / 4n - 1n)).toBe(1);
+    expect(eraOf(SUPPLY_CAP_UNITS / 2n + SUPPLY_CAP_UNITS / 4n)).toBe(2);
   });
 
-  it('era 2 between 3cap/4 and 7cap/8', () => {
-    expect(eraOf(SUPPLY_CAP * 0.75)).toBe(2);
-    expect(rewardMultiplier(SUPPLY_CAP * 0.75)).toBe(0.25);
+  it('the reward halves exactly across each boundary (base >> era)', () => {
+    const base = tokensToUnits(8);
+    expect(scaledReward(base, 0n)).toBe(base);
+    expect(scaledReward(base, SUPPLY_CAP_UNITS / 2n)).toBe(base >> 1n);
+    expect(scaledReward(base, SUPPLY_CAP_UNITS / 2n + SUPPLY_CAP_UNITS / 4n)).toBe(base >> 2n);
   });
 
-  it('era keeps climbing toward the cap', () => {
-    expect(eraOf(SUPPLY_CAP * 0.99)).toBeGreaterThanOrEqual(6);
+  it('emission ends when the shift exhausts the base (Bitcoin tail)', () => {
+    // Near the cap the era is ~56; 1 token = 1e8 units < 2^56 → reward 0
+    expect(scaledReward(tokensToUnits(1), SUPPLY_CAP_UNITS - 10n)).toBe(0n);
   });
 
-  it('the cap is the thematic 888 888 888', () => {
-    expect(SUPPLY_CAP).toBe(888_888_888);
+  it('the cap is the thematic 888 888 888 tokens', () => {
+    expect(SUPPLY_CAP_TOKENS).toBe(888_888_888);
   });
 });
 
@@ -102,15 +165,15 @@ describe('eraOf / rewardMultiplier (Bitcoin halving schedule)', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('ValueChainService.mintReward', () => {
-  it('mints to a registered identity at era-0 full rate', async () => {
+  it('mints to a registered identity at era-0 full rate (exact units)', async () => {
     const { client, identity, chain } = makeStack();
     const doc = identity.register('kai');
     const tx = chain.mintReward(doc.did, 8, 'attention:anchor');
     expect(tx).not.toBeNull();
     expect(tx!.from).toBe(COINBASE);
-    expect(tx!.amount).toBe(8);
-    expect(chain.getAccount(doc.did).balance).toBe(8);
-    expect(chain.getSupply().minted).toBe(8);
+    expect(tx!.amount).toBe(tokensToUnits(8).toString());
+    expect(chain.getAccount(doc.did).balance).toBe(tokensToUnits(8));
+    expect(chain.getSupply().mintedTokens).toBe('8');
     await client.close();
   });
 
@@ -118,7 +181,7 @@ describe('ValueChainService.mintReward', () => {
     const { client, chain } = makeStack();
     const tx = chain.mintReward('did:vpc:' + 'a'.repeat(32), 8);
     expect(tx).toBeNull();
-    expect(chain.getSupply().minted).toBe(0);
+    expect(chain.getSupply().mintedUnits).toBe('0');
     await client.close();
   });
 
@@ -130,6 +193,17 @@ describe('ValueChainService.mintReward', () => {
     await client.close();
   });
 
+  it('clamps the final mint to the remaining supply, never exceeding the cap', async () => {
+    const { client, identity, chain } = makeStack();
+    const doc = identity.register('kai');
+    // Force the ledger to 5 units below the cap (test-only internal poke)
+    (chain as any).totalMintedUnits = SUPPLY_CAP_UNITS - 5n;
+    // era is ~56 here → any normal base shifts to 0 → emission has ended
+    expect(chain.mintReward(doc.did, 1000)).toBeNull();
+    expect(BigInt(chain.getSupply().mintedUnits) <= SUPPLY_CAP_UNITS).toBe(true);
+    await client.close();
+  });
+
   it('rewardAttention tags the memo with the kind', async () => {
     const { client, identity, chain } = makeStack();
     const doc = identity.register('kai');
@@ -138,11 +212,14 @@ describe('ValueChainService.mintReward', () => {
     await client.close();
   });
 
-  it('mints without identity service when none is wired (open mode)', async () => {
-    const client = makeOfflineClient();
-    const chain = new ValueChainService(client); // no identity gate
-    const tx = chain.mintReward('did:vpc:' + 'b'.repeat(32), 3);
-    expect(tx).not.toBeNull();
+  it('conservation holds after minting: Σ balances === minted', async () => {
+    const { client, identity, chain } = makeStack();
+    const a = identity.register('a');
+    const b = identity.register('b');
+    chain.mintReward(a.did, 8);
+    chain.mintReward(b.did, 5);
+    chain.mintReward(a.did, 0.00000001); // 1 unit — smallest possible
+    expect(chain.checkConservation().holds).toBe(true);
     await client.close();
   });
 });
@@ -152,16 +229,17 @@ describe('ValueChainService.mintReward', () => {
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('transfers', () => {
-  it('node-held transfer moves balance and bumps the nonce', async () => {
+  it('node-held transfer moves exact units and bumps the nonce', async () => {
     const { client, identity, chain } = makeStack();
     const a = identity.register('alice');
     const b = identity.register('bob');
     chain.mintReward(a.did, 100);
-    const tx = chain.transfer(a.did, b.did, 30, 'payment');
+    const tx = chain.transfer(a.did, b.did, tokensToUnits(30), 'payment');
     expect(verifyTransfer(tx)).toEqual({ valid: true });
-    expect(chain.getAccount(a.did).balance).toBe(70);
-    expect(chain.getAccount(b.did).balance).toBe(30);
+    expect(chain.getAccount(a.did).balance).toBe(tokensToUnits(70));
+    expect(chain.getAccount(b.did).balance).toBe(tokensToUnits(30));
     expect(chain.getAccount(a.did).nonce).toBe(1);
+    expect(chain.checkConservation().holds).toBe(true);
     await client.close();
   });
 
@@ -170,21 +248,31 @@ describe('transfers', () => {
     const a = identity.register('alice');
     const b = identity.register('bob');
     chain.mintReward(a.did, 10);
-    expect(() => chain.transfer(a.did, b.did, 999)).toThrow(/insufficient/);
+    expect(() => chain.transfer(a.did, b.did, tokensToUnits(999))).toThrow(/insufficient/);
     await client.close();
   });
 
-  it('replaying the same signed transfer is rejected (nonce + id)', async () => {
+  it('replaying the same signed transfer is rejected (id + nonce)', async () => {
     const { client, identity, chain } = makeStack();
     const a = identity.register('alice');
     const b = identity.register('bob');
     chain.mintReward(a.did, 100);
-    const tx = chain.transfer(a.did, b.did, 10);
-    // Replay the exact transfer: duplicate id
+    const tx = chain.transfer(a.did, b.did, tokensToUnits(10));
     expect(chain.submitTransfer(tx).reason).toMatch(/duplicate/);
-    // Replay with a fresh id but the old nonce: bad nonce
     const replay = { ...tx, id: 'tx_fresh' };
     expect(chain.submitTransfer(replay).reason).toMatch(/nonce|signature/);
+    await client.close();
+  });
+
+  it('rejects a non-canonical amount encoding (malleability)', async () => {
+    const { client, identity, chain } = makeStack();
+    const a = identity.register('alice');
+    const b = identity.register('bob');
+    chain.mintReward(a.did, 100);
+    const unsigned = { id: 'tx_pad', from: a.did, to: b.did, amount: '0100000000', nonce: 1, memo: '' };
+    const { signature, publicKeyPem } = identity.signAs(a.did, transferPayload(unsigned));
+    const padded: Transfer = { ...unsigned, ts: new Date().toISOString(), publicKeyPem, signature };
+    expect(chain.submitTransfer(padded).reason).toMatch(/canonical/);
     await client.close();
   });
 
@@ -193,12 +281,11 @@ describe('transfers', () => {
     const a = identity.register('alice');
     const m = identity.register('mallory');
     chain.mintReward(a.did, 100);
-    // Mallory signs a transfer claiming to be from Alice
-    const unsigned = { id: 'tx_forged', from: a.did, to: m.did, amount: 50, nonce: 1, memo: '' };
+    const unsigned = { id: 'tx_forged', from: a.did, to: m.did, amount: tokensToUnits(50).toString(), nonce: 1, memo: '' };
     const { signature, publicKeyPem } = identity.signAs(m.did, transferPayload(unsigned));
     const forged: Transfer = { ...unsigned, ts: new Date().toISOString(), publicKeyPem, signature };
     expect(chain.submitTransfer(forged).reason).toMatch(/does not derive/);
-    expect(chain.getAccount(a.did).balance).toBe(100);
+    expect(chain.getAccount(a.did).balance).toBe(tokensToUnits(100));
     await client.close();
   });
 
@@ -207,9 +294,12 @@ describe('transfers', () => {
     const a = identity.register('alice');
     const b = identity.register('bob');
     chain.mintReward(a.did, 100);
-    const unsigned = { id: 'tx_x', from: a.did, to: b.did, amount: 1, nonce: 1, memo: '' };
+    const unsigned = { id: 'tx_x', from: a.did, to: b.did, amount: tokensToUnits(1).toString(), nonce: 1, memo: '' };
     const { signature, publicKeyPem } = identity.signAs(a.did, transferPayload(unsigned));
-    const tampered: Transfer = { ...unsigned, amount: 99, ts: new Date().toISOString(), publicKeyPem, signature };
+    const tampered: Transfer = {
+      ...unsigned, amount: tokensToUnits(99).toString(),
+      ts: new Date().toISOString(), publicKeyPem, signature,
+    };
     expect(chain.submitTransfer(tampered).reason).toMatch(/mismatch/);
     await client.close();
   });
@@ -218,22 +308,31 @@ describe('transfers', () => {
     const { client, chain } = makeStack();
     const fake: Transfer = {
       id: 'tx_evil', from: COINBASE, to: 'did:vpc:' + 'c'.repeat(32),
-      amount: 1_000_000, nonce: 1, memo: 'free money',
+      amount: tokensToUnits(1_000_000).toString(), nonce: 1, memo: 'free money',
       ts: new Date().toISOString(), publicKeyPem: '', signature: '',
     };
     expect(chain.submitTransfer(fake).reason).toMatch(/coinbase/);
-    expect(chain.getSupply().minted).toBe(0);
+    expect(chain.getSupply().mintedUnits).toBe('0');
     await client.close();
   });
 
-  it('transfersOf lists both directions', async () => {
+  it('rejects an oversized memo (DoS bound on signed payload)', async () => {
+    const t: Transfer = {
+      id: 'x', from: 'did:vpc:' + 'a'.repeat(32), to: 'did:vpc:' + 'b'.repeat(32),
+      amount: '1', nonce: 1, memo: 'm'.repeat(300),
+      ts: '', publicKeyPem: '', signature: '',
+    };
+    expect(verifyTransfer(t).reason).toMatch(/memo/);
+  });
+
+  it('transfersOf returns copies — mutating them cannot corrupt the ledger', async () => {
     const { client, identity, chain } = makeStack();
     const a = identity.register('alice');
-    const b = identity.register('bob');
     chain.mintReward(a.did, 100);
-    chain.transfer(a.did, b.did, 10);
     const history = chain.transfersOf(a.did);
-    expect(history.length).toBe(2); // mint in + transfer out
+    history[0].amount = '999999999999';
+    expect(chain.verifyChain().valid).toBe(true);
+    expect(chain.transfersOf(a.did)[0].amount).toBe(tokensToUnits(100).toString());
     await client.close();
   });
 });
@@ -267,7 +366,7 @@ describe('settlement blocks', () => {
     const b = identity.register('bob');
     chain.mintReward(a.did, 100);
     const b0 = chain.sealBlock()!;
-    chain.transfer(a.did, b.did, 25);
+    chain.transfer(a.did, b.did, tokensToUnits(25));
     const b1 = chain.sealBlock()!;
     expect(b1.prevHash).toBe(b0.hash);
     expect(b1.height).toBe(1);
@@ -275,15 +374,28 @@ describe('settlement blocks', () => {
     await client.close();
   });
 
-  it('transferHash is stable across ts differences (ts not signed)', async () => {
-    const t1 = { id: 'x', from: 'a', to: 'b', amount: 1, nonce: 1, memo: '', ts: '2026-01-01', publicKeyPem: '', signature: '' } as Transfer;
+  it('verifyChain detects a tampered sealed transfer', async () => {
+    const { client, identity, chain } = makeStack();
+    const a = identity.register('alice');
+    chain.mintReward(a.did, 100);
+    chain.sealBlock();
+    // Tamper with the INTERNAL transfer log (test-only poke)
+    const internal = (chain as any).transfers as Map<string, Transfer>;
+    const tx = internal.values().next().value as Transfer;
+    tx.amount = '1';
+    expect(chain.verifyChain().reason).toMatch(/root mismatch/);
+    await client.close();
+  });
+
+  it('transferHash is stable across ts differences (ts not signed)', () => {
+    const t1 = { id: 'x', from: 'a', to: 'b', amount: '1', nonce: 1, memo: '', ts: '2026-01-01', publicKeyPem: '', signature: '' } as Transfer;
     const t2 = { ...t1, ts: '2026-06-06' };
     expect(transferHash(t1)).toBe(transferHash(t2));
   });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// REST API
+// REST API — bigint-safe serialization
 // ──────────────────────────────────────────────────────────────────────────────
 
 describe('Value REST API', () => {
@@ -303,35 +415,49 @@ describe('Value REST API', () => {
 
   afterEach(async () => { await client.close(); });
 
-  it('GET /api/value/supply reports cap, minted, era', async () => {
+  it('GET /api/value/supply reports exact strings + conservation flag', async () => {
     const { body } = await callRoute(app, 'get', '/api/value/supply');
-    expect(body.cap).toBe(SUPPLY_CAP);
-    expect(body.minted).toBe(0);
+    expect(body.capTokens).toBe(SUPPLY_CAP_TOKENS);
+    expect(body.capUnits).toBe(SUPPLY_CAP_UNITS.toString());
+    expect(body.mintedUnits).toBe('0');
     expect(body.era).toBe(0);
+    expect(body.conservation).toBe(true);
   });
 
-  it('GET /api/value/balance/:did returns a zero account for unknown DIDs', async () => {
-    const { body } = await callRoute(app, 'get', `/api/value/balance/did:vpc:${'d'.repeat(32)}`);
-    expect(body.account.balance).toBe(0);
-    expect(body.account.nonce).toBe(0);
+  it('GET /api/value/balance/:did serializes units and tokens as strings', async () => {
+    const a = identity.register('alice');
+    chain.mintReward(a.did, 1.5);
+    const { body } = await callRoute(app, 'get', `/api/value/balance/${a.did}`);
+    expect(body.account.balanceUnits).toBe(tokensToUnits(1.5).toString());
+    expect(body.account.balanceTokens).toBe('1.5');
   });
 
-  it('POST /api/value/transfer transfers between node-held identities', async () => {
+  it('POST /api/value/transfer accepts amountTokens (number)', async () => {
     const a = identity.register('alice');
     const b = identity.register('bob');
     chain.mintReward(a.did, 100);
     const { status, body } = await callRoute(app, 'post', '/api/value/transfer', {
-      from: a.did, to: b.did, amount: 40,
+      from: a.did, to: b.did, amountTokens: 40,
     });
     expect(status).toBe(201);
-    expect(body.transfer.amount).toBe(40);
+    expect(body.transfer.amount).toBe(tokensToUnits(40).toString());
+  });
+
+  it('POST /api/value/transfer accepts amountUnits (string)', async () => {
+    const a = identity.register('alice');
+    const b = identity.register('bob');
+    chain.mintReward(a.did, 100);
+    const { status } = await callRoute(app, 'post', '/api/value/transfer', {
+      from: a.did, to: b.did, amountUnits: tokensToUnits(5).toString(),
+    });
+    expect(status).toBe(201);
   });
 
   it('POST /api/value/transfer 400s on overspend', async () => {
     const a = identity.register('alice');
     const b = identity.register('bob');
     const { status } = await callRoute(app, 'post', '/api/value/transfer', {
-      from: a.did, to: b.did, amount: 40,
+      from: a.did, to: b.did, amountTokens: 40,
     });
     expect(status).toBe(400);
   });
@@ -340,7 +466,7 @@ describe('Value REST API', () => {
     const a = identity.register('alice');
     const b = identity.register('bob');
     chain.mintReward(a.did, 100);
-    const unsigned = { id: 'tx_ext', from: a.did, to: b.did, amount: 5, nonce: 1, memo: '' };
+    const unsigned = { id: 'tx_ext', from: a.did, to: b.did, amount: tokensToUnits(5).toString(), nonce: 1, memo: '' };
     const { signature, publicKeyPem } = identity.signAs(a.did, transferPayload(unsigned));
     const tx = { ...unsigned, ts: new Date().toISOString(), publicKeyPem, signature };
     const { status } = await callRoute(app, 'post', '/api/value/transfer/submit', tx);

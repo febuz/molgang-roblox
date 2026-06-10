@@ -10,7 +10,7 @@ import {
   registerSovereignVotingRoutes,
 } from '../../src/integrations/lightrag/sovereign-voting';
 import { SovereignIdentityService } from '../../src/integrations/lightrag/identity';
-import { ValueChainService } from '../../src/integrations/lightrag/value-chain';
+import { ValueChainService, tokensToUnits } from '../../src/integrations/lightrag/value-chain';
 import { NewsService } from '../../src/integrations/lightrag/news';
 import { LightRAGClient } from '../../src/integrations/lightrag/client';
 import express from 'express';
@@ -240,7 +240,7 @@ describe('stake-mode voting', () => {
     valueChain.mintReward(a.did, 50);
     const p = voting.createProposal({ question: 'q', options: ['x', 'y'], createdBy: a.did, mode: 'stake' });
     voting.castVote(p.id, a.did, 'x');
-    valueChain.transfer(a.did, b.did, 49); // dump after voting
+    valueChain.transfer(a.did, b.did, tokensToUnits(49)); // dump after voting
     expect(voting.tally(p.id).totals.x).toBe(50); // snapshot stands
     await client.close();
   });
@@ -408,8 +408,8 @@ describe('attention mining integration', () => {
     attention.record({ itemId: 'news_1', agent: 'kai', kind: 'validate' }); // weight 5
     attention.record({ itemId: 'news_1', agent: 'ghost', kind: 'anchor' }); // unregistered → no mint
 
-    expect(valueChain.getAccount(kai.did).balance).toBe(5);
-    expect(valueChain.getSupply().minted).toBe(5);
+    expect(valueChain.getAccount(kai.did).balance).toBe(tokensToUnits(5));
+    expect(valueChain.getSupply().mintedTokens).toBe('5');
     await client.close();
   });
 });

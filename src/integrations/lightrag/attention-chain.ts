@@ -34,8 +34,14 @@ import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
 import { HLCTimestamp, HLC_ZERO, hlcNow, hlcRecv, hlcToString, hlcFromString } from './hlc';
 import { canonicalize, sha256 } from './graph-state-root';
+import { constantTimeEqual } from './constant-time';
 import { AgentKeyring } from './vote-certificate';
 import logger from '../../utils/logger';
+
+// ── DoS bounds: the in-memory chains are capped per agent and in agent
+//    count — unauthenticated event floods must not exhaust memory. ─────────────
+export const MAX_AGENTS = 100_000;
+export const MAX_CHAIN_LENGTH = 100_000;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -133,7 +139,7 @@ export function eventHash(
 /** Verify one event: hash integrity + Ed25519 signature. */
 export function verifyEvent(e: AttentionEvent): boolean {
   try {
-    if (eventHash(e) !== e.hash) return false;
+    if (!constantTimeEqual(eventHash(e), e.hash)) return false;
     const publicKey = createPublicKey(e.publicKeyPem);
     return edVerify(null, Buffer.from(eventBody(e), 'utf8'), publicKey, Buffer.from(e.signature, 'base64'));
   } catch {
@@ -191,10 +197,18 @@ export class AttentionChainService {
   private seenHashes = new Set<string>();
   private reputations = new Map<string, AgentReputation>();
   private onEvent?: (event: AttentionEvent) => void;
+  private maxAgents: number;
+  private maxChainLength: number;
 
   constructor(
     lightrag: LightRAGClient,
-    opts: { keyring?: AgentKeyring; halfLifeMs?: number; onEvent?: (event: AttentionEvent) => void } = {},
+    opts: {
+      keyring?: AgentKeyring;
+      halfLifeMs?: number;
+      onEvent?: (event: AttentionEvent) => void;
+      maxAgents?: number;
+      maxChainLength?: number;
+    } = {},
   ) {
     this.lightrag = lightrag;
     this.keyring = opts.keyring ?? new AgentKeyring();
@@ -202,6 +216,16 @@ export class AttentionChainService {
     // Called for LOCAL events only (record, not receive) — peers reward their
     // own contributions, so a gossiped event must not double-mint here.
     this.onEvent = opts.onEvent;
+    this.maxAgents = opts.maxAgents ?? MAX_AGENTS;
+    this.maxChainLength = opts.maxChainLength ?? MAX_CHAIN_LENGTH;
+  }
+
+  /** DoS gate shared by record() and receive(). Returns an error or null. */
+  private capacityError(agent: string): string | null {
+    const chain = this.chains.get(agent);
+    if (!chain && this.chains.size >= this.maxAgents) return 'agent table full';
+    if (chain && chain.length >= this.maxChainLength) return 'agent chain full';
+    return null;
   }
 
   // ── Reputation ───────────────────────────────────────────────────────────────
@@ -256,6 +280,8 @@ export class AttentionChainService {
    * head, hash, sign, store.
    */
   record(params: { itemId: string; agent: string; kind: AttentionKind; weight?: number }): AttentionEvent {
+    const capError = this.capacityError(params.agent);
+    if (capError) throw new Error(capError);
     const baseWeight = params.weight ?? DEFAULT_WEIGHTS[params.kind];
     if (!Number.isFinite(baseWeight) || baseWeight <= 0) {
       throw new Error(`weight must be a positive number, got ${params.weight}`);
@@ -291,6 +317,8 @@ export class AttentionChainService {
    */
   receive(event: AttentionEvent): { accepted: boolean; reason?: string; expectedPrev?: string } {
     if (this.seenHashes.has(event.hash)) return { accepted: false, reason: 'duplicate' };
+    const capError = this.capacityError(event.agent);
+    if (capError) return { accepted: false, reason: capError };
     if (!verifyEvent(event)) return { accepted: false, reason: 'bad hash or signature' };
 
     const expectedPrev = this.headOf(event.agent);
