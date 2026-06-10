@@ -619,7 +619,20 @@ export class ConsensusEngine {
 
 // ─── REST routes ──────────────────────────────────────────────────────────────
 
-export function registerConsensusRoutes(app: Express, engine: ConsensusEngine): void {
+/**
+ * Network delegate: called by route handlers when the engine produces a
+ * follow-up vote (e.g. PREPARE→COMMIT after PreQC forms). Wiring this in
+ * closes the loop so votes propagate across nodes without polling.
+ */
+export interface ConsensusNetworkDelegate {
+  deliverVote: (v: SignedVote) => Promise<unknown>;
+}
+
+export function registerConsensusRoutes(
+  app: Express,
+  engine: ConsensusEngine,
+  network?: ConsensusNetworkDelegate,
+): void {
 
   app.get('/api/consensus/status', (_req: Request, res: Response): void => {
     res.json({ success: true, status: engine.getStatus() });
@@ -671,6 +684,10 @@ export function registerConsensusRoutes(app: Express, engine: ConsensusEngine): 
       res.status(400).json({ success: false, error: 'signed proposal body required' }); return;
     }
     const result = engine.receiveProposal(sp);
+    // Propagate the resulting PREPARE vote to peers without blocking the response.
+    if (result.vote && network) {
+      network.deliverVote(result.vote).catch(() => {});
+    }
     res.status(result.accepted ? 200 : 400).json({ success: result.accepted, ...result });
   });
 
@@ -680,6 +697,10 @@ export function registerConsensusRoutes(app: Express, engine: ConsensusEngine): 
       res.status(400).json({ success: false, error: 'signed vote body required' }); return;
     }
     const result = engine.receiveVote(sv);
+    // When a PreQC forms the engine returns a COMMIT vote — propagate it.
+    if (result.vote && network) {
+      network.deliverVote(result.vote).catch(() => {});
+    }
     res.status(result.accepted ? 200 : 400).json({
       success: result.accepted,
       reason: result.reason,

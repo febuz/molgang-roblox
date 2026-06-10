@@ -2249,7 +2249,12 @@ async function initialize() {
         chainStore.scheduleSave();
       },
     });
-    registerConsensusRoutes(app, consensusEngine);
+    // Lazy delegate so the route handlers can propagate votes even though the
+    // ConsensusNetwork is created after the routes are registered.
+    let consensusNetwork: ConsensusNetwork | undefined;
+    registerConsensusRoutes(app, consensusEngine, {
+      deliverVote: (v) => consensusNetwork?.deliverVote(v) ?? Promise.resolve(null),
+    });
     (app as any).locals.consensusEngine = consensusEngine;
 
     // Every applied transfer: queue for consensus finality + snapshot to disk.
@@ -2277,7 +2282,7 @@ async function initialize() {
     // auto-propose when this node is the leader with pending transfers.
     const consensusPeers = (process.env.CONSENSUS_PEERS ?? '')
       .split(',').map(s => s.trim()).filter(Boolean);
-    const consensusNetwork = new ConsensusNetwork(consensusEngine, consensusPeers, {
+    consensusNetwork = new ConsensusNetwork(consensusEngine, consensusPeers, {
       proposeIntervalMs: parseInt(process.env.CONSENSUS_PROPOSE_INTERVAL_MS ?? '2000', 10),
     });
     consensusNetwork.start();
