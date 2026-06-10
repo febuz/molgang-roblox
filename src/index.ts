@@ -22,7 +22,8 @@ import { seedQuantumAlgorithms } from './integrations/lightrag/quantum-schema';
 import { registerGraphRoutes } from './integrations/lightrag/graph-api';
 import { registerSnapshotRoutes } from './integrations/lightrag/graph-snapshot';
 import { registerMonitorRoutes } from './integrations/lightrag/p2p-monitor';
-import { registerQueryRoutes } from './integrations/lightrag/graph-query';
+import { registerQueryRoutes as registerGraphQueryRoutes } from './integrations/lightrag/graph-query';
+import { registerProvenanceRoutes } from './integrations/lightrag/provenance';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -2136,7 +2137,8 @@ async function initialize() {
     // Register full graph REST API (CRUD, traversal, visualization, export, ML, snapshot, query)
     registerGraphRoutes(app, lightrag);
     registerSnapshotRoutes(app, lightrag);
-    registerQueryRoutes(app, lightrag);
+    registerGraphQueryRoutes(app, lightrag);
+    registerProvenanceRoutes(app, lightrag);
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
