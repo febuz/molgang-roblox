@@ -474,7 +474,7 @@ registered from `src/integrations/lightrag/`.
 
 ### Group voting (`group-voting.ts`)
 - **POST** `/api/groups` — `{name, description?, access: open|closed, owner}` create group (owner auto-member)
-- **GET** `/api/groups` — list groups + event-bus stats (MQTT/Kafka fan-out counters)
+- **GET** `/api/groups` — list groups + event-bus stats (per-adapter publish/refusal counters, Kafka attempts)
 - **GET** `/api/groups/:id` — group + members + proposals
 - **POST** `/api/groups/:id/join` — `{did, publicKeyPem, signature}` DID-signed self-join (open groups; signature over the group-bound join payload)
 - **POST** `/api/groups/:id/members` — `{owner, member}` owner adds a member (closed groups)
@@ -484,7 +484,7 @@ registered from `src/integrations/lightrag/`.
 - **POST** `/api/groups/:id/proposals/:pid/vote` — `{voter, option}` (node-held) or `{ballot}` (externally signed); weight always server-derived; one ballot per member
 - **POST** `/api/groups/:id/proposals/:pid/close` — close + Merkle-certified tally
 
-Every lifecycle event fans out to MQTT (`vpc/groups/<id>/<event>`, opt-in via `MQTT_BROKER_URL`) and Kafka (topic `group.events`, best-effort shared producer). Accepted ballots are mirrored into the fact matrix vote region.
+Events fan out through the capability-routed transport layer (`transport-adapter.ts`, threat model §3.8): governance events (group lifecycle, proposals, ballots) go only to adapters declaring `suitableForCheckpointGossip`; telemetry events (fact-matrix ingests, `vpc/matrix/<kind>`) go to telemetry adapters. **MQTT (opt-in via `MQTT_BROKER_URL`) is a telemetry-only adapter — ballots and lifecycle events are structurally excluded from the broker.** Kafka (topic `group.events`, best-effort shared producer) carries the durable stream. Accepted ballots are mirrored into the fact matrix vote region; the Merkle-certified in-process stores remain the sole source of truth.
 
 ### Fact matrix (`fact-matrix.ts`) — the 888 888 888-dimension sparse fact space
 - **GET** `/api/matrix/stats` — rows, non-zero entries, per-kind counts, Merkle matrix root, region map

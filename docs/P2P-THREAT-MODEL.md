@@ -68,10 +68,26 @@ attestation via the credential layer), cross-node vote aggregation must not
 assume one-DID-one-human. Stake-weighted mode is the sybil-resistant option
 today (splitting stake across sybils does not increase total weight).
 
-### 3.4 Vote privacy
-Ballots are PUBLIC and linkable to DIDs. This is verifiability-first
-design (like on-chain governance), not coercion-resistant voting. Secret
-ballots would need blind signatures or ZK proofs — out of scope.
+### 3.4 Vote privacy — two explicit modes
+The system distinguishes two voting modes; conflating them is itself a
+threat (a "private" vote that leaks identity through a side channel is
+worse than an honest roll-call).
+
+**Mode A — identified roll-call voting** (implemented: group voting,
+elections). `voterDID → choice → signature → graph event`. Identity is
+deliberately coupled to the vote: governance, board decisions, validator
+votes, guilds, councils, cooperatives — contexts where accountability
+outweighs secrecy. Ballots are PUBLIC and linkable to DIDs by design.
+
+**Mode B — identified eligibility + secret ballot** (design target, NOT
+implemented). The DID proves *eligibility only*: voter receives a
+non-transferable vote capability / blind token, the ballot is encrypted
+or committed, a nullifier prevents double voting, and the published
+choice is unlinkable to the DID. Requires blind signatures or ZK proofs —
+out of scope today and listed under non-guarantees. Until Mode B exists,
+no deployment may present Mode A as a secret ballot.
+
+In both modes, transport plays no role in the security argument (§3.8).
 
 ### 3.5 Attention-mining gaming
 `view` events cost nothing and mint nonzero value for registered agents.
@@ -92,6 +108,53 @@ A peer presenting a far-future timestamp is rejected beyond the 60 s drift
 guard (`hlc.ts`); within the guard, the local clock jumps forward but
 monotonicity and causality are preserved (fuzz-tested, P6).
 
+### 3.8 Adversarial transport — MQTT excluded from the voting core
+The transport layer is assumed hostile: it may read, delay, duplicate,
+drop, reorder, and attempt to manipulate messages. The design rule is:
+
+> Transport delivers bytes. Crypto defines truth. Reducer defines state.
+> Certificate defines finality. Anchor defines external timestamp.
+
+A transport must therefore never be *able* to: forge a vote, link a
+choice to an identity (Mode B), change a result root, or silently alter
+a tally. Those properties come from DID signatures, canonical event
+hashes, Merkle state roots and result certificates — never from
+transport trust.
+
+**MQTT is explicitly excluded from the sovereign voting core.** It may be
+used as a telemetry ingress adapter for IoT and laboratory systems, but
+voting privacy, eligibility, tallying, checkpointing and result
+certification must be transport-independent and cryptographically
+verifiable under an adversarial transport model.
+
+*(NL: MQTT wordt uitgesloten als kerntransport voor soevereine stemming.
+Het protocol mag uitsluitend dienen als optionele telemetry-ingress voor
+IoT-, lab- en machinesignalen. Stemprivacy, eligibility, telling,
+checkpointing en resultaatcertificering moeten transport-onafhankelijk en
+cryptografisch verifieerbaar zijn onder een vijandig transportmodel.)*
+
+Rationale: MQTT is broker-centred — a single broker concentrates
+metadata observation, topic-subscription leakage, timing correlation,
+DoS, message dropping, reordering and compromise risk. TLS does not
+close this (the MQTT 3.1.1 spec itself warns that some TLS cipher suites
+provide no encryption, and that basic-auth mode is not
+trust-symmetrical). This is acceptable for `sensor → broker → dashboard`;
+it is not acceptable as the channel of record for ballots.
+
+**Enforcement in code** (`transport-adapter.ts`, `group-events.ts`): the
+core never imports a concrete transport. Adapters declare
+`TransportCapabilities` (`suitableForSecretBallot` /
+`suitableForTelemetry` / `suitableForCheckpointGossip`,
+`exposesClientMetadataRisk`), and the event bus routes by capability:
+governance-class events (group lifecycle, proposals, ballots) are only
+handed to adapters declaring `suitableForCheckpointGossip`; the
+`MqttTelemetryAdapter` declares telemetry-only and additionally refuses
+non-telemetry topics at its own boundary. Swapping MQTT for libp2p
+gossipsub, Nostr relays, HTTP/3 gateways or Hedera HCS is a new adapter,
+not a core change. No built-in adapter declares
+`suitableForSecretBallot` — Mode B is a cryptographic ballot layer, not
+a transport feature, and cannot be unlocked by transport configuration.
+
 ## 4. Explicit non-guarantees
 
 1. **Consensus finality requires a configured validator set.** Nodes run a
@@ -102,7 +165,9 @@ monotonicity and causality are preserved (fuzz-tested, P6).
    validator-set membership is currently administrative (REST), not
    on-chain governance. Histories that fork outside the validator set
    remain detectable via anchored roots but are not automatically resolved.
-2. **No vote secrecy** (§3.4).
+2. **No vote secrecy** — Mode A roll-call only; Mode B (eligibility +
+   secret ballot via blind tokens/nullifiers) is a design target, not
+   implemented (§3.4).
 3. **No global identity uniqueness** (§3.3).
 4. **No transport encryption requirement** — gossip authenticates content,
    not channels. Deploy behind TLS for metadata privacy.

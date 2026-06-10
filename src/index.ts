@@ -42,6 +42,7 @@ import { PqWalletService, registerPqRoutes } from './integrations/lightrag/walle
 import { DemocraticElectionService, registerElectionRoutes } from './integrations/lightrag/sovereign-elections';
 import { GroupVotingService, registerGroupVotingRoutes } from './integrations/lightrag/group-voting';
 import { GroupEventBus } from './integrations/lightrag/group-events';
+import { MqttTelemetryAdapter } from './integrations/lightrag/transport-adapter';
 import { FactMatrixService, registerFactMatrixRoutes } from './integrations/lightrag/fact-matrix';
 import { mqttClientFromEnv } from './integrations/mqtt/mqtt-client';
 import { BacklogService, registerHubBacklogRoutes } from './integrations/lightrag/backlog';
@@ -2330,14 +2331,17 @@ async function initialize() {
     registerElectionRoutes(app, democraticElections);
     logger.info('✓ Democratic elections ready (/api/elections/*, 195 countries)');
 
-    // 1c-vii. Group voting + fact matrix + MQTT/Kafka fan-out.
-    //   MQTT is opt-in via MQTT_BROKER_URL (mqtt://host:port); Kafka rides
-    //   the shared best-effort producer (topic group.events). The fact
-    //   matrix is the unified 888 888 888-dimension sparse coordinate space
-    //   for transactions (price+volume), news, and votes.
+    // 1c-vii. Group voting + fact matrix + capability-routed fan-out.
+    //   The bus publishes through TransportAdapter only (threat model §3.8):
+    //   MQTT (opt-in via MQTT_BROKER_URL) is wrapped as a telemetry-only
+    //   adapter, so governance/ballot events are structurally excluded from
+    //   the broker; Kafka rides the shared best-effort producer (topic
+    //   group.events). The fact matrix is the unified 888 888 888-dimension
+    //   sparse coordinate space for transactions (price+volume), news, votes.
     const mqttBridge = mqttClientFromEnv(`virtualpc-${process.pid}`);
     if (mqttBridge) mqttBridge.connect();
-    const groupEventBus = new GroupEventBus(mqttBridge);
+    const transports = mqttBridge ? [new MqttTelemetryAdapter(mqttBridge)] : [];
+    const groupEventBus = new GroupEventBus(transports);
     const factMatrix = new FactMatrixService(groupEventBus);
     registerFactMatrixRoutes(app, factMatrix);
     const groupVoting = new GroupVotingService(identityService, {

@@ -1,15 +1,26 @@
 /**
- * Group Event Bus — MQTT + Kafka fan-out for group/vote/fact events
+ * Group Event Bus — capability-routed fan-out for group/vote/fact events
  *
  * Single choke point through which group lifecycle events, ballots, fact
- * matrix ingests, and market transactions are mirrored outward:
+ * matrix ingests, and market transactions are mirrored outward. The bus
+ * never imports a concrete transport: it publishes through the
+ * TransportAdapter interface (transport-adapter.ts) and routes every event
+ * by class against the capabilities each adapter declares:
  *
- *   MQTT  (live mirror, QoS 0)  topic vpc/groups/<groupId>/<type>
- *                               topic vpc/matrix/<kind>     (fact ingests)
- *   Kafka (durable stream)      topic group.events — one consumer-group
- *                               per downstream processor replays at will
+ *   governance events  (group.*, ballots, certificates)
+ *       → only adapters with suitableForCheckpointGossip
+ *   telemetry events   (matrix.fact.ingested, sensor/lab ingest mirrors)
+ *       → only adapters with suitableForTelemetry
  *
- * Delivery is BEST-EFFORT BY DESIGN on both legs: the sources of truth are
+ * MQTT is therefore structurally excluded from the voting path: the
+ * MqttTelemetryAdapter declares telemetry-only capabilities, so ballot and
+ * proposal events can never reach an MQTT broker, regardless of wiring.
+ * (Threat model §3.8 — adversarial transport.)
+ *
+ * Kafka (topic group.events) remains the in-house durable stream for
+ * downstream processors and rides the shared best-effort producer.
+ *
+ * Delivery is BEST-EFFORT BY DESIGN on every leg: the sources of truth are
  * the in-process Merkle-certified stores (group ballots, fact matrix rows).
  * A dropped event can always be recomputed from them; a duplicated event is
  * idempotent for consumers because every event carries the content hash of
@@ -19,7 +30,7 @@
 
 import { canonicalize, sha256 } from './graph-state-root';
 import { bestEffortPublish } from '../kafka/shared';
-import type { MqttClient } from '../mqtt/mqtt-client';
+import { mayCarry, type TransportAdapter, type TransportEventClass } from './transport-adapter';
 import logger from '../../utils/logger';
 
 export const KAFKA_GROUP_EVENTS_TOPIC = 'group.events';
@@ -29,6 +40,11 @@ export type GroupEventType =
   | 'group.created' | 'group.member.joined' | 'group.member.left'
   | 'group.proposal.created' | 'group.ballot.cast' | 'group.proposal.closed'
   | 'matrix.fact.ingested';
+
+/** Which transport-capability class an event type belongs to. */
+export function eventClass(type: GroupEventType): TransportEventClass {
+  return type === 'matrix.fact.ingested' ? 'telemetry' : 'governance';
+}
 
 export interface GroupEvent {
   type: GroupEventType;
@@ -41,26 +57,42 @@ export interface GroupEvent {
 
 export class GroupEventBus {
   /** Counters for /api/groups/stats + tests. */
-  readonly stats = { emitted: 0, mqttPublished: 0, kafkaAttempts: 0 };
+  readonly stats = {
+    emitted: 0,
+    kafkaAttempts: 0,
+    /** Per-adapter accepted-publish counts, keyed by adapter name. */
+    transportPublished: {} as Record<string, number>,
+    /** Events withheld from an adapter because it lacked the required capability. */
+    transportRefused: {} as Record<string, number>,
+  };
 
-  constructor(private readonly mqtt: MqttClient | null) {}
+  constructor(private readonly transports: TransportAdapter[] = []) {}
 
-  /** Fire-and-forget on both legs; never throws. */
+  /** Fire-and-forget on every leg; never throws. */
   emit(type: GroupEventType, body: Record<string, unknown>, groupId?: string): GroupEvent {
     const ts = new Date().toISOString();
     const eventHash = sha256(canonicalize({ type, groupId: groupId ?? null, body }));
     const event: GroupEvent = { type, ...(groupId ? { groupId } : {}), eventHash, ts, body };
     this.stats.emitted += 1;
 
-    if (this.mqtt) {
-      const topic = groupId
-        ? `${MQTT_TOPIC_PREFIX}/groups/${groupId}/${type.split('.').slice(1).join('.')}`
-        : `${MQTT_TOPIC_PREFIX}/matrix/${String(body.kind ?? 'fact')}`;
-      try {
-        if (this.mqtt.publish(topic, JSON.stringify(event))) this.stats.mqttPublished += 1;
-      } catch (e: any) {
-        logger.debug(`group-events mqtt: ${e.message}`);
+    const cls = eventClass(type);
+    const topic = groupId
+      ? `${MQTT_TOPIC_PREFIX}/groups/${groupId}/${type.split('.').slice(1).join('.')}`
+      : `${MQTT_TOPIC_PREFIX}/matrix/${String(body.kind ?? 'fact')}`;
+    const payload = Buffer.from(JSON.stringify(event));
+
+    for (const t of this.transports) {
+      if (!mayCarry(t, cls)) {
+        this.stats.transportRefused[t.name] = (this.stats.transportRefused[t.name] ?? 0) + 1;
+        continue;
       }
+      void t.publish(topic, payload)
+        .then(r => {
+          if (r.accepted) {
+            this.stats.transportPublished[t.name] = (this.stats.transportPublished[t.name] ?? 0) + 1;
+          }
+        })
+        .catch((e: any) => logger.debug(`group-events ${t.name}: ${e.message}`));
     }
 
     this.stats.kafkaAttempts += 1;

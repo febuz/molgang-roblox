@@ -4,7 +4,8 @@
  * Covers: group lifecycle, the open/closed membership gates (DID-signed
  * join), proposal creation, the membership voting gate, server-derived
  * weights (identity + stake), double-vote rejection, Merkle-certified
- * close, MQTT/Kafka event fan-out (via a mock broker), fact-matrix vote
+ * close, capability-routed event fan-out (MQTT is telemetry-only: ballots
+ * must NEVER reach the broker — threat model §3.8), fact-matrix vote
  * ingest, and the REST surface.
  */
 
@@ -17,6 +18,7 @@ import {
   GroupVotingService, registerGroupVotingRoutes, joinPayload, groupBallotPayload,
 } from '../../src/integrations/lightrag/group-voting';
 import { GroupEventBus, KAFKA_GROUP_EVENTS_TOPIC } from '../../src/integrations/lightrag/group-events';
+import { MqttTelemetryAdapter, type TransportAdapter } from '../../src/integrations/lightrag/transport-adapter';
 import { FactMatrixService } from '../../src/integrations/lightrag/fact-matrix';
 import { MqttClient } from '../../src/integrations/mqtt/mqtt-client';
 import { SovereignIdentityService } from '../../src/integrations/lightrag/identity';
@@ -24,10 +26,10 @@ import { ValueChainService } from '../../src/integrations/lightrag/value-chain';
 
 const offlineRag = { isConnected: () => false } as any;
 
-function makeStack(opts: { mqtt?: MqttClient | null; withChain?: boolean } = {}) {
+function makeStack(opts: { transports?: TransportAdapter[]; withChain?: boolean } = {}) {
   const identity = new SovereignIdentityService(offlineRag);
   const chain = opts.withChain ? new ValueChainService(offlineRag, { identity }) : undefined;
-  const bus = new GroupEventBus(opts.mqtt ?? null);
+  const bus = new GroupEventBus(opts.transports ?? []);
   const matrix = new FactMatrixService(bus);
   const groups = new GroupVotingService(identity, { valueChain: chain, events: bus, matrix });
   return { identity, chain, bus, matrix, groups };
@@ -226,11 +228,11 @@ describe('group proposals + voting', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MQTT fan-out (mock broker)
+// MQTT fan-out (mock broker) — MQTT is telemetry-only (threat model §3.8)
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('group events → MQTT', () => {
-  it('a cast ballot is published to vpc/groups/<id>/ballot.cast', async () => {
+describe('group events → MQTT (telemetry-only adapter)', () => {
+  it('matrix telemetry reaches the broker; ballots and lifecycle NEVER do', async () => {
     // Minimal broker: CONNACK + PUBLISH capture (same shape as mqttClient.test.ts)
     const received: Array<{ topic: string; payload: string }> = [];
     const broker = net.createServer(socket => {
@@ -271,29 +273,33 @@ describe('group events → MQTT', () => {
       await new Promise(r => setTimeout(r, 10));
     }
 
-    const { groups, identity } = makeStack({ mqtt });
+    const adapter = new MqttTelemetryAdapter(mqtt);
+    const { groups, identity, bus } = makeStack({ transports: [adapter] });
     const o = identity.register('mq-owner');
     const g = groups.createGroup({ name: 'mqtt-grp', owner: o.did });
     const p = groups.createProposal(g.id, { question: 'q?', options: ['a', 'b'], createdBy: o.did });
     groups.castVote(p.id, o.did, 'a');
 
+    // The vote mirrors into the fact matrix → telemetry event → broker.
     const d2 = Date.now() + 3_000;
-    while (!received.some(r => r.topic.endsWith('/ballot.cast'))) {
+    while (!received.some(r => r.topic === 'vpc/matrix/vote')) {
       if (Date.now() > d2) throw new Error('publish timeout');
       await new Promise(r => setTimeout(r, 10));
     }
 
-    const ballotEvent = received.find(r => r.topic.endsWith('/ballot.cast'))!;
-    expect(ballotEvent.topic).toBe(`vpc/groups/${g.id}/ballot.cast`);
-    const parsed = JSON.parse(ballotEvent.payload);
-    expect(parsed.type).toBe('group.ballot.cast');
+    // Telemetry leg: matrix ingest reaches the broker, dedupe hash intact.
+    const matrixEvent = received.find(r => r.topic === 'vpc/matrix/vote')!;
+    const parsed = JSON.parse(matrixEvent.payload);
+    expect(parsed.type).toBe('matrix.fact.ingested');
     expect(parsed.eventHash).toMatch(/^[0-9a-f]{64}$/);
-    expect(parsed.body.voter).toBe(o.did);
-    // Lifecycle topics all present
-    expect(received.some(r => r.topic === `vpc/groups/${g.id}/created`)).toBe(true);
-    expect(received.some(r => r.topic === `vpc/groups/${g.id}/proposal.created`)).toBe(true);
-    // Matrix ingest goes to the matrix topic family
-    expect(received.some(r => r.topic === 'vpc/matrix/vote')).toBe(true);
+
+    // Governance leg: ballots / lifecycle events are structurally excluded
+    // from MQTT — the telemetry-only adapter lacks suitableForCheckpointGossip.
+    expect(received.some(r => r.topic.endsWith('/ballot.cast'))).toBe(false);
+    expect(received.some(r => r.topic === `vpc/groups/${g.id}/created`)).toBe(false);
+    expect(received.some(r => r.topic === `vpc/groups/${g.id}/proposal.created`)).toBe(false);
+    // The bus counted the refusals (created, proposal.created, ballot.cast).
+    expect(bus.stats.transportRefused['mqtt-telemetry']).toBeGreaterThanOrEqual(3);
 
     mqtt.close();
     await new Promise<void>(res => broker.close(() => res()));

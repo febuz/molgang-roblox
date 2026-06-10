@@ -171,7 +171,7 @@ describe('FactMatrixService', () => {
   let bus: GroupEventBus;
 
   beforeEach(() => {
-    bus = new GroupEventBus(null);
+    bus = new GroupEventBus([]);
     svc = new FactMatrixService(bus);
   });
 
