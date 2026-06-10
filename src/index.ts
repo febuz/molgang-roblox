@@ -21,6 +21,7 @@ import { AgentBridge } from './integrations/lightrag/agent-bridge';
 import { seedQuantumAlgorithms } from './integrations/lightrag/quantum-schema';
 import { registerGraphRoutes } from './integrations/lightrag/graph-api';
 import { registerSnapshotRoutes } from './integrations/lightrag/graph-snapshot';
+import { registerMonitorRoutes } from './integrations/lightrag/p2p-monitor';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -2208,6 +2209,9 @@ async function initialize() {
       lastRunAt: inferenceEngine.getLastRunAt(),
     }));
     logger.info('✓ InferenceEngine scheduled (hourly)');
+
+    // P2P unified health monitor dashboard
+    registerMonitorRoutes(app, lightrag, { p2pSync, gossip, factValidator, inferenceEngine, agentBridge });
 
     // Make agentBridge available to the task engine via app.locals
     (app as any).locals.agentBridge = agentBridge;
