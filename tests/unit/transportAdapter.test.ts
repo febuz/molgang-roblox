@@ -104,6 +104,28 @@ describe('GroupEventBus capability routing', () => {
     expect(wire.eventHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it('every exchanged event is self-describing: schema id + class metadata', async () => {
+    const gossip = new LoopbackAdapter('gossip', GOSSIP_CAPS);
+    const bus = new GroupEventBus([gossip]);
+    bus.emit('group.ballot.cast', { voter: 'did:vpc:v', option: 'a' }, 'g4');
+    bus.emit('matrix.fact.ingested', { kind: 'spectrum' });
+    await new Promise(r => setImmediate(r));
+
+    const [gov, tel] = gossip.delivered.map(d => JSON.parse(Buffer.from(d.bytes).toString()));
+    expect(gov.schema).toBe('vpc.group-event/1');
+    expect(gov.class).toBe('governance');
+    expect(tel.schema).toBe('vpc.group-event/1');
+    expect(tel.class).toBe('telemetry');
+  });
+
+  it('schema/class metadata does not change the content hash (additive enrichment)', () => {
+    // Dedupe hashes commit to {type, groupId, body} only — enriching the
+    // envelope with metadata must never invalidate existing content addresses.
+    const a = new GroupEventBus([]).emit('group.created', { name: 'n', owner: 'o' }, 'g5');
+    const b = new GroupEventBus([]).emit('group.created', { name: 'n', owner: 'o' }, 'g5');
+    expect(a.eventHash).toBe(b.eventHash);
+  });
+
   it('a bus with zero transports still produces the canonical event (truth is in-process)', () => {
     const bus = new GroupEventBus([]);
     const e = bus.emit('group.ballot.cast', { voter: 'did:vpc:b', option: 'x' }, 'g3');

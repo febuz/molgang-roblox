@@ -46,7 +46,19 @@ export function eventClass(type: GroupEventType): TransportEventClass {
   return type === 'matrix.fact.ingested' ? 'telemetry' : 'governance';
 }
 
+/**
+ * Schema identifier carried by every exchanged event. Consumers that do not
+ * recognize the schema MUST skip the event (forward compatibility) instead
+ * of failing — data enriched with metadata is exchangeable across module
+ * and node boundaries precisely because every record says what it is.
+ */
+export const GROUP_EVENT_SCHEMA = 'vpc.group-event/1';
+
 export interface GroupEvent {
+  /** Self-describing schema id — see GROUP_EVENT_SCHEMA. */
+  schema: string;
+  /** Transport-capability class (governance | telemetry | secret-ballot). */
+  class: TransportEventClass;
   type: GroupEventType;
   groupId?: string;          // absent for matrix.* events
   /** SHA-256 over the canonical body — consumers dedupe on this. */
@@ -72,10 +84,12 @@ export class GroupEventBus {
   emit(type: GroupEventType, body: Record<string, unknown>, groupId?: string): GroupEvent {
     const ts = new Date().toISOString();
     const eventHash = sha256(canonicalize({ type, groupId: groupId ?? null, body }));
-    const event: GroupEvent = { type, ...(groupId ? { groupId } : {}), eventHash, ts, body };
-    this.stats.emitted += 1;
-
     const cls = eventClass(type);
+    const event: GroupEvent = {
+      schema: GROUP_EVENT_SCHEMA, class: cls,
+      type, ...(groupId ? { groupId } : {}), eventHash, ts, body,
+    };
+    this.stats.emitted += 1;
     const topic = groupId
       ? `${MQTT_TOPIC_PREFIX}/groups/${groupId}/${type.split('.').slice(1).join('.')}`
       : `${MQTT_TOPIC_PREFIX}/matrix/${String(body.kind ?? 'fact')}`;

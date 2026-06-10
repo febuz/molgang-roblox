@@ -28,6 +28,7 @@ quick start. Read that first if you're new.
 | File | Topic |
 |------|-------|
 | [P2P-THREAT-MODEL.md](P2P-THREAT-MODEL.md) | Formal threat model: Dolev-Yao adversary, goal/mechanism matrix, known-attack dispositions, explicit non-guarantees |
+| [MODULAR-ARCHITECTURE.md](MODULAR-ARCHITECTURE.md) | The replaceability rule: port inventory (transport, storage, anchor, identity), capability descriptors, self-describing data-exchange envelopes, plugin contract |
 | [POST-QUANTUM-WALLET.md](POST-QUANTUM-WALLET.md) | Quantum threat analysis (Shor/Grover, harvest-now-decrypt-later), hash-based signature design, encrypted vault, phased migration plan |
 | [NEWSGROUP-FRONTEND-LESSONS.md](NEWSGROUP-FRONTEND-LESSONS.md) | Design analysis of ten predecessor systems (Usenet → Bluesky) and the ten rules derived from them |
 | [IDEAGRAPH-BENCHMARK.md](IDEAGRAPH-BENCHMARK.md) | Reproducible benchmark: VV graph (20k-company sparse news matrix) + ChemGraph (spectroscopy retrieval) + settlement footprint — quantified case for developers, investors, and users |

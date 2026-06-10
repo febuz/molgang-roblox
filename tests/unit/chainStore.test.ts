@@ -23,6 +23,7 @@ import {
 import { SovereignIdentityService } from '../../src/integrations/lightrag/identity';
 import { verifySMTProof, smtKey } from '../../src/integrations/lightrag/sparse-merkle';
 import { ChainStore, SNAPSHOT_VERSION } from '../../src/integrations/lightrag/chain-store';
+import { MemorySnapshotStorage, FileSnapshotStorage } from '../../src/integrations/lightrag/storage-port';
 import { ConsensusEngine } from '../../src/integrations/lightrag/consensus';
 import { ConsensusNetwork } from '../../src/integrations/lightrag/consensus-network';
 import { sha256 } from '../../src/integrations/lightrag/graph-state-root';
@@ -243,6 +244,52 @@ describe('ChainStore – disk snapshots', () => {
     expect(existsSync(file)).toBe(false); // still in the debounce window
     store.flush();
     expect(existsSync(file)).toBe(true);
+  });
+});
+
+// ─── 3b. Storage port — the persistence backend is replaceable ────────────────
+
+describe('ChainStore – SnapshotStorage port', () => {
+  it('round-trips through a non-filesystem backend (MemorySnapshotStorage)', () => {
+    const { identity, chain } = makeStack();
+    const alice = identity.register('alice');
+    chain.mintReward(alice.did, 10);
+
+    const storage = new MemorySnapshotStorage();
+    new ChainStore(storage, chain, identity).saveNow();
+    expect(storage.exists()).toBe(true);
+
+    const identity2 = new SovereignIdentityService(offlineRag);
+    const chain2 = new ValueChainService(offlineRag, { identity: identity2 });
+    const loaded = new ChainStore(storage, chain2, identity2).load();
+    expect(loaded).not.toBeNull();
+    expect(chain2.getAccount(alice.did).balance).toBe(chain.getAccount(alice.did).balance);
+  });
+
+  it('tamper-rejection is backend-independent: a hostile store cannot forge a ledger', () => {
+    const { identity, chain } = makeStack();
+    const alice = identity.register('alice');
+    chain.mintReward(alice.did, 10);
+    chain.transfer(alice.did, identity.register('bob').did, tokensToUnits(2));
+
+    const storage = new MemorySnapshotStorage();
+    new ChainStore(storage, chain, identity).saveNow();
+
+    // The "backend" tampers a signed transfer in the bytes it serves
+    const raw = JSON.parse(storage.read()!);
+    const signed = raw.ledger.transfers.find((t: any) => t.from !== 'did:vpc:coinbase');
+    signed.amount = tokensToUnits(9).toString();
+    storage.write(JSON.stringify(raw));
+
+    const identity2 = new SovereignIdentityService(offlineRag);
+    const chain2 = new ValueChainService(offlineRag, { identity: identity2 });
+    expect(() => new ChainStore(storage, chain2, identity2).load()).toThrow(/rejected/);
+  });
+
+  it('declares capabilities so callers can reason about durability', () => {
+    expect(new MemorySnapshotStorage().capabilities.durable).toBe(false);
+    expect(new FileSnapshotStorage('/tmp/x.json').capabilities.durable).toBe(true);
+    expect(new FileSnapshotStorage('/tmp/x.json').capabilities.atomicWrite).toBe(true);
   });
 });
 

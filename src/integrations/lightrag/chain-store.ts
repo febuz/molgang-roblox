@@ -24,10 +24,14 @@
  *
  *   - DEBOUNCED SAVES: scheduleSave() coalesces bursts (every transfer fires
  *     the hook) into one write per `debounceMs`.
+ *
+ *   - REPLACEABLE BACKEND: persistence goes through the SnapshotStorage port
+ *     (storage-port.ts) — local file by default, swappable for S3/IPFS/
+ *     encrypted stores without touching the replay/verify logic here.
  */
 
-import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, join } from 'path';
+import { join } from 'path';
+import { FileSnapshotStorage, type SnapshotStorage } from './storage-port';
 import type { ValueChainService } from './value-chain';
 import type { SovereignIdentityService, IdentityDocument } from './identity';
 import logger from '../../utils/logger';
@@ -44,13 +48,16 @@ export interface ChainSnapshot {
 export class ChainStore {
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly debounceMs: number;
+  private readonly storage: SnapshotStorage;
 
   constructor(
-    private readonly filePath: string,
+    /** A file path (wrapped in FileSnapshotStorage) or any SnapshotStorage. */
+    storage: string | SnapshotStorage,
     private readonly valueChain: ValueChainService,
     private readonly identity?: SovereignIdentityService,
     opts: { debounceMs?: number } = {},
   ) {
+    this.storage = typeof storage === 'string' ? new FileSnapshotStorage(storage) : storage;
     this.debounceMs = opts.debounceMs ?? 1_000;
   }
 
@@ -66,7 +73,7 @@ export class ChainStore {
     this.saveTimer.unref();
   }
 
-  /** Write the snapshot atomically (temp file + rename). */
+  /** Write the snapshot atomically through the storage port. */
   saveNow(): void {
     try {
       const snapshot: ChainSnapshot = {
@@ -75,10 +82,7 @@ export class ChainStore {
         ledger: this.valueChain.exportState(),
         identities: this.identity?.list() ?? [],
       };
-      mkdirSync(dirname(this.filePath), { recursive: true });
-      const tmp = this.filePath + '.tmp';
-      writeFileSync(tmp, JSON.stringify(snapshot), 'utf8');
-      renameSync(tmp, this.filePath);
+      this.storage.write(JSON.stringify(snapshot));
     } catch (e: any) {
       logger.warn(`chain store save failed: ${e.message}`);
     }
@@ -104,10 +108,11 @@ export class ChainStore {
    * replayed history must not re-trigger consensus or re-mint rewards.
    */
   load(): { transfers: number; blocks: number; identities: number } | null {
-    if (!existsSync(this.filePath)) return null;
     let snapshot: ChainSnapshot;
     try {
-      snapshot = JSON.parse(readFileSync(this.filePath, 'utf8'));
+      const bytes = this.storage.read();
+      if (bytes === null) return null;
+      snapshot = JSON.parse(bytes);
     } catch (e: any) {
       logger.error(`chain store: snapshot unreadable (${e.message}) — starting fresh`);
       return null;
