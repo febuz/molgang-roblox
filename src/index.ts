@@ -20,6 +20,7 @@ import { InferenceEngine } from './integrations/lightrag/graph-inference';
 import { AgentBridge } from './integrations/lightrag/agent-bridge';
 import { seedQuantumAlgorithms } from './integrations/lightrag/quantum-schema';
 import { registerGraphRoutes } from './integrations/lightrag/graph-api';
+import { registerSnapshotRoutes } from './integrations/lightrag/graph-snapshot';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -2130,8 +2131,9 @@ async function initialize() {
     app.get('/api/lightrag/p2p', (_req, res) => res.json({ success: true, ...p2pSync.getStats() }));
     logger.info('✓ P2P knowledge-graph sync started');
 
-    // Register full graph REST API (CRUD, traversal, visualization, export)
+    // Register full graph REST API (CRUD, traversal, visualization, export, ML, snapshot)
     registerGraphRoutes(app, lightrag);
+    registerSnapshotRoutes(app, lightrag);
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
