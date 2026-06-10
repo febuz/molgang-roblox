@@ -26,6 +26,7 @@ import { registerQueryRoutes as registerGraphQueryRoutes } from './integrations/
 import { registerProvenanceRoutes } from './integrations/lightrag/provenance';
 import { registerNFCRoutes } from './integrations/lightrag/nfc-api';
 import { NewsService, registerNewsRoutes } from './integrations/lightrag/news';
+import { VoteCertificateService, registerVoteCertRoutes } from './integrations/lightrag/vote-certificate';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2193,6 +2194,13 @@ async function initialize() {
       } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
     });
     logger.info('✓ P2P fact-validation graph ready');
+
+    // 1d-ii. Signed vote certificates — quorum results published as news
+    //   ("Stem resultaat als nieuws"). Ed25519 multi-sig today; the scheme
+    //   field reserves a drop-in slot for BLS12-381 aggregation.
+    const voteCertService = new VoteCertificateService(lightrag);
+    registerVoteCertRoutes(app, voteCertService, { factValidator, news: newsService });
+    logger.info('✓ Vote certificates ready (/api/votes/*)');
 
     // 1e. Seed well-known quantum algorithms for quantum-information readiness.
     try {
