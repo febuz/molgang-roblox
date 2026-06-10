@@ -27,6 +27,7 @@ import { registerProvenanceRoutes } from './integrations/lightrag/provenance';
 import { registerNFCRoutes } from './integrations/lightrag/nfc-api';
 import { NewsService, registerNewsRoutes } from './integrations/lightrag/news';
 import { VoteCertificateService, registerVoteCertRoutes } from './integrations/lightrag/vote-certificate';
+import { AttentionChainService, registerAttentionRoutes } from './integrations/lightrag/attention-chain';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2155,16 +2156,27 @@ async function initialize() {
     const otsService = new OtsService(lightrag);
     registerOtsRoutes(app, otsService);
     const newsService = new NewsService(lightrag);
+    const attentionService = new AttentionChainService(lightrag);
+    registerAttentionRoutes(app, attentionService);
     registerNewsRoutes(app, newsService, async () => {
+      const pending = newsService.unanchoredIds();
+      let anchorId: string;
       // Prefer free OTS aggregation; fall back to dry-run chain anchors
       try {
         const stamp = await otsService.stampCurrentRoot();
-        if (stamp.status !== 'failed') return { anchorId: stamp.id };
-      } catch { /* calendars unreachable — fall through to chain anchor */ }
-      const records = await anchorService.anchorAll();
-      return { anchorId: records[0]?.id ?? `local_${Date.now()}` };
+        anchorId = stamp.status !== 'failed' ? stamp.id : '';
+      } catch { anchorId = ''; }
+      if (!anchorId) {
+        const records = await anchorService.anchorAll();
+        anchorId = records[0]?.id ?? `local_${Date.now()}`;
+      }
+      // Anchoring is the strongest attention signal — feed the attention chain
+      for (const id of pending) {
+        try { attentionService.record({ itemId: id, agent: 'anchor-service', kind: 'anchor' }); } catch { /* non-fatal */ }
+      }
+      return { anchorId };
     });
-    logger.info('✓ News + Anchor + OTS stack ready (instant-publish → p2p → anchor)');
+    logger.info('✓ News + Anchor + OTS + Attention stack ready (instant-publish → p2p → anchor)');
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
@@ -2256,6 +2268,7 @@ async function initialize() {
     (app as any).locals.gossip = gossip;
     (app as any).locals.newsService = newsService;
     (app as any).locals.anchorService = anchorService;
+    (app as any).locals.attentionService = attentionService;
 
     // 2. Initialize Kafka (message orchestration) - DISABLED for now
     logger.info('🔄 Kafka disabled (development mode) - running single-node');
