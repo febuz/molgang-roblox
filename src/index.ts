@@ -29,6 +29,9 @@ import { NewsService, registerNewsRoutes } from './integrations/lightrag/news';
 import { VoteCertificateService, registerVoteCertRoutes } from './integrations/lightrag/vote-certificate';
 import { AttentionChainService, registerAttentionRoutes } from './integrations/lightrag/attention-chain';
 import { P2PSwarm, registerSwarmRoutes } from './integrations/lightrag/p2p-swarm';
+import { SovereignIdentityService, registerIdentityRoutes } from './integrations/lightrag/identity';
+import { ValueChainService, registerValueRoutes } from './integrations/lightrag/value-chain';
+import { SovereignVotingService, registerSovereignVotingRoutes } from './integrations/lightrag/sovereign-voting';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2156,7 +2159,24 @@ async function initialize() {
     registerAnchorRoutes(app, anchorService);
     const otsService = new OtsService(lightrag);
     registerOtsRoutes(app, otsService);
-    const attentionService = new AttentionChainService(lightrag);
+
+    // 1c-iii. Sovereign identity (self-certifying DIDs) + value chain
+    //   (capped supply 888 888 888, Bitcoin-style halving eras). Attention
+    //   events from REGISTERED identities mine value tokens (Tron BTT lesson:
+    //   pay for contribution — here: pay for validated knowledge).
+    const identityService = new SovereignIdentityService(lightrag);
+    registerIdentityRoutes(app, identityService);
+    const valueChain = new ValueChainService(lightrag, { identity: identityService });
+    registerValueRoutes(app, valueChain);
+
+    const attentionService = new AttentionChainService(lightrag, {
+      onEvent: (e) => {
+        // Attention mining: a registered agent's contribution mints tokens at
+        // the current era rate. Unregistered agents earn nothing (sybil gate).
+        const did = identityService.didForHandle(e.agent);
+        if (did) valueChain.rewardAttention(did, e.kind, e.weight);
+      },
+    });
     registerAttentionRoutes(app, attentionService);
     // attentionService passed to NewsService so GET /api/news?orderBy=attention works
     const newsService = new NewsService(lightrag, undefined, { attentionService });
@@ -2179,6 +2199,16 @@ async function initialize() {
       return { anchorId };
     });
     logger.info('✓ News + Anchor + OTS + Attention stack ready (instant-publish → p2p → anchor)');
+
+    // 1c-iv. Sovereign identified voting — DID-bound sybil-resistant referenda;
+    //   results published as signed news claims and anchored with the graph.
+    const sovereignVoting = new SovereignVotingService(lightrag, {
+      identity: identityService,
+      valueChain,
+      news: newsService,
+    });
+    registerSovereignVotingRoutes(app, sovereignVoting);
+    logger.info('✓ Sovereign identity + value chain + voting ready (/api/identity, /api/value, /api/sovereign-votes)');
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
@@ -2280,6 +2310,9 @@ async function initialize() {
     (app as any).locals.newsService = newsService;
     (app as any).locals.anchorService = anchorService;
     (app as any).locals.attentionService = attentionService;
+    (app as any).locals.identityService = identityService;
+    (app as any).locals.valueChain = valueChain;
+    (app as any).locals.sovereignVoting = sovereignVoting;
 
     // 2. Initialize Kafka (message orchestration) - DISABLED for now
     logger.info('🔄 Kafka disabled (development mode) - running single-node');

@@ -190,11 +190,18 @@ export class AttentionChainService {
   private byItem = new Map<string, AttentionEvent[]>();   // itemId → events
   private seenHashes = new Set<string>();
   private reputations = new Map<string, AgentReputation>();
+  private onEvent?: (event: AttentionEvent) => void;
 
-  constructor(lightrag: LightRAGClient, opts: { keyring?: AgentKeyring; halfLifeMs?: number } = {}) {
+  constructor(
+    lightrag: LightRAGClient,
+    opts: { keyring?: AgentKeyring; halfLifeMs?: number; onEvent?: (event: AttentionEvent) => void } = {},
+  ) {
     this.lightrag = lightrag;
     this.keyring = opts.keyring ?? new AgentKeyring();
     this.halfLifeMs = opts.halfLifeMs ?? DEFAULT_HALF_LIFE_MS;
+    // Called for LOCAL events only (record, not receive) — peers reward their
+    // own contributions, so a gossiped event must not double-mint here.
+    this.onEvent = opts.onEvent;
   }
 
   // ── Reputation ───────────────────────────────────────────────────────────────
@@ -273,6 +280,7 @@ export class AttentionChainService {
     const event: AttentionEvent = { ...unsigned, hash, publicKeyPem: kp.publicKeyPem, signature };
     this.append(event);
     void this.persistEvent(event);
+    try { this.onEvent?.(event); } catch { /* reward hook must never break recording */ }
     return event;
   }
 
