@@ -2156,9 +2156,10 @@ async function initialize() {
     registerAnchorRoutes(app, anchorService);
     const otsService = new OtsService(lightrag);
     registerOtsRoutes(app, otsService);
-    const newsService = new NewsService(lightrag);
     const attentionService = new AttentionChainService(lightrag);
     registerAttentionRoutes(app, attentionService);
+    // attentionService passed to NewsService so GET /api/news?orderBy=attention works
+    const newsService = new NewsService(lightrag, undefined, { attentionService });
     registerNewsRoutes(app, newsService, async () => {
       const pending = newsService.unanchoredIds();
       let anchorId: string;
@@ -2231,7 +2232,11 @@ async function initialize() {
     const myUrl = secretOrEnv('infra', 'MY_URL') || `http://localhost:${process.env.PORT || 3100}`;
     const swarm = new P2PSwarm({ myUrl });
     registerSwarmRoutes(app, swarm);
-    const gossip = new P2PGossip(lightrag, gossipPeers, myUrl, swarm);
+    const gossipAttentionThreshold = parseFloat(process.env.GOSSIP_ATTENTION_THRESHOLD ?? '0');
+    const gossip = new P2PGossip(lightrag, gossipPeers, myUrl, swarm, {
+      attentionService,
+      attentionThreshold: gossipAttentionThreshold,
+    });
     gossip.registerExpressRoutes(app);
     gossip.start();
     logger.info(`✓ P2PGossip configured (${gossipPeers.length} peers, swarm-managed)`);

@@ -27,6 +27,7 @@
 import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
 import type { P2PSwarm } from './p2p-swarm';
+import type { AttentionChainService } from './attention-chain';
 import logger from '../../utils/logger';
 
 export interface GossipNode {
@@ -63,6 +64,8 @@ export class P2PGossip {
   private peers: string[];
   private myUrl: string;
   private swarm: P2PSwarm | null = null;
+  private attentionService: AttentionChainService | null = null;
+  private attentionThreshold: number = 0;
   private lastPushAt = new Date(0).toISOString();
   private localDelta: GossipNode[] = [];
   private localEdgeDelta: GossipPayload['edges'] = [];
@@ -78,11 +81,19 @@ export class P2PGossip {
     running: false,
   };
 
-  constructor(lightrag: LightRAGClient, peers: string[] = [], myUrl = '', swarm?: P2PSwarm) {
+  constructor(
+    lightrag: LightRAGClient,
+    peers: string[] = [],
+    myUrl = '',
+    swarm?: P2PSwarm,
+    opts?: { attentionService?: AttentionChainService; attentionThreshold?: number },
+  ) {
     this.lightrag = lightrag;
     this.peers = peers.filter(p => p !== myUrl);
     this.myUrl = myUrl;
     this.swarm = swarm ?? null;
+    this.attentionService = opts?.attentionService ?? null;
+    this.attentionThreshold = opts?.attentionThreshold ?? 0;
     if (this.swarm) {
       for (const p of this.peers) this.swarm.addPeer(p, 'config');
     }
@@ -238,6 +249,17 @@ export class P2PGossip {
 
   private async pushToPeer(peer: string): Promise<void> {
     let nodes = this.localDelta.filter(n => n.updatedAt >= this.lastPushAt);
+
+    // Attention gate: when a threshold is configured, only propagate items
+    // that have earned enough decayed attention. Low-signal items wait until
+    // peers or local agents have validated/shared them further — bandwidth
+    // is spent on high-attention knowledge first.
+    if (this.attentionService && this.attentionThreshold > 0) {
+      const svc = this.attentionService;
+      const threshold = this.attentionThreshold;
+      nodes = nodes.filter(n => svc.attentionOf(n.id).score >= threshold);
+    }
+
     // Rarest-first (BitTorrent piece selection): push the least-replicated
     // items first so old-but-rare knowledge survives, not just the newest.
     if (this.swarm) nodes = this.swarm.sortRarestFirst(nodes);

@@ -54,6 +54,10 @@ export const DEFAULT_WEIGHTS: Record<AttentionKind, number> = {
 /** Default attention half-life: 24 hours. */
 export const DEFAULT_HALF_LIFE_MS = 24 * 60 * 60 * 1000;
 
+/** Reputation multiplier bounds. Default is 1.0 (neutral). */
+export const MIN_REPUTATION = 0.1;
+export const MAX_REPUTATION = 10.0;
+
 /** First link of every agent chain commits to this constant. */
 export const GENESIS = sha256('attention-genesis');
 
@@ -76,6 +80,26 @@ export interface ItemAttention {
   eventCount: number;
   lastEventHlc: string | null;
   byKind: Partial<Record<AttentionKind, number>>;
+}
+
+/** Reputation record for an agent — multiplier scales the weight of all their events. */
+export interface AgentReputation {
+  agent: string;
+  multiplier: number;            // [MIN_REPUTATION, MAX_REPUTATION]; default 1.0
+  setAt: string;                 // ISO wall clock when last set
+}
+
+/** Summary of the in-memory cross-agent attention graph. */
+export interface AttentionGraph {
+  agents: Array<{
+    agent: string;
+    chainLength: number;
+    totalWeight: number;
+    reputation: number;
+    distinctItems: number;       // number of distinct items this agent attended
+  }>;
+  items: ItemAttention[];
+  totalEvents: number;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -165,11 +189,49 @@ export class AttentionChainService {
   private chains = new Map<string, AttentionEvent[]>();   // agent → ordered chain
   private byItem = new Map<string, AttentionEvent[]>();   // itemId → events
   private seenHashes = new Set<string>();
+  private reputations = new Map<string, AgentReputation>();
 
   constructor(lightrag: LightRAGClient, opts: { keyring?: AgentKeyring; halfLifeMs?: number } = {}) {
     this.lightrag = lightrag;
     this.keyring = opts.keyring ?? new AgentKeyring();
     this.halfLifeMs = opts.halfLifeMs ?? DEFAULT_HALF_LIFE_MS;
+  }
+
+  // ── Reputation ───────────────────────────────────────────────────────────────
+
+  /**
+   * Set the reputation multiplier for an agent. Clamped to [MIN, MAX].
+   * A multiplier > 1 amplifies the agent's attention events (trusted expert);
+   * < 1 dampens them (untrusted source). Default is 1.0 (neutral).
+   */
+  setReputation(agent: string, multiplier: number): void {
+    const clamped = Math.max(MIN_REPUTATION, Math.min(MAX_REPUTATION, multiplier));
+    this.reputations.set(agent, { agent, multiplier: clamped, setAt: new Date().toISOString() });
+  }
+
+  getReputation(agent: string): number {
+    return this.reputations.get(agent)?.multiplier ?? 1.0;
+  }
+
+  getReputationRecord(agent: string): AgentReputation | null {
+    return this.reputations.get(agent) ?? null;
+  }
+
+  /**
+   * Snapshot of the full cross-agent attention graph (in-memory).
+   * Used by the REST endpoint and can feed graph-ML ranking.
+   */
+  getAttentionGraph(nowMs = Date.now()): AttentionGraph {
+    const agents = Array.from(this.chains.entries()).map(([agent, chain]) => ({
+      agent,
+      chainLength: chain.length,
+      totalWeight: chain.reduce((s, e) => s + e.weight, 0),
+      reputation: this.getReputation(agent),
+      distinctItems: new Set(chain.map(e => e.itemId)).size,
+    }));
+    const items = Array.from(this.byItem.keys()).map(id => this.attentionOf(id, nowMs));
+    const totalEvents = agents.reduce((s, a) => s + a.chainLength, 0);
+    return { agents, items, totalEvents };
   }
 
   getKeyring(): AgentKeyring {
@@ -187,10 +249,13 @@ export class AttentionChainService {
    * head, hash, sign, store.
    */
   record(params: { itemId: string; agent: string; kind: AttentionKind; weight?: number }): AttentionEvent {
-    const weight = params.weight ?? DEFAULT_WEIGHTS[params.kind];
-    if (!Number.isFinite(weight) || weight <= 0) {
+    const baseWeight = params.weight ?? DEFAULT_WEIGHTS[params.kind];
+    if (!Number.isFinite(baseWeight) || baseWeight <= 0) {
       throw new Error(`weight must be a positive number, got ${params.weight}`);
     }
+    // Scale by the agent's reputation multiplier: trusted validators carry more weight.
+    // The effective weight is stored in the signed event body, so peers can verify it.
+    const weight = baseWeight * this.getReputation(params.agent);
     this.hlcState = hlcNow(this.hlcState);
 
     const unsigned = {
@@ -303,6 +368,19 @@ export class AttentionChainService {
         content: `${event.agent} ${event.kind} ${event.itemId}`,
       });
       await this.lightrag.addEdge(id, 'ATTENTION_ON', event.itemId, { kind: event.kind });
+      // Cross-agent graph: Agent node + ATTENDS edge (enables graph-ML queries
+      // like "which agents cluster around this item" / "authority ranking").
+      const agentNodeId = `agent_${event.agent.replace(/[^A-Za-z0-9_]/g, '_')}`;
+      await this.lightrag.mergeTypedNode(agentNodeId, 'Agent', {
+        agent: event.agent,
+        reputation: this.getReputation(event.agent),
+        content: `Agent ${event.agent}`,
+      });
+      await this.lightrag.addEdge(agentNodeId, 'ATTENDS', event.itemId, {
+        kind: event.kind,
+        weight: event.weight,
+        hlc: event.hlc,
+      });
     } catch (e: any) {
       logger.warn(`attention persist: ${e.message}`);
     }
@@ -364,9 +442,35 @@ export function registerAttentionRoutes(app: Express, service: AttentionChainSer
       agent: req.params.agent,
       length: chain.length,
       head: chain.length > 0 ? chain[chain.length - 1].hash : GENESIS,
+      reputation: service.getReputation(req.params.agent),
       verification: verifyAgentChain(chain),
       chain,
     });
+  });
+
+  /** POST /api/attention/reputation — { agent, multiplier } */
+  app.post('/api/attention/reputation', (req: Request, res: Response): void => {
+    const { agent, multiplier } = req.body ?? {};
+    if (!agent || typeof multiplier !== 'number') {
+      res.status(400).json({ success: false, error: 'agent (string) and multiplier (number) required' }); return;
+    }
+    service.setReputation(agent, multiplier);
+    res.json({ success: true, reputation: service.getReputationRecord(agent) });
+  });
+
+  /** GET /api/attention/reputation/:agent — current multiplier for one agent */
+  app.get('/api/attention/reputation/:agent', (req: Request, res: Response): void => {
+    res.json({
+      success: true,
+      agent: req.params.agent,
+      multiplier: service.getReputation(req.params.agent),
+      record: service.getReputationRecord(req.params.agent),
+    });
+  });
+
+  /** GET /api/attention/graph — cross-agent attention graph snapshot */
+  app.get('/api/attention/graph', (req: Request, res: Response): void => {
+    res.json({ success: true, ...service.getAttentionGraph() });
   });
 
   logger.info('✓ Attention Chain API registered (/api/attention/*)');

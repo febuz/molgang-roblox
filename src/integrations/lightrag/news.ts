@@ -39,6 +39,7 @@ import { generateKeyPairSync, sign as edSign, verify as edVerify, createPublicKe
 import { v4 as uuid } from 'uuid';
 import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
+import type { AttentionChainService } from './attention-chain';
 import { HLCTimestamp, HLC_ZERO, hlcNow, hlcRecv, hlcToString, hlcFromString } from './hlc';
 import { computeGraphStateRoot, canonicalize, sha256 } from './graph-state-root';
 import logger from '../../utils/logger';
@@ -179,12 +180,18 @@ export class NewsService {
   private privateKey: KeyObject;
   private publicKeyPem: string;
   private items = new Map<string, NewsItem>();
+  private attentionService?: AttentionChainService;
 
-  constructor(lightrag: LightRAGClient, keypair?: { publicKeyPem: string; privateKey: KeyObject }) {
+  constructor(
+    lightrag: LightRAGClient,
+    keypair?: { publicKeyPem: string; privateKey: KeyObject },
+    opts?: { attentionService?: AttentionChainService },
+  ) {
     this.lightrag = lightrag;
     const kp = keypair ?? generateNewsKeypair();
     this.privateKey = kp.privateKey;
     this.publicKeyPem = kp.publicKeyPem;
+    this.attentionService = opts?.attentionService;
   }
 
   getPublicKeyPem(): string {
@@ -306,12 +313,25 @@ export class NewsService {
       .map(i => i.id);
   }
 
-  list(filter?: { claimer?: string; status?: NewsStatus; limit?: number }): NewsItem[] {
+  list(filter?: {
+    claimer?: string;
+    status?: NewsStatus;
+    limit?: number;
+    orderBy?: 'claimTime' | 'attention';
+  }): NewsItem[] {
     let all = Array.from(this.items.values());
     if (filter?.claimer) all = all.filter(i => i.claimer === filter.claimer);
     if (filter?.status) all = all.filter(i => i.status === filter.status);
-    // Sort by claim time — HLC strings sort lexicographically == chronologically
-    all.sort((a, b) => (a.claimTime < b.claimTime ? 1 : a.claimTime > b.claimTime ? -1 : 0));
+
+    if (filter?.orderBy === 'attention' && this.attentionService) {
+      // Rank by live decayed attention score — most-attended items surface first.
+      // Falls back to claimTime ordering when no attention service is wired.
+      const svc = this.attentionService;
+      all.sort((a, b) => svc.attentionOf(b.id).score - svc.attentionOf(a.id).score);
+    } else {
+      // Default: newest-first by HLC claim time (lexicographic == chronological)
+      all.sort((a, b) => (a.claimTime < b.claimTime ? 1 : a.claimTime > b.claimTime ? -1 : 0));
+    }
     return all.slice(0, filter?.limit ?? 50);
   }
 
@@ -367,12 +387,13 @@ export function registerNewsRoutes(
   });
 
   app.get('/api/news', (req: Request, res: Response): void => {
-    const { claimer, status } = req.query as Record<string, string>;
+    const { claimer, status, orderBy } = req.query as Record<string, string>;
     const limit = Math.min(parseInt(String(req.query.limit ?? '50'), 10) || 50, 200);
     const items = service.list({
       claimer: claimer || undefined,
       status: (status as NewsStatus) || undefined,
       limit,
+      orderBy: orderBy === 'attention' ? 'attention' : 'claimTime',
     });
     res.json({ success: true, count: items.length, items });
   });

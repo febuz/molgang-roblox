@@ -13,6 +13,8 @@ import {
   registerAttentionRoutes,
   DEFAULT_WEIGHTS,
   DEFAULT_HALF_LIFE_MS,
+  MIN_REPUTATION,
+  MAX_REPUTATION,
   GENESIS,
 } from '../../src/integrations/lightrag/attention-chain';
 import { LightRAGClient } from '../../src/integrations/lightrag/client';
@@ -420,5 +422,207 @@ describe('Attention REST API', () => {
     expect(first.status).toBe(201);
     const dup = await callRoute(app, 'post', '/api/attention/receive', e);
     expect(dup.status).toBe(409);
+  });
+
+  it('GET /api/attention/agent/:agent/chain includes the reputation multiplier', async () => {
+    await callRoute(app, 'post', '/api/attention/reputation', { agent: 'kai', multiplier: 3 });
+    await callRoute(app, 'post', '/api/attention', { itemId: 'a', agent: 'kai', kind: 'view' });
+    const { body } = await callRoute(app, 'get', '/api/attention/agent/kai/chain');
+    expect(body.reputation).toBe(3);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Reputation — weighted attention
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('Reputation — weighted attention', () => {
+  let client: LightRAGClient;
+  let service: AttentionChainService;
+
+  beforeEach(() => {
+    client = makeOfflineClient();
+    service = new AttentionChainService(client);
+  });
+
+  afterEach(async () => { await client.close(); });
+
+  it('default reputation is 1.0 (neutral — does not change weight)', () => {
+    expect(service.getReputation('kai')).toBe(1.0);
+    const e = service.record({ itemId: 'n', agent: 'kai', kind: 'validate' });
+    expect(e.weight).toBe(DEFAULT_WEIGHTS.validate);
+  });
+
+  it('setReputation scales the effective weight stored in the event', () => {
+    service.setReputation('expert', 2.0);
+    const e = service.record({ itemId: 'n', agent: 'expert', kind: 'validate' });
+    expect(e.weight).toBe(DEFAULT_WEIGHTS.validate * 2.0);
+  });
+
+  it('a lower reputation dampens the effective weight', () => {
+    service.setReputation('suspect', 0.5);
+    const e = service.record({ itemId: 'n', agent: 'suspect', kind: 'validate' });
+    expect(e.weight).toBe(DEFAULT_WEIGHTS.validate * 0.5);
+  });
+
+  it('clamps multiplier to MIN_REPUTATION from below', () => {
+    service.setReputation('low', 0.0001);
+    expect(service.getReputation('low')).toBe(MIN_REPUTATION);
+  });
+
+  it('clamps multiplier to MAX_REPUTATION from above', () => {
+    service.setReputation('high', 9999);
+    expect(service.getReputation('high')).toBe(MAX_REPUTATION);
+  });
+
+  it('getReputationRecord returns null before any reputation is set', () => {
+    expect(service.getReputationRecord('unknown')).toBeNull();
+  });
+
+  it('getReputationRecord returns the record after setReputation', () => {
+    service.setReputation('kai', 1.5);
+    const rec = service.getReputationRecord('kai');
+    expect(rec).not.toBeNull();
+    expect(rec!.agent).toBe('kai');
+    expect(rec!.multiplier).toBe(1.5);
+    expect(rec!.setAt).toBeTruthy();
+  });
+
+  it('chain signature still verifies with a reputation-scaled weight', () => {
+    service.setReputation('expert', 3.0);
+    service.record({ itemId: 'a', agent: 'expert', kind: 'view' });
+    service.record({ itemId: 'b', agent: 'expert', kind: 'anchor' });
+    const chain = service.getAgentChain('expert');
+    expect(verifyAgentChain(chain).valid).toBe(true);
+  });
+
+  it('high-reputation validate outweighs a default validate in attentionOf', () => {
+    const svcA = new AttentionChainService(makeOfflineClient());
+    const svcB = new AttentionChainService(makeOfflineClient());
+    svcB.setReputation('expert', 3.0);
+    const now = Date.now();
+    svcA.record({ itemId: 'news_1', agent: 'novice', kind: 'validate' });
+    svcB.record({ itemId: 'news_1', agent: 'expert', kind: 'validate' });
+    const scoreA = svcA.attentionOf('news_1', now).score;
+    const scoreB = svcB.attentionOf('news_1', now).score;
+    expect(scoreB).toBeGreaterThan(scoreA);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Attention graph
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('AttentionChainService.getAttentionGraph', () => {
+  let client: LightRAGClient;
+  let service: AttentionChainService;
+
+  beforeEach(() => {
+    client = makeOfflineClient();
+    service = new AttentionChainService(client);
+  });
+
+  afterEach(async () => { await client.close(); });
+
+  it('empty graph has no agents, no items, zero totalEvents', () => {
+    const g = service.getAttentionGraph();
+    expect(g.agents).toHaveLength(0);
+    expect(g.items).toHaveLength(0);
+    expect(g.totalEvents).toBe(0);
+  });
+
+  it('counts agents and their chain lengths correctly', () => {
+    service.record({ itemId: 'a', agent: 'kai', kind: 'view' });
+    service.record({ itemId: 'b', agent: 'kai', kind: 'share' });
+    service.record({ itemId: 'a', agent: 'zip', kind: 'validate' });
+    const g = service.getAttentionGraph();
+    expect(g.agents).toHaveLength(2);
+    const kai = g.agents.find(a => a.agent === 'kai')!;
+    expect(kai.chainLength).toBe(2);
+    expect(kai.distinctItems).toBe(2);
+    const zip = g.agents.find(a => a.agent === 'zip')!;
+    expect(zip.chainLength).toBe(1);
+    expect(zip.distinctItems).toBe(1);
+  });
+
+  it('items list includes all attended items with scores', () => {
+    service.record({ itemId: 'news_1', agent: 'kai', kind: 'anchor' });
+    service.record({ itemId: 'news_2', agent: 'zip', kind: 'view' });
+    const g = service.getAttentionGraph();
+    expect(g.items).toHaveLength(2);
+    expect(g.items.every(i => i.score > 0)).toBe(true);
+  });
+
+  it('totalEvents equals sum of all chain lengths', () => {
+    service.record({ itemId: 'a', agent: 'kai', kind: 'view' });
+    service.record({ itemId: 'b', agent: 'kai', kind: 'view' });
+    service.record({ itemId: 'a', agent: 'zip', kind: 'validate' });
+    const g = service.getAttentionGraph();
+    expect(g.totalEvents).toBe(3);
+  });
+
+  it('agent reputation is reflected in the graph', () => {
+    service.setReputation('expert', 2.5);
+    service.record({ itemId: 'a', agent: 'expert', kind: 'validate' });
+    const g = service.getAttentionGraph();
+    const expert = g.agents.find(a => a.agent === 'expert')!;
+    expect(expert.reputation).toBe(2.5);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Reputation + graph REST
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('Reputation and graph REST API', () => {
+  let client: LightRAGClient;
+  let service: AttentionChainService;
+  let app: express.Express;
+
+  beforeEach(() => {
+    client = makeOfflineClient();
+    service = new AttentionChainService(client);
+    app = express();
+    app.use(express.json());
+    registerAttentionRoutes(app, service);
+  });
+
+  afterEach(async () => { await client.close(); });
+
+  it('POST /api/attention/reputation sets the multiplier', async () => {
+    const { status, body } = await callRoute(app, 'post', '/api/attention/reputation', {
+      agent: 'kai', multiplier: 2,
+    });
+    expect(status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.reputation.multiplier).toBe(2);
+  });
+
+  it('POST /api/attention/reputation rejects missing fields', async () => {
+    const { status } = await callRoute(app, 'post', '/api/attention/reputation', { agent: 'kai' });
+    expect(status).toBe(400);
+  });
+
+  it('GET /api/attention/reputation/:agent returns 1.0 when unset', async () => {
+    const { body } = await callRoute(app, 'get', '/api/attention/reputation/unknown');
+    expect(body.multiplier).toBe(1.0);
+    expect(body.record).toBeNull();
+  });
+
+  it('GET /api/attention/reputation/:agent returns the set value', async () => {
+    await callRoute(app, 'post', '/api/attention/reputation', { agent: 'kai', multiplier: 3 });
+    const { body } = await callRoute(app, 'get', '/api/attention/reputation/kai');
+    expect(body.multiplier).toBe(3);
+    expect(body.record).not.toBeNull();
+  });
+
+  it('GET /api/attention/graph returns agents, items, totalEvents', async () => {
+    await callRoute(app, 'post', '/api/attention', { itemId: 'a', agent: 'kai', kind: 'anchor' });
+    await callRoute(app, 'post', '/api/attention', { itemId: 'b', agent: 'zip', kind: 'view' });
+    const { body } = await callRoute(app, 'get', '/api/attention/graph');
+    expect(body.success).toBe(true);
+    expect(body.agents).toHaveLength(2);
+    expect(body.items).toHaveLength(2);
+    expect(body.totalEvents).toBe(2);
   });
 });

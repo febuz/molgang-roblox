@@ -427,3 +427,57 @@ describe('News REST API', () => {
     expect(body.publicKeyPem).toContain('BEGIN PUBLIC KEY');
   });
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Attention-ordered news feed
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('NewsService orderBy attention', () => {
+  it('lists items by descending attention score when orderBy=attention', async () => {
+    const { AttentionChainService } = await import('../../src/integrations/lightrag/attention-chain');
+    const client = makeOfflineClient();
+    const attentionService = new AttentionChainService(client);
+    const service = new NewsService(client, undefined, { attentionService });
+
+    const itemA = await service.publish({ ...CLAIM, claimer: 'alice', claimedFact: 'fact A' });
+    const itemB = await service.publish({ ...CLAIM, claimer: 'bob',   claimedFact: 'fact B' });
+    const itemC = await service.publish({ ...CLAIM, claimer: 'carol', claimedFact: 'fact C' });
+
+    // Give itemC the highest attention, itemA the lowest
+    attentionService.record({ itemId: itemC.id, agent: 'kai', kind: 'anchor' });   // weight 8
+    attentionService.record({ itemId: itemB.id, agent: 'kai', kind: 'validate' }); // weight 5
+    attentionService.record({ itemId: itemA.id, agent: 'kai', kind: 'view' });     // weight 1
+
+    const byAttention = service.list({ orderBy: 'attention' });
+    expect(byAttention.map(i => i.id)).toEqual([itemC.id, itemB.id, itemA.id]);
+
+    await client.close();
+  });
+
+  it('falls back to claimTime ordering when no attentionService is wired', async () => {
+    const client = makeOfflineClient();
+    const service = new NewsService(client); // no attentionService
+    const a = await service.publish({ ...CLAIM, claimer: 'a', claimedFact: 'first' });
+    const b = await service.publish({ ...CLAIM, claimer: 'b', claimedFact: 'second' });
+    // orderBy=attention but no service → falls back to claimTime (newest first)
+    const items = service.list({ orderBy: 'attention' });
+    expect(items[0].id).toBe(b.id); // newest first (b published after a)
+    await client.close();
+  });
+
+  it('GET /api/news?orderBy=attention is accepted by the REST route', async () => {
+    const { AttentionChainService } = await import('../../src/integrations/lightrag/attention-chain');
+    const client = makeOfflineClient();
+    const attentionService = new AttentionChainService(client);
+    const service = new NewsService(client, undefined, { attentionService });
+    const app2 = express();
+    app2.use(express.json());
+    registerNewsRoutes(app2, service);
+    await service.publish({ ...CLAIM, claimedFact: 'hot news', claimer: 'reporter' });
+    const { status, body } = await callRoute(app2, 'get', '/api/news?orderBy=attention');
+    expect(status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.items).toHaveLength(1);
+    await client.close();
+  });
+});

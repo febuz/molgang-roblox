@@ -100,3 +100,41 @@ describe('P2PGossip.stop', () => {
     await client.close();
   });
 });
+
+describe('P2PGossip attention-gated options', () => {
+  it('accepts attentionService + attentionThreshold without error', async () => {
+    const { AttentionChainService } = await import('../../src/integrations/lightrag/attention-chain');
+    const client = makeOfflineClient();
+    const attentionService = new AttentionChainService(client);
+    const gossip = new P2PGossip(client, ['http://peer:3100'], '', undefined, {
+      attentionService,
+      attentionThreshold: 2.5,
+    });
+    expect(gossip.getStats().peersConfigured).toBe(1);
+    await client.close();
+  });
+
+  it('zero threshold means no items filtered (all pass)', async () => {
+    const { AttentionChainService } = await import('../../src/integrations/lightrag/attention-chain');
+    const client = makeOfflineClient();
+    const attentionService = new AttentionChainService(client);
+    const gossip = new P2PGossip(client, [], '', undefined, {
+      attentionService,
+      attentionThreshold: 0,
+    });
+    gossip.recordLocalNode('item-1', 'NewsItem', { content: 'test' });
+    // threshold=0: all items in the delta are eligible (nothing filtered out)
+    const delta = (gossip as any).localDelta as any[];
+    expect(delta).toHaveLength(1);
+    await client.close();
+  });
+
+  it('attention service can be omitted (opts is optional)', async () => {
+    const client = makeOfflineClient();
+    // no opts at all — fully backward-compatible
+    const gossip = new P2PGossip(client, ['http://peer:3100']);
+    gossip.recordLocalNode('x', 'Node', {});
+    expect((gossip as any).localDelta).toHaveLength(1);
+    await client.close();
+  });
+});
