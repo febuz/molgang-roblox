@@ -39,6 +39,7 @@ import { ChainStore, defaultSnapshotPath } from './integrations/lightrag/chain-s
 import { UserApiService, registerUserRoutes } from './integrations/lightrag/user-api';
 import { FeedService, registerFeedRoutes } from './integrations/lightrag/feed-api';
 import { PqWalletService, registerPqRoutes } from './integrations/lightrag/wallet-vault';
+import { DemocraticElectionService, registerElectionRoutes } from './integrations/lightrag/sovereign-elections';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2309,6 +2310,13 @@ async function initialize() {
     //   See docs/POST-QUANTUM-WALLET.md for the threat analysis.
     const pqWallet = new PqWalletService(identityService, valueChain);
     registerPqRoutes(app, pqWallet);
+
+    // 1c-vi. Democratic elections — sovereign DID-bound ballots with Merkle-
+    //   certified results, D'Hondt seat allocation, optional PQ signatures,
+    //   and a full ISO 3166-1 country registry. See docs/README.md §P2P.
+    const democraticElections = new DemocraticElectionService(identityService);
+    registerElectionRoutes(app, democraticElections);
+    logger.info('✓ Democratic elections ready (/api/elections/*, 195 countries)');
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);

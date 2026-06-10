@@ -471,6 +471,19 @@ registered from `src/integrations/lightrag/`.
 - **POST** `/api/sovereign-votes/proposals/:id/vote` — signed vote
 - **POST** `/api/sovereign-votes/proposals/:id/close` — close + Merkle-certified tally
 
+### Democratic elections (`sovereign-elections.ts`)
+- **GET** `/api/elections/countries` — full ISO 3166-1 registry (195 countries, iso2/iso3/numeric/name/region)
+- **GET** `/api/elections/countries/:iso/config` — national election system configuration (voting system, seats, threshold, constituency count)
+- **POST** `/api/elections` — create election `{country, electionType, votingSystem, ballotFormat, constituencies, candidates}`
+- **GET** `/api/elections` — list elections
+- **GET** `/api/elections/:id` — election detail + live tally (while open) + turnout + registered voter count
+- **POST** `/api/elections/:id/open` — open voting (draft → open)
+- **POST** `/api/elections/:id/register` — `{did}` voter registration (DID must exist in identity service)
+- **POST** `/api/elections/:id/vote` — `{constituencyId, voter, selection, publicKeyPem, signature[, pqRoot, pqSignature]}` cast DID-signed ballot; optional PQ signature for quantum-safe evidence
+- **POST** `/api/elections/:id/close` — close election + certify results (D'Hondt/Sainte-Laguë/FPTP seat allocation + Merkle root over all ballots)
+- **GET** `/api/elections/:id/results` — certified `ElectionCertificate` with per-constituency results, seat allocations, and Merkle-rooted audit trail
+- **GET** `/api/elections/:id/ballots/:ballotId/verify` — verify individual ballot Ed25519 + optional PQ signatures
+
 ---
 
 ## Response Format

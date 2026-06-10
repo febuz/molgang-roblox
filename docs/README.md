@@ -41,6 +41,7 @@ justified it.
 |--------------|---------------------------|
 | [P2P-THREAT-MODEL.md](P2P-THREAT-MODEL.md) | `src/integrations/lightrag/consensus.ts`, `consensus-network.ts`, `sparse-merkle.ts`, `chain-store.ts`; property fuzzing in `tests/unit/fuzz.properties.test.ts` |
 | [POST-QUANTUM-WALLET.md](POST-QUANTUM-WALLET.md) | `src/integrations/lightrag/pq-crypto.ts` (W-OTS+/Merkle hash-based signatures), `wallet-vault.ts` (AES-256-GCM vault + PQ wallet proofs); tests in `tests/unit/pqCrypto.test.ts`, `walletVault.test.ts` |
+| [P2P-THREAT-MODEL.md](P2P-THREAT-MODEL.md) §3.3 + §4.2 | `src/integrations/lightrag/sovereign-elections.ts` (ISO 3166-1 country registry, D'Hondt/Sainte-Laguë/FPTP seat allocation, DID voter registration, optional PQ ballots, Merkle-certified results, 32 pre-configured national systems); tests in `tests/unit/sovereignElections.test.ts` |
 | [NEWSGROUP-FRONTEND-LESSONS.md](NEWSGROUP-FRONTEND-LESSONS.md) | `public/newsgroup.html`; design-rule contract tests in `tests/unit/newsgroupFrontend.test.ts` |
 | [ID_COLLISION_AUDIT.md](ID_COLLISION_AUDIT.md) | `Date.now()`-only ID fixes applied in four modules (audit lists them) |
 | [AGENT-INFRA-RESEARCH.md](AGENT-INFRA-RESEARCH.md) | Infrastructure decisions: what was adopted, what was deliberately rejected (gitnexus, Symphony) and why |
