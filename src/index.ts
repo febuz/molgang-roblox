@@ -25,6 +25,9 @@ import { registerMonitorRoutes } from './integrations/lightrag/p2p-monitor';
 import { registerQueryRoutes as registerGraphQueryRoutes } from './integrations/lightrag/graph-query';
 import { registerProvenanceRoutes } from './integrations/lightrag/provenance';
 import { registerNFCRoutes } from './integrations/lightrag/nfc-api';
+import { NewsService, registerNewsRoutes } from './integrations/lightrag/news';
+import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
+import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -2142,6 +2145,26 @@ async function initialize() {
     registerProvenanceRoutes(app, lightrag);
     registerNFCRoutes(app, lightrag);
 
+    // 1c-ii. Chain anchoring + OpenTimestamps + P2P news (whitepaper stack).
+    //   News flow: instant publish (unverified) → P2P gossip → anchor.
+    //   Anchors run dry-run until a signer/contract is configured via env.
+    const anchorService = new AnchorService(lightrag, defaultAnchorTargets());
+    if (process.env.ANCHOR_SCHEDULER === 'true') anchorService.start();
+    registerAnchorRoutes(app, anchorService);
+    const otsService = new OtsService(lightrag);
+    registerOtsRoutes(app, otsService);
+    const newsService = new NewsService(lightrag);
+    registerNewsRoutes(app, newsService, async () => {
+      // Prefer free OTS aggregation; fall back to dry-run chain anchors
+      try {
+        const stamp = await otsService.stampCurrentRoot();
+        if (stamp.status !== 'failed') return { anchorId: stamp.id };
+      } catch { /* calendars unreachable — fall through to chain anchor */ }
+      const records = await anchorService.anchorAll();
+      return { anchorId: records[0]?.id ?? `local_${Date.now()}` };
+    });
+    logger.info('✓ News + Anchor + OTS stack ready (instant-publish → p2p → anchor)');
+
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
     p2pSync.setFactValidator(factValidator); // wire so remote votes are applied locally
@@ -2223,6 +2246,8 @@ async function initialize() {
     (app as any).locals.agentBridge = agentBridge;
     (app as any).locals.inferenceEngine = inferenceEngine;
     (app as any).locals.gossip = gossip;
+    (app as any).locals.newsService = newsService;
+    (app as any).locals.anchorService = anchorService;
 
     // 2. Initialize Kafka (message orchestration) - DISABLED for now
     logger.info('🔄 Kafka disabled (development mode) - running single-node');
