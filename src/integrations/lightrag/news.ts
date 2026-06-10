@@ -201,6 +201,7 @@ export class NewsService {
   private publicKeyPem: string;
   private items = new Map<string, NewsItem>();
   private attentionService?: AttentionChainService;
+  private onPublish?: (item: NewsItem) => void;
 
   constructor(
     lightrag: LightRAGClient,
@@ -216,6 +217,13 @@ export class NewsService {
 
   getPublicKeyPem(): string {
     return this.publicKeyPem;
+  }
+
+  /** Late binding for the publish hook (services are constructed in dependency
+   *  order) — same pattern as ValueChainService.setOnTransfer. The hook fires
+   *  for locally published items; failures in the hook never block publish. */
+  setOnPublish(hook: (item: NewsItem) => void): void {
+    this.onPublish = hook;
   }
 
   /** Current HLC state (advances on publish and on receive). */
@@ -272,6 +280,9 @@ export class NewsService {
     this.items.set(item.id, item);
     // Fire-and-forget persistence — publication must not wait for Neo4j
     void this.persistItem(item);
+    if (this.onPublish) {
+      try { this.onPublish(item); } catch (e: any) { logger.warn(`news onPublish hook: ${e.message}`); }
+    }
     logger.info(`📰 Claim published (unverified): "${item.claimedFact.substring(0, 60)}" by ${item.claimer} @ ${item.claimTime}`);
     return item;
   }

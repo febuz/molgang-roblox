@@ -40,6 +40,10 @@ import { UserApiService, registerUserRoutes } from './integrations/lightrag/user
 import { FeedService, registerFeedRoutes } from './integrations/lightrag/feed-api';
 import { PqWalletService, registerPqRoutes } from './integrations/lightrag/wallet-vault';
 import { DemocraticElectionService, registerElectionRoutes } from './integrations/lightrag/sovereign-elections';
+import { GroupVotingService, registerGroupVotingRoutes } from './integrations/lightrag/group-voting';
+import { GroupEventBus } from './integrations/lightrag/group-events';
+import { FactMatrixService, registerFactMatrixRoutes } from './integrations/lightrag/fact-matrix';
+import { mqttClientFromEnv } from './integrations/mqtt/mqtt-client';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2317,6 +2321,35 @@ async function initialize() {
     const democraticElections = new DemocraticElectionService(identityService);
     registerElectionRoutes(app, democraticElections);
     logger.info('✓ Democratic elections ready (/api/elections/*, 195 countries)');
+
+    // 1c-vii. Group voting + fact matrix + MQTT/Kafka fan-out.
+    //   MQTT is opt-in via MQTT_BROKER_URL (mqtt://host:port); Kafka rides
+    //   the shared best-effort producer (topic group.events). The fact
+    //   matrix is the unified 888 888 888-dimension sparse coordinate space
+    //   for transactions (price+volume), news, and votes.
+    const mqttBridge = mqttClientFromEnv(`virtualpc-${process.pid}`);
+    if (mqttBridge) mqttBridge.connect();
+    const groupEventBus = new GroupEventBus(mqttBridge);
+    const factMatrix = new FactMatrixService(groupEventBus);
+    registerFactMatrixRoutes(app, factMatrix);
+    const groupVoting = new GroupVotingService(identityService, {
+      valueChain,
+      events: groupEventBus,
+      matrix: factMatrix,
+    });
+    registerGroupVotingRoutes(app, groupVoting, groupEventBus);
+    // News publications mirror into the matrix (news region) automatically.
+    newsService.setOnPublish((item) => {
+      try {
+        factMatrix.ingestNews({
+          newsId: item.id, claimer: item.claimer, source: item.source,
+          semanticCoordinates: item.coordinates,
+        });
+      } catch { /* matrix full or invalid coords — news itself is unaffected */ }
+    });
+    process.once('SIGTERM', () => mqttBridge?.close());
+    process.once('SIGINT', () => mqttBridge?.close());
+    logger.info(`✓ Group voting + fact matrix ready (/api/groups/*, /api/matrix/*; MQTT ${mqttBridge ? 'on' : 'off'})`);
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);

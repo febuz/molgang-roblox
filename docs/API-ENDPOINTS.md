@@ -471,6 +471,31 @@ registered from `src/integrations/lightrag/`.
 - **POST** `/api/sovereign-votes/proposals/:id/vote` — signed vote
 - **POST** `/api/sovereign-votes/proposals/:id/close` — close + Merkle-certified tally
 
+### Group voting (`group-voting.ts`)
+- **POST** `/api/groups` — `{name, description?, access: open|closed, owner}` create group (owner auto-member)
+- **GET** `/api/groups` — list groups + event-bus stats (MQTT/Kafka fan-out counters)
+- **GET** `/api/groups/:id` — group + members + proposals
+- **POST** `/api/groups/:id/join` — `{did, publicKeyPem, signature}` DID-signed self-join (open groups; signature over the group-bound join payload)
+- **POST** `/api/groups/:id/members` — `{owner, member}` owner adds a member (closed groups)
+- **POST** `/api/groups/:id/leave` — `{did}` leave (owner cannot leave)
+- **POST** `/api/groups/:id/proposals` — `{question, options, createdBy, mode: identity|stake}` members only
+- **GET** `/api/groups/:id/proposals/:pid` — proposal + live tally + certificate
+- **POST** `/api/groups/:id/proposals/:pid/vote` — `{voter, option}` (node-held) or `{ballot}` (externally signed); weight always server-derived; one ballot per member
+- **POST** `/api/groups/:id/proposals/:pid/close` — close + Merkle-certified tally
+
+Every lifecycle event fans out to MQTT (`vpc/groups/<id>/<event>`, opt-in via `MQTT_BROKER_URL`) and Kafka (topic `group.events`, best-effort shared producer). Accepted ballots are mirrored into the fact matrix vote region.
+
+### Fact matrix (`fact-matrix.ts`) — the 888 888 888-dimension sparse fact space
+- **GET** `/api/matrix/stats` — rows, non-zero entries, per-kind counts, Merkle matrix root, region map
+- **POST** `/api/matrix/transactions` — `{txId, asset, price, volume, from?, to?}` ingest market transaction (price/volume/notional on reserved axes)
+- **POST** `/api/matrix/news` — `{newsId, claimer, source, semanticCoordinates?}` ingest news fact
+- **POST** `/api/matrix/votes` — `{proposalId, voter, option, weight?}` ingest vote fact
+- **GET** `/api/matrix/rows?kind=transaction|news|vote&limit=N` — list rows
+- **GET** `/api/matrix/rows/:id` — one row (sparse coordinates + row hash)
+- **GET** `/api/matrix/similar/:id?k=10&allKinds=1` — cosine nearest neighbours
+
+Dimension space partition: `[0, 800M)` semantic · `[800M, 830M)` transaction · `[830M, 860M)` news · `[860M, 888 888 888)` vote. Categorical keys map to deterministic axes via `sha256("VPC-DIM" ‖ region ‖ key)`; numeric measurements (price, volume, notional, vote weight) live on reserved axes. News publications are auto-ingested via the news service publish hook.
+
 ### Democratic elections (`sovereign-elections.ts`)
 - **GET** `/api/elections/countries` — full ISO 3166-1 registry (195 countries, iso2/iso3/numeric/name/region)
 - **GET** `/api/elections/countries/:iso/config` — national election system configuration (voting system, seats, threshold, constituency count)
