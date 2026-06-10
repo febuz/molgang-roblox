@@ -148,6 +148,8 @@ export class GroupVotingService {
   private ballots = new Map<string, GroupBallot[]>();        // proposalId → ballots
   private voted = new Map<string, Set<string>>();            // proposalId → DIDs voted
   private certificates = new Map<string, GroupVotingCertificate>();
+  /** Fires after a proposal closes — backlog bridge + persistence hook. */
+  private onClose?: (cert: GroupVotingCertificate) => void;
 
   constructor(
     private readonly identity: SovereignIdentityService,
@@ -157,6 +159,11 @@ export class GroupVotingService {
       matrix?: FactMatrixService;
     } = {},
   ) {}
+
+  /** Late binding for the close hook (services are constructed in dependency order). */
+  setOnClose(hook: (cert: GroupVotingCertificate) => void): void {
+    this.onClose = hook;
+  }
 
   // ── Groups ──────────────────────────────────────────────────────────────────
 
@@ -416,6 +423,10 @@ export class GroupVotingService {
     this.opts.events?.emit('group.proposal.closed', {
       proposalId, winner: tallyResult.winner, ballots: tallyResult.ballots, certHash: cert.certHash,
     }, proposal.groupId);
+    if (this.onClose) {
+      try { this.onClose(cert); }
+      catch (e: any) { logger.warn(`group-voting onClose hook failed: ${e.message}`); }
+    }
     logger.info(`👥🗳️  Group proposal closed: winner=${tallyResult.winner ?? 'tie'} (${tallyResult.ballots} ballots)`);
     return cert;
   }

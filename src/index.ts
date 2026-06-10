@@ -2317,6 +2317,9 @@ async function initialize() {
     //   See docs/POST-QUANTUM-WALLET.md for the threat analysis.
     const pqWallet = new PqWalletService(identityService, valueChain);
     registerPqRoutes(app, pqWallet);
+    // Phase-2 hybrid transfers: a carried pqRoot must be the sender's
+    // enrolled key (POST-QUANTUM-WALLET.md §6, binding check).
+    valueChain.setPqRootResolver((did) => pqWallet.getEnrolledRoot(did));
 
     // 1c-vi. Democratic elections — sovereign DID-bound ballots with Merkle-
     //   certified results, D'Hondt seat allocation, optional PQ signatures,
@@ -2368,9 +2371,14 @@ async function initialize() {
       logger.info('✓ GitLab Issues sync ready (/api/hub/sync/gitlab, /api/hub/webhooks/gitlab)');
     }
     logger.info('✓ Contributor backlog hub ready (/api/hub/backlog/*)');
-    // Proposal closure propagates to linked backlog items.
-    // Wire after groupVoting is created (groupVoting is defined above this block).
-    void ghSync; void glSync;  // suppress unused-variable lint
+    // Graph-as-hub bridge: closing a group proposal closes every backlog
+    // item that links it via graphRefs (kind 'proposal').
+    groupVoting.setOnClose((cert) => {
+      const closed = backlogService.closeByProposal(cert.proposalId);
+      if (closed.length > 0) {
+        logger.info(`backlog: proposal ${cert.proposalId} closed ${closed.length} linked item(s)`);
+      }
+    });
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);

@@ -43,8 +43,8 @@ import {
 } from './pq-crypto';
 import { verifySMTProof, SMTProof } from './sparse-merkle';
 import type { SovereignIdentityService } from './identity';
-import type { ValueChainService } from './value-chain';
-import { unitsToTokenString, accountLeafValue } from './value-chain';
+import type { ValueChainService, Transfer } from './value-chain';
+import { unitsToTokenString, accountLeafValue, tokensToUnits } from './value-chain';
 import { canonicalize, sha256 } from './graph-state-root';
 import logger from '../../utils/logger';
 
@@ -254,6 +254,26 @@ export class PqWalletService {
     return { payload, smtProof: proof, pqRoot: e.signer.root, pqSignature };
   }
 
+  /** The enrolled PQ root for a DID, if any — the value-chain binding check
+   *  resolves through this (valueChain.setPqRootResolver). */
+  getEnrolledRoot(did: string): string | undefined {
+    return this.enrollments.get(did)?.signer.root;
+  }
+
+  /**
+   * Phase-2 hybrid transfer (POST-QUANTUM-WALLET.md §6): node-held Ed25519
+   * signature PLUS a hash-based co-signature over the same payload bytes.
+   * Consumes one one-time signature index.
+   */
+  transferHybrid(handle: string, toDid: string, amountUnits: bigint | string, memo = ''): Transfer {
+    const did = this.resolveDid(handle);
+    const e = this.enrollments.get(did);
+    if (!e) throw new Error('not PQ-enrolled — POST /pq/enroll first');
+    return this.valueChain.transfer(did, toDid, amountUnits, memo, {
+      pqCoSign: (payload: string) => ({ pqRoot: e.signer.root, pqSignature: e.signer.sign(payload) }),
+    });
+  }
+
   /** Encrypted vault export — the user takes custody of the PQ key. */
   exportVault(handle: string, passphrase: string): EncryptedVault {
     const did = this.resolveDid(handle);
@@ -310,6 +330,25 @@ export function registerPqRoutes(app: Express, svc: PqWalletService): void {
     }
     const result = verifyWalletProof(proof);
     res.status(result.valid ? 200 : 422).json({ success: result.valid, ...result });
+  });
+
+  app.post('/api/users/:handle/pq/transfer', (req: Request, res: Response): void => {
+    const { to, units, tokens, memo } = req.body ?? {};
+    if (!to) { res.status(400).json({ success: false, error: 'to DID required' }); return; }
+    let amountUnits: bigint | string;
+    try {
+      if (units !== undefined) amountUnits = String(units);
+      else if (typeof tokens === 'number') amountUnits = tokensToUnits(tokens);
+      else { res.status(400).json({ success: false, error: 'units or tokens required' }); return; }
+    } catch (e: any) {
+      res.status(422).json({ success: false, error: e.message }); return;
+    }
+    try {
+      const tx = svc.transferHybrid(req.params.handle, String(to), amountUnits, memo ? String(memo) : '');
+      res.status(201).json({ success: true, transfer: tx });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
   });
 
   app.post('/api/users/:handle/vault/export', (req: Request, res: Response): void => {

@@ -463,6 +463,7 @@ registered from `src/integrations/lightrag/`.
 - **GET** `/api/users/:handle/pq/status` — PQ root + remaining one-time signatures
 - **POST** `/api/users/:handle/pq/prove` — quantum-safe wallet proof: account state + SMT proof + hash-based signature (no elliptic-curve assumption anywhere)
 - **POST** `/api/pq/verify` — stateless proof verification for third parties
+- **POST** `/api/users/:handle/pq/transfer` — `{to, units|tokens, memo?}` phase-2 hybrid transfer: Ed25519 + hash-based co-signature over the same payload bytes (consumes one one-time signature index); the carried `pqRoot` must match the sender's enrolled key
 - **POST** `/api/users/:handle/vault/export` — `{passphrase}` → AES-256-GCM encrypted vault (scrypt KDF); see `docs/POST-QUANTUM-WALLET.md`
 
 ### Sovereign voting (`sovereign-voting.ts`)
@@ -490,11 +491,29 @@ Every lifecycle event fans out to MQTT (`vpc/groups/<id>/<event>`, opt-in via `M
 - **POST** `/api/matrix/transactions` — `{txId, asset, price, volume, from?, to?}` ingest market transaction (price/volume/notional on reserved axes)
 - **POST** `/api/matrix/news` — `{newsId, claimer, source, semanticCoordinates?}` ingest news fact
 - **POST** `/api/matrix/votes` — `{proposalId, voter, option, weight?}` ingest vote fact
-- **GET** `/api/matrix/rows?kind=transaction|news|vote&limit=N` — list rows
+- **GET** `/api/matrix/rows?kind=transaction|news|vote|backlog&limit=N` — list rows
 - **GET** `/api/matrix/rows/:id` — one row (sparse coordinates + row hash)
 - **GET** `/api/matrix/similar/:id?k=10&allKinds=1` — cosine nearest neighbours
 
-Dimension space partition: `[0, 800M)` semantic · `[800M, 830M)` transaction · `[830M, 860M)` news · `[860M, 888 888 888)` vote. Categorical keys map to deterministic axes via `sha256("VPC-DIM" ‖ region ‖ key)`; numeric measurements (price, volume, notional, vote weight) live on reserved axes. News publications are auto-ingested via the news service publish hook.
+Dimension space partition: `[0, 800M)` semantic · `[800M, 830M)` transaction · `[830M, 860M)` news · `[860M, 888 888 888)` vote. Categorical keys map to deterministic axes via `sha256("VPC-DIM" ‖ region ‖ key)`; numeric measurements (price, volume, notional, vote weight) live on reserved axes. News publications and backlog items are auto-ingested via service hooks.
+
+### Contributor backlog hub (`backlog.ts` + `github-sync.ts` + `gitlab-sync.ts`)
+
+The knowledge graph is the authoritative backlog store; GitHub and GitLab Issues are downstream mirrors kept in sync bidirectionally.
+
+- **POST** `/api/hub/backlog` — `{title, body?, priority?, labels?, assignee?}` create item
+- **GET** `/api/hub/backlog?status=&priority=&label=&provider=&limit=&offset=` — list/filter
+- **GET** `/api/hub/backlog/stats` — counts by status/priority/provider + matrix row count
+- **GET** `/api/hub/backlog/:id` — item + fact-matrix k-NN related items
+- **PATCH** `/api/hub/backlog/:id` — update title/body/priority/labels/assignee/status
+- **POST** `/api/hub/backlog/:id/close` — close (idempotent)
+- **POST** `/api/hub/backlog/:id/link` — `{kind: news|proposal|transaction|group|commit, refId}` add graph cross-reference; closing a linked group proposal auto-closes the item
+- **POST** `/api/hub/sync/github` — pull GitHub Issues → backlog (requires `GITHUB_TOKEN`/`GITHUB_OWNER`/`GITHUB_REPO`)
+- **POST** `/api/hub/sync/github/push` — push unsynced local items → GitHub Issues
+- **POST** `/api/hub/webhooks/github` — GitHub issue webhook receiver (HMAC-SHA256 verified via `GITHUB_WEBHOOK_SECRET`)
+- **POST** `/api/hub/sync/gitlab` — pull GitLab Issues → backlog (requires `GITLAB_TOKEN`/`GITLAB_PROJECT_ID`)
+- **POST** `/api/hub/sync/gitlab/push` — push unsynced local items → GitLab Issues
+- **POST** `/api/hub/webhooks/gitlab` — GitLab issue webhook receiver (token verified via `GITLAB_WEBHOOK_SECRET`)
 
 ### Democratic elections (`sovereign-elections.ts`)
 - **GET** `/api/elections/countries` — full ISO 3166-1 registry (195 countries, iso2/iso3/numeric/name/region)

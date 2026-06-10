@@ -59,6 +59,7 @@ import { didFromPublicKey } from './identity';
 import { canonicalize, sha256, buildMerkleRoot } from './graph-state-root';
 import { constantTimeEqual } from './constant-time';
 import { SparseMerkleTree, smtKey, type SMTProof } from './sparse-merkle';
+import { verifyHbsSignature, type HbsSignature } from './pq-crypto';
 import logger from '../../utils/logger';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -151,7 +152,18 @@ export interface Transfer {
   ts: string;                   // ISO wall clock (informational, NOT signed)
   publicKeyPem: string;         // sender's key — must derive the sender DID
   signature: string;            // base64 Ed25519 over transferPayload
+  /**
+   * HYBRID PQ CO-SIGNATURE (POST-QUANTUM-WALLET.md §6, phase 2). Optional
+   * hash-based co-signature over the SAME transferPayload bytes. When present
+   * BOTH signatures must verify — an attacker must break Ed25519 AND the
+   * hash-based scheme. Old transfers without it remain valid.
+   */
+  pqRoot?: string;              // hex W-OTS+/Merkle public key
+  pqSignature?: HbsSignature;   // hash-based signature over transferPayload
 }
+
+/** Phase-2 enforcement levels for PQ co-signatures (rollout: optional → require-enrolled). */
+export type PqTransferPolicy = 'optional' | 'require-enrolled';
 
 export interface Account {
   did: string;
@@ -215,6 +227,16 @@ export function verifyTransfer(t: Transfer): { valid: boolean; reason?: string }
   if (didFromPublicKey(t.publicKeyPem ?? '') !== t.from) {
     return { valid: false, reason: 'sender did does not derive from the signing key' };
   }
+  // Hybrid PQ co-signature: when carried, it must verify under the carried
+  // root — partial PQ data (one field without the other) is malformed.
+  if (t.pqSignature !== undefined || t.pqRoot !== undefined) {
+    if (!t.pqSignature || !t.pqRoot) {
+      return { valid: false, reason: 'pqRoot and pqSignature must both be present' };
+    }
+    if (!verifyHbsSignature(transferPayload(t), t.pqSignature, t.pqRoot)) {
+      return { valid: false, reason: 'post-quantum co-signature invalid' };
+    }
+  }
   try {
     const key = createPublicKey(t.publicKeyPem);
     const ok = edVerify(null, Buffer.from(transferPayload(t), 'utf8'), key, Buffer.from(t.signature, 'base64'));
@@ -243,14 +265,25 @@ export class ValueChainService {
 
   /** Fires for every applied transfer (mint or signed) — consensus + persistence hook. */
   private onTransfer?: (tx: Transfer) => void;
+  /** Resolves a DID's enrolled PQ root (wired to PqWalletService). */
+  private pqRootResolver?: (did: string) => string | undefined;
+  private pqPolicy: PqTransferPolicy;
+  /** True while restoreState replays the log — binding checks are skipped. */
+  private restoring = false;
 
   constructor(
     lightrag: LightRAGClient,
-    opts: { identity?: SovereignIdentityService; maxTransfers?: number; onTransfer?: (tx: Transfer) => void } = {},
+    opts: {
+      identity?: SovereignIdentityService;
+      maxTransfers?: number;
+      onTransfer?: (tx: Transfer) => void;
+      pqPolicy?: PqTransferPolicy;
+    } = {},
   ) {
     this.lightrag = lightrag;
     this.identity = opts.identity;
     this.onTransfer = opts.onTransfer;
+    this.pqPolicy = opts.pqPolicy ?? 'optional';
     // DoS bound: the in-memory tx log is capped; past the cap the ledger
     // refuses new transfers until history is archived externally.
     this.maxTransfers = opts.maxTransfers ?? 1_000_000;
@@ -259,6 +292,24 @@ export class ValueChainService {
   /** Late binding for the transfer hook (services are constructed in dependency order). */
   setOnTransfer(hook: (tx: Transfer) => void): void {
     this.onTransfer = hook;
+  }
+
+  /**
+   * Late binding for the PQ root resolver (phase 2 hybrid transfers). When
+   * wired, a transfer's carried pqRoot must match the sender's enrolled root,
+   * and under 'require-enrolled' policy an enrolled sender may no longer
+   * submit classical-only transfers.
+   */
+  setPqRootResolver(resolver: (did: string) => string | undefined): void {
+    this.pqRootResolver = resolver;
+  }
+
+  setPqPolicy(policy: PqTransferPolicy): void {
+    this.pqPolicy = policy;
+  }
+
+  getPqPolicy(): PqTransferPolicy {
+    return this.pqPolicy;
   }
 
   // ── Accounts ────────────────────────────────────────────────────────────────
@@ -359,7 +410,16 @@ export class ValueChainService {
    * Create + sign + apply a transfer from a node-held identity.
    * `amountUnits` is exact units (bigint or canonical string).
    */
-  transfer(fromDid: string, toDid: string, amountUnits: bigint | string, memo = ''): Transfer {
+  transfer(
+    fromDid: string,
+    toDid: string,
+    amountUnits: bigint | string,
+    memo = '',
+    opts: {
+      /** Phase-2 hybrid: co-sign the payload with a hash-based key. */
+      pqCoSign?: (payload: string) => { pqRoot: string; pqSignature: HbsSignature };
+    } = {},
+  ): Transfer {
     if (!this.identity) throw new Error('no identity service wired — use submitTransfer with a signed transfer');
     const amount = typeof amountUnits === 'bigint' ? amountUnits.toString() : amountUnits;
     const acc = this.getAccount(fromDid);
@@ -371,8 +431,10 @@ export class ValueChainService {
       nonce: acc.nonce + 1,
       memo,
     };
-    const { signature, publicKeyPem } = this.identity.signAs(fromDid, transferPayload(unsigned));
-    const tx: Transfer = { ...unsigned, ts: new Date().toISOString(), publicKeyPem, signature };
+    const payload = transferPayload(unsigned);
+    const { signature, publicKeyPem } = this.identity.signAs(fromDid, payload);
+    const pq = opts.pqCoSign ? opts.pqCoSign(payload) : undefined;
+    const tx: Transfer = { ...unsigned, ts: new Date().toISOString(), publicKeyPem, signature, ...(pq ?? {}) };
     const result = this.submitTransfer(tx);
     if (!result.applied) throw new Error(result.reason);
     return tx;
@@ -389,6 +451,23 @@ export class ValueChainService {
     if (tx.from === COINBASE) return { applied: false, reason: 'coinbase transfers cannot be submitted' };
     const check = verifyTransfer(tx);
     if (!check.valid) return { applied: false, reason: check.reason };
+
+    // Phase-2 PQ binding: a carried root must be THE root enrolled for the
+    // sender — a valid signature under an attacker's own key proves nothing.
+    // Skipped during snapshot replay: enrollment is admission-time state that
+    // does not survive a restart; the stateless verify above still ran.
+    if (this.pqRootResolver && !this.restoring) {
+      const enrolledRoot = this.pqRootResolver(tx.from);
+      if (tx.pqRoot && enrolledRoot && tx.pqRoot !== enrolledRoot) {
+        return { applied: false, reason: 'pqRoot does not match the sender\'s enrolled PQ key' };
+      }
+      if (tx.pqRoot && !enrolledRoot) {
+        return { applied: false, reason: 'sender has no enrolled PQ key for the carried pqRoot' };
+      }
+      if (this.pqPolicy === 'require-enrolled' && enrolledRoot && !tx.pqSignature) {
+        return { applied: false, reason: 'PQ-enrolled sender must co-sign transfers (policy: require-enrolled)' };
+      }
+    }
 
     const amount = BigInt(tx.amount);
     const sender = this.accounts.get(tx.from) ?? { did: tx.from, balance: 0n, nonce: 0 };
@@ -494,6 +573,15 @@ export class ValueChainService {
    */
   restoreState(state: { transfers: Transfer[]; blocks: Block[] }): void {
     if (this.transfers.size > 0) throw new Error('restoreState requires an empty ledger');
+    this.restoring = true;
+    try {
+      this.restoreStateInner(state);
+    } finally {
+      this.restoring = false;
+    }
+  }
+
+  private restoreStateInner(state: { transfers: Transfer[]; blocks: Block[] }): void {
     for (const tx of state.transfers) {
       if (tx.from === COINBASE) {
         const units = BigInt(tx.amount);

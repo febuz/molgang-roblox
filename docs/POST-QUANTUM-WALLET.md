@@ -224,9 +224,9 @@ Phased, mirroring Bitcoin's P2QRH discussions and NIST's 2035 deadline:
 |-------|------|--------|
 | **0** | All *commitments* hash-based: DIDs, SMT roots, block hashes, tx roots | ✅ already true |
 | **1** | PQ key enrollment + quantum-safe wallet proofs + encrypted vault (this work) | ✅ implemented |
-| **2** | **Hybrid transfers**: optional `pqSignature` co-signature on `Transfer`, verified when the sender has an enrolled PQ root. Roll-out: optional → default → required-for-new-accounts. Keeps old transfers valid; new transfers survive a CRQC | designed, not yet implemented |
+| **2** | **Hybrid transfers**: optional `pqSignature` co-signature on `Transfer`, verified when the sender has an enrolled PQ root. Roll-out: optional → default → required-for-new-accounts. Keeps old transfers valid; new transfers survive a CRQC | ✅ implemented (`Transfer.pqRoot`/`pqSignature`, `setPqRootResolver` binding check, `require-enrolled` policy, `POST /api/users/:handle/pq/transfer`; tests in `tests/unit/hybridTransfer.test.ts`) |
 | **3** | **Native ML-DSA** when Node ≥ 24 / OpenSSL ≥ 3.5 lands: add `ml-dsa-65` as a second algorithm in the same envelopes (`alg` tag per signature). Hybrid hash-based + lattice — an attack must break both families | blocked on runtime |
-| **4** | **Consensus votes**: extend `VotePayload` with PQ co-signatures once validator count × 2.5 KB per vote is paid for (QC size grows from ~100 B to ~2.5 KB per validator — acceptable at n ≤ 100) | after phase 2 |
+| **4** | **Consensus votes**: extend `VotePayload` with PQ co-signatures once validator count × 2.5 KB per vote is paid for (QC size grows from ~100 B to ~2.5 KB per validator — acceptable at n ≤ 100) | next up (phase 2 done) |
 | **5** | **Anchoring**: external chains (Ethereum/Tron/Bitcoin) migrate on their own schedules; our anchored *content* is already a hash, so anchor integrity inherits whatever the host chain achieves | external dependency |
 
 Key sizing note for phase 2: at h=10 a key signs 1024 transfers, then the
