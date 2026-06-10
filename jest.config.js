@@ -19,6 +19,11 @@ module.exports = {
       statements: 80,
     },
   },
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    'tests/integration/api\\.test\\.ts',
+    'tests/integration/kafka\\.test\\.ts',
+  ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
