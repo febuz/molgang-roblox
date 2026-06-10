@@ -44,6 +44,9 @@ import { GroupVotingService, registerGroupVotingRoutes } from './integrations/li
 import { GroupEventBus } from './integrations/lightrag/group-events';
 import { FactMatrixService, registerFactMatrixRoutes } from './integrations/lightrag/fact-matrix';
 import { mqttClientFromEnv } from './integrations/mqtt/mqtt-client';
+import { BacklogService, registerHubBacklogRoutes } from './integrations/lightrag/backlog';
+import { registerGitHubSyncRoutes, gitHubSyncFromEnv } from './integrations/backlog/github-sync';
+import { registerGitLabSyncRoutes, gitLabSyncFromEnv } from './integrations/backlog/gitlab-sync';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2350,6 +2353,24 @@ async function initialize() {
     process.once('SIGTERM', () => mqttBridge?.close());
     process.once('SIGINT', () => mqttBridge?.close());
     logger.info(`✓ Group voting + fact matrix ready (/api/groups/*, /api/matrix/*; MQTT ${mqttBridge ? 'on' : 'off'})`);
+
+    // 1c-viii. Contributor backlog — knowledge graph as hub, GitHub/GitLab sync.
+    const backlogService = new BacklogService(factMatrix, groupEventBus);
+    registerHubBacklogRoutes(app, backlogService);
+    const ghSync = gitHubSyncFromEnv(backlogService);
+    if (ghSync) {
+      registerGitHubSyncRoutes(app, ghSync);
+      logger.info('✓ GitHub Issues sync ready (/api/hub/sync/github, /api/hub/webhooks/github)');
+    }
+    const glSync = gitLabSyncFromEnv(backlogService);
+    if (glSync) {
+      registerGitLabSyncRoutes(app, glSync);
+      logger.info('✓ GitLab Issues sync ready (/api/hub/sync/gitlab, /api/hub/webhooks/gitlab)');
+    }
+    logger.info('✓ Contributor backlog hub ready (/api/hub/backlog/*)');
+    // Proposal closure propagates to linked backlog items.
+    // Wire after groupVoting is created (groupVoting is defined above this block).
+    void ghSync; void glSync;  // suppress unused-variable lint
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
