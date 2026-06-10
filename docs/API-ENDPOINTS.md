@@ -530,6 +530,35 @@ The knowledge graph is the authoritative backlog store; GitHub and GitLab Issues
 
 ---
 
+## ⚡ Lightning Network — off-chain payment channels
+
+Channel lifecycle, HTLC routing, breach remedy. Network ID embedded in every commitment for fork-replay protection.
+
+- **POST** `/api/lightning/channels` — open channel `{localDid, remoteDid, localUnits, remoteUnits?, memo?}` → returns `Channel` with commitment #0
+- **GET** `/api/lightning/channels` — list channels; optional `?did=` to filter by party
+- **GET** `/api/lightning/channels/:id` — channel detail including HTLCs and latest commitment
+- **POST** `/api/lightning/channels/:id/close` — cooperative close `{initiatorDid}` — both parties agree, no dispute window
+- **POST** `/api/lightning/channels/:id/force-close` — unilateral close `{initiatorDid, submittedSeqNo?}` — dispute window opens; detects breach when `submittedSeqNo < latest`
+- **POST** `/api/lightning/send` — off-chain payment `{senderDid, receiverDid, amount, memo?, preimage?}` — routes via Dijkstra over channel graph, settles via HTLC reveal
+- **POST** `/api/lightning/htlc/resolve` — `{channelId, paymentHash, preimage}` — receiver reveals preimage to claim HTLC
+- **GET** `/api/lightning/graph` — channel graph: `{nodes: string[], edges: [{id, from, to, capacity, localBal, remoteBal}]}`
+- **GET** `/api/lightning/stats` — `{channels: {total, open, closed, pending}, payments: {total, settled, failed}, totalCapacity, networkId, protocolVersion}`
+
+---
+
+## 🔀 Protocol Versioning + Fork Registry
+
+Semantic versioning, BOLT #9 feature-flag bitvector, fork registry, peer capability negotiation, migration hooks.
+
+- **GET** `/api/protocol/version` — current version, network ID, genesis hash, fork counts, local feature flags
+- **GET** `/api/protocol/capabilities` — full `ProtocolCapabilities` blob to share with peers; optional `?peerId=`
+- **GET** `/api/protocol/forks` — all known forks; optional `?status=proposed|signaling|locked_in|active|abandoned`
+- **POST** `/api/protocol/forks` — register a new fork `{forkId, name, description, networkId, forkType: soft|hard, activationType, requiredFeatures, ...}`
+- **POST** `/api/protocol/forks/:id/activate` — activate a `locked_in` fork (runs its migration.up())
+- **POST** `/api/protocol/negotiate` — `{capabilities: ProtocolCapabilities}` — check peer compatibility; 200 if compatible, 409 if not
+
+---
+
 ## Response Format
 
 All endpoints return JSON with standard structure:

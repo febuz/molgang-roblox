@@ -47,6 +47,8 @@ import { mqttClientFromEnv } from './integrations/mqtt/mqtt-client';
 import { BacklogService, registerHubBacklogRoutes } from './integrations/lightrag/backlog';
 import { registerGitHubSyncRoutes, gitHubSyncFromEnv } from './integrations/backlog/github-sync';
 import { registerGitLabSyncRoutes, gitLabSyncFromEnv } from './integrations/backlog/gitlab-sync';
+import { LightningService, registerLightningRoutes, lightningFromEnv } from './integrations/lightrag/lightning';
+import { protocolService, registerProtocolRoutes } from './integrations/lightrag/protocol-version';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2379,6 +2381,20 @@ async function initialize() {
         logger.info(`backlog: proposal ${cert.proposalId} closed ${closed.length} linked item(s)`);
       }
     });
+
+    // 1c-ix. Lightning Network — off-chain payment channels.
+    //   Enables instant, high-volume micropayments between nodes without
+    //   touching the chain for every transfer. Network ID is embedded in
+    //   every commitment for fork-replay protection. See lightning.ts.
+    const lightning = lightningFromEnv(identityService, valueChain);
+    registerLightningRoutes(app, lightning);
+    logger.info('⚡ Lightning Network ready (/api/lightning/*)');
+
+    // 1c-x. Protocol versioning + fork registry.
+    //   Feature-flag bitvector (BOLT #9 pattern), ForkSpec registry,
+    //   peer capability negotiation, migration hooks. See protocol-version.ts.
+    registerProtocolRoutes(app, protocolService);
+    logger.info('✓ Protocol versioning ready (/api/protocol/*)');
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);

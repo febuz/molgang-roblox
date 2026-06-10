@@ -334,6 +334,41 @@ export class ValueChainService {
     return this.stateTree.root;
   }
 
+  // ── Lightning channel escrow — called only by LightningService ──────────────
+
+  /**
+   * Lock units in a payment channel escrow (debit, no on-chain Transfer object
+   * needed since the channel open is the audit event). Balance and SMT are
+   * updated immediately so the locked funds cannot be double-spent.
+   */
+  channelLock(did: string, units: bigint, channelId: string): { locked: boolean; reason?: string } {
+    if (units <= 0n) return { locked: false, reason: 'lock amount must be positive' };
+    const acc = this.accounts.get(did) ?? { did, balance: 0n, nonce: 0 };
+    if (acc.balance < units) {
+      return { locked: false, reason: `insufficient balance: have ${acc.balance} units, need ${units}` };
+    }
+    acc.balance -= units;
+    this.accounts.set(did, acc);
+    this.stateTree.set(smtKey(did), accountLeafValue(acc));
+    logger.info(`⚡ channel-lock ${channelId}: ${did} locked ${units} units`);
+    return { locked: true };
+  }
+
+  /**
+   * Release units from a settled channel back to the final recipients.
+   * Called on both cooperative and force-close settlement. The sum of
+   * distributions must equal the original locked amounts (conservation
+   * invariant — the caller is responsible for computing correct balances).
+   */
+  channelSettle(channelId: string, distributions: Array<{ did: string; units: bigint }>): void {
+    for (const { did, units } of distributions) {
+      if (units > 0n) {
+        this.creditAccount(did, units);
+        logger.info(`⚡ channel-settle ${channelId}: ${did} received ${units} units`);
+      }
+    }
+  }
+
   /**
    * O(log n) proof that `did` has exactly its current (balance, nonce) — or a
    * non-inclusion proof when the account has never been touched. The proof
