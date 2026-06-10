@@ -32,6 +32,7 @@ import { P2PSwarm, registerSwarmRoutes } from './integrations/lightrag/p2p-swarm
 import { SovereignIdentityService, registerIdentityRoutes } from './integrations/lightrag/identity';
 import { ValueChainService, registerValueRoutes } from './integrations/lightrag/value-chain';
 import { SovereignVotingService, registerSovereignVotingRoutes } from './integrations/lightrag/sovereign-voting';
+import { ConsensusEngine, registerConsensusRoutes } from './integrations/lightrag/consensus';
 import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
 import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
@@ -2209,6 +2210,25 @@ async function initialize() {
     });
     registerSovereignVotingRoutes(app, sovereignVoting);
     logger.info('✓ Sovereign identity + value chain + voting ready (/api/identity, /api/value, /api/sovereign-votes)');
+
+    // 1c-v. BFT Consensus Engine — closes the finality gap in the threat model (§4.1).
+    //   Provides two-phase HotStuff consensus over the validator set so that
+    //   cross-node transfer history reaches Byzantine-fault-tolerant finality
+    //   rather than relying solely on external OTS/chain anchoring.
+    //   onFinalized → seal the corresponding value-chain block so pending txs
+    //   move from "pending" to "finalized" exactly when consensus agrees.
+    const consensusEngine = new ConsensusEngine(lightrag, identityService, {
+      blockTimeoutMs: parseInt(process.env.CONSENSUS_BLOCK_TIMEOUT_MS ?? '5000', 10),
+      onFinalized: (block) => {
+        // Seal value-chain block containing the finalized transfer set
+        const sealed = valueChain.sealBlock();
+        if (sealed) {
+          logger.info(`consensus→value-chain: sealed block #${sealed.height} with ${sealed.txIds.length} txs (consensus height=${block.proposal.payload.height})`);
+        }
+      },
+    });
+    registerConsensusRoutes(app, consensusEngine);
+    (app as any).locals.consensusEngine = consensusEngine;
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
