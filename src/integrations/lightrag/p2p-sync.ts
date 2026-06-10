@@ -19,6 +19,7 @@
 
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import type { LightRAGClient } from './client';
+import type { FactValidator } from './fact-validator';
 import logger from '../../utils/logger';
 
 export interface P2PEvent {
@@ -58,6 +59,7 @@ function labelFor(type: string): string {
 export class P2PSync {
   private consumer: Consumer;
   private lightrag: LightRAGClient;
+  private factValidator: FactValidator | null = null;
   private stats: SyncStats = {
     processed: 0,
     skipped: 0,
@@ -66,6 +68,9 @@ export class P2PSync {
     lastEventType: null,
     running: false,
   };
+
+  /** Attach a FactValidator so remote fact-vote events are applied locally. */
+  setFactValidator(fv: FactValidator): void { this.factValidator = fv; }
 
   constructor(kafkaBrokers: string[], lightragClient: LightRAGClient, groupId = 'lightrag-p2p-sync') {
     const kafka = new Kafka({
@@ -131,13 +136,19 @@ export class P2PSync {
 
     try {
       if (event.type === 'edge' && event.edge) {
+        // Relationship creation event
         await this.lightrag.addEdge(
           event.edge.fromId,
           event.edge.relType,
           event.edge.toId,
           event.edge.props,
         );
+      } else if (event.metadata?.factVote && this.factValidator) {
+        // Fact-vote event — apply remotely to keep quorum counts in sync
+        const vote = event.metadata.factVote as { factId: string; voter: string; vote: 'validate' | 'challenge'; reason?: string; ts: string };
+        await this.factValidator.applyRemoteVote(vote);
       } else {
+        // Standard node event — MERGE into local graph
         await this.lightrag.mergeTypedNode(event.id, labelFor(event.type), {
           type: event.type,
           content: event.content,

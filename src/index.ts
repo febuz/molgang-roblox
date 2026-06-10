@@ -19,6 +19,7 @@ import { FactValidator } from './integrations/lightrag/fact-validator';
 import { InferenceEngine } from './integrations/lightrag/graph-inference';
 import { AgentBridge } from './integrations/lightrag/agent-bridge';
 import { seedQuantumAlgorithms } from './integrations/lightrag/quantum-schema';
+import { registerGraphRoutes } from './integrations/lightrag/graph-api';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -1883,7 +1884,7 @@ app.get('/dashboard-static', (req, res) => {
 // Kafka shared producer + health endpoint. Promoted from dev-only to a
 // production wire in May 2026: chatAsAgent and addTask now best-effort-
 // publish events to model.responses, agent.tasks, agent.results.
-import { ensureSharedProducer as _ensureSharedKafka, isKafkaConnected as _kafkaConnected, getKafkaBrokers as _kafkaBrokers } from './integrations/kafka/shared';
+import { ensureSharedProducer as _ensureSharedKafka, isKafkaConnected as _kafkaConnected, getKafkaBrokers as _kafkaBrokers, bestEffortPublish } from './integrations/kafka/shared';
 import { startAuditConsumer as _startAudit, getCostState as _kafkaCost, readAuditTail as _kafkaAuditTail, isAuditConsumerRunning as _auditRunning } from './integrations/kafka/audit-consumer';
 _ensureSharedKafka().catch(() => { /* logged in shared module */ });
 // Boot the audit + cost consumer. Idempotent; if Kafka is offline it
@@ -2129,8 +2130,12 @@ async function initialize() {
     app.get('/api/lightrag/p2p', (_req, res) => res.json({ success: true, ...p2pSync.getStats() }));
     logger.info('✓ P2P knowledge-graph sync started');
 
+    // Register full graph REST API (CRUD, traversal, visualization, export)
+    registerGraphRoutes(app, lightrag);
+
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
+    p2pSync.setFactValidator(factValidator); // wire so remote votes are applied locally
     app.get('/api/lightrag/facts', (_req, res) => res.json({ success: true, ...factValidator.getStats() }));
     app.get('/api/lightrag/facts/list', (req, res) => {
       const state = req.query.state as any;
@@ -2184,6 +2189,15 @@ async function initialize() {
     app.post('/api/lightrag/inference/run', async (_req, res) => {
       try {
         const summary = await inferenceEngine.runAll();
+        // Publish inference results to Kafka so peers know which rules fired
+        if (summary.totalDerived > 0) {
+          bestEffortPublish(p => p.publishMemoryUpdate({
+            type: 'context',
+            content: `inference-run: ${summary.totalDerived} facts derived by ${summary.rulesRun} rules`,
+            agent: 'inference-engine',
+            metadata: summary as any,
+          }));
+        }
         res.json({ success: true, ...summary });
       } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
     });
