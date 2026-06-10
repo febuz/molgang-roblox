@@ -14,6 +14,7 @@ import neo4j from 'neo4j-driver';
 import logger from '../../utils/logger';
 import { INDEXES } from './schema';
 import { QUANTUM_INDEXES } from './quantum-schema';
+import { NFC_INDEXES } from './nfc-schema';
 
 export interface GraphNode {
   id: string;
@@ -77,10 +78,10 @@ export class LightRAGClient {
     if (!this.connected) return;
     const session = this.driver.session();
     try {
-      for (const cypher of [...Object.values(INDEXES), ...Object.values(QUANTUM_INDEXES)]) {
+      for (const cypher of [...Object.values(INDEXES), ...Object.values(QUANTUM_INDEXES), ...Object.values(NFC_INDEXES)]) {
         await session.run(cypher);
       }
-      logger.info('✓ LightRAG indexes initialised (core + quantum)');
+      logger.info('✓ LightRAG indexes initialised (core + quantum + NFC)');
     } catch (err: any) {
       logger.warn(`LightRAG: index init failed (non-fatal): ${err.message}`);
     } finally {

@@ -24,6 +24,7 @@ import { registerSnapshotRoutes } from './integrations/lightrag/graph-snapshot';
 import { registerMonitorRoutes } from './integrations/lightrag/p2p-monitor';
 import { registerQueryRoutes as registerGraphQueryRoutes } from './integrations/lightrag/graph-query';
 import { registerProvenanceRoutes } from './integrations/lightrag/provenance';
+import { registerNFCRoutes } from './integrations/lightrag/nfc-api';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -2139,6 +2140,7 @@ async function initialize() {
     registerSnapshotRoutes(app, lightrag);
     registerGraphQueryRoutes(app, lightrag);
     registerProvenanceRoutes(app, lightrag);
+    registerNFCRoutes(app, lightrag);
 
     // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
     const factValidator = new FactValidator(lightrag);
