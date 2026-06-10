@@ -35,6 +35,7 @@ import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
 import { canonicalize, sha256 } from './graph-state-root';
 import { constantTimeEqual } from './constant-time';
+import type { IdentityPort } from './identity-port';
 import logger from '../../utils/logger';
 
 /** DoS bound: the in-memory identity table is capped (unauthenticated
@@ -159,7 +160,7 @@ export function keyHistory(doc: IdentityDocument): string[] {
 // Service
 // ──────────────────────────────────────────────────────────────────────────────
 
-export class SovereignIdentityService {
+export class SovereignIdentityService implements IdentityPort {
   private lightrag: LightRAGClient;
   private docs = new Map<string, IdentityDocument>();
   private handles = new Map<string, string>();          // handle → did

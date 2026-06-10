@@ -49,7 +49,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { v4 as uuid } from 'uuid';
 import type { Express, Request, Response } from 'express';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityPort } from './identity-port';
 import type { ValueChainService } from './value-chain';
 import { canonicalize, sha256, buildMerkleRoot } from './graph-state-root';
 import { verifyHbsSignature, type HashBasedSigner, type HbsSignature } from './pq-crypto';
@@ -215,7 +215,7 @@ export class LightningService {
   private readonly opts: LightningServiceOpts;
 
   constructor(
-    private readonly identity: SovereignIdentityService,
+    private readonly identity: IdentityPort,
     private readonly valueChain: ValueChainService,
     opts: LightningServiceOpts = {},
   ) {
@@ -1056,7 +1056,7 @@ function serializeDists(dists: Array<{ did: string; units: bigint }>): object {
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function lightningFromEnv(
-  identity: SovereignIdentityService,
+  identity: IdentityPort,
   valueChain: ValueChainService,
   opts: LightningServiceOpts = {},
 ): LightningService {

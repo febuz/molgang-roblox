@@ -33,7 +33,8 @@
 import { join } from 'path';
 import { FileSnapshotStorage, type SnapshotStorage } from './storage-port';
 import type { ValueChainService } from './value-chain';
-import type { SovereignIdentityService, IdentityDocument } from './identity';
+import type { IdentityDocument } from './identity';
+import type { IdentityResolverPort } from './identity-port';
 import logger from '../../utils/logger';
 
 export const SNAPSHOT_VERSION = 1;
@@ -54,7 +55,7 @@ export class ChainStore {
     /** A file path (wrapped in FileSnapshotStorage) or any SnapshotStorage. */
     storage: string | SnapshotStorage,
     private readonly valueChain: ValueChainService,
-    private readonly identity?: SovereignIdentityService,
+    private readonly identity?: IdentityResolverPort,
     opts: { debounceMs?: number } = {},
   ) {
     this.storage = typeof storage === 'string' ? new FileSnapshotStorage(storage) : storage;

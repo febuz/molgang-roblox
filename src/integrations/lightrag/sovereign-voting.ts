@@ -36,7 +36,7 @@ import { verify as edVerify, createPublicKey } from 'crypto';
 import { v4 as uuid } from 'uuid';
 import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityPort } from './identity-port';
 import type { ValueChainService } from './value-chain';
 import type { NewsService } from './news';
 import { keyHistory } from './identity';
@@ -126,7 +126,7 @@ export function ballotHash(b: Ballot): string {
 
 export class SovereignVotingService {
   private lightrag: LightRAGClient;
-  private identity: SovereignIdentityService;
+  private identity: IdentityPort;
   private valueChain?: ValueChainService;
   private news?: NewsService;
   private proposals = new Map<string, Proposal>();
@@ -138,7 +138,7 @@ export class SovereignVotingService {
   constructor(
     lightrag: LightRAGClient,
     opts: {
-      identity: SovereignIdentityService;
+      identity: IdentityPort;
       valueChain?: ValueChainService;
       news?: NewsService;
       maxProposals?: number;
