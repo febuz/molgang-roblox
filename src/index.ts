@@ -14,7 +14,10 @@ import { KafkaOrchestrator } from './integrations/kafka/orchestrator';
 import { LightRAGClient } from './integrations/lightrag/client';
 import { AgentAPIWrapper } from './integrations/lightrag/agent-api';
 import { P2PSync } from './integrations/lightrag/p2p-sync';
+import { P2PGossip } from './integrations/lightrag/p2p-gossip';
 import { FactValidator } from './integrations/lightrag/fact-validator';
+import { InferenceEngine } from './integrations/lightrag/graph-inference';
+import { AgentBridge } from './integrations/lightrag/agent-bridge';
 import { seedQuantumAlgorithms } from './integrations/lightrag/quantum-schema';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
@@ -2161,6 +2164,39 @@ async function initialize() {
     } catch (e: any) {
       logger.warn(`Quantum seed failed (non-fatal): ${e.message}`);
     }
+
+    // 1f. P2P Gossip — HTTP fallback sync when Kafka is unavailable.
+    const gossipPeers = (secretOrEnv('infra', 'P2P_PEERS') || '').split(',').filter(Boolean);
+    const myUrl = secretOrEnv('infra', 'MY_URL') || `http://localhost:${process.env.PORT || 3100}`;
+    const gossip = new P2PGossip(lightrag, gossipPeers, myUrl);
+    gossip.registerExpressRoutes(app);
+    gossip.start();
+    logger.info(`✓ P2PGossip configured (${gossipPeers.length} peers)`);
+
+    // 1g. Agent Bridge — wires task completions/failures into the knowledge graph.
+    const agentBridge = new AgentBridge(agentAPI, factValidator);
+    app.get('/api/lightrag/bridge', (_req, res) => res.json({ success: true, ...agentBridge.getStats() }));
+    logger.info('✓ AgentBridge ready');
+
+    // 1h. Inference Engine — derives implicit facts every hour.
+    const inferenceEngine = new InferenceEngine(lightrag);
+    inferenceEngine.startScheduled(3_600_000);
+    app.post('/api/lightrag/inference/run', async (_req, res) => {
+      try {
+        const summary = await inferenceEngine.runAll();
+        res.json({ success: true, ...summary });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/lightrag/inference', (_req, res) => res.json({
+      success: true,
+      lastRunAt: inferenceEngine.getLastRunAt(),
+    }));
+    logger.info('✓ InferenceEngine scheduled (hourly)');
+
+    // Make agentBridge available to the task engine via app.locals
+    (app as any).locals.agentBridge = agentBridge;
+    (app as any).locals.inferenceEngine = inferenceEngine;
+    (app as any).locals.gossip = gossip;
 
     // 2. Initialize Kafka (message orchestration) - DISABLED for now
     logger.info('🔄 Kafka disabled (development mode) - running single-node');
