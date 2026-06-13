@@ -8,14 +8,14 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${baseUrl}/health`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as Record<string, any>;
       expect(data).toHaveProperty('status');
       expect(data.status).toBe('ok');
     });
 
     it('should include service status', async () => {
       const response = await fetch(`${baseUrl}/health`);
-      const data = await response.json();
+      const data = await response.json() as Record<string, any>;
 
       expect(data).toHaveProperty('services');
       expect(data.services).toHaveProperty('lightrag');
@@ -28,7 +28,7 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${baseUrl}/api/analytics/dashboard`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as Record<string, any>;
       expect(data).toHaveProperty('stats');
       expect(data.stats).toHaveProperty('totalRequests');
     });
@@ -37,7 +37,7 @@ describe('API Integration Tests', () => {
       const response = await fetch(`${baseUrl}/api/analytics/performance`);
       expect(response.status).toBe(200);
 
-      const data = await response.json();
+      const data = await response.json() as Record<string, any>;
       expect(data).toHaveProperty('performance');
       expect(data.performance).toHaveProperty('apiLatency');
     });
