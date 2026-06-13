@@ -67,18 +67,19 @@ export const AGENT_META: AgentMeta[] = [
   { name: 'Hermes-Cross',    role: 'Scrum-of-Scrums coordinator',      avatar: '🪽', color: '#f472b6', kind: 'hermes-coordinator', models: ['claude-sonnet', 'hermes-3', 'deepseek-r1'], teams: ['cross'], tools: ['scrum.*', 'forum.*', 'governance.lineage'] },
   { name: 'Hermes-Reviewer', role: 'DeepSeek-R1 cross-team reviewer',  avatar: '🪽', color: '#a3e635', kind: 'hermes-coordinator', models: ['claude-sonnet', 'deepseek-r1', 'hermes-3'], teams: ['cross'], tools: ['scrum.*', 'forum.*', 'codegraph.*', 'governance.lineage'] },
 
-  // ─── Principal Reviewer — the single Opus 4.8 PR gate (added 2026-06-03) ─
-  // Athena reviews as the most-senior PhD-level engineer on the team. She runs
-  // ON Claude Opus 4.8 (max) — the only agent that does — and is the one place
-  // the premium tier is spent. For each feature, ≥2 engineer agents (on slightly
-  // different advanced coding models) build competing branches; Athena reviews
-  // EVERY branch, spots any coding mistake, REQUIRES a working feature + a clean
-  // unit + regression run on the whole, and enforces docs/CODING-STANDARDS.md
-  // (standardsAdhered=false BLOCKS). She relays the working part of one branch
-  // into the feedback for the other, then approves what passes; the Product
-  // Owner completes the branch they prefer. She never writes feature code —
-  // review, standards, and gate only. See docs/ATHENA-REVIEW-GATE.md.
-  { name: 'Athena',        role: 'Principal Reviewer · senior PhD-level engineer · Opus 4.8 PR gate · owns coding standards', avatar: '🦉', color: '#9333ea', kind: 'reviewer', models: ['claude-opus'], teams: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'], tools: ['codegraph.*', 'scrum.bug', 'scrum.standup', 'governance.lineage', 'forum.*', 'wiki.lookup'] },
+  // ─── Principal Reviewer — the single GPT-5.5 (Codex) PR gate ─────────────
+  // Athena reviews as the most-senior PhD-level engineer on the team. As of
+  // 2026-06-04 she runs ON GPT-5.5 via Codex at xhigh effort (was Opus 4.8) —
+  // the main reviewer model, billed to the ChatGPT subscription through the
+  // Codex bridge (src/codex). For each feature, the THREE developer legs (gpt /
+  // claude / virtualpc — see src/org/dev-tournament.ts) build competing
+  // branches; Athena reviews EVERY branch, spots any coding mistake, REQUIRES a
+  // working feature + a clean unit + regression run on the whole, and enforces
+  // docs/CODING-STANDARDS.md (standardsAdhered=false BLOCKS). She scores each
+  // branch; the Product Owner (Claude Opus, max) reads the reviews and selects
+  // exactly one winner. She never writes feature code — review, standards, and
+  // gate only. See docs/DEV-TOURNAMENT.md and docs/ATHENA-REVIEW-GATE.md.
+  { name: 'Athena',        role: 'Principal Reviewer · senior PhD-level engineer · GPT-5.5 (Codex, xhigh) PR gate · owns coding standards', avatar: '🦉', color: '#9333ea', kind: 'reviewer', models: ['gpt-5.5'], teams: ['cross', 'scrum-roblox', 'scrum-web', 'scrum-marketing'], tools: ['codegraph.*', 'scrum.bug', 'scrum.standup', 'governance.lineage', 'forum.*', 'wiki.lookup'] },
 
   // ─── Tester agents — synthetic users who play the games + file bugs ───
   // Testers — get scrum.bug + forum.* (the forum is where they share tips/tricks).
