@@ -13,6 +13,45 @@ import logger from './utils/logger';
 import { KafkaOrchestrator } from './integrations/kafka/orchestrator';
 import { LightRAGClient } from './integrations/lightrag/client';
 import { AgentAPIWrapper } from './integrations/lightrag/agent-api';
+import { P2PSync } from './integrations/lightrag/p2p-sync';
+import { P2PGossip } from './integrations/lightrag/p2p-gossip';
+import { FactValidator } from './integrations/lightrag/fact-validator';
+import { InferenceEngine } from './integrations/lightrag/graph-inference';
+import { AgentBridge } from './integrations/lightrag/agent-bridge';
+import { seedQuantumAlgorithms } from './integrations/lightrag/quantum-schema';
+import { registerGraphRoutes } from './integrations/lightrag/graph-api';
+import { registerSnapshotRoutes } from './integrations/lightrag/graph-snapshot';
+import { registerMonitorRoutes } from './integrations/lightrag/p2p-monitor';
+import { registerQueryRoutes as registerGraphQueryRoutes } from './integrations/lightrag/graph-query';
+import { registerProvenanceRoutes } from './integrations/lightrag/provenance';
+import { registerNFCRoutes } from './integrations/lightrag/nfc-api';
+import { NewsService, registerNewsRoutes } from './integrations/lightrag/news';
+import { VoteCertificateService, registerVoteCertRoutes } from './integrations/lightrag/vote-certificate';
+import { AttentionChainService, registerAttentionRoutes } from './integrations/lightrag/attention-chain';
+import { P2PSwarm, registerSwarmRoutes } from './integrations/lightrag/p2p-swarm';
+import { SovereignIdentityService, registerIdentityRoutes, didFromPublicKey } from './integrations/lightrag/identity';
+import * as nodeCrypto from 'crypto';
+import { ValueChainService, registerValueRoutes } from './integrations/lightrag/value-chain';
+import { SovereignVotingService, registerSovereignVotingRoutes } from './integrations/lightrag/sovereign-voting';
+import { ConsensusEngine, registerConsensusRoutes } from './integrations/lightrag/consensus';
+import { ConsensusNetwork } from './integrations/lightrag/consensus-network';
+import { ChainStore, defaultSnapshotPath } from './integrations/lightrag/chain-store';
+import { UserApiService, registerUserRoutes } from './integrations/lightrag/user-api';
+import { FeedService, registerFeedRoutes } from './integrations/lightrag/feed-api';
+import { PqWalletService, registerPqRoutes } from './integrations/lightrag/wallet-vault';
+import { DemocraticElectionService, registerElectionRoutes } from './integrations/lightrag/sovereign-elections';
+import { GroupVotingService, registerGroupVotingRoutes } from './integrations/lightrag/group-voting';
+import { GroupEventBus } from './integrations/lightrag/group-events';
+import { MqttTelemetryAdapter } from './integrations/lightrag/transport-adapter';
+import { FactMatrixService, registerFactMatrixRoutes } from './integrations/lightrag/fact-matrix';
+import { mqttClientFromEnv } from './integrations/mqtt/mqtt-client';
+import { BacklogService, registerHubBacklogRoutes } from './integrations/lightrag/backlog';
+import { registerGitHubSyncRoutes, gitHubSyncFromEnv } from './integrations/backlog/github-sync';
+import { registerGitLabSyncRoutes, gitLabSyncFromEnv } from './integrations/backlog/gitlab-sync';
+import { LightningService, registerLightningRoutes, lightningFromEnv } from './integrations/lightrag/lightning';
+import { protocolService, registerProtocolRoutes } from './integrations/lightrag/protocol-version';
+import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
+import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
@@ -73,6 +112,7 @@ import { registerQueryRoutes } from './query-builder';
 import { registerSpectroscopyRoutes } from './spectroscopy';
 import { registerAssetMirrorRoutes } from './assets';
 import { registerTournamentRoutes } from './org/tournament-routes';
+import { registerRequirementRoutes } from './requirements';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -113,10 +153,10 @@ registerQueryRoutes(app);
 registerSpectroscopyRoutes(app);
 // Asset mirror coverage — Roblox→Web cross-platform remediation plan for designers.
 registerAssetMirrorRoutes(app);
-// Dev tournament — the 3-developer competing-branch regime: backlog item →
-// planning poker → 3 legs build → reviewer reviews → PO picks one winner.
-// See src/org/dev-tournament + docs/DEV-TOURNAMENT.md.
+// Dev tournament — 3-developer competing-branch regime.
 registerTournamentRoutes(app);
+// Requirements register — USDP requirements with traceability.
+registerRequirementRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
@@ -144,6 +184,13 @@ function serveSPAFile(_req: express.Request, res: express.Response) {
     }
   });
 }
+
+// Newsgroup 2.0 frontend — design rationale in docs/NEWSGROUP-FRONTEND-LESSONS.md
+app.get('/newsgroup', (_req, res) => {
+  res.type('html').sendFile(path.resolve(__dirname, '..', 'public', 'newsgroup.html'), (err: any) => {
+    if (err) res.status(500).send('Error loading newsgroup frontend');
+  });
+});
 
 // Dashboard is now served at root (localhost:3100) - no separate /dashboard route needed
 
@@ -1882,7 +1929,7 @@ app.get('/dashboard-static', (req, res) => {
 // Kafka shared producer + health endpoint. Promoted from dev-only to a
 // production wire in May 2026: chatAsAgent and addTask now best-effort-
 // publish events to model.responses, agent.tasks, agent.results.
-import { ensureSharedProducer as _ensureSharedKafka, isKafkaConnected as _kafkaConnected, getKafkaBrokers as _kafkaBrokers } from './integrations/kafka/shared';
+import { ensureSharedProducer as _ensureSharedKafka, isKafkaConnected as _kafkaConnected, getKafkaBrokers as _kafkaBrokers, bestEffortPublish } from './integrations/kafka/shared';
 import { startAuditConsumer as _startAudit, getCostState as _kafkaCost, readAuditTail as _kafkaAuditTail, isAuditConsumerRunning as _auditRunning } from './integrations/kafka/audit-consumer';
 _ensureSharedKafka().catch(() => { /* logged in shared module */ });
 // Boot the audit + cost consumer. Idempotent; if Kafka is offline it
@@ -2118,6 +2165,350 @@ async function initialize() {
     logger.info('📦 Initializing Agent API Wrapper...');
     const agentAPI = new AgentAPIWrapper(lightrag);
     logger.info('✓ Agent API Wrapper ready (caching + rate limiting)');
+
+    // 1c. Start P2P knowledge-graph sync — subscribes to lightrag.updates
+    //     Kafka topic and materialises remote graph events into local Neo4j.
+    //     Best-effort: if Kafka is offline the sync disables itself gracefully.
+    const kafkaBrokers = (secretOrEnv('infra', 'KAFKA_BROKERS') || 'localhost:9092').split(',');
+    const p2pSync = new P2PSync(kafkaBrokers, lightrag);
+    p2pSync.start().catch((e: any) => logger.warn(`P2PSync start error: ${e.message}`));
+    app.get('/api/lightrag/p2p', (_req, res) => res.json({ success: true, ...p2pSync.getStats() }));
+    logger.info('✓ P2P knowledge-graph sync started');
+
+    // Register full graph REST API (CRUD, traversal, visualization, export, ML, snapshot, query)
+    registerGraphRoutes(app, lightrag);
+    registerSnapshotRoutes(app, lightrag);
+    registerGraphQueryRoutes(app, lightrag);
+    registerProvenanceRoutes(app, lightrag);
+    registerNFCRoutes(app, lightrag);
+
+    // 1c-ii. Chain anchoring + OpenTimestamps + P2P news (whitepaper stack).
+    //   News flow: instant publish (unverified) → P2P gossip → anchor.
+    //   Anchors run dry-run until a signer/contract is configured via env.
+    const anchorService = new AnchorService(lightrag, defaultAnchorTargets());
+    if (process.env.ANCHOR_SCHEDULER === 'true') anchorService.start();
+    registerAnchorRoutes(app, anchorService);
+    const otsService = new OtsService(lightrag);
+    registerOtsRoutes(app, otsService);
+
+    // 1c-iii. Sovereign identity (self-certifying DIDs) + value chain
+    //   (capped supply 888 888 888, Bitcoin-style halving eras). Attention
+    //   events from REGISTERED identities mine value tokens (Tron BTT lesson:
+    //   pay for contribution — here: pay for validated knowledge).
+    const identityService = new SovereignIdentityService(lightrag);
+    registerIdentityRoutes(app, identityService);
+    const valueChain = new ValueChainService(lightrag, { identity: identityService });
+    registerValueRoutes(app, valueChain);
+
+    // Durability: restore ledger + identities from the last snapshot BEFORE any
+    // hooks are wired — replayed history must not re-trigger consensus or
+    // re-mint attention rewards. A corrupted snapshot fails the boot loudly.
+    const chainStore = new ChainStore(defaultSnapshotPath(), valueChain, identityService);
+    const restored = chainStore.load();
+    if (restored) {
+      logger.info(`💾 Chain restored from snapshot: ${restored.transfers} tx, ${restored.blocks} blocks, ${restored.identities} identities`);
+    }
+
+    const attentionService = new AttentionChainService(lightrag, {
+      onEvent: (e) => {
+        // Attention mining: a registered agent's contribution mints tokens at
+        // the current era rate. Unregistered agents earn nothing (sybil gate).
+        const did = identityService.didForHandle(e.agent);
+        if (did) valueChain.rewardAttention(did, e.kind, e.weight);
+      },
+    });
+    registerAttentionRoutes(app, attentionService);
+    // attentionService passed to NewsService so GET /api/news?orderBy=attention works
+    const newsService = new NewsService(lightrag, undefined, { attentionService });
+    registerNewsRoutes(app, newsService, async () => {
+      const pending = newsService.unanchoredIds();
+      let anchorId: string;
+      // Prefer free OTS aggregation; fall back to dry-run chain anchors
+      try {
+        const stamp = await otsService.stampCurrentRoot();
+        anchorId = stamp.status !== 'failed' ? stamp.id : '';
+      } catch { anchorId = ''; }
+      if (!anchorId) {
+        const records = await anchorService.anchorAll();
+        anchorId = records[0]?.id ?? `local_${Date.now()}`;
+      }
+      // Anchoring is the strongest attention signal — feed the attention chain
+      for (const id of pending) {
+        try { attentionService.record({ itemId: id, agent: 'anchor-service', kind: 'anchor' }); } catch { /* non-fatal */ }
+      }
+      return { anchorId };
+    });
+    logger.info('✓ News + Anchor + OTS + Attention stack ready (instant-publish → p2p → anchor)');
+
+    // 1c-iv. Sovereign identified voting — DID-bound sybil-resistant referenda;
+    //   results published as signed news claims and anchored with the graph.
+    const sovereignVoting = new SovereignVotingService(lightrag, {
+      identity: identityService,
+      valueChain,
+      news: newsService,
+    });
+    registerSovereignVotingRoutes(app, sovereignVoting);
+    logger.info('✓ Sovereign identity + value chain + voting ready (/api/identity, /api/value, /api/sovereign-votes)');
+
+    // 1c-v. BFT Consensus Engine — closes the finality gap in the threat model (§4.1).
+    //   Provides two-phase HotStuff consensus over the validator set so that
+    //   cross-node transfer history reaches Byzantine-fault-tolerant finality
+    //   rather than relying solely on external OTS/chain anchoring.
+    //   onFinalized → seal the corresponding value-chain block so pending txs
+    //   move from "pending" to "finalized" exactly when consensus agrees.
+    const consensusEngine = new ConsensusEngine(lightrag, identityService, {
+      blockTimeoutMs: parseInt(process.env.CONSENSUS_BLOCK_TIMEOUT_MS ?? '5000', 10),
+      onFinalized: (block) => {
+        // Seal value-chain block containing the finalized transfer set
+        const sealed = valueChain.sealBlock();
+        if (sealed) {
+          logger.info(`consensus→value-chain: sealed block #${sealed.height} with ${sealed.txIds.length} txs (consensus height=${block.proposal.payload.height})`);
+        }
+        chainStore.scheduleSave();
+      },
+    });
+    // Lazy delegate so the route handlers can propagate votes even though the
+    // ConsensusNetwork is created after the routes are registered.
+    let consensusNetwork: ConsensusNetwork | undefined;
+    registerConsensusRoutes(app, consensusEngine, {
+      deliverVote: (v) => consensusNetwork?.deliverVote(v) ?? Promise.resolve(null),
+    });
+    (app as any).locals.consensusEngine = consensusEngine;
+
+    // Every applied transfer: queue for consensus finality + snapshot to disk.
+    // Wired AFTER the restore above so replayed history is not re-queued.
+    valueChain.setOnTransfer((tx) => {
+      consensusEngine.queueTransfer(tx.id);
+      chainStore.scheduleSave();
+    });
+
+    // Self-validator bootstrap: a fresh node keypair makes single-node
+    // consensus work out of the box; multi-node deployments add the other
+    // validators via POST /api/consensus/validators.
+    {
+      const kp = nodeCrypto.generateKeyPairSync('ed25519', {
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      const nodeDid = didFromPublicKey(kp.publicKey);
+      consensusEngine.setSelf(nodeDid, kp.privateKey);
+      consensusEngine.addValidator({ did: nodeDid, stake: 0n, publicKeyPem: kp.publicKey });
+      logger.info(`✓ Consensus self-validator: ${nodeDid}`);
+    }
+
+    // Network driver: broadcast proposals/votes to CONSENSUS_PEERS and
+    // auto-propose when this node is the leader with pending transfers.
+    const consensusPeers = (process.env.CONSENSUS_PEERS ?? '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    consensusNetwork = new ConsensusNetwork(consensusEngine, consensusPeers, {
+      proposeIntervalMs: parseInt(process.env.CONSENSUS_PROPOSE_INTERVAL_MS ?? '2000', 10),
+    });
+    consensusNetwork.start();
+    (app as any).locals.consensusNetwork = consensusNetwork;
+    (app as any).locals.chainStore = chainStore;
+
+    // Flush the snapshot on shutdown so the last debounce window is not lost.
+    process.once('SIGTERM', () => chainStore.flush());
+    process.once('SIGINT', () => chainStore.flush());
+
+    // 1c-iv-b. User API + Feed API — wired AFTER consensus so node-status
+    //   can report consensus state; wired AFTER restore so sessions and
+    //   profiles reflect the recovered ledger.
+    const userApi = new UserApiService(identityService, valueChain, attentionService, newsService, sovereignVoting);
+    registerUserRoutes(app, userApi, consensusEngine, valueChain);
+
+    const feedService = new FeedService(newsService, attentionService, identityService, valueChain);
+    registerFeedRoutes(app, feedService);
+    logger.info('✓ User + Feed APIs ready (/api/users/*, /api/feed/*, /api/node/status)');
+
+    // 1c-iv-c. Post-quantum wallet layer — hash-based signatures (SHA-256
+    //   only: quantum-resistant) + AES-256-GCM encrypted vault export.
+    //   See docs/POST-QUANTUM-WALLET.md for the threat analysis.
+    const pqWallet = new PqWalletService(identityService, valueChain);
+    registerPqRoutes(app, pqWallet);
+    // Phase-2 hybrid transfers: a carried pqRoot must be the sender's
+    // enrolled key (POST-QUANTUM-WALLET.md §6, binding check).
+    valueChain.setPqRootResolver((did) => pqWallet.getEnrolledRoot(did));
+
+    // 1c-vi. Democratic elections — sovereign DID-bound ballots with Merkle-
+    //   certified results, D'Hondt seat allocation, optional PQ signatures,
+    //   and a full ISO 3166-1 country registry. See docs/README.md §P2P.
+    const democraticElections = new DemocraticElectionService(identityService);
+    registerElectionRoutes(app, democraticElections);
+    logger.info('✓ Democratic elections ready (/api/elections/*, 195 countries)');
+
+    // 1c-vii. Group voting + fact matrix + capability-routed fan-out.
+    //   The bus publishes through TransportAdapter only (threat model §3.8):
+    //   MQTT (opt-in via MQTT_BROKER_URL) is wrapped as a telemetry-only
+    //   adapter, so governance/ballot events are structurally excluded from
+    //   the broker; Kafka rides the shared best-effort producer (topic
+    //   group.events). The fact matrix is the unified 888 888 888-dimension
+    //   sparse coordinate space for transactions (price+volume), news, votes.
+    const mqttBridge = mqttClientFromEnv(`virtualpc-${process.pid}`);
+    if (mqttBridge) mqttBridge.connect();
+    const transports = mqttBridge ? [new MqttTelemetryAdapter(mqttBridge)] : [];
+    const groupEventBus = new GroupEventBus(transports);
+    const factMatrix = new FactMatrixService(groupEventBus);
+    registerFactMatrixRoutes(app, factMatrix);
+    const groupVoting = new GroupVotingService(identityService, {
+      valueChain,
+      events: groupEventBus,
+      matrix: factMatrix,
+    });
+    registerGroupVotingRoutes(app, groupVoting, groupEventBus);
+    // News publications mirror into the matrix (news region) automatically.
+    newsService.setOnPublish((item) => {
+      try {
+        factMatrix.ingestNews({
+          newsId: item.id, claimer: item.claimer, source: item.source,
+          semanticCoordinates: item.coordinates,
+        });
+      } catch { /* matrix full or invalid coords — news itself is unaffected */ }
+    });
+    process.once('SIGTERM', () => mqttBridge?.close());
+    process.once('SIGINT', () => mqttBridge?.close());
+    logger.info(`✓ Group voting + fact matrix ready (/api/groups/*, /api/matrix/*; MQTT ${mqttBridge ? 'on' : 'off'})`);
+
+    // 1c-viii. Contributor backlog — knowledge graph as hub, GitHub/GitLab sync.
+    const backlogService = new BacklogService(factMatrix, groupEventBus);
+    registerHubBacklogRoutes(app, backlogService);
+    const ghSync = gitHubSyncFromEnv(backlogService);
+    if (ghSync) {
+      registerGitHubSyncRoutes(app, ghSync);
+      logger.info('✓ GitHub Issues sync ready (/api/hub/sync/github, /api/hub/webhooks/github)');
+    }
+    const glSync = gitLabSyncFromEnv(backlogService);
+    if (glSync) {
+      registerGitLabSyncRoutes(app, glSync);
+      logger.info('✓ GitLab Issues sync ready (/api/hub/sync/gitlab, /api/hub/webhooks/gitlab)');
+    }
+    logger.info('✓ Contributor backlog hub ready (/api/hub/backlog/*)');
+    // Graph-as-hub bridge: closing a group proposal closes every backlog
+    // item that links it via graphRefs (kind 'proposal').
+    groupVoting.setOnClose((cert) => {
+      const closed = backlogService.closeByProposal(cert.proposalId);
+      if (closed.length > 0) {
+        logger.info(`backlog: proposal ${cert.proposalId} closed ${closed.length} linked item(s)`);
+      }
+    });
+
+    // 1c-ix. Lightning Network — off-chain payment channels.
+    //   Enables instant, high-volume micropayments between nodes without
+    //   touching the chain for every transfer. Network ID is embedded in
+    //   every commitment for fork-replay protection. See lightning.ts.
+    const lightning = lightningFromEnv(identityService, valueChain);
+    registerLightningRoutes(app, lightning);
+    logger.info('⚡ Lightning Network ready (/api/lightning/*)');
+
+    // 1c-x. Protocol versioning + fork registry.
+    //   Feature-flag bitvector (BOLT #9 pattern), ForkSpec registry,
+    //   peer capability negotiation, migration hooks. See protocol-version.ts.
+    registerProtocolRoutes(app, protocolService);
+    logger.info('✓ Protocol versioning ready (/api/protocol/*)');
+
+    // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
+    const factValidator = new FactValidator(lightrag);
+    p2pSync.setFactValidator(factValidator); // wire so remote votes are applied locally
+    app.get('/api/lightrag/facts', (_req, res) => res.json({ success: true, ...factValidator.getStats() }));
+    app.get('/api/lightrag/facts/list', (req, res) => {
+      const state = req.query.state as any;
+      res.json({ success: true, facts: factValidator.listFacts(state) });
+    });
+    app.post('/api/lightrag/facts/submit', async (req, res) => {
+      try {
+        const { agent, ...fact } = req.body;
+        const id = await factValidator.submit(agent, fact);
+        res.json({ success: true, factId: id });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    app.post('/api/lightrag/facts/:id/validate', async (req, res) => {
+      try {
+        const state = await factValidator.validate(req.body.agent, req.params.id);
+        res.json({ success: true, state });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    app.post('/api/lightrag/facts/:id/challenge', async (req, res) => {
+      try {
+        const state = await factValidator.challenge(req.body.agent, req.params.id, req.body.reason);
+        res.json({ success: true, state });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    logger.info('✓ P2P fact-validation graph ready');
+
+    // 1d-ii. Signed vote certificates — quorum results published as news
+    //   ("Stem resultaat als nieuws"). Ed25519 multi-sig today; the scheme
+    //   field reserves a drop-in slot for BLS12-381 aggregation.
+    const voteCertService = new VoteCertificateService(lightrag);
+    registerVoteCertRoutes(app, voteCertService, { factValidator, news: newsService });
+    logger.info('✓ Vote certificates ready (/api/votes/*)');
+
+    // 1e. Seed well-known quantum algorithms for quantum-information readiness.
+    try {
+      const seeded = await seedQuantumAlgorithms(lightrag);
+      logger.info(`✓ Quantum schema: ${seeded} algorithms seeded`);
+    } catch (e: any) {
+      logger.warn(`Quantum seed failed (non-fatal): ${e.message}`);
+    }
+
+    // 1f. P2P Gossip — HTTP fallback sync when Kafka is unavailable.
+    //     Swarm-managed: tit-for-tat choking, optimistic unchoke, rarest-first
+    //     replication, endgame fanout, PEX peer discovery, misbehavior bans
+    //     (BitTorrent / Bitcoin Core / gossipsub v1.1 lessons).
+    const gossipPeers = (secretOrEnv('infra', 'P2P_PEERS') || '').split(',').filter(Boolean);
+    const myUrl = secretOrEnv('infra', 'MY_URL') || `http://localhost:${process.env.PORT || 3100}`;
+    const swarm = new P2PSwarm({ myUrl });
+    registerSwarmRoutes(app, swarm);
+    const gossipAttentionThreshold = parseFloat(process.env.GOSSIP_ATTENTION_THRESHOLD ?? '0');
+    const gossip = new P2PGossip(lightrag, gossipPeers, myUrl, swarm, {
+      attentionService,
+      attentionThreshold: gossipAttentionThreshold,
+    });
+    gossip.registerExpressRoutes(app);
+    gossip.start();
+    logger.info(`✓ P2PGossip configured (${gossipPeers.length} peers, swarm-managed)`);
+
+    // 1g. Agent Bridge — wires task completions/failures into the knowledge graph.
+    const agentBridge = new AgentBridge(agentAPI, factValidator);
+    app.get('/api/lightrag/bridge', (_req, res) => res.json({ success: true, ...agentBridge.getStats() }));
+    logger.info('✓ AgentBridge ready');
+
+    // 1h. Inference Engine — derives implicit facts every hour.
+    const inferenceEngine = new InferenceEngine(lightrag);
+    inferenceEngine.startScheduled(3_600_000);
+    app.post('/api/lightrag/inference/run', async (_req, res) => {
+      try {
+        const summary = await inferenceEngine.runAll();
+        // Publish inference results to Kafka so peers know which rules fired
+        if (summary.totalDerived > 0) {
+          bestEffortPublish(p => p.publishMemoryUpdate({
+            type: 'context',
+            content: `inference-run: ${summary.totalDerived} facts derived by ${summary.rulesRun} rules`,
+            agent: 'inference-engine',
+            metadata: summary as any,
+          }));
+        }
+        res.json({ success: true, ...summary });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/lightrag/inference', (_req, res) => res.json({
+      success: true,
+      lastRunAt: inferenceEngine.getLastRunAt(),
+    }));
+    logger.info('✓ InferenceEngine scheduled (hourly)');
+
+    // P2P unified health monitor dashboard
+    registerMonitorRoutes(app, lightrag, { p2pSync, gossip, factValidator, inferenceEngine, agentBridge });
+
+    // Make agentBridge available to the task engine via app.locals
+    (app as any).locals.agentBridge = agentBridge;
+    (app as any).locals.inferenceEngine = inferenceEngine;
+    (app as any).locals.gossip = gossip;
+    (app as any).locals.newsService = newsService;
+    (app as any).locals.anchorService = anchorService;
+    (app as any).locals.attentionService = attentionService;
+    (app as any).locals.identityService = identityService;
+    (app as any).locals.valueChain = valueChain;
+    (app as any).locals.sovereignVoting = sovereignVoting;
 
     // 2. Initialize Kafka (message orchestration) - DISABLED for now
     logger.info('🔄 Kafka disabled (development mode) - running single-node');

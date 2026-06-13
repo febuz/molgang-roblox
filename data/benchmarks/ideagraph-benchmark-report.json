@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-06-10T17:00:52.807Z",
+  "datasetSource": "fixture",
+  "vvGraph": {
+    "rowsIngested": 89591,
+    "ingestMs": 4128.918245999999,
+    "ingestRowsPerSec": 21698.41945569973,
+    "matrixRootMs": 285.43994999999995,
+    "matrixRoot": "9ae7f92917b8c26ac0bd3e827096a1980274e80f98f97595faf14135d4b40123",
+    "knnQueries": 100,
+    "knnAvgMs": 115.93498995999991,
+    "knnP95Ms": 152.87050100000124,
+    "regime": {
+      "crashWindowMean": -64.22862509048022,
+      "capitulationWindowMean": 4.691760867290342,
+      "normalMean": 2.9628295810730148,
+      "crashDetected": true,
+      "flipDetected": true
+    },
+    "storage": {
+      "nonzeros": 89591,
+      "sparseBytes": 1075092,
+      "denseBytes": 32062400,
+      "compressionFactor": 29.822936083609587
+    }
+  },
+  "chemGraph": {
+    "spectraIngested": 80,
+    "pipelineMs": 85.89987900000051,
+    "spectraPerSec": 931.3167949863995,
+    "peakDetectAvgMs": 0.822327599999835,
+    "retrievalQueries": 8,
+    "retrievalAccuracyAt1": 1,
+    "knnAvgMs": 0.07103724999979022
+  },
+  "settlement": {
+    "payments": 500,
+    "onChain": {
+      "totalMs": 121.1496049999987,
+      "paymentsPerSec": 4127.128602689257,
+      "chainTransfersAdded": 500
+    },
+    "lightning": {
+      "totalMs": 166.34663999999975,
+      "paymentsPerSec": 3005.771562323115,
+      "chainTransfersAdded": 0
+    },
+    "paymentsPerChainTx": 500
+  },
+  "environment": {
+    "node": "v22.22.2",
+    "platform": "linux/x64"
+  }
+}

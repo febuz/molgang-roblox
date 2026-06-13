@@ -103,33 +103,28 @@ can't reach `127.0.0.1` on the host).
 
 ---
 
-## 📋 Implementation Tasks
+## 🕸️ P2P knowledge graph — Newsgroup 2.0
 
-25 autonomous tasks split across agents. See **Full Task List** below.
+The flagship subsystem: a sovereign, peer-to-peer news/knowledge network in
+`src/integrations/lightrag/`, built bottom-up with verifiable cryptography:
 
-### Quick Status
+| Layer | Module | What it does |
+|-------|--------|--------------|
+| BFT consensus | `consensus.ts` + `consensus-network.ts` | Two-phase HotStuff over HTTP — ⌊2n/3⌋+1 quorum certificates, deterministic leader rotation, view change |
+| State proofs | `sparse-merkle.ts` | 256-bit sparse Merkle tree — O(log n) inclusion & non-inclusion proofs per account |
+| Settlement | `value-chain.ts` | BigInt fixed-point token ledger, Bitcoin-style halving, conservation invariant, per-block state roots |
+| Durability | `chain-store.ts` | Atomic disk snapshots; tampered state refuses to boot |
+| Identity | `identity.ts` | Self-certifying DIDs (`did:vpc:`), hash-chained Ed25519 key rotation, verifiable credentials |
+| Governance | `sovereign-voting.ts` | Sybil-resistant stake-weighted voting with Merkle-certified tallies |
+| Attention | `attention-chain.ts` | Reputation-weighted attention scores with half-life decay |
+| Users & feed | `user-api.ts` + `feed-api.ts` | Onboarding, HMAC sessions, reactions with token rewards, search, SSE live feed |
+| Frontend | `public/newsgroup.html` | Single-file, zero-build UI implementing ten design rules learned from Usenet→Bluesky |
+| Anchoring | `src/integrations/chain/` | External finality via Ethereum, Tron, and Bitcoin (OpenTimestamps) |
 
-| Task | Agent | What | Status | PR |
-|------|-------|------|--------|-----|
-| #16 | Kai | LightRAG integration | 🚀 In Progress | [PR-16](#) |
-| #17 | Zip | Kafka setup | ⏳ Pending | — |
-| #18 | Kai | Nginx security | ⏳ Pending | — |
-| #19 | Zip | Model router | ⏳ Pending | — |
-| #20 | Kai | Docker deployment | ⏳ Pending | — |
-| #21 | Zip | Venv setup | ⏳ Pending | — |
-| #22 | Kai | Paperclip fork | ⏳ Pending | — |
-| #23 | Zip | Skills system | ⏳ Pending | — |
-| #24 | Kai | Kafka API orchestration | ⏳ Pending | — |
-| #25 | Vex | Value analysis | ⏳ Pending | — |
-
-👉 **[View All 25 Tasks](../DETAILED_TASK_BRIEFS.md)**
-
-### Critical Path (MVP in 14-19 hours)
-
-```
-Task #16 → Task #17 → Task #24 → Task #21 → (Parallel: #18, #19, #20, #22, #23, #25)
- (4-6h)   (3-4h)    (5-6h)     (2-3h)
-```
+Start here:
+- **[docs/P2P-THREAT-MODEL.md](docs/P2P-THREAT-MODEL.md)** — formal threat model (Dolev-Yao adversary, attack dispositions, explicit non-guarantees)
+- **[docs/NEWSGROUP-FRONTEND-LESSONS.md](docs/NEWSGROUP-FRONTEND-LESSONS.md)** — design analysis of ten predecessor systems and the rules derived from them
+- `npm test -- tests/unit/multiNode.test.ts` — watch two real HTTP nodes finalize an identical block
 
 ---
 
@@ -170,84 +165,27 @@ Task #16 → Task #17 → Task #24 → Task #21 → (Parallel: #18, #19, #20, #2
 
 ### Key Features
 
-| Feature | Benefit | Status |
-|---------|---------|--------|
-| **Shared Memory (LightRAG)** | Agents learn from each other's decisions | Task #16 |
-| **Kafka Batching** | 30% fewer API calls | Task #17, #24 |
-| **Cache Layer** | 40% of requests served from cache | Task #24 |
-| **Local-First Routing** | $0 cost for 70% of tasks | Task #19 |
-| **Cost Tracking** | Real-time budget monitoring | Task #24 |
-| **Security (Nginx)** | TLS 1.3, rate limit, JWT auth | Task #18 |
-| **Containerized** | Multi-GPU, distributed deployment | Task #20 |
-
-### Cost Savings
-
-```
-Before Optimization:
-  100 API calls/day × $0.03 = $3/day = $90/month
-
-After Optimization (Task #24 complete):
-  LightRAG cache hits:     -40% of calls
-  Kafka batching:          -30% remaining calls
-  Local model routing:     -20% cost on cloud calls
-  Total:                   87% reduction = $1.20/month
-
-Break-even: 2-3 months (infrastructure cost ~$200/month)
-```
+| Feature | Benefit | Where |
+|---------|---------|-------|
+| **Shared Memory (LightRAG)** | Agents learn from each other's decisions | `src/integrations/lightrag/` |
+| **Kafka Batching** | Fewer API calls through batched orchestration | `src/integrations/kafka/` |
+| **Local-First Routing** | Local models preferred; cloud only when needed | `src/orchestration/model-router.ts` |
+| **Cost Tracking** | Real-time budget monitoring | `src/orchestration/` |
+| **Auth & RBAC** | Sessions, 2FA, role-based dashboards, audit log | `src/auth/` |
+| **Containerized** | Docker + systemd deployment | `deploy/` |
 
 ---
 
 ## 📚 Documentation
 
-- **[GIT_WORKFLOW.md](./GIT_WORKFLOW.md)** — Branch strategy, PR process, CI/CD integration
-- **[DETAILED_TASK_BRIEFS.md](../DETAILED_TASK_BRIEFS.md)** — 25 task specifications for agents
-- **[AGENT_ORG_ARCHITECTURE.md](../AGENT_ORG_ARCHITECTURE.md)** — Complete system design (3500+ lines)
-- **[CUSTOM_PAPERCLIP_FORK.md](../CUSTOM_PAPERCLIP_FORK.md)** — Integration strategy with OSS Paperclip
-- **[AGENT_EXECUTION_SYSTEM.md](../AGENT_EXECUTION_SYSTEM.md)** — Autonomous task execution daemon
+The full documentation index lives at **[docs/README.md](docs/README.md)**. Highlights:
 
----
-
-## 🚀 Implementation Order
-
-Follow this sequence to unblock downstream tasks:
-
-### Phase 1: Core Infrastructure (14-19 hours)
-
-```
-1. Task #16 (Kai, 4-6h)  → LightRAG integration + agent API wrapper
-   Deliverables: agent-api.ts, schema.ts, integration tests
-   Unblocks: Task #18, #22
-
-2. Task #17 (Zip, 3-4h)  → Kafka message queue + topics
-   Deliverables: topic definitions, producer/consumer, consumer groups
-   Unblocks: Task #24
-
-3. Task #24 (Kai, 5-6h)  → Kafka API middleware + caching + batching
-   Deliverables: API interceptor, batching engine, caching layer
-   Unblocks: Cost tracking
-
-4. Task #21 (Zip, 2-3h)  → Setup script + quick start guide
-   Deliverables: setup_venv.sh, QUICK_START.md, health check script
-   Unblocks: Local testing
-```
-
-**Milestone:** Tasks #16, #17, #21, #24 complete = MVP ready ✅
-
-### Phase 2: Security & Deployment (7-12 hours, parallel)
-
-```
-Task #18 (Kai, 2-3h)   → Nginx + TLS + JWT auth
-Task #19 (Zip, 5-6h)   → Model router optimization
-Task #20 (Kai, 4-5h)   → Docker + GPU support
-Task #22 (Kai, 4-6h)   → Paperclip fork integration
-```
-
-### Phase 3: Skills & Analysis (5-8 hours, parallel)
-
-```
-Task #23 (Zip, 3-4h)   → LightRAG skills system
-Task #25 (Vex, 2-3h)   → Value/ROI analysis
-```
+- **[docs/VIRTUALPC-ARCHITECTURE.md](docs/VIRTUALPC-ARCHITECTURE.md)** — process layout, agent registry, task engine, LLM routing
+- **[docs/P2P-THREAT-MODEL.md](docs/P2P-THREAT-MODEL.md)** — formal security model of the P2P stack
+- **[docs/API-ENDPOINTS.md](docs/API-ENDPOINTS.md)** — HTTP route reference
+- **[docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md)** — branch strategy, PR process, CI/CD integration
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — production deployment notes
+- **[SECURITY.md](SECURITY.md)** — vulnerability reporting and security posture
 
 ---
 
@@ -367,21 +305,20 @@ npm run format   # Auto-format code
 
 ## 📞 Support
 
-- **Architecture questions?** → Read [AGENT_ORG_ARCHITECTURE.md](../AGENT_ORG_ARCHITECTURE.md)
-- **Task stuck?** → Check [DETAILED_TASK_BRIEFS.md](../DETAILED_TASK_BRIEFS.md) for success criteria
-- **Git issues?** → See [GIT_WORKFLOW.md](./GIT_WORKFLOW.md)
-- **Deployment?** → Check [Task #20](../DETAILED_TASK_BRIEFS.md) (Docker setup)
+- **Architecture questions?** → Read [docs/VIRTUALPC-ARCHITECTURE.md](docs/VIRTUALPC-ARCHITECTURE.md)
+- **API questions?** → See [docs/API-ENDPOINTS.md](docs/API-ENDPOINTS.md)
+- **Git issues?** → See [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md)
+- **Deployment?** → See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- **Security reports?** → See [SECURITY.md](SECURITY.md)
 
 ---
 
-## 📈 Next Steps
+## 🤝 Contributing
 
-1. **Agents**: Read [GIT_WORKFLOW.md](./GIT_WORKFLOW.md) + [DETAILED_TASK_BRIEFS.md](../DETAILED_TASK_BRIEFS.md)
-2. **Pick a task**: Start with Task #16, #17, #21, or #24 (critical path)
-3. **Clone + branch**: `git checkout -b feature/task-XX-description`
-4. **Build + test**: Follow task brief success criteria
-5. **Push + PR**: Create pull request with passing tests
-6. **Merge**: Once approved by CTO/Sr
-7. **Next task**: Unblocked work in queue
+1. Read [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) and [docs/CODING-STANDARDS.md](docs/CODING-STANDARDS.md)
+2. Branch: `git checkout -b feature/short-description`
+3. Build and test: `npm run build && npm test`
+4. Push and open a pull request with passing tests
+5. Merge after review
 
 **Let's ship! 🚀**

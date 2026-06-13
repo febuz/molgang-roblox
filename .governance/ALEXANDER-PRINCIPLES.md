@@ -130,7 +130,7 @@ VirtualPC Development:
 ├─ Education-focused (the project teaches economics)
 └─ Aligned with UN Sustainable Development Goals
 
-the project Game:
+the platform:
 ├─ Educates millions on economics & sustainability
 ├─ Non-profit model (through association)
 ├─ Environmental awareness (MOLCO2 carbon credits)
@@ -265,7 +265,7 @@ Facing Code Quality Issues:
 
 ### What Alexander Can Command
 
-**Tactical Authority**: Alexander has full command over the project game development execution:
+**Tactical Authority**: Alexander has full command over the platform development execution:
 
 ```
 Alexander can issue commands to:

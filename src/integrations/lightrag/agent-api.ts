@@ -10,8 +10,9 @@
  */
 
 import { LightRAGClient } from './client';
-import { Decision, Precedent, Context } from './schema';
+import { Decision, Risk, Precedent, Context, RELATIONSHIPS } from './schema';
 import logger from '../../utils/logger';
+import { bestEffortPublish } from '../kafka/shared';
 
 interface CacheEntry {
   data: any;
@@ -154,6 +155,81 @@ export class AgentAPIWrapper {
       logger.error(`Failed to add decision: ${agent}`, error);
       throw error;
     }
+  }
+
+  /**
+   * Add a risk to memory and publish to Kafka so P2P peers receive it.
+   */
+  async addRisk(agent: string, risk: Risk): Promise<string> {
+    if (!risk.description || !risk.impact) {
+      throw new Error('Risk must have "description" and "impact" fields');
+    }
+    const node = await this.client.addNode({
+      type: 'Risk',
+      content: `${risk.description} (impact: ${risk.impact})`,
+      context: risk.mitigation ?? '',
+      created_by: agent,
+      affects: [],
+    });
+    this.invalidateRelatedCaches(risk.description);
+    bestEffortPublish(p => p.publishMemoryUpdate({
+      type: 'risk',
+      content: node.content,
+      agent,
+      metadata: { impact: risk.impact, status: risk.status ?? 'identified', nodeId: node.id },
+    }));
+    logger.info(`Risk added by ${agent}: ${risk.description.substring(0, 60)}`);
+    return node.id;
+  }
+
+  /**
+   * Add a precedent and publish to Kafka.
+   */
+  async addPrecedent(agent: string, precedent: Precedent): Promise<string> {
+    if (!precedent.context || !precedent.outcome) {
+      throw new Error('Precedent must have "context" and "outcome" fields');
+    }
+    const node = await this.client.addNode({
+      type: 'Precedent',
+      content: `${precedent.context} → ${precedent.outcome}`,
+      context: precedent.context,
+      created_by: agent,
+      affects: precedent.applicable_to ?? [],
+    });
+    this.invalidateRelatedCaches(precedent.context);
+    bestEffortPublish(p => p.publishMemoryUpdate({
+      type: 'precedent',
+      content: node.content,
+      agent,
+      affects: precedent.applicable_to,
+      metadata: { nodeId: node.id },
+    }));
+    logger.info(`Precedent added by ${agent}: ${precedent.context.substring(0, 60)}`);
+    return node.id;
+  }
+
+  /**
+   * Create a relationship between two graph nodes and broadcast via Kafka
+   * so P2P peers materialise the same edge.
+   */
+  async link(
+    agent: string,
+    fromId: string,
+    relType: string,
+    toId: string,
+    props?: Record<string, any>,
+  ): Promise<void> {
+    const allowed = new Set(Object.values(RELATIONSHIPS));
+    if (!allowed.has(relType)) {
+      throw new Error(`Unknown relationship type: ${relType}. Allowed: ${[...allowed].join(', ')}`);
+    }
+    await this.client.addEdge(fromId, relType, toId, props);
+    bestEffortPublish(p => p.publishMemoryUpdate({
+      type: 'context',
+      content: `edge:${fromId}-[${relType}]->${toId}`,
+      agent,
+      metadata: { edge: { fromId, toId, relType, props } } as any,
+    }));
   }
 
   /**
