@@ -20,7 +20,7 @@ VirtualPC Dashboard:
 ├─ Color schemes & typography
 └─ Responsive layouts
 
-the project Web:
+the project:
 ├─ Game UI screens
 ├─ Menu designs
 ├─ HUD elements
@@ -112,7 +112,7 @@ Animation Production:
 ## 🏗️ Asset Directory Structure (Complete)
 
 ```
-the-project/assets/
+<repo>/assets/
 │
 ├─ graphics/                    (2D Assets)
 │  ├─ 2d/
@@ -127,7 +127,7 @@ the-project/assets/
 │  │  │  ├─ zip/
 │  │  │  ├─ mira/
 │  │  │  └─ luna/
-│  │  ├─ <project>/
+│  │  ├─ <project-namespace>/
 │  │  │  ├─ atoms.png
 │  │  │  ├─ molecules/
 │  │  │  └─ elements/
@@ -221,7 +221,7 @@ the-project/assets/
 - **5D**: Smooth animations, transitions
 - **Timeline**: START IMMEDIATELY
 
-### Phase 2: the project Web 2D (8-10 hours)  
+### Phase 2: the project 2D (8-10 hours)  
 - **2D**: Game UI screens, menus, HUD
 - **5D**: UI animations, page transitions
 - **Timeline**: Next 2-3 days
@@ -339,7 +339,7 @@ Every asset Mira creates should:
       (Test in legacy, test in Web, iterate)
 
 6. COMMIT TO GITHUB
-   └─ Mira commits to the-project/assets/
+   └─ Mira commits to <repo>/assets/
       (All platforms can access immediately)
 
 7. BROADCAST

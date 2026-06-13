@@ -17,6 +17,8 @@ import { KafkaConsumer } from '../../src/integrations/kafka/consumer';
 const BROKERS = (process.env.KAFKA_BROKERS || 'localhost:9092').split(',');
 const CLIENT_ID = 'test-client';
 
+let kafkaAvailable = false;
+
 describe('Kafka Producer & Consumer Integration', () => {
   let producer: KafkaProducer;
   let consumer: KafkaConsumer;
@@ -36,9 +38,10 @@ describe('Kafka Producer & Consumer Integration', () => {
     try {
       await producer.connect();
       await consumer.connect();
+      kafkaAvailable = true;
       console.log('✓ Kafka connections established');
     } catch (error) {
-      console.warn('⚠️  Kafka not available, tests will use mocks');
+      console.warn('⚠️  Kafka not available, skipping integration tests');
     }
   });
 

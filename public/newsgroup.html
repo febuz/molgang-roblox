@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newsgroup 2.0 — P2P attention-ranked news</title>
+<style>
+/* ── Design tokens ─────────────────────────────────────────────────────── */
+:root {
+  --bg: #0d1117; --bg2: #161b22; --bg3: #1f2630;
+  --fg: #e6edf3; --fg-dim: #8b949e; --fg-faint: #545d68;
+  --accent: #58a6ff; --green: #3fb950; --orange: #d29922; --red: #f85149;
+  --purple: #bc8cff; --border: #30363d;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.5 -apple-system, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button { cursor: pointer; font: inherit; }
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+.app { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 340px; gap: 20px; padding: 0 16px; }
+@media (max-width: 900px) { .app { grid-template-columns: 1fr; } .sidebar { order: -1; } }
+header {
+  position: sticky; top: 0; z-index: 50; background: rgba(13,17,23,.92);
+  backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.header-inner { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.logo { font-weight: 700; font-size: 17px; white-space: nowrap; }
+.logo .v { color: var(--accent); }
+#search {
+  flex: 1; min-width: 160px; background: var(--bg2); border: 1px solid var(--border);
+  color: var(--fg); padding: 7px 12px; border-radius: 8px; outline: none;
+}
+#search:focus { border-color: var(--accent); }
+.who { font-family: var(--mono); font-size: 13px; color: var(--fg-dim); white-space: nowrap; }
+.who b { color: var(--green); }
+
+/* ── Tabs (transparent ranking — Digg lesson) ──────────────────────────── */
+.tabs { display: flex; gap: 4px; margin-bottom: 4px; }
+.tab {
+  background: none; border: 1px solid transparent; color: var(--fg-dim);
+  padding: 6px 14px; border-radius: 8px; font-size: 14px;
+}
+.tab.active { background: var(--bg2); color: var(--fg); border-color: var(--border); }
+.tab-hint { font-size: 12px; color: var(--fg-faint); margin: 0 0 12px 4px; min-height: 16px; }
+
+/* ── New-items pill (Twitter lesson: feed never moves) ─────────────────── */
+#newPill {
+  display: none; margin: 0 auto 12px; padding: 6px 18px;
+  background: var(--accent); color: #04111f; border: none; border-radius: 999px;
+  font-weight: 600; font-size: 13px;
+}
+#newPill.show { display: block; }
+
+/* ── Feed items ────────────────────────────────────────────────────────── */
+.item {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; margin-bottom: 10px; transition: border-color .15s;
+}
+.item.selected { border-color: var(--accent); }
+.item-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--fg-dim); }
+.claimer { color: var(--purple); font-weight: 600; }
+.claimer.muted-author { text-decoration: line-through; }
+.badge { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid; font-family: var(--mono); }
+.badge.unverified { color: var(--fg-dim); border-color: var(--fg-faint); }
+.badge.p2p { color: var(--accent); border-color: var(--accent); }
+.badge.anchored { color: var(--green); border-color: var(--green); }
+.badge.fresh { color: var(--orange); border-color: var(--orange); }
+.fact { margin: 8px 0; font-size: 15px; word-wrap: break-word; }
+.src { font-size: 13px; }
+.attention { font-family: var(--mono); font-size: 12px; color: var(--orange); }
+.item-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.react {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--fg-dim);
+  padding: 4px 12px; border-radius: 999px; font-size: 13px; transition: all .12s;
+}
+.react:hover { color: var(--fg); border-color: var(--fg-dim); }
+/* Costlier signals get prominence (Slashdot lesson) */
+.react.validate:hover { border-color: var(--green); color: var(--green); transform: scale(1.06); }
+.react.reply:hover { border-color: var(--purple); color: var(--purple); }
+.react.done { color: var(--green); border-color: var(--green); }
+.mute-btn { margin-left: auto; background: none; border: none; color: var(--fg-faint); font-size: 12px; }
+.mute-btn:hover { color: var(--red); }
+
+/* ── Composer ──────────────────────────────────────────────────────────── */
+.composer { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.composer textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--fg);
+  border-radius: 8px; padding: 10px; resize: vertical; min-height: 64px; outline: none; font: inherit;
+}
+.composer textarea:focus { border-color: var(--accent); }
+.composer-row { display: flex; gap: 8px; margin-top: 8px; }
+.composer input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--fg);
+  border-radius: 8px; padding: 8px 10px; outline: none;
+}
+.btn {
+  background: var(--accent); color: #04111f; border: none; border-radius: 8px;
+  padding: 8px 18px; font-weight: 600;
+}
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.ghost { background: var(--bg3); color: var(--fg); border: 1px solid var(--border); }
+
+/* ── Sidebar panels ────────────────────────────────────────────────────── */
+.panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.panel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-dim); margin-bottom: 10px; }
+.balance { font-family: var(--mono); font-size: 24px; color: var(--green); }
+.wallet-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; border-top: 1px solid var(--border); font-family: var(--mono); }
+.wallet-row .in { color: var(--green); } .wallet-row .out { color: var(--red); }
+.wallet-memo { color: var(--fg-faint); font-size: 11px; }
+.send-row { display: flex; gap: 6px; margin-top: 10px; }
+.send-row input { background: var(--bg); border: 1px solid var(--border); color: var(--fg); border-radius: 8px; padding: 6px 8px; outline: none; min-width: 0; }
+.proposal { border-top: 1px solid var(--border); padding: 8px 0; font-size: 13px; }
+.proposal .q { font-weight: 600; margin-bottom: 4px; }
+.opt-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--fg-dim); border-radius: 6px; padding: 2px 10px; font-size: 12px; margin: 2px 4px 2px 0; }
+.opt-btn:hover { color: var(--fg); border-color: var(--accent); }
+.opt-btn.voted { color: var(--green); border-color: var(--green); }
+.tally-bar { height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 2px; overflow: hidden; }
+.tally-fill { height: 100%; background: var(--accent); }
+.node-stat { display: flex; justify-content: space-between; font-size: 12px; font-family: var(--mono); padding: 2px 0; color: var(--fg-dim); }
+.node-stat b { color: var(--fg); }
+.ok { color: var(--green) !important; } .bad { color: var(--red) !important; }
+
+/* ── Onboarding modal (Nostr lesson: one field) ────────────────────────── */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 28px; width: 380px; max-width: 92vw; }
+.modal h2 { margin-bottom: 6px; }
+.modal p { color: var(--fg-dim); font-size: 13px; margin-bottom: 16px; }
+.modal input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--fg); border-radius: 8px; padding: 10px 12px; outline: none; margin-bottom: 10px; }
+.modal input:focus { border-color: var(--accent); }
+.modal .btn { width: 100%; }
+.modal .alt { text-align: center; margin-top: 12px; font-size: 13px; }
+.err { color: var(--red); font-size: 13px; min-height: 18px; margin-bottom: 6px; }
+
+/* ── Toasts (every economic event visible — Steemit lesson) ────────────── */
+#toasts { position: fixed; bottom: 18px; right: 18px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--bg3); border: 1px solid var(--border); border-left: 3px solid var(--green);
+  border-radius: 8px; padding: 10px 16px; font-size: 13px; max-width: 320px;
+  animation: slidein .2s ease-out;
+}
+.toast.error { border-left-color: var(--red); }
+@keyframes slidein { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ── Keyboard hint footer ──────────────────────────────────────────────── */
+.kbd-hints { text-align: center; color: var(--fg-faint); font-size: 12px; padding: 20px 0 30px; font-family: var(--mono); }
+kbd { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; }
+.loadmore { display: block; margin: 8px auto 20px; }
+.empty { text-align: center; color: var(--fg-faint); padding: 40px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">📰 Newsgroup <span class="v">2.0</span></div>
+    <input id="search" placeholder="Search claims, sources, authors…  ( / )" autocomplete="off">
+    <span class="who" id="who">not signed in</span>
+    <button class="btn ghost" id="authBtn">Sign in</button>
+  </div>
+</header>
+
+<div class="app">
+  <main>
+    <div class="composer" id="composer" style="display:none">
+      <textarea id="factInput" placeholder="What happened? Publish a claim — it will be signed with your DID and gossiped to peers."></textarea>
+      <div class="composer-row">
+        <input id="sourceInput" placeholder="Source (url, sensor, witness…)">
+        <button class="btn" id="publishBtn">Publish</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="hot">Hot</button>
+      <button class="tab" data-tab="new">New</button>
+      <button class="tab" data-tab="trending">Trending</button>
+    </div>
+    <div class="tab-hint" id="tabHint">Ranked by decaying attention: score = Σ weight × 2^(−age/24h). Untouched items lose half their attention per day.</div>
+
+    <button id="newPill">🔴 <span id="newCount">0</span> new claims — click to load</button>
+
+    <div id="feed"></div>
+    <button class="btn ghost loadmore" id="loadMore" style="display:none">Load more</button>
+
+    <div class="kbd-hints">
+      <kbd>j</kbd>/<kbd>k</kbd> navigate · <kbd>l</kbd> like · <kbd>v</kbd> validate · <kbd>o</kbd> open source · <kbd>/</kbd> search
+    </div>
+  </main>
+
+  <aside class="sidebar">
+    <div class="panel" id="walletPanel" style="display:none">
+      <h3>Wallet</h3>
+      <div class="balance" id="balance">—</div>
+      <div style="font-size:11px;color:var(--fg-faint);font-family:var(--mono)" id="didLine"></div>
+      <div id="walletHistory"></div>
+      <div class="send-row">
+        <input id="sendTo" placeholder="handle" style="flex:1">
+        <input id="sendAmt" placeholder="amount" type="number" min="0" step="0.1" style="width:80px">
+        <button class="btn" id="sendBtn">Send</button>
+      </div>
+      <div style="margin-top:10px;text-align:right">
+        <a href="#" id="exportProof" style="font-size:12px">Export balance proof ↗</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Governance</h3>
+      <div id="proposals"><div class="empty" style="padding:10px 0">No open proposals</div></div>
+      <div class="send-row" id="newProposalRow" style="display:none">
+        <input id="proposalQ" placeholder="New proposal question…" style="flex:1">
+        <button class="btn ghost" id="proposalBtn">+</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Node</h3>
+      <div id="nodeStats"><div class="empty" style="padding:10px 0">loading…</div></div>
+    </div>
+  </aside>
+</div>
+
+<div class="modal-bg" id="authModal" style="display:none">
+  <div class="modal">
+    <h2 id="authTitle">Join Newsgroup 2.0</h2>
+    <p>One field. You get a sovereign identity (DID), 10 welcome tokens, and a session — keys are held by this node; self-custody is an upgrade, not a prerequisite.</p>
+    <div class="err" id="authErr"></div>
+    <input id="handleInput" placeholder="choose a handle" autocomplete="off" maxlength="64">
+    <button class="btn" id="registerBtn">Create identity</button>
+    <div class="alt"><a href="#" id="toggleAuth">I already have a handle on this node →</a></div>
+    <div class="alt"><a href="#" id="closeAuth" style="color:var(--fg-faint)">skip for now</a></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════════════
+   Newsgroup 2.0 frontend — design rationale in docs/NEWSGROUP-FRONTEND-LESSONS.md
+   Ten rules: feed never moves · transparent ranking · one-field onboarding ·
+   visible economics · costly signals prominent · status honesty · keyboard
+   first · local mute · no dark patterns · exit is a feature.
+   ════════════════════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const state = {
+  session: JSON.parse(localStorage.getItem('ng2.session') || 'null'),
+  tab: localStorage.getItem('ng2.tab') || 'hot',          // ranking choice persists (Twitter lesson)
+  muted: new Set(JSON.parse(localStorage.getItem('ng2.muted') || '[]')), // local kill file (Usenet lesson)
+  reacted: new Set(JSON.parse(localStorage.getItem('ng2.reacted') || '[]')),
+  voted: JSON.parse(localStorage.getItem('ng2.voted') || '{}'),
+  items: [], offset: 0, hasMore: false, selected: -1,
+  pendingNew: [],                                          // SSE buffer — feed never moves
+  searchMode: false,
+};
+const save = (k, v) => localStorage.setItem('ng2.' + k, JSON.stringify(v));
+
+const TAB_HINTS = {
+  hot: 'Ranked by decaying attention: score = Σ weight × 2^(−age/24h). Untouched items lose half their attention per day.',
+  new: 'Pure chronological — newest claims first. No algorithm.',
+  trending: 'Highest attention within the last 24 hours.',
+};
+
+/* ── API helper ─────────────────────────────────────────────────────────── */
+async function api(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.session?.token) headers['X-Session-Token'] = state.session.token;
+  const res = await fetch(path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) throw new Error(data.error || data.reason || `HTTP ${res.status}`);
+  return data;
+}
+
+function toast(msg, isError = false) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (isError ? ' error' : '');
+  el.textContent = msg;
+  $('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ── Feed rendering ─────────────────────────────────────────────────────── */
+function ageOf(iso) {
+  const m = (Date.now() - new Date(iso).getTime()) / 60000;
+  if (m < 1) return 'now'; if (m < 60) return Math.floor(m) + 'm';
+  if (m < 1440) return Math.floor(m / 60) + 'h'; return Math.floor(m / 1440) + 'd';
+}
+
+function renderItem(item, idx) {
+  const isFresh = (Date.now() - new Date(item.publicationTime).getTime()) < 3600_000;
+  const isMuted = state.muted.has(item.claimer);
+  const rid = kind => `${item.id}:${kind}`;
+  const counts = item.reactionCounts || {};
+  const reactBtn = (kind, label) => {
+    const done = state.reacted.has(rid(kind));
+    return `<button class="react ${kind}${done ? ' done' : ''}" data-id="${esc(item.id)}" data-kind="${kind}" ${done ? 'disabled' : ''}>${label}${counts[kind] ? ' ' + counts[kind] : ''}</button>`;
+  };
+  let srcHost = item.source;
+  try { srcHost = new URL(item.source).host; } catch {}
+  return `<article class="item${idx === state.selected ? ' selected' : ''}" data-idx="${idx}" data-id="${esc(item.id)}">
+    <div class="item-head">
+      <span class="claimer${isMuted ? ' muted-author' : ''}">${esc(item.claimer)}</span>
+      ${item.claimerDid ? '<span title="registered sovereign identity">🪪</span>' : ''}
+      <span>·</span><span>${ageOf(item.publicationTime)}</span>
+      <span class="badge ${esc(item.status)}">${esc(item.status)}</span>
+      ${isFresh ? '<span class="badge fresh">fresh</span>' : ''}
+      <span class="attention" title="decaying attention score">▲ ${item.attentionScore ?? 0}</span>
+    </div>
+    ${isMuted ? `<div class="fact" style="color:var(--fg-faint)"><i>muted — <a href="#" class="unmute" data-claimer="${esc(item.claimer)}">show</a></i></div>`
+    : `<div class="fact">${esc(item.claimedFact)}</div>
+    <div class="src">↳ <a href="${esc(item.source)}" target="_blank" rel="noopener noreferrer">${esc(srcHost)}</a></div>
+    <div class="item-actions">
+      ${reactBtn('like', '👍')} ${reactBtn('share', '🔁')} ${reactBtn('reply', '💬')} ${reactBtn('validate', '✅ validate')}
+      <button class="mute-btn" data-claimer="${esc(item.claimer)}" title="mute this author (local only — Usenet kill file)">mute</button>
+    </div>`}
+  </article>`;
+}
+
+function renderFeed() {
+  const feed = $('feed');
+  if (!state.items.length) {
+    feed.innerHTML = '<div class="empty">No claims yet. Be the first to publish.</div>';
+  } else {
+    feed.innerHTML = state.items.map(renderItem).join('');
+  }
+  $('loadMore').style.display = state.hasMore ? 'block' : 'none';
+}
+
+async function loadFeed(reset = true) {
+  if (reset) { state.offset = 0; state.items = []; state.selected = -1; }
+  try {
+    let data;
+    if (state.searchMode) {
+      data = await api(`/api/feed/search?q=${encodeURIComponent($('search').value)}&limit=20&offset=${state.offset}`);
+      state.hasMore = state.offset + 20 < data.total;
+    } else if (state.tab === 'trending') {
+      data = await api('/api/feed/trending?hours=24&limit=30');
+      state.hasMore = false;
+    } else {
+      const order = state.tab === 'hot' ? 'attention' : 'time';
+      data = await api(`/api/feed?orderBy=${order}&limit=20&offset=${state.offset}`);
+      state.hasMore = data.hasMore;
+    }
+    state.items = reset ? data.items : state.items.concat(data.items);
+    state.offset += data.items.length;
+    renderFeed();
+  } catch (e) { toast('Feed: ' + e.message, true); }
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────────────── */
+document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.tab = btn.dataset.tab;
+  localStorage.setItem('ng2.tab', state.tab);
+  $('tabHint').textContent = TAB_HINTS[state.tab];
+  state.searchMode = false; $('search').value = '';
+  loadFeed();
+}));
+$('tabHint').textContent = TAB_HINTS[state.tab];
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
+
+/* ── Search ─────────────────────────────────────────────────────────────── */
+let searchTimer;
+$('search').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    const q = $('search').value.trim();
+    state.searchMode = q.length >= 2;
+    loadFeed();
+  }, 250);
+});
+
+/* ── Reactions (optimistic UI + visible economics) ──────────────────────── */
+$('feed').addEventListener('click', async e => {
+  const reactEl = e.target.closest('.react');
+  if (reactEl && !reactEl.disabled) {
+    if (!state.session) return openAuth();
+    const { id, kind } = reactEl.dataset;
+    reactEl.disabled = true; reactEl.classList.add('done'); // optimistic
+    try {
+      const r = await api(`/api/feed/${id}/react`, { method: 'POST', body: { agent: state.session.handle, kind } });
+      state.reacted.add(`${id}:${kind}`); save('reacted', [...state.reacted]);
+      const item = state.items.find(i => i.id === id);
+      if (item) { item.reactionCounts = r.reactionCounts; item.attentionScore = Math.round(r.attentionScore * 100) / 100; }
+      renderFeed();
+      if (r.rewardTxId) toast(`✅ Author earned tokens for your ${kind} (tx ${r.rewardTxId.slice(0, 11)}…)`);
+      refreshWallet();
+    } catch (err) {
+      reactEl.disabled = false; reactEl.classList.remove('done');
+      toast(err.message, true);
+    }
+    return;
+  }
+  const muteEl = e.target.closest('.mute-btn');
+  if (muteEl) {
+    state.muted.add(muteEl.dataset.claimer); save('muted', [...state.muted]);
+    renderFeed(); return;
+  }
+  const unmuteEl = e.target.closest('.unmute');
+  if (unmuteEl) {
+    e.preventDefault();
+    state.muted.delete(unmuteEl.dataset.claimer); save('muted', [...state.muted]);
+    renderFeed();
+  }
+});
+
+/* ── Publish ────────────────────────────────────────────────────────────── */
+$('publishBtn').addEventListener('click', async () => {
+  const claimedFact = $('factInput').value.trim();
+  const source = $('sourceInput').value.trim() || 'firsthand';
+  if (!claimedFact) return;
+  $('publishBtn').disabled = true;
+  try {
+    await api('/api/feed/publish', { method: 'POST', body: { claimedFact, source, claimer: state.session.handle } });
+    $('factInput').value = ''; $('sourceInput').value = '';
+    toast('📡 Claim published — signed and queued for gossip');
+    loadFeed();
+  } catch (e) { toast(e.message, true); }
+  $('publishBtn').disabled = false;
+});
+
+/* ── Load more (no infinite scroll — HN lesson) ─────────────────────────── */
+$('loadMore').addEventListener('click', () => loadFeed(false));
+
+/* ── SSE live updates (buffered — feed never moves) ─────────────────────── */
+function connectStream() {
+  const es = new EventSource('/api/feed/stream');
+  es.onmessage = ev => {
+    try {
+      const msg = JSON.parse(ev.data);
+      if (msg.event === 'new-item' && !state.items.some(i => i.id === msg.item.id)) {
+        state.pendingNew.unshift(msg.item);
+        $('newCount').textContent = state.pendingNew.length;
+        $('newPill').classList.add('show');
+      }
+    } catch {}
+  };
+  es.onerror = () => { es.close(); setTimeout(connectStream, 5000); };
+}
+$('newPill').addEventListener('click', () => {
+  state.items = state.pendingNew.concat(state.items);
+  state.pendingNew = [];
+  $('newPill').classList.remove('show');
+  renderFeed();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+/* ── Auth (one-field onboarding — Nostr lesson) ─────────────────────────── */
+let authMode = 'register';
+function openAuth() { $('authModal').style.display = 'flex'; $('handleInput').focus(); }
+$('authBtn').addEventListener('click', () => {
+  if (state.session) { // sign out
+    state.session = null; localStorage.removeItem('ng2.session');
+    updateAuthUI(); toast('Signed out');
+  } else openAuth();
+});
+$('closeAuth').addEventListener('click', e => { e.preventDefault(); $('authModal').style.display = 'none'; });
+$('toggleAuth').addEventListener('click', e => {
+  e.preventDefault();
+  authMode = authMode === 'register' ? 'login' : 'register';
+  $('authTitle').textContent = authMode === 'register' ? 'Join Newsgroup 2.0' : 'Welcome back';
+  $('registerBtn').textContent = authMode === 'register' ? 'Create identity' : 'Sign in';
+  $('toggleAuth').textContent = authMode === 'register' ? 'I already have a handle on this node →' : '← Create a new identity instead';
+});
+async function doAuth() {
+  const handle = $('handleInput').value.trim();
+  $('authErr').textContent = '';
+  if (handle.length < 2) { $('authErr').textContent = 'Handle must be at least 2 characters'; return; }
+  try {
+    let token, did;
+    if (authMode === 'register') {
+      const r = await api('/api/users/register', { method: 'POST', body: { handle } });
+      token = r.sessionToken; did = r.profile.did;
+      toast(`🪪 Identity created — DID ${did.slice(0, 20)}… +10 welcome tokens`);
+    } else {
+      const r = await api(`/api/users/${encodeURIComponent(handle)}/session`, { method: 'POST', body: {} });
+      token = r.sessionToken; did = r.did;
+      toast('Signed in');
+    }
+    state.session = { handle, did, token };
+    save('session', state.session);
+    $('authModal').style.display = 'none';
+    updateAuthUI();
+  } catch (e) { $('authErr').textContent = e.message; }
+}
+$('registerBtn').addEventListener('click', doAuth);
+$('handleInput').addEventListener('keydown', e => { if (e.key === 'Enter') doAuth(); });
+
+function updateAuthUI() {
+  const s = state.session;
+  $('who').innerHTML = s ? `signed in as <b>${esc(s.handle)}</b>` : 'not signed in';
+  $('authBtn').textContent = s ? 'Sign out' : 'Sign in';
+  $('composer').style.display = s ? 'block' : 'none';
+  $('walletPanel').style.display = s ? 'block' : 'none';
+  $('newProposalRow').style.display = s ? 'flex' : 'none';
+  if (s) refreshWallet();
+}
+
+/* ── Wallet (every economic event visible — Steemit lesson) ─────────────── */
+async function refreshWallet() {
+  if (!state.session) return;
+  try {
+    const { wallet } = await api(`/api/users/${encodeURIComponent(state.session.handle)}/wallet?limit=8`);
+    $('balance').textContent = wallet.balanceTokens + ' ◈';
+    $('didLine').textContent = wallet.did;
+    $('walletHistory').innerHTML = wallet.history.slice(0, 8).map(h => `
+      <div class="wallet-row">
+        <span class="${h.direction}">${h.direction === 'in' ? '+' : '−'}${esc(h.amountTokens)}</span>
+        <span class="wallet-memo">${esc(h.memo || h.counterparty.slice(0, 16))}</span>
+      </div>`).join('');
+    $('exportProof').href = `/api/value/proof/${encodeURIComponent(wallet.did)}`;
+  } catch (e) { /* wallet panel is non-critical */ }
+}
+$('sendBtn').addEventListener('click', async () => {
+  const toHandle = $('sendTo').value.trim();
+  const amountTokens = parseFloat($('sendAmt').value);
+  if (!toHandle || !(amountTokens > 0)) return;
+  try {
+    await api(`/api/users/${encodeURIComponent(state.session.handle)}/send`, { method: 'POST', body: { toHandle, amountTokens } });
+    toast(`◈ Sent ${amountTokens} to ${toHandle}`);
+    $('sendTo').value = ''; $('sendAmt').value = '';
+    refreshWallet();
+  } catch (e) { toast(e.message, true); }
+});
+
+/* ── Governance ─────────────────────────────────────────────────────────── */
+async function loadProposals() {
+  try {
+    const { proposals } = await api('/api/sovereign-votes/proposals?status=open');
+    if (!proposals.length) { $('proposals').innerHTML = '<div class="empty" style="padding:10px 0">No open proposals</div>'; return; }
+    const rendered = await Promise.all(proposals.slice(0, 5).map(async p => {
+      let tally = {};
+      try { tally = (await api(`/api/sovereign-votes/proposals/${p.id}`)).tally?.totals ?? {}; } catch {}
+      const total = Object.values(tally).reduce((a, b) => a + b, 0) || 1;
+      const votedOpt = state.voted[p.id];
+      return `<div class="proposal" data-id="${esc(p.id)}">
+        <div class="q">${esc(p.question)}</div>
+        ${p.options.map(o => `
+          <button class="opt-btn${votedOpt === o ? ' voted' : ''}" data-pid="${esc(p.id)}" data-opt="${esc(o)}" ${votedOpt ? 'disabled' : ''}>${esc(o)} ${tally[o] ? `(${tally[o]})` : ''}</button>
+          <div class="tally-bar"><div class="tally-fill" style="width:${Math.round(((tally[o] || 0) / total) * 100)}%"></div></div>`).join('')}
+      </div>`;
+    }));
+    $('proposals').innerHTML = rendered.join('');
+  } catch (e) { /* governance panel is non-critical */ }
+}
+$('proposals').addEventListener('click', async e => {
+  const btn = e.target.closest('.opt-btn');
+  if (!btn || btn.disabled) return;
+  if (!state.session) return openAuth();
+  try {
+    await api(`/api/sovereign-votes/proposals/${btn.dataset.pid}/vote`, {
+      method: 'POST', body: { voter: state.session.did, option: btn.dataset.opt },
+    });
+    state.voted[btn.dataset.pid] = btn.dataset.opt; save('voted', state.voted);
+    toast('🗳️ Vote cast — DID-bound and signed');
+    loadProposals();
+  } catch (err) { toast(err.message, true); }
+});
+$('proposalBtn').addEventListener('click', async () => {
+  const question = $('proposalQ').value.trim();
+  if (question.length < 4) return;
+  try {
+    await api('/api/sovereign-votes/proposals', {
+      method: 'POST', body: { question, options: ['yes', 'no'], createdBy: state.session.did, mode: 'identity' },
+    });
+    $('proposalQ').value = '';
+    toast('Proposal created');
+    loadProposals();
+  } catch (e) { toast(e.message, true); }
+});
+
+/* ── Node status (status honesty) ───────────────────────────────────────── */
+async function loadNodeStatus() {
+  try {
+    const d = await api('/api/node/status');
+    const c = d.consensus, s = d.supply;
+    $('nodeStats').innerHTML = `
+      ${c ? `<div class="node-stat"><span>consensus height</span><b>${c.height}</b></div>
+      <div class="node-stat"><span>phase</span><b>${esc(c.phase)}</b></div>
+      <div class="node-stat"><span>validators</span><b>${c.validators}</b></div>` : ''}
+      ${s ? `<div class="node-stat"><span>minted</span><b>${esc(s.mintedTokens)} / ${s.capTokens.toLocaleString()}</b></div>
+      <div class="node-stat"><span>halving era</span><b>${s.era}</b></div>
+      <div class="node-stat"><span>accounts</span><b>${s.accounts}</b></div>
+      <div class="node-stat"><span>blocks</span><b>${s.blocks}</b></div>
+      <div class="node-stat"><span>conservation</span><b class="${s.conservationHolds ? 'ok' : 'bad'}">${s.conservationHolds ? '✓ Σ=minted' : '✗ BROKEN'}</b></div>` : ''}
+      <div class="node-stat"><span>uptime</span><b>${Math.floor(d.node.uptime / 60)}m</b></div>`;
+  } catch (e) { /* non-critical */ }
+}
+
+/* ── Keyboard navigation (trn / HN lesson) ──────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, textarea')) {
+    if (e.key === 'Escape') e.target.blur();
+    return;
+  }
+  if (e.key === '/') { e.preventDefault(); $('search').focus(); return; }
+  if (e.key === 'j' || e.key === 'k') {
+    const n = state.items.length;
+    if (!n) return;
+    state.selected = e.key === 'j' ? Math.min(state.selected + 1, n - 1) : Math.max(state.selected - 1, 0);
+    renderFeed();
+    document.querySelector('.item.selected')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    return;
+  }
+  const sel = state.items[state.selected];
+  if (!sel) return;
+  if (e.key === 'o') {
+    window.open(sel.source, '_blank', 'noopener');
+  } else if (e.key === 'l' || e.key === 'v') {
+    const kind = e.key === 'l' ? 'like' : 'validate';
+    document.querySelector(`.item.selected .react[data-kind="${kind}"]`)?.click();
+  }
+});
+
+/* ── Boot ───────────────────────────────────────────────────────────────── */
+updateAuthUI();
+loadFeed();
+loadProposals();
+loadNodeStatus();
+connectStream();
+setInterval(loadNodeStatus, 15_000);
+setInterval(loadProposals, 30_000);
+</script>
+</body>
+</html>
