@@ -48,6 +48,9 @@ import { setupOpenApiRoutes } from './api/openapi';
 import GitHubSync from './automation/github-sync';
 import setupGitHubRoutes from './automation/github-routes';
 import { SecurityDashboard } from './security/securityDashboard';
+import { securityHeaders } from './security/securityHeaders';
+import { AdvancedRateLimiter } from './security/rateLimiter';
+import { internalWriteAuth } from './middleware/internalWriteAuth';
 import setupSecurityRoutes from './security/security-routes';
 import { QualityDashboard } from './quality/qualityDashboard';
 import setupQualityRoutes from './quality/quality-routes';
@@ -109,6 +112,56 @@ const PORT = process.env.PORT || 3100;
 // Bumped from default 100kb so /api/migration/slag/claim can accept a base64-
 // encoded screenshot (~5 MB worst case after the ~33% base64 overhead).
 app.use(express.json({ limit: '6mb' }));
+
+// ── Security middleware (mounted before any route so it applies globally) ──
+// 1) Response security headers. Safe-by-default; strict mode (COEP/COOP/strict
+//    CSP/X-Frame DENY) is opt-in via ENFORCE_STRICT_SECURITY — see
+//    src/security/securityHeaders.ts.
+app.use(securityHeaders);
+
+// 2) Global per-IP rate limiter. Default 1200 req/min/IP with a 60s window.
+//    The recon measured a single multi-dashboard browser at ~270 req/min, and
+//    all LOCAL dashboards share one bucket (req.ip == 127.0.0.1, no trust
+//    proxy), so the headroom covers a power user with several tabs. External
+//    attackers each get their OWN per-IP bucket, so the flooding-defense value
+//    is unaffected by the generous localhost ceiling. Socket.IO + the canonical
+//    liveness probes are exempt (bypassed before the limiter). cleanup() runs
+//    every 5 min so the in-memory store can't leak; the timer is unref'd.
+const rateLimitEnabled = (process.env.RATE_LIMIT_ENABLED ?? 'true').toLowerCase() !== 'false';
+if (rateLimitEnabled) {
+  const rateLimiter = new AdvancedRateLimiter();
+  // Parse defensively: a non-numeric / non-positive env value would otherwise
+  // yield NaN (perIp's `count >= NaN` is always false → limiting silently off)
+  // or disable limiting, so fall back to the safe default instead.
+  const parsePositive = (v: string | undefined, fallback: number): number => {
+    const n = parseInt(v ?? '', 10);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  };
+  const windowMs = parsePositive(process.env.RATE_LIMIT_WINDOW_MS, 60000);
+  const maxRequests = parsePositive(process.env.RATE_LIMIT_MAX_REQUESTS, 1200);
+  const limiterMw = rateLimiter.perIp({ windowMs, maxRequests });
+  // Exempt the persistent WebSocket transport and the two canonical liveness
+  // probes by BYPASSING the limiter entirely — perIp() has no skip path (a null
+  // key buckets under 'unknown'), so exemption must happen before it runs.
+  // NOTE: match the health probes EXACTLY, not by `/health` suffix — a suffix
+  // match let an attacker dodge the limiter with any `/x/health` path. The
+  // per-subsystem health routes (/api/llm/health, …) are low-frequency and stay
+  // rate-limited, which 1200/min easily accommodates.
+  const EXEMPT_PATHS = new Set(['/health', '/api/health']);
+  const isExempt = (p: string) => p.startsWith('/socket.io') || EXEMPT_PATHS.has(p);
+  app.use((req, res, next) => (isExempt(req.path || '') ? next() : limiterMw(req, res, next)));
+  const cleanupTimer = setInterval(() => rateLimiter.cleanup(), 5 * 60 * 1000);
+  if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
+  logger.info(`Rate limiter enabled: ${maxRequests} req / ${windowMs}ms per IP (socket.io + health exempt)`);
+} else {
+  logger.warn('Rate limiter disabled (RATE_LIMIT_ENABLED=false)');
+}
+
+// 3) Guard the internal-only write endpoints. WARN mode by default (logs but
+//    allows) so it's non-breaking; INTERNAL_WRITE_ENFORCE=true rejects callers
+//    that are neither localhost nor presenting INTERNAL_WRITE_SERVICE_TOKEN.
+app.use(internalWriteAuth());
+
 // Plan review — make plans available from VirtualPC + per-section human comments
 // that relay back to the agents. See src/plan-review + /plan-review.html.
 registerPlanRoutes(app);
