@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:integration": "jest --testPathPattern=integration",
+    "test:integration": "jest --testPathPattern=integration --runInBand",
     "bench:ideagraph": "ts-node scripts/run-ideagraph-benchmark.ts",
     "test:e2e": "ts-node tests/e2e/selenium-launcher.ts",
     "test:e2e:headless": "HEADLESS=true ts-node tests/e2e/selenium-launcher.ts",
