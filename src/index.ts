@@ -114,6 +114,7 @@ import { registerGpuRoutes, getGpuAvailable } from './gpu';
 import { registerQueryRoutes } from './query-builder';
 import { registerSpectroscopyRoutes } from './spectroscopy';
 import { registerAssetMirrorRoutes } from './assets';
+import { registerCodexRoutes } from './codex';
 import { registerTournamentRoutes } from './org/tournament-routes';
 import { registerRequirementRoutes } from './requirements';
 import { resolveModel } from './gpu/availability';
@@ -218,6 +219,8 @@ registerQueryRoutes(app);
 registerSpectroscopyRoutes(app);
 // Asset mirror coverage — Roblox→Web cross-platform remediation plan for designers.
 registerAssetMirrorRoutes(app);
+// Codex bridge — coding/review tasks via codex exec (GPT-5.5 dev leg).
+registerCodexRoutes(app);
 // Dev tournament — 3-developer competing-branch regime.
 registerTournamentRoutes(app);
 // Requirements register — USDP use-case-driven requirements with traceability.
