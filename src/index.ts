@@ -87,6 +87,9 @@ import { setupOpenApiRoutes } from './api/openapi';
 import GitHubSync from './automation/github-sync';
 import setupGitHubRoutes from './automation/github-routes';
 import { SecurityDashboard } from './security/securityDashboard';
+import { securityHeaders } from './security/securityHeaders';
+import { AdvancedRateLimiter } from './security/rateLimiter';
+import { internalWriteAuth } from './middleware/internalWriteAuth';
 import setupSecurityRoutes from './security/security-routes';
 import { QualityDashboard } from './quality/qualityDashboard';
 import setupQualityRoutes from './quality/quality-routes';
@@ -118,6 +121,8 @@ import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
 import { guardrailsAgent } from './guardrails/guardrails-agent';
+import { containmentGuard, setupContainmentRoutes } from './containment';
+import { setupPlaytestRoutes } from './playtest';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
@@ -125,11 +130,23 @@ import * as commitAudit from './commit-audit';
 
 // Load environment
 config();
+// Re-load credentials now that dotenv has populated process.env: the module's
+// boot-time load ran at import (before config()), so FIELD_ENCRYPTION_KEY from
+// .env was not yet visible. This pass decrypts api_keys and migrates any
+// plaintext-at-rest to encrypted (no-op when the key is unset). See #31.
+credentials.loadCredentials();
 
 const app = express();
 const server = http.createServer(app);
+// Restrict WebSocket CORS to the local dashboards. `origin: '*'` let any
+// website on the internet open a socket to this server, violating the
+// local-only posture. Override with SOCKET_CORS_ORIGINS (comma-separated)
+// if the dashboard is ever served from another origin.
+const SOCKET_CORS_ORIGINS = (process.env.SOCKET_CORS_ORIGINS ||
+  'http://localhost:3000,http://localhost:3100,http://127.0.0.1:3000,http://127.0.0.1:3100')
+  .split(',').map(o => o.trim()).filter(Boolean);
 const io = new SocketIOServer(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { origin: SOCKET_CORS_ORIGINS, methods: ['GET', 'POST'] }
 });
 const PORT = process.env.PORT || 3100;
 
@@ -137,6 +154,56 @@ const PORT = process.env.PORT || 3100;
 // Bumped from default 100kb so /api/migration/slag/claim can accept a base64-
 // encoded screenshot (~5 MB worst case after the ~33% base64 overhead).
 app.use(express.json({ limit: '6mb' }));
+
+// ── Security middleware (mounted before any route so it applies globally) ──
+// 1) Response security headers. Safe-by-default; strict mode (COEP/COOP/strict
+//    CSP/X-Frame DENY) is opt-in via ENFORCE_STRICT_SECURITY — see
+//    src/security/securityHeaders.ts.
+app.use(securityHeaders);
+
+// 2) Global per-IP rate limiter. Default 1200 req/min/IP with a 60s window.
+//    The recon measured a single multi-dashboard browser at ~270 req/min, and
+//    all LOCAL dashboards share one bucket (req.ip == 127.0.0.1, no trust
+//    proxy), so the headroom covers a power user with several tabs. External
+//    attackers each get their OWN per-IP bucket, so the flooding-defense value
+//    is unaffected by the generous localhost ceiling. Socket.IO + the canonical
+//    liveness probes are exempt (bypassed before the limiter). cleanup() runs
+//    every 5 min so the in-memory store can't leak; the timer is unref'd.
+const rateLimitEnabled = (process.env.RATE_LIMIT_ENABLED ?? 'true').toLowerCase() !== 'false';
+if (rateLimitEnabled) {
+  const rateLimiter = new AdvancedRateLimiter();
+  // Parse defensively: a non-numeric / non-positive env value would otherwise
+  // yield NaN (perIp's `count >= NaN` is always false → limiting silently off)
+  // or disable limiting, so fall back to the safe default instead.
+  const parsePositive = (v: string | undefined, fallback: number): number => {
+    const n = parseInt(v ?? '', 10);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  };
+  const windowMs = parsePositive(process.env.RATE_LIMIT_WINDOW_MS, 60000);
+  const maxRequests = parsePositive(process.env.RATE_LIMIT_MAX_REQUESTS, 1200);
+  const limiterMw = rateLimiter.perIp({ windowMs, maxRequests });
+  // Exempt the persistent WebSocket transport and the two canonical liveness
+  // probes by BYPASSING the limiter entirely — perIp() has no skip path (a null
+  // key buckets under 'unknown'), so exemption must happen before it runs.
+  // NOTE: match the health probes EXACTLY, not by `/health` suffix — a suffix
+  // match let an attacker dodge the limiter with any `/x/health` path. The
+  // per-subsystem health routes (/api/llm/health, …) are low-frequency and stay
+  // rate-limited, which 1200/min easily accommodates.
+  const EXEMPT_PATHS = new Set(['/health', '/api/health']);
+  const isExempt = (p: string) => p.startsWith('/socket.io') || EXEMPT_PATHS.has(p);
+  app.use((req, res, next) => (isExempt(req.path || '') ? next() : limiterMw(req, res, next)));
+  const cleanupTimer = setInterval(() => rateLimiter.cleanup(), 5 * 60 * 1000);
+  if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
+  logger.info(`Rate limiter enabled: ${maxRequests} req / ${windowMs}ms per IP (socket.io + health exempt)`);
+} else {
+  logger.warn('Rate limiter disabled (RATE_LIMIT_ENABLED=false)');
+}
+
+// 3) Guard the internal-only write endpoints. WARN mode by default (logs but
+//    allows) so it's non-breaking; INTERNAL_WRITE_ENFORCE=true rejects callers
+//    that are neither localhost nor presenting INTERNAL_WRITE_SERVICE_TOKEN.
+app.use(internalWriteAuth());
+
 // Plan review — make plans available from VirtualPC + per-section human comments
 // that relay back to the agents. See src/plan-review + /plan-review.html.
 registerPlanRoutes(app);
@@ -296,7 +363,9 @@ function ghPathAllowed(p: string): boolean {
 function ghApiFetch(repoPath: string): Promise<{ path: string; content: string; size: number; html_url: string; encoding: string }> {
   return new Promise((resolve, reject) => {
     const { execFile } = require('child_process');
-    execFile('gh', ['api', `repos/${GH_REPO}/contents/${repoPath}`], { maxBuffer: 4 * 1024 * 1024 }, (err: any, stdout: string, stderr: string) => {
+    // 15s timeout so a slow/hung `gh` call can't block the request indefinitely
+    // (the event loop isn't blocked, but the awaiting request would hang forever).
+    execFile('gh', ['api', `repos/${GH_REPO}/contents/${repoPath}`], { maxBuffer: 4 * 1024 * 1024, timeout: 15000 }, (err: any, stdout: string, stderr: string) => {
       if (err) { reject(new Error(stderr || err.message)); return; }
       try {
         const j = JSON.parse(stdout);
@@ -724,6 +793,14 @@ app.post('/api/mcp/call', async (req, res) => {
 app.post('/api/docs/regenerate', async (req, res) => {
   try {
     const scope = String(req.body?.scope || 'all');
+    // Allow-list the scope before it reaches the spawned script as a CLI arg.
+    // regenerate-docs.js only understands these four values; anything else is
+    // either a typo or an injection attempt and must not be forwarded.
+    const ALLOWED_SCOPES = ['all', 'readme', 'architecture', 'wiki'];
+    if (!ALLOWED_SCOPES.includes(scope)) {
+      res.status(400).json({ success: false, error: `invalid scope; allowed: ${ALLOWED_SCOPES.join(', ')}` });
+      return;
+    }
     const { spawn } = require('child_process');
     const script = path.join(REPO_ROOT, 'scripts', 'regenerate-docs.js');
     if (!require('fs').existsSync(script)) {
@@ -1318,7 +1395,21 @@ app.get('/api/tracks', (req, res) => {
 app.get('/api/tracks/:id', (req, res) => {
   try {
     const fs = require('fs');
-    const file = path.resolve(__dirname, '..', 'public', 'assets', 'tracks', `${req.params.id}.json`);
+    // Path-traversal guard: a track id is a flat slug, never a path. Reject
+    // anything outside [A-Za-z0-9_-] so encoded "../" sequences can't escape
+    // the tracks directory and read arbitrary files (e.g. /etc/passwd).
+    const id = String(req.params.id);
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+      res.status(400).json({ success: false, error: 'invalid track id' });
+      return;
+    }
+    const tracksDir = path.resolve(__dirname, '..', 'public', 'assets', 'tracks');
+    const file = path.resolve(tracksDir, `${id}.json`);
+    // Defence in depth: confirm the resolved path is still inside tracksDir.
+    if (file !== path.join(tracksDir, `${id}.json`) || !file.startsWith(tracksDir + path.sep)) {
+      res.status(400).json({ success: false, error: 'invalid track id' });
+      return;
+    }
     if (!fs.existsSync(file)) {
       res.status(404).json({ success: false, error: 'track not found' });
       return;
@@ -2101,6 +2192,123 @@ async function initialize() {
       logger.warn(`governance-graph init failed: ${e.message}`);
     }
 
+    // 1c. Ingest the Familie knowledge graph — een aparte, verbergbare graaf
+    //     met personen / bedrijven / hardware / software / projecten. Zelfde
+    //     graceful-offline gedrag. De /api/family/* surface hieronder serveert
+    //     'm in 3D-force-graph formaat met een verberg-toggle.
+    try {
+      const fam = await import('./integrations/lightrag/family-graph');
+      const r = await fam.ingestFamilyGraph(lightrag);
+      if (r.offline) logger.warn('family-graph: LightRAG offline — skip ingest');
+      else logger.info(`✓ family-graph: ${r.entities} objecten, ${r.categories} categorieën, ${r.structuralEdges} structureel + ${r.semanticEdges} afgeleid + ${r.verifiedEdges} geverifieerd (hidden=${r.hidden})`);
+      // Chat-extractie delta (data/family-extract.json) — idempotent, getagd source='chat'.
+      const ex = await fam.ingestExtract(lightrag);
+      if (ex.missing) logger.info('family-graph: geen chat-extractie (run scripts/family-extract.py)');
+      else if (!ex.offline) logger.info(`✓ family-graph: chat-extractie — ${ex.entities} entiteiten, ${ex.chats} chats, ${ex.edges} randen`);
+      // Molgang-game delta (data/molgang-extract.json) — getagd source='molgang'.
+      const mg = await fam.ingestMolgang(lightrag);
+      if (mg.missing) logger.info('family-graph: geen molgang-extractie (run scripts/molgang-extract.py)');
+      else if (!mg.offline) logger.info(`✓ family-graph: molgang — ${mg.entities} entiteiten, ${mg.edges} randen`);
+      // Chemie/fysica staalslak-valorisatie (data/slag-chemistry.json) — source='chem'.
+      const ch = await fam.ingestChemistry(lightrag);
+      if (ch.missing) logger.info('family-graph: geen chemie-data (data/slag-chemistry.json ontbreekt)');
+      else if (!ch.offline) logger.info(`✓ family-graph: chemie — ${ch.entities} entiteiten, ${ch.edges} randen`);
+    } catch (e: any) {
+      logger.warn(`family-graph init failed: ${e.message}`);
+    }
+
+    // Familie-graaf endpoints. GET /graph → 3D node-link JSON (respecteert de
+    // verberg-toggle); GET/POST /visibility → toggle uitlezen/zetten.
+    const familyApi = await import('./integrations/lightrag/family-graph');
+    app.get('/api/family/graph', async (_req, res) => {
+      try { res.json({ success: true, lightrag_connected: lightrag.isConnected(), ...(await familyApi.getFamilyGraph3D(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/family/entities', async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.listFamilyEntities(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/family/visibility', (_req, res) => {
+      res.json({ success: true, ...familyApi.getFamilyVisibility() });
+    });
+    app.post('/api/family/visibility', async (req, res) => {
+      try {
+        const hidden = req.body?.hidden === true || req.body?.hidden === 'true';
+        res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, hidden)) });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Verberg-toggle als losse "flip" (geen body nodig).
+    app.post('/api/family/toggle', async (_req, res) => {
+      try {
+        const cur = familyApi.getFamilyVisibility();
+        res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, !cur.hidden)) });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Categorieën (voor de portal-dropdown).
+    app.get('/api/family/categories', (_req, res) => {
+      res.json({ success: true, categories: familyApi.getCategories() });
+    });
+    // i18n-woordenboek (NL/EN/CN) voor de taal-toggle in het portaal.
+    app.get('/api/family/i18n', (_req, res) => {
+      res.json({ success: true, ...familyApi.getI18n() });
+    });
+    // Localhost-only: het privé portal-token uitlezen (de eigenaar leest 'm
+    // lokaal en voert 'm één keer in op zijn Quest). Externe LAN-clients krijgen 403.
+    app.get('/api/family/portal-token', (req, res) => {
+      const ip = (req.socket.remoteAddress || '').replace('::ffff:', '');
+      if (ip !== '127.0.0.1' && ip !== '::1') { res.status(403).json({ success: false, error: 'alleen via localhost' }); return; }
+      res.json({ success: true, token: familyApi.getOrCreatePortalToken() });
+    });
+
+    // Privé schrijf-gate: alle update-endpoints vereisen het token
+    // (header x-family-token of ?token=). Zo is de graaf op het LAN te
+    // raadplegen maar alleen met token te wijzigen.
+    const requireFamilyToken: import('express').RequestHandler = (req, res, next) => {
+      const tok = (req.headers['x-family-token'] as string) || (req.query.token as string) || (req.body && req.body.token);
+      if (!familyApi.checkPortalToken(tok)) { res.status(401).json({ success: false, error: 'ongeldig of ontbrekend portal-token' }); return; }
+      next();
+    };
+    // Object toevoegen/bijwerken.
+    app.post('/api/family/node', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.upsertEntity(lightrag, { name: req.body?.name, cat: req.body?.cat, note: req.body?.note })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Object verwijderen.
+    app.delete('/api/family/node/:name', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.removeEntity(lightrag, req.params.name)) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Rand toevoegen.
+    app.post('/api/family/edge', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.upsertEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel, confidence: req.body?.confidence, evidence: req.body?.evidence })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Rand verwijderen.
+    app.post('/api/family/edge/delete', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.removeEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Chat-extractie opnieuw inladen (na het draaien van scripts/family-extract.py).
+    app.post('/api/family/ingest-extract', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestExtract(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Molgang-extractie opnieuw inladen (na scripts/molgang-extract.py).
+    app.post('/api/family/ingest-molgang', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestMolgang(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Chemie/fysica data opnieuw inladen (na bewerken van data/slag-chemistry.json).
+    app.post('/api/family/ingest-chemistry', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestChemistry(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Forceer een snapshot-export + Drive-sync (los van de auto-trigger bij wijzigingen).
+    app.post('/api/family/export-sync', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.exportAndSync(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+
     // Asset query endpoints — read straight from the LightRAG graph so
     // designers (Mira, Luna) can ask "which 3D models from Roblox are not
     // yet ported to web?" without scanning the filesystem each time.
@@ -2659,6 +2867,23 @@ async function initialize() {
     }
     setupVitalsRoutes(app, vitals, inferenceAudit, selfRepair);
     setupGuardrailsRoutes(app);
+    setupContainmentRoutes(app);
+    console.log(`🛡️  ContainmentGuard MEGA active (mode: ${containmentGuard.mode}, ${containmentGuard.getPolicy().commandRules.length} command rules)`);
+    setupPlaytestRoutes(app);
+
+    // 6c. Global JSON error handler — must be registered after every route.
+    // Without it, an error thrown (or forwarded via next(err)) in any handler
+    // falls through to Express's default handler, which returns an HTML page
+    // and leaks the stack trace, breaking the JSON API contract. Log the full
+    // error server-side; return a terse JSON 500 to the caller.
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (res.headersSent) return next(err);
+      logger.error(`Unhandled error on ${req.method} ${req.path}: ${err?.stack || err?.message || err}`);
+      res.status(err?.status || 500).json({
+        success: false,
+        error: err?.message || 'internal server error',
+      });
+    });
 
     // 7. Start server
     server.listen(PORT, () => {
