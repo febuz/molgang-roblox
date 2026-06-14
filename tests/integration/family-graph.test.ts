@@ -25,7 +25,7 @@ import {
 // which are layered in separately and depend on optional data files). Bump when
 // the curated object/category set intentionally changes.
 const EXPECTED_CURATED_ENTITIES = 56;
-const EXPECTED_CATEGORIES = 16;            // 10 curated + 4 chat + 2 molgang
+const EXPECTED_CATEGORIES = 22;            // 10 curated + 6 chemistry + 4 chat + 2 molgang
 const MIN_CURATED_NODES = EXPECTED_CURATED_ENTITIES + EXPECTED_CATEGORIES + 1;
 
 describe('Familie knowledge graph', () => {
