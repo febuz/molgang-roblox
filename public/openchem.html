@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenChem — Open-source AI voor leaching, elektrolyse & proceschemie</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .hero-bg { background: linear-gradient(135deg, #0f766e 0%, #164e63 100%); }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+  <!-- Hero -->
+  <header class="hero-bg text-white py-24">
+    <div class="max-w-6xl mx-auto px-6 text-center">
+      <h1 class="text-6xl font-bold mb-6">OpenChem</h1>
+      <p class="text-3xl mb-4">De complete open-source AI-stack voor chemische extractie, uitloging & elektrolyse</p>
+      <p class="text-xl max-w-2xl mx-auto mb-10">Built by one person. No funding.</p>
+
+      <div class="flex flex-wrap justify-center gap-4">
+        <a href="#stats" class="bg-white text-teal-700 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-gray-100 transition">
+          Bekijk stats
+        </a>
+        <a href="https://github.com/febuz/openchem" target="_blank" rel="noopener" class="border border-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-white/10 transition">
+          Star op GitHub →
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <section id="stats" class="py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <span class="inline-block bg-teal-100 text-teal-700 px-4 py-1 rounded-full text-sm font-medium">v0.1.0 • OPEN-SOURCE RELEASE</span>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div class="bg-gray-50 p-8 rounded-2xl">
+          <div class="text-5xl font-bold text-teal-600">1,000+</div>
+          <div class="text-xl mt-2">Open Chemie Modellen</div>
+          <div class="text-sm text-gray-500">Hugging Face • Apache 2.0</div>
+        </div>
+        <div class="bg-gray-50 p-8 rounded-2xl">
+          <div class="text-5xl font-bold text-teal-600">20+</div>
+          <div class="text-xl mt-2">Open Datasets</div>
+          <div class="text-sm text-gray-500">Leaching, elektrolyten, batterijmaterialen</div>
+        </div>
+        <div class="bg-gray-50 p-8 rounded-2xl">
+          <div class="text-5xl font-bold text-teal-600">9+</div>
+          <div class="text-xl mt-2">Talen & On-device</div>
+          <div class="text-sm text-gray-500">RDKit + pyEQL + MLX</div>
+        </div>
+        <div class="bg-gray-50 p-8 rounded-2xl">
+          <div class="text-5xl font-bold text-teal-600">62 / 13 / 13</div>
+          <div class="text-xl mt-2">Tools • Workflows • Skills</div>
+          <div class="text-sm text-gray-500">Agent runtime</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Wat is OpenChem -->
+  <section class="py-20 bg-gray-100">
+    <div class="max-w-6xl mx-auto px-6">
+      <h2 class="text-4xl font-bold text-center mb-12">De hele open-source chemie AI-stack</h2>
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <div>
+          <ul class="space-y-6 text-lg">
+            <li class="flex gap-4"><i class="fa-solid fa-check text-teal-600 mt-1"></i> <strong>Uitloging (leaching) & hydrometallurgie</strong> — kinetiek, yield prediction, parameter optimalisatie</li>
+            <li class="flex gap-4"><i class="fa-solid fa-check text-teal-600 mt-1"></i> <strong>Elektrochemie & elektrolyse</strong> — efficiency, overpotential, batterij-elektrolyten, waterstofproductie</li>
+            <li class="flex gap-4"><i class="fa-solid fa-check text-teal-600 mt-1"></i> <strong>Oplossingsmodellen</strong> — pyEQL integratie, ionische sterkte, activiteit</li>
+            <li class="flex gap-4"><i class="fa-solid fa-check text-teal-600 mt-1"></i> RDKit + DeepChem + pymatgen + custom modellen</li>
+          </ul>
+        </div>
+        <div class="bg-white p-10 rounded-3xl shadow-xl">
+          <p class="text-2xl font-medium italic">"De OpenMed van de duurzame chemie en metaalwinning."</p>
+          <p class="mt-8 text-gray-600">Alles Apache 2.0. Jouw laptop, jouw lab, jouw on-prem.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What's new / Features -->
+  <section class="py-20 bg-white">
+    <div class="max-w-6xl mx-auto px-6">
+      <h2 class="text-4xl font-bold text-center mb-12">Wat zit erin?</h2>
+      <div class="grid md:grid-cols-3 gap-8">
+        <div class="border border-gray-200 p-8 rounded-3xl hover:shadow-xl transition">
+          <h3 class="font-semibold text-2xl mb-4">Leaching Optimizer</h3>
+          <p>Batch uitloging simulatie, zuurconcentratie, temperatuur & tijd optimalisatie met ML-modellen.</p>
+        </div>
+        <div class="border border-gray-200 p-8 rounded-3xl hover:shadow-xl transition">
+          <h3 class="font-semibold text-2xl mb-4">Electrolysis Simulator</h3>
+          <p>Efficiency voorspelling, energieverbruik, elektrolyt samenstelling en scaling.</p>
+        </div>
+        <div class="border border-gray-200 p-8 rounded-3xl hover:shadow-xl transition">
+          <h3 class="font-semibold text-2xl mb-4">Agent Runtime</h3>
+          <p>62 tools & 13 workflows: van grondstof naar procesdesign in één flow.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Call to action -->
+  <section class="py-24 bg-teal-700 text-white text-center">
+    <div class="max-w-4xl mx-auto px-6">
+      <h2 class="text-5xl font-bold mb-6">Star de repo en start bouwen!</h2>
+      <p class="text-2xl mb-10">pip install openchem<br>Of begin direct op Hugging Face</p>
+      <div class="flex flex-col sm:flex-row gap-6 justify-center">
+        <a href="https://github.com/febuz/openchem" target="_blank" rel="noopener" class="bg-white text-teal-700 px-10 py-6 rounded-2xl text-xl font-semibold inline-flex items-center gap-3 hover:scale-105 transition">
+          <i class="fa-brands fa-github text-3xl"></i> GitHub Repo
+        </a>
+        <a href="https://huggingface.co/febuz" target="_blank" rel="noopener" class="border-2 border-white px-10 py-6 rounded-2xl text-xl font-semibold inline-flex items-center gap-3 hover:bg-white/10 transition">
+          Hugging Face Modellen →
+        </a>
+      </div>
+      <p class="mt-12 text-sm opacity-75">Covering leaching, battery recycling, water splitting, critical metals & meer.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white py-12">
+    <div class="max-w-6xl mx-auto px-6 text-center">
+      <p class="text-2xl font-bold mb-2">OpenChem</p>
+      <p class="text-gray-400">Built by one person. No funding.</p>
+      <p class="mt-8 text-sm text-gray-500">Apache 2.0 • Open voor iedereen</p>
+    </div>
+  </footer>
+
+</body>
+</html>
