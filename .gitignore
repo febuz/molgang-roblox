@@ -66,3 +66,9 @@ temp/
 
 # Tesseract language models (auto-downloaded on first use, 5-22 MB each)
 *.traineddata
+
+# Deliberation gate runtime artifacts
+.ai/tasks/*/T-*.md
+.ai/tasks/*/index.json
+.ai/deliberation/**/*.json
+.ai/deliberation/**/*.md
