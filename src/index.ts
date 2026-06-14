@@ -122,6 +122,8 @@ import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
 import { guardrailsAgent } from './guardrails/guardrails-agent';
+import { containmentGuard, setupContainmentRoutes } from './containment';
+import { setupPlaytestRoutes } from './playtest';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
@@ -2193,6 +2195,123 @@ async function initialize() {
       logger.warn(`governance-graph init failed: ${e.message}`);
     }
 
+    // 1c. Ingest the Familie knowledge graph — een aparte, verbergbare graaf
+    //     met personen / bedrijven / hardware / software / projecten. Zelfde
+    //     graceful-offline gedrag. De /api/family/* surface hieronder serveert
+    //     'm in 3D-force-graph formaat met een verberg-toggle.
+    try {
+      const fam = await import('./integrations/lightrag/family-graph');
+      const r = await fam.ingestFamilyGraph(lightrag);
+      if (r.offline) logger.warn('family-graph: LightRAG offline — skip ingest');
+      else logger.info(`✓ family-graph: ${r.entities} objecten, ${r.categories} categorieën, ${r.structuralEdges} structureel + ${r.semanticEdges} afgeleid + ${r.verifiedEdges} geverifieerd (hidden=${r.hidden})`);
+      // Chat-extractie delta (data/family-extract.json) — idempotent, getagd source='chat'.
+      const ex = await fam.ingestExtract(lightrag);
+      if (ex.missing) logger.info('family-graph: geen chat-extractie (run scripts/family-extract.py)');
+      else if (!ex.offline) logger.info(`✓ family-graph: chat-extractie — ${ex.entities} entiteiten, ${ex.chats} chats, ${ex.edges} randen`);
+      // Molgang-game delta (data/molgang-extract.json) — getagd source='molgang'.
+      const mg = await fam.ingestMolgang(lightrag);
+      if (mg.missing) logger.info('family-graph: geen molgang-extractie (run scripts/molgang-extract.py)');
+      else if (!mg.offline) logger.info(`✓ family-graph: molgang — ${mg.entities} entiteiten, ${mg.edges} randen`);
+      // Chemie/fysica staalslak-valorisatie (data/slag-chemistry.json) — source='chem'.
+      const ch = await fam.ingestChemistry(lightrag);
+      if (ch.missing) logger.info('family-graph: geen chemie-data (data/slag-chemistry.json ontbreekt)');
+      else if (!ch.offline) logger.info(`✓ family-graph: chemie — ${ch.entities} entiteiten, ${ch.edges} randen`);
+    } catch (e: any) {
+      logger.warn(`family-graph init failed: ${e.message}`);
+    }
+
+    // Familie-graaf endpoints. GET /graph → 3D node-link JSON (respecteert de
+    // verberg-toggle); GET/POST /visibility → toggle uitlezen/zetten.
+    const familyApi = await import('./integrations/lightrag/family-graph');
+    app.get('/api/family/graph', async (_req, res) => {
+      try { res.json({ success: true, lightrag_connected: lightrag.isConnected(), ...(await familyApi.getFamilyGraph3D(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/family/entities', async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.listFamilyEntities(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/family/visibility', (_req, res) => {
+      res.json({ success: true, ...familyApi.getFamilyVisibility() });
+    });
+    app.post('/api/family/visibility', async (req, res) => {
+      try {
+        const hidden = req.body?.hidden === true || req.body?.hidden === 'true';
+        res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, hidden)) });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Verberg-toggle als losse "flip" (geen body nodig).
+    app.post('/api/family/toggle', async (_req, res) => {
+      try {
+        const cur = familyApi.getFamilyVisibility();
+        res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, !cur.hidden)) });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Categorieën (voor de portal-dropdown).
+    app.get('/api/family/categories', (_req, res) => {
+      res.json({ success: true, categories: familyApi.getCategories() });
+    });
+    // i18n-woordenboek (NL/EN/CN) voor de taal-toggle in het portaal.
+    app.get('/api/family/i18n', (_req, res) => {
+      res.json({ success: true, ...familyApi.getI18n() });
+    });
+    // Localhost-only: het privé portal-token uitlezen (de eigenaar leest 'm
+    // lokaal en voert 'm één keer in op zijn Quest). Externe LAN-clients krijgen 403.
+    app.get('/api/family/portal-token', (req, res) => {
+      const ip = (req.socket.remoteAddress || '').replace('::ffff:', '');
+      if (ip !== '127.0.0.1' && ip !== '::1') { res.status(403).json({ success: false, error: 'alleen via localhost' }); return; }
+      res.json({ success: true, token: familyApi.getOrCreatePortalToken() });
+    });
+
+    // Privé schrijf-gate: alle update-endpoints vereisen het token
+    // (header x-family-token of ?token=). Zo is de graaf op het LAN te
+    // raadplegen maar alleen met token te wijzigen.
+    const requireFamilyToken: import('express').RequestHandler = (req, res, next) => {
+      const tok = (req.headers['x-family-token'] as string) || (req.query.token as string) || (req.body && req.body.token);
+      if (!familyApi.checkPortalToken(tok)) { res.status(401).json({ success: false, error: 'ongeldig of ontbrekend portal-token' }); return; }
+      next();
+    };
+    // Object toevoegen/bijwerken.
+    app.post('/api/family/node', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.upsertEntity(lightrag, { name: req.body?.name, cat: req.body?.cat, note: req.body?.note })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Object verwijderen.
+    app.delete('/api/family/node/:name', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.removeEntity(lightrag, req.params.name)) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Rand toevoegen.
+    app.post('/api/family/edge', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.upsertEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel, confidence: req.body?.confidence, evidence: req.body?.evidence })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Rand verwijderen.
+    app.post('/api/family/edge/delete', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.removeEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Chat-extractie opnieuw inladen (na het draaien van scripts/family-extract.py).
+    app.post('/api/family/ingest-extract', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestExtract(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Molgang-extractie opnieuw inladen (na scripts/molgang-extract.py).
+    app.post('/api/family/ingest-molgang', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestMolgang(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Chemie/fysica data opnieuw inladen (na bewerken van data/slag-chemistry.json).
+    app.post('/api/family/ingest-chemistry', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestChemistry(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Forceer een snapshot-export + Drive-sync (los van de auto-trigger bij wijzigingen).
+    app.post('/api/family/export-sync', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.exportAndSync(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+
     // Asset query endpoints — read straight from the LightRAG graph so
     // designers (Mira, Luna) can ask "which 3D models from Roblox are not
     // yet ported to web?" without scanning the filesystem each time.
@@ -2751,6 +2870,23 @@ async function initialize() {
     }
     setupVitalsRoutes(app, vitals, inferenceAudit, selfRepair);
     setupGuardrailsRoutes(app);
+    setupContainmentRoutes(app);
+    console.log(`🛡️  ContainmentGuard MEGA active (mode: ${containmentGuard.mode}, ${containmentGuard.getPolicy().commandRules.length} command rules)`);
+    setupPlaytestRoutes(app);
+
+    // 6c. Global JSON error handler — must be registered after every route.
+    // Without it, an error thrown (or forwarded via next(err)) in any handler
+    // falls through to Express's default handler, which returns an HTML page
+    // and leaks the stack trace, breaking the JSON API contract. Log the full
+    // error server-side; return a terse JSON 500 to the caller.
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (res.headersSent) return next(err);
+      logger.error(`Unhandled error on ${req.method} ${req.path}: ${err?.stack || err?.message || err}`);
+      res.status(err?.status || 500).json({
+        success: false,
+        error: err?.message || 'internal server error',
+      });
+    });
 
     // 6c. Global JSON error handler — must be registered after every route.
     // Without it, an error thrown (or forwarded via next(err)) in any handler
