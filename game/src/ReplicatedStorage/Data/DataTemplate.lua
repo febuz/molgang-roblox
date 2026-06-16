@@ -82,6 +82,30 @@ return {
 	showMinimap = true,
 	language = 'nl',        -- nl / en
 
+	-- Guild membership (populated when player joins/creates a guild)
+	guild = nil,   -- guildId string or nil
+
+	-- Territory & strategy
+	controlledTerritories = {},  -- list of territoryIds owned via guild
+	attackedTerritories   = {},  -- territories this player personally pressured
+
+	-- Logistics network routes (owner=guildId or userId)
+	logisticsRoutes = {},        -- serialized from LogisticsNetwork
+
+	-- Diplomacy
+	diplomacyStatus = {
+		treaties         = {},
+		pendingProposals = {},
+		reputation       = {},
+	},
+
+	-- World events participation
+	eventsParticipated = {},     -- {eventId = true}
+	eventBonusEarned   = 0,      -- total MolCoins from event bonuses
+
+	-- News feed (last 5 read headlines per player)
+	lastReadNewsTime = 0,
+
 	-- Version for migration
-	dataVersion = 1,
+	dataVersion = 2,
 }

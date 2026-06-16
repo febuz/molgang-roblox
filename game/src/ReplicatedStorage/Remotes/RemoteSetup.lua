@@ -70,6 +70,21 @@ local serverToClientEvents = {
 	-- Feedback System
 	"FeedbackSubmitted",   -- {success, count, max} feedback confirmation
 	"RequestRating",       -- {systems} periodic rating request
+	-- Territory System
+	"TerritoryStateUpdate",  -- {territories[]} full territory snapshot
+	"TerritoryChanged",      -- {territoryId, newOwner, previousOwner, message} capture event
+	"SeasonVictory",         -- {winner, holdDuration, message} season win
+	-- AI Corporation System
+	"AICorpStateUpdate",     -- {corps[]} public corp snapshots
+	"WorldNewsItem",         -- {corpName, message, type, eventId} single news item
+	-- World Events System
+	"WorldEventStarted",     -- {eventId, name, type, headline, duration, hint} event began
+	"WorldEventEnded",       -- {eventId} event expired
+	"WorldEffectsUpdate",    -- {activeEvents, effects} current active effects
+	"WorldNewsFeed",         -- {feed[], activeEvents[]} news history + active events
+	-- Diplomacy System
+	"DiplomacyResult",       -- {success, treatyId, error, message} treaty outcome
+	"DiplomacyExpired",      -- {treaties[]} expired treaty ids
 }
 
 -- ══════════════════════════════════════════════
@@ -129,6 +144,20 @@ local clientToServerEvents = {
 	"RequestProductPrices",  -- {} get current market prices
 	-- Feedback System
 	"RequestSubmitFeedback", -- {type, system, rating, message} submit feedback
+	-- Territory System
+	"RequestTerritoryAttack",  -- {territoryId} apply industrial pressure to a territory
+	-- Diplomacy System
+	"RequestProposeTreaty",    -- {targetId, treatyTypeId, terms} propose a treaty
+	"RequestAcceptTreaty",     -- {proposalId} accept a pending treaty proposal
+	"RequestRejectTreaty",     -- {proposalId} reject a pending treaty proposal
+	"RequestDiplomacyStatus",  -- {} get own treaties and pending proposals
+	-- Logistics System
+	"RequestBuildRoute",       -- {fromId, toId, modeId} build a transport route
+	"RequestUpgradeRoute",     -- {routeId} upgrade route to next level
+	"RequestRemoveRoute",      -- {routeId} remove a route
+	"RequestNetworkStatus",    -- {} get all own routes and bottlenecks
+	-- World Events
+	"RequestNewsFeed",         -- {} get current news feed
 	-- Guild System (#72)
 	"RequestCreateGuild",    -- {guildName} create a new guild
 	"RequestJoinGuild",      -- {guildName} join existing guild
