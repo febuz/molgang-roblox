@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:integration": "jest --testPathPattern=integration",
+    "test:integration": "jest --testPathPattern=integration --runInBand",
     "bench:ideagraph": "ts-node scripts/run-ideagraph-benchmark.ts",
     "test:e2e": "ts-node tests/e2e/selenium-launcher.ts",
     "test:e2e:headless": "HEADLESS=true ts-node tests/e2e/selenium-launcher.ts",
@@ -24,7 +24,9 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "db:migrate": "ts-node src/migrations/index.ts",
-    "skill:register": "ts-node src/skills/register.ts"
+    "skill:register": "ts-node src/skills/register.ts",
+    "smoke-deliberation-gates": "node scripts/infisical-wrap.mjs --no-secrets -- node --import tsx/esm scripts/smoke-deliberation-gates.mts",
+    "smoke-deliberation-gates:example": "bash scripts/run-smoke-on-example.sh"
   },
   "dependencies": {
     "@babel/core": "^7.29.0",
@@ -76,7 +78,8 @@
     "selenium-webdriver": "^4.43.0",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
-    "webdriver": "^8.46.0"
+    "webdriver": "^8.46.0",
+    "tsx": "^4.19.0"
   },
   "engines": {
     "node": ">=18.0.0"
