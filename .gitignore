@@ -67,6 +67,12 @@ temp/
 # Tesseract language models (auto-downloaded on first use, 5-22 MB each)
 *.traineddata
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
 # Deliberation gate runtime artifacts
 .ai/tasks/*/T-*.md
 .ai/tasks/*/index.json
