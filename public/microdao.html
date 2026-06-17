@@ -598,6 +598,175 @@
     /* ── Tooltip ── */
     [title] { cursor: default; }
 
+    /* ── Silk Net ── */
+    .silk-layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 1rem;
+      align-items: start;
+    }
+    @media(max-width:780px){ .silk-layout { grid-template-columns: 1fr; } }
+
+    #silk-canvas-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+    }
+    #silk-canvas {
+      display: block;
+      width: 100%;
+      height: 340px;
+    }
+    .silk-canvas-label {
+      position: absolute;
+      top: 0.6rem; left: 0.85rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .silk-legend {
+      position: absolute;
+      bottom: 0.6rem; right: 0.85rem;
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.68rem;
+      color: var(--text-faint);
+    }
+    .silk-legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .silk-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .silk-dot-node   { background: var(--accent); }
+    .silk-dot-bridge { background: var(--blue); }
+
+    .silk-side { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    .silk-stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .silk-stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+    .silk-stat-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--accent);
+      font-family: var(--mono);
+      line-height: 1.1;
+    }
+    .silk-stat-val.bridge-val { color: var(--blue); }
+    .silk-stat-key {
+      font-size: 0.68rem;
+      color: var(--text-faint);
+      margin-top: 0.2rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .silk-knitweb-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.85rem;
+      border-radius: var(--radius);
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+    }
+    .silk-knitweb-badge.connected {
+      border-color: rgba(72,184,247,0.4);
+      background: var(--blue-bg);
+      color: var(--blue);
+    }
+    .silk-knitweb-badge.disconnected {
+      border-color: var(--border);
+      color: var(--text-faint);
+    }
+    .knitweb-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .silk-join-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .silk-join-card h3 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    .silk-check-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+    .silk-check-row input[type="checkbox"] {
+      width: 15px; height: 15px;
+      accent-color: var(--blue);
+      cursor: pointer;
+    }
+
+    .silk-node-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .silk-node-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .silk-node-card.is-bridge {
+      border-color: rgba(72,184,247,0.3);
+    }
+    .silk-node-icon { font-size: 1rem; flex-shrink: 0; }
+    .silk-node-info { flex: 1; min-width: 0; }
+    .silk-node-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .silk-node-url {
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      font-family: var(--mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .silk-node-meta {
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      text-align: right;
+      flex-shrink: 0;
+    }
+
     /* ── Responsive ── */
     @media(max-width: 600px) {
       .page-shell { padding: 0 0.5rem 2rem; }
@@ -625,6 +794,7 @@
     <button data-panel="publish">Publish</button>
     <button data-panel="dao">DAO Panel</button>
     <button data-panel="stats">Network Stats</button>
+    <button data-panel="silk">Silk Net</button>
   </nav>
 
   <!-- ════════════════════════════════════════
@@ -806,6 +976,127 @@
       </div>
     </div>
     <div id="stats-msg"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       PANEL: SILK NET
+  ════════════════════════════════════════ -->
+  <div id="panel-silk" class="panel">
+    <div class="section-head">
+      <h2>Silk Net <span class="badge badge-chain" style="font-size:0.7rem">open</span></h2>
+      <button class="btn btn-ghost btn-sm" id="silk-refresh-btn">↻ Refresh</button>
+    </div>
+    <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:1rem">
+      Permissionless, free participation in the knitweb. Silk posts are real — not test data.
+      Bridge nodes carry traffic between the silk layer and the full VPC mesh.
+    </p>
+
+    <div class="silk-layout">
+      <!-- Canvas -->
+      <div>
+        <div id="silk-canvas-wrap">
+          <span class="silk-canvas-label">Knitweb Mesh</span>
+          <canvas id="silk-canvas"></canvas>
+          <div class="silk-legend">
+            <span><i class="silk-dot silk-dot-node"></i>Silk node</span>
+            <span><i class="silk-dot silk-dot-bridge"></i>Bridge</span>
+          </div>
+        </div>
+
+        <!-- Node list -->
+        <div class="section-head" style="margin-top:1.25rem">
+          <h3>Live Nodes <span id="silk-node-badge" class="badge">0</span></h3>
+        </div>
+        <div id="silk-msg"></div>
+        <div id="silk-node-list" class="silk-node-list">
+          <div class="skeleton-card">
+            <div class="skeleton" style="width:40%;margin-bottom:0.4rem"></div>
+            <div class="skeleton" style="width:70%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side panel -->
+      <div class="silk-side">
+        <!-- Stats -->
+        <div class="silk-stats-row">
+          <div class="silk-stat-card">
+            <div class="silk-stat-val" id="silk-sval-nodes">—</div>
+            <div class="silk-stat-key">Silk Nodes</div>
+          </div>
+          <div class="silk-stat-card">
+            <div class="silk-stat-val bridge-val" id="silk-sval-bridges">—</div>
+            <div class="silk-stat-key">Bridges</div>
+          </div>
+          <div class="silk-stat-card">
+            <div class="silk-stat-val" id="silk-sval-posts">—</div>
+            <div class="silk-stat-key">Posts</div>
+          </div>
+          <div class="silk-stat-card">
+            <div class="silk-stat-val" id="silk-sval-schema" style="font-size:0.75rem;color:var(--text-faint);word-break:break-all">—</div>
+            <div class="silk-stat-key">Schema</div>
+          </div>
+        </div>
+
+        <!-- Knitweb connectivity -->
+        <div id="silk-knitweb-badge" class="silk-knitweb-badge disconnected">
+          <span class="knitweb-dot"></span>
+          <span id="silk-knitweb-label">Knitweb: checking…</span>
+        </div>
+
+        <!-- Join form -->
+        <div class="silk-join-card">
+          <h3>Join Silk Net</h3>
+          <form id="silk-join-form" autocomplete="off">
+            <div class="form-row">
+              <label for="silk-url">Node URL</label>
+              <input type="text" id="silk-url" placeholder="https://my-node.example.com" required />
+            </div>
+            <div class="form-row">
+              <label for="silk-label">Label <span class="hint">optional</span></label>
+              <input type="text" id="silk-label" placeholder="My node" maxlength="64" />
+            </div>
+            <div class="silk-check-row">
+              <input type="checkbox" id="silk-bridge" />
+              <label for="silk-bridge">I bridge to the full VPC knitweb</label>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="silk-join-btn">
+                <span id="silk-join-spinner" class="spinner" style="display:none"></span>
+                Join / Heartbeat
+              </button>
+            </div>
+            <div id="silk-join-msg"></div>
+          </form>
+        </div>
+
+        <!-- Quick post on silk -->
+        <div class="silk-join-card">
+          <h3>Quick Post <span class="hint" style="text-transform:none;letter-spacing:0">via silk (no DID needed)</span></h3>
+          <form id="silk-post-form" autocomplete="off">
+            <div class="form-row">
+              <label for="silk-line1">Line 1 <span class="hint" id="silk-l1-count">0 / 140</span></label>
+              <input type="text" id="silk-line1" maxlength="140" placeholder="Your message…" required />
+            </div>
+            <div class="form-row">
+              <label for="silk-line2">Line 2 <span class="hint" id="silk-l2-count">0 / 140</span></label>
+              <input type="text" id="silk-line2" maxlength="140" placeholder="Second line (optional)" />
+            </div>
+            <div class="form-row">
+              <label for="silk-author">Author <span class="hint">DID or alias</span></label>
+              <input type="text" id="silk-author" placeholder="did:silk:anonymous" />
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="silk-post-btn">
+                <span id="silk-post-spinner" class="spinner" style="display:none"></span>
+                Publish to Silk
+              </button>
+            </div>
+            <div id="silk-post-msg"></div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div><!-- /page-shell -->
@@ -1267,6 +1558,262 @@ async function loadStats() {
 }
 
 qs('#stats-refresh-btn').addEventListener('click', () => loadStats());
+
+// ═══════════════════════════════════════════════════════════════
+//  SILK NET
+// ═══════════════════════════════════════════════════════════════
+
+const silkApi = {
+  getStats:  () => fetch('/api/silk/stats').then(r => r.json()),
+  getNodes:  () => fetch('/api/silk/nodes').then(r => r.json()),
+  join:      (body) => fetch('/api/silk/join',  { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json()),
+  post:      (body) => fetch('/api/silk/post',  { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json()),
+};
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+
+const SILK_COLOR_NODE   = '#c0f748';
+const SILK_COLOR_BRIDGE = '#48b8f7';
+const SILK_COLOR_EDGE   = 'rgba(192,247,72,0.12)';
+const SILK_COLOR_BEDGE  = 'rgba(72,184,247,0.18)';
+
+let silkNodes = [];
+let canvasAnim = null;
+
+function initSilkCanvas() {
+  const canvas = qs('#silk-canvas');
+  if (!canvas) return;
+  const wrap = qs('#silk-canvas-wrap');
+  canvas.width  = wrap.clientWidth  || 600;
+  canvas.height = 340;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Synthetic positions for demo when nodes list is empty
+  function makeParticles(nodes) {
+    const W = canvas.width, H = canvas.height;
+    const N = Math.max(nodes.length, 6);
+    return Array.from({ length: N }, (_, i) => {
+      const node = nodes[i] || null;
+      return {
+        x: 40 + Math.random() * (W - 80),
+        y: 40 + Math.random() * (H - 80),
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        r: node ? (node.bridgesKnitweb ? 7 : 5) : 4,
+        color: node ? (node.bridgesKnitweb ? SILK_COLOR_BRIDGE : SILK_COLOR_NODE) : 'rgba(192,247,72,0.25)',
+        label: node ? node.label : '',
+        isBridge: node ? node.bridgesKnitweb : false,
+        real: !!node,
+      };
+    });
+  }
+
+  let particles = makeParticles(silkNodes);
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // edges
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d  = Math.sqrt(dx*dx + dy*dy);
+        if (d < 180) {
+          const alpha = (1 - d / 180) * 0.6;
+          const col = (particles[i].isBridge || particles[j].isBridge) ? SILK_COLOR_BEDGE : SILK_COLOR_EDGE;
+          ctx.beginPath();
+          ctx.strokeStyle = col.replace(/[\d.]+\)$/, alpha + ')');
+          ctx.lineWidth = 1;
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // nodes
+    for (const p of particles) {
+      // glow
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.5);
+      g.addColorStop(0, p.color.replace('#', 'rgba(').replace(/(..)(..)(..)/, (_, r,g,b) => `${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)}`) + ',0.18)');
+      g.addColorStop(1, 'transparent');
+      ctx.beginPath();
+      ctx.fillStyle = g;
+      ctx.arc(p.x, p.y, p.r * 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // dot
+      ctx.beginPath();
+      ctx.fillStyle = p.color;
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // label
+      if (p.label && p.real) {
+        ctx.font = '9px ' + getComputedStyle(document.body).fontFamily;
+        ctx.fillStyle = 'rgba(232,234,240,0.55)';
+        ctx.fillText(p.label.slice(0, 18), p.x + p.r + 4, p.y + 3);
+      }
+    }
+  }
+
+  function tick() {
+    const W = canvas.width, H = canvas.height;
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < p.r || p.x > W - p.r) { p.vx *= -1; p.x = Math.max(p.r, Math.min(W - p.r, p.x)); }
+      if (p.y < p.r || p.y > H - p.r) { p.vy *= -1; p.y = Math.max(p.r, Math.min(H - p.r, p.y)); }
+    }
+    draw();
+    canvasAnim = requestAnimationFrame(tick);
+  }
+
+  if (canvasAnim) cancelAnimationFrame(canvasAnim);
+  tick();
+
+  // expose so loadSilk can refresh particles
+  canvas._refresh = (nodes) => {
+    silkNodes = nodes;
+    particles = makeParticles(nodes);
+  };
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+
+async function loadSilk() {
+  const msgEl = qs('#silk-msg');
+  try {
+    const [statsData, nodesData] = await Promise.all([silkApi.getStats(), silkApi.getNodes()]);
+
+    qs('#silk-sval-nodes').textContent   = statsData.silk?.nodes   ?? '—';
+    qs('#silk-sval-bridges').textContent = statsData.silk?.bridges  ?? '—';
+    qs('#silk-sval-posts').textContent   = statsData.silk?.posts    ?? '—';
+    qs('#silk-sval-schema').textContent  = statsData.schema         ?? '—';
+
+    const badge = qs('#silk-knitweb-badge');
+    const label = qs('#silk-knitweb-label');
+    if (statsData.knitweb?.reachable) {
+      badge.className = 'silk-knitweb-badge connected';
+      const urls = statsData.knitweb.bridgeUrls || [];
+      label.textContent = `Knitweb: connected via ${urls.length} bridge${urls.length !== 1 ? 's' : ''}`;
+    } else {
+      badge.className = 'silk-knitweb-badge disconnected';
+      label.textContent = 'Knitweb: no bridge nodes yet';
+    }
+
+    const nodes = nodesData.nodes || [];
+    qs('#silk-node-badge').textContent = nodes.length;
+
+    const canvas = qs('#silk-canvas');
+    if (canvas && canvas._refresh) canvas._refresh(nodes);
+
+    const listEl = qs('#silk-node-list');
+    if (!nodes.length) {
+      listEl.innerHTML = '<p style="color:var(--text-faint);font-size:0.82rem">No silk nodes registered yet — be the first to join!</p>';
+    } else {
+      listEl.innerHTML = nodes.map(n => `
+        <div class="silk-node-card${n.bridgesKnitweb ? ' is-bridge' : ''}">
+          <span class="silk-node-icon">${n.bridgesKnitweb ? '🌉' : '🧵'}</span>
+          <div class="silk-node-info">
+            <div class="silk-node-label">${escHtml(n.label)}</div>
+            <div class="silk-node-url">${escHtml(n.url)}</div>
+          </div>
+          <div class="silk-node-meta">
+            ${n.postCount} posts<br>
+            <span style="color:var(--text-faint)">${relTime(n.lastSeenAt)}</span>
+          </div>
+        </div>`).join('');
+    }
+
+    showMsg(msgEl, '', '');
+  } catch(e) {
+    showMsg(msgEl, 'Silk stats unavailable: ' + e.message, 'error');
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Join form ─────────────────────────────────────────────────────────────────
+
+qs('#silk-join-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn     = qs('#silk-join-btn');
+  const spinner = qs('#silk-join-spinner');
+  const msgEl   = qs('#silk-join-msg');
+  setLoading(btn, spinner, true);
+  try {
+    const result = await silkApi.join({
+      url:             qs('#silk-url').value.trim(),
+      label:           qs('#silk-label').value.trim() || undefined,
+      bridgesKnitweb:  qs('#silk-bridge').checked,
+    });
+    if (result.ok) {
+      showMsg(msgEl, 'Joined! Your node is now visible on the silk mesh.', 'success');
+      await loadSilk();
+    } else {
+      showMsg(msgEl, result.reason || 'Failed to join', 'error');
+    }
+  } catch(err) {
+    showMsg(msgEl, err.message, 'error');
+  } finally {
+    setLoading(btn, spinner, false);
+  }
+});
+
+// ── Quick silk post ───────────────────────────────────────────────────────────
+
+['silk-line1', 'silk-line2'].forEach((id, i) => {
+  const el = qs('#' + id);
+  const counter = qs('#silk-l' + (i+1) + '-count');
+  el.addEventListener('input', () => {
+    counter.textContent = el.value.length + ' / 140';
+  });
+});
+
+qs('#silk-post-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn     = qs('#silk-post-btn');
+  const spinner = qs('#silk-post-spinner');
+  const msgEl   = qs('#silk-post-msg');
+  setLoading(btn, spinner, true);
+  try {
+    const result = await silkApi.post({
+      line1:  qs('#silk-line1').value,
+      line2:  qs('#silk-line2').value,
+      author: qs('#silk-author').value.trim() || 'did:silk:anonymous',
+    });
+    if (result.ok) {
+      showMsg(msgEl, `Published! id: ${result.id?.slice(0,16)}…`, 'success');
+      qs('#silk-post-form').reset();
+      qs('#silk-l1-count').textContent = '0 / 140';
+      qs('#silk-l2-count').textContent = '0 / 140';
+    } else {
+      showMsg(msgEl, result.reason || 'Publish failed', 'error');
+    }
+  } catch(err) {
+    showMsg(msgEl, err.message, 'error');
+  } finally {
+    setLoading(btn, spinner, false);
+  }
+});
+
+qs('#silk-refresh-btn').addEventListener('click', () => loadSilk());
+
+// Hook into tab switch to init canvas
+const _origSwitchPanel = typeof switchPanel === 'function' ? switchPanel : null;
+document.querySelectorAll('#main-nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.panel === 'silk') {
+      setTimeout(() => { initSilkCanvas(); loadSilk(); }, 50);
+    }
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  BOOT

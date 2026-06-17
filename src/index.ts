@@ -113,6 +113,7 @@ import { registerSpectroscopyRoutes } from './spectroscopy';
 import { registerAssetMirrorRoutes } from './assets';
 import { registerRequirementRoutes } from './requirements';
 import { MicroPostStore, DaoParamStore, MicroPostGossip, registerMicroPostRoutes } from './integrations/lightrag/micro-post';
+import { SilkNodeRegistry, SilkGossip, registerSilkRoutes } from './integrations/lightrag/silk-net';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -2471,14 +2472,23 @@ async function initialize() {
       ? `${process.env.MICRO_POST_DATA_DIR}/micro-posts.json`
       : './data/micro-posts.json';
     const microPostStore = new MicroPostStore(undefined, { storage: microSnapshotPath });
-    const restored = microPostStore.load();
-    if (restored) logger.info(`✓ MicroPost store: restored ${restored.loaded} posts`);
+    const microRestored = microPostStore.load();
+    if (microRestored) logger.info(`✓ MicroPost store: restored ${microRestored.loaded} posts`);
     const microPostDao = new DaoParamStore(microPostStore);
     const microPostGossip = new MicroPostGossip(microPostStore, gossipPeers);
     microPostStore.startGc();
     microPostGossip.start();
     registerMicroPostRoutes(app, microPostStore, microPostDao, microPostGossip);
     logger.info('✓ MicroPost P2P network active');
+
+    // 1f-silk. Silk Net — free, open-source knitweb participation tier.
+    // Silk nodes are permissionless; posts propagate into the shared MicroPostStore
+    // and reach the full knitweb via bridge nodes. Not a testnet — data is real.
+    const silkRegistry = new SilkNodeRegistry();
+    const silkGossip   = new SilkGossip(silkRegistry, microPostStore, myUrl);
+    silkGossip.start();
+    registerSilkRoutes(app, silkRegistry, microPostStore, silkGossip, myUrl);
+    logger.info('✓ Silk Net active — permissionless knitweb tier ready');
 
     // 1g. Agent Bridge — wires task completions/failures into the knowledge graph.
     const agentBridge = new AgentBridge(agentAPI, factValidator);
