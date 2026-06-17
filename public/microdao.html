@@ -598,6 +598,79 @@
     /* ── Tooltip ── */
     [title] { cursor: default; }
 
+    /* ── Pulse ── */
+    #pulse-wallet-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.55rem 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    #pulse-wallet-bar label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    #pulse-did-input { flex: 1; min-width: 160px; font-size: 0.82rem; }
+    .pulse-balance-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(192,247,72,0.1);
+      border: 1px solid rgba(192,247,72,0.25);
+      border-radius: 99px;
+      padding: 0.15rem 0.6rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .pulse-eligible-chip {
+      background: var(--blue-bg);
+      border-color: rgba(72,184,247,0.25);
+      color: var(--blue);
+    }
+
+    .post-validate-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+      padding-top: 0.6rem;
+      border-top: 1px solid var(--border);
+    }
+    .validate-btn {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.65rem;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: var(--bg4);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .validate-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .validate-btn:disabled { opacity: 0.4; cursor: default; }
+    .validate-btn.confirmed {
+      border-color: var(--blue);
+      color: var(--blue);
+      background: var(--blue-bg);
+    }
+    .knot-progress {
+      font-size: 0.7rem;
+      color: var(--text-faint);
+      margin-left: auto;
+    }
+    .knot-progress.done { color: var(--blue); }
+
     /* ── Silk Net ── */
     .silk-layout {
       display: grid;
@@ -801,6 +874,14 @@
        PANEL: LIVE FEED
   ════════════════════════════════════════ -->
   <div id="panel-feed" class="panel active">
+    <!-- Pulse wallet bar -->
+    <div id="pulse-wallet-bar">
+      <label for="pulse-did-input">Your DID (for Pulse mining)</label>
+      <input type="text" id="pulse-did-input" placeholder="did:key:z6Mk…  or  did:silk:anonymous" />
+      <span class="pulse-balance-chip" id="pulse-balance-chip" title="Your Pulse balance">⚡ — µPLS</span>
+      <span class="pulse-balance-chip pulse-eligible-chip" id="pulse-eligible-chip" style="display:none">✓ voting</span>
+    </div>
+
     <div class="section-head">
       <h2>Live Feed <span id="feed-badge" class="badge">0</span></h2>
       <button id="refresh-btn" class="btn btn-ghost">↻ Refresh</button>
@@ -1244,6 +1325,63 @@ function renderPost(post) {
     if (!wasOpen) card.classList.add('expanded');
   });
 
+  // Validation row (Pulse mining)
+  const validateRow = document.createElement('div');
+  validateRow.className = 'post-validate-row';
+  validateRow.innerHTML =
+    '<button class="validate-btn" data-postid="' + post.id + '">✓ Validate knot</button>' +
+    '<span class="knot-progress" data-postid="' + post.id + '">— / 3</span>';
+  card.appendChild(validateRow);
+
+  const vBtn = validateRow.querySelector('.validate-btn');
+  const vProg = validateRow.querySelector('.knot-progress');
+
+  // Load current validation state
+  fetch('/api/pulse/knot/' + post.id)
+    .then(r => r.json())
+    .then(kv => {
+      const count = kv.validations || 0;
+      vProg.textContent = count + ' / 3';
+      if (kv.confirmed) {
+        vBtn.textContent = '⛓ Confirmed';
+        vBtn.classList.add('confirmed');
+        vBtn.disabled = true;
+        vProg.classList.add('done');
+        vProg.textContent = '✓ Confirmed — Pulse mined';
+      }
+    }).catch(() => {});
+
+  vBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const myDid = qs('#pulse-did-input').value.trim() || 'did:silk:anonymous';
+    vBtn.disabled = true;
+    try {
+      const r = await fetch('/api/pulse/validate/' + post.id, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ validatorDid: myDid }),
+      }).then(res => res.json());
+
+      if (!r.ok) {
+        vBtn.disabled = false;
+        vBtn.title = r.reason || 'Validation failed';
+        vBtn.style.borderColor = 'var(--red)';
+        vBtn.style.color = 'var(--red)';
+        return;
+      }
+      vProg.textContent = r.validations + ' / 3';
+      if (r.confirmed) {
+        vBtn.textContent = '⛓ Confirmed';
+        vBtn.classList.add('confirmed');
+        vProg.classList.add('done');
+        vProg.textContent = '✓ Confirmed — Pulse mined!';
+        refreshPulseWallet();
+      }
+    } catch {
+      vBtn.disabled = false;
+    }
+  });
+
   return card;
 }
 
@@ -1560,6 +1698,24 @@ async function loadStats() {
 qs('#stats-refresh-btn').addEventListener('click', () => loadStats());
 
 // ═══════════════════════════════════════════════════════════════
+//  PULSE WALLET
+// ═══════════════════════════════════════════════════════════════
+
+async function refreshPulseWallet() {
+  const did = qs('#pulse-did-input').value.trim();
+  if (!did) return;
+  try {
+    const w = await fetch('/api/pulse/wallet/' + encodeURIComponent(did)).then(r => r.json());
+    qs('#pulse-balance-chip').textContent = '⚡ ' + (w.balance ?? 0) + ' µPLS';
+    const eligEl = qs('#pulse-eligible-chip');
+    eligEl.style.display = w.votingEligible ? '' : 'none';
+  } catch { /* ignore */ }
+}
+
+qs('#pulse-did-input').addEventListener('change', () => refreshPulseWallet());
+qs('#pulse-did-input').addEventListener('blur', () => refreshPulseWallet());
+
+// ═══════════════════════════════════════════════════════════════
 //  SILK NET
 // ═══════════════════════════════════════════════════════════════
 
@@ -1733,10 +1889,6 @@ async function loadSilk() {
   } catch(e) {
     showMsg(msgEl, 'Silk stats unavailable: ' + e.message, 'error');
   }
-}
-
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── Join form ─────────────────────────────────────────────────────────────────
