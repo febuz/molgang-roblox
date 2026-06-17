@@ -120,6 +120,7 @@ import { registerRequirementRoutes } from './requirements';
 import { MicroPostStore, DaoParamStore, MicroPostGossip, registerMicroPostRoutes } from './integrations/lightrag/micro-post';
 import { SilkNodeRegistry, SilkGossip, registerSilkRoutes } from './integrations/lightrag/silk-net';
 import { PulseEngine, PulseWalletStore, KnotValidationStore, registerPulseRoutes } from './integrations/lightrag/pulse';
+import { RiskKnotStore, registerRiskRoutes } from './integrations/lightrag/risk-knot';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -2701,7 +2702,9 @@ async function initialize() {
     const pulseEngine     = new PulseEngine(pulseWallets, pulseKnots);
     pulseEngine.startGc();
     registerPulseRoutes(app, pulseEngine, microPostStore);
-    logger.info('✓ Pulse economy active — mine PLS by validating knots');
+    const riskKnotStore = new RiskKnotStore();
+    registerRiskRoutes(app, riskKnotStore, pulseWallets);
+    logger.info('✓ Pulse economy active — mine PLS by validating knots, stake on risk knots');
 
     // 1f-silk. Silk Net — free, open-source knitweb participation tier.
     // Silk nodes are permissionless; posts propagate into the shared MicroPostStore

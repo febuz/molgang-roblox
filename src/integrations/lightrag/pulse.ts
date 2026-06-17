@@ -36,10 +36,11 @@ export const GC_INTERVAL_MS         = 60 * 60 * 1_000;             // hourly bur
 
 export interface PulseBalance {
   readonly did: string;
-  balance: number;            // current spendable micro-PLS
+  balance: number;            // spendable micro-PLS
+  locked: number;             // frozen in open risk-knot stakes
   earnedTotal: number;        // lifetime earned (never decremented)
-  burnedTotal: number;        // lifetime burned
-  lastActivityAt: string;     // ISO-8601 — any earn/spend resets this
+  burnedTotal: number;        // lifetime burned (inactive sweep + lost stakes)
+  lastActivityAt: string;     // ISO-8601 — any earn/spend/stake resets this
   createdAt: string;
 }
 
@@ -66,10 +67,39 @@ export class PulseWalletStore {
     let w = this.wallets.get(did);
     if (!w) {
       const now = new Date().toISOString();
-      w = { did, balance: 0, earnedTotal: 0, burnedTotal: 0, lastActivityAt: now, createdAt: now };
+      w = { did, balance: 0, locked: 0, earnedTotal: 0, burnedTotal: 0, lastActivityAt: now, createdAt: now };
       this.wallets.set(did, w);
     }
     return w;
+  }
+
+  /** Lock µPLS into a risk stake. Returns false if insufficient spendable balance. */
+  lock(did: string, amount: number): boolean {
+    const w = this.getOrCreate(did);
+    if (w.balance < amount) return false;
+    w.balance        -= amount;
+    w.locked         += amount;
+    w.lastActivityAt  = new Date().toISOString();
+    return true;
+  }
+
+  /** Release locked µPLS back to spendable (on stake resolution). */
+  unlock(did: string, amount: number): void {
+    const w = this.getOrCreate(did);
+    const release     = Math.min(amount, w.locked);
+    w.locked         -= release;
+    w.balance        += release;
+    w.lastActivityAt  = new Date().toISOString();
+  }
+
+  /** Burn locked µPLS (wrong-stake penalty). */
+  slashLocked(did: string, amount: number): void {
+    const w = this.getOrCreate(did);
+    const slash       = Math.min(amount, w.locked);
+    w.locked         -= slash;
+    w.burnedTotal    += slash;
+    this.totalBurned += slash;
+    w.lastActivityAt  = new Date().toISOString();
   }
 
   get(did: string): PulseBalance | undefined {
@@ -85,7 +115,8 @@ export class PulseWalletStore {
 
   isVotingEligible(did: string): boolean {
     const w = this.wallets.get(did);
-    return !!w && w.balance >= MIN_PULSE_TO_VOTE;
+    // locked Pulse counts — you remain eligible while staked on a risk knot
+    return !!w && (w.balance + w.locked) >= MIN_PULSE_TO_VOTE;
   }
 
   /**
@@ -98,6 +129,7 @@ export class PulseWalletStore {
     let microPlsBurned  = 0;
 
     for (const w of this.wallets.values()) {
+      // Only sweep spendable balance; locked stakes belong to open risk knots
       if (w.balance > 0 && new Date(w.lastActivityAt).getTime() < cutoff) {
         microPlsBurned  += w.balance;
         w.burnedTotal   += w.balance;
@@ -113,16 +145,19 @@ export class PulseWalletStore {
   stats(): {
     wallets: number;
     circulating: number;
+    locked: number;
     earnedAllTime: number;
     burnedAllTime: number;
   } {
-    let circulating   = 0;
+    let circulating = 0;
+    let locked      = 0;
     let earnedAllTime = 0;
     for (const w of this.wallets.values()) {
       circulating   += w.balance;
+      locked        += w.locked;
       earnedAllTime += w.earnedTotal;
     }
-    return { wallets: this.wallets.size, circulating, earnedAllTime, burnedAllTime: this.totalBurned };
+    return { wallets: this.wallets.size, circulating, locked, earnedAllTime, burnedAllTime: this.totalBurned };
   }
 
   list(): PulseBalance[] {
@@ -281,6 +316,7 @@ export function registerPulseRoutes(
       res.json({
         did,
         balance:         0,
+        locked:          0,
         earnedTotal:     0,
         burnedTotal:     0,
         votingEligible:  false,

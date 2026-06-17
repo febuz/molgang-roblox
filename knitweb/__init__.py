@@ -16,6 +16,7 @@ from .knot import Knot, KnotRegistry
 from .fbr import FBRWallet, FBRLedger
 from .graph import KnitweaveGraph
 from .market import MarketCap
+from .risk import RiskKnotLedger, RiskKnot, RiskStake, RiskVote
 
 __all__ = [
     "addr256",
@@ -30,4 +31,8 @@ __all__ = [
     "FBRLedger",
     "KnitweaveGraph",
     "MarketCap",
+    "RiskKnotLedger",
+    "RiskKnot",
+    "RiskStake",
+    "RiskVote",
 ]
