@@ -7,6 +7,7 @@ import {
   SovereignVotingService,
   Ballot,
   ballotPayload,
+  recencyWeight,
   registerSovereignVotingRoutes,
 } from '../../src/integrations/lightrag/sovereign-voting';
 import { SovereignIdentityService } from '../../src/integrations/lightrag/identity';
@@ -139,7 +140,7 @@ describe('identity-mode voting', () => {
     const p = voting.createProposal({ question: 'q', options: ['a', 'b'], createdBy: kai.did });
     const ghost: Ballot = {
       proposalId: p.id, voter: 'did:vpc:' + 'f'.repeat(32), option: 'a',
-      weight: 0, ts: new Date().toISOString(), publicKeyPem: 'x', signature: 'x',
+      weight: 0, castAt: 0, ts: new Date().toISOString(), publicKeyPem: 'x', signature: 'x',
     };
     expect(voting.submitBallot(ghost).reason).toMatch(/not a registered/);
     await client.close();
@@ -154,7 +155,7 @@ describe('identity-mode voting', () => {
     const payload = ballotPayload({ proposalId: p.id, voter: kai.did, option: 'a' });
     const { signature, publicKeyPem } = identity.signAs(mallory.did, payload);
     const forged: Ballot = {
-      proposalId: p.id, voter: kai.did, option: 'a', weight: 0,
+      proposalId: p.id, voter: kai.did, option: 'a', weight: 0, castAt: 0,
       ts: new Date().toISOString(), publicKeyPem, signature,
     };
     expect(voting.submitBallot(forged).reason).toMatch(/does not belong/);
@@ -168,7 +169,7 @@ describe('identity-mode voting', () => {
     const payload = ballotPayload({ proposalId: p.id, voter: kai.did, option: 'a' });
     const { signature, publicKeyPem } = identity.signAs(kai.did, payload);
     const inflated: Ballot = {
-      proposalId: p.id, voter: kai.did, option: 'a', weight: 1_000_000,
+      proposalId: p.id, voter: kai.did, option: 'a', weight: 1_000_000, castAt: 0,
       ts: new Date().toISOString(), publicKeyPem, signature,
     };
     expect(voting.submitBallot(inflated).accepted).toBe(true);
@@ -184,7 +185,7 @@ describe('identity-mode voting', () => {
     const { signature, publicKeyPem } = identity.signAs(kai.did, payload); // old key
     identity.rotateKey(kai.did);
     const ballot: Ballot = {
-      proposalId: p.id, voter: kai.did, option: 'a', weight: 0,
+      proposalId: p.id, voter: kai.did, option: 'a', weight: 0, castAt: 0,
       ts: new Date().toISOString(), publicKeyPem, signature,
     };
     expect(voting.submitBallot(ballot).accepted).toBe(true);
@@ -383,6 +384,123 @@ describe('Sovereign Voting REST API', () => {
       ballot: { voter: proposerDid, option: 'b', weight: 0, ts: new Date().toISOString(), publicKeyPem, signature },
     });
     expect(status).toBe(409);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Exponential recency weighting (recent votes weigh more)
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('recencyWeight (pure)', () => {
+  it('newest ballot keeps full weight, and weight halves every half-life', () => {
+    expect(recencyWeight(0, 1000)).toBeCloseTo(1);
+    expect(recencyWeight(1000, 1000)).toBeCloseTo(0.5);
+    expect(recencyWeight(2000, 1000)).toBeCloseTo(0.25);
+    expect(recencyWeight(3000, 1000)).toBeCloseTo(0.125);
+  });
+
+  it('is disabled (flat 1.0) without a positive half-life', () => {
+    expect(recencyWeight(9999, undefined)).toBe(1);
+    expect(recencyWeight(9999, 0)).toBe(1);
+    expect(recencyWeight(-5, 1000)).toBe(1); // future/negative age never amplifies
+  });
+});
+
+describe('recency-weighted tallying', () => {
+  function makeClockedStack(start = 1_000_000) {
+    const client = makeOfflineClient();
+    const identity = new SovereignIdentityService(client);
+    const valueChain = new ValueChainService(client, { identity });
+    const clock = { t: start };
+    const voting = new SovereignVotingService(client, { identity, valueChain, now: () => clock.t });
+    return { client, identity, valueChain, voting, clock };
+  }
+
+  it('rejects a non-positive or oversized half-life at creation', async () => {
+    const { client, identity, voting } = makeClockedStack();
+    const k = identity.register('k');
+    expect(() => voting.createProposal({ question: 'q', options: ['a', 'b'], createdBy: k.did, recencyHalfLifeMs: 0 }))
+      .toThrow(/positive number/);
+    expect(() => voting.createProposal({ question: 'q', options: ['a', 'b'], createdBy: k.did, recencyHalfLifeMs: -1 }))
+      .toThrow(/positive number/);
+    expect(() => voting.createProposal({ question: 'q', options: ['a', 'b'], createdBy: k.did, recencyHalfLifeMs: 1e15 }))
+      .toThrow(/exceeds/);
+    await client.close();
+  });
+
+  it('a later vote outweighs an equal-weight earlier vote', async () => {
+    const { client, identity, voting, clock } = makeClockedStack();
+    const oldVoter = identity.register('old');
+    const newVoter = identity.register('new');
+    const p = voting.createProposal({
+      question: 'q', options: ['a', 'b'], createdBy: oldVoter.did, recencyHalfLifeMs: 1000,
+    });
+    clock.t = 1_000_000;
+    voting.castVote(p.id, oldVoter.did, 'a');     // castAt = 1_000_000
+    clock.t = 1_003_000;                          // 3 half-lives later
+    voting.castVote(p.id, newVoter.did, 'b');     // castAt = 1_003_000 (reference)
+
+    const t = voting.tally(p.id);
+    expect(t.totals.b).toBeCloseTo(1);            // newest keeps full weight
+    expect(t.totals.a).toBeCloseTo(0.125);        // 3 half-lives → 1/8
+    expect(t.winner).toBe('b');
+    expect(t.recencyHalfLifeMs).toBe(1000);
+    await client.close();
+  });
+
+  it('without recency the same timing is a flat tie', async () => {
+    const { client, identity, voting, clock } = makeClockedStack();
+    const a = identity.register('a');
+    const b = identity.register('b');
+    const p = voting.createProposal({ question: 'q', options: ['a', 'b'], createdBy: a.did }); // no recency
+    clock.t = 1_000_000;
+    voting.castVote(p.id, a.did, 'a');
+    clock.t = 1_003_000;
+    voting.castVote(p.id, b.did, 'b');
+    const t = voting.tally(p.id);
+    expect(t.totals).toEqual({ a: 1, b: 1 });
+    expect(t.winner).toBeNull();
+    expect(t.recencyHalfLifeMs).toBeUndefined();
+    await client.close();
+  });
+
+  it('cast time is server-assigned — a voter cannot forge their own recency', async () => {
+    const { client, identity, voting, clock } = makeClockedStack();
+    const voter = identity.register('voter');
+    const p = voting.createProposal({
+      question: 'q', options: ['a', 'b'], createdBy: voter.did, recencyHalfLifeMs: 1000,
+    });
+    clock.t = 5_000_000;
+    const payload = ballotPayload({ proposalId: p.id, voter: voter.did, option: 'a' });
+    const { signature, publicKeyPem } = identity.signAs(voter.did, payload);
+    // Voter tries to claim a far-future castAt and an inflated weight.
+    const res = voting.submitBallot({
+      proposalId: p.id, voter: voter.did, option: 'a',
+      weight: 999, castAt: 9_999_999_999, ts: 'whenever', publicKeyPem, signature,
+    });
+    expect(res.accepted).toBe(true);
+    const stored = voting.getBallots(p.id)[0];
+    expect(stored.castAt).toBe(5_000_000); // server clock, not the forged value
+    expect(stored.weight).toBe(1);         // server-derived, not 999
+    await client.close();
+  });
+
+  it('recency carries into the closing certificate', async () => {
+    const { client, identity, voting, clock } = makeClockedStack();
+    const a = identity.register('a');
+    const b = identity.register('b');
+    const p = voting.createProposal({
+      question: 'Ship?', options: ['yes', 'no'], createdBy: a.did, recencyHalfLifeMs: 1000,
+    });
+    clock.t = 1_000_000;
+    voting.castVote(p.id, a.did, 'no');
+    clock.t = 1_004_000;                   // 4 half-lives later → old vote ×1/16
+    voting.castVote(p.id, b.did, 'yes');
+    const cert = await voting.close(p.id);
+    expect(cert.tally.recencyHalfLifeMs).toBe(1000);
+    expect(cert.tally.winner).toBe('yes');
+    expect(cert.ballotRoot).toMatch(/^[0-9a-f]{64}$/);
+    await client.close();
   });
 });
 
