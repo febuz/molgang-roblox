@@ -50,4 +50,6 @@ export interface IdentityCustodianPort {
 }
 
 /** Full port — what SovereignIdentityService provides. */
-export interface IdentityPort extends IdentityResolverPort, IdentityCustodianPort {}
+export interface IdentityPort extends IdentityResolverPort, IdentityCustodianPort {
+  getStats(): Record<string, unknown>;
+}

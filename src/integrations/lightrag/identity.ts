@@ -389,7 +389,7 @@ export class SovereignIdentityService implements IdentityPort {
 // REST routes
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function registerIdentityRoutes(app: Express, service: SovereignIdentityService): void {
+export function registerIdentityRoutes(app: Express, service: IdentityPort): void {
 
   app.post('/api/identity/register', (req: Request, res: Response): void => {
     try {
