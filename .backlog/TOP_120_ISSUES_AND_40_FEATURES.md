@@ -40,6 +40,14 @@
 
 ## 🛤️ Hardcoded Paths & Environment Assumptions (P1–P2)
 
+> ✅ **#18–#27 DONE** — all `/media/knight2/EDS2` and `/home/knight2` references in
+> `src/` are now resolved through a single config module `src/config/paths.ts`
+> (`STATE_DIR`, `PROJECT_ROOT`, `PROJECT_SHARED_DIR`, `ASSET_REGISTRY_PATH`,
+> `HOME_DIR`), env-overridable with portable project-local defaults. Verified:
+> `tsc` clean, paths resolve to the repo + sibling `molgang-web` on any machine.
+> Self-repair's ollama restart (#11, partial) now uses `HOME_DIR` + `OLLAMA_RESTART_CMD`.
+> **Still TODO:** #16/#17/#28–#32 (`/tmp` control/log files in `index.ts` + `scripts/*.sh`).
+
 | # | Severity | File(s) | Line(s) | Issue | Proposed Fix |
 |---|----------|---------|---------|-------|--------------|
 | 16 | P1 | `src/index.ts` | 1009 | Hardcoded `/tmp/virtualpc-auto-update.state`. | Use `VIRTUALPC_STATE_DIR` consistently. |

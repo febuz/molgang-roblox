@@ -92,6 +92,9 @@ export const AGENT_META: AgentMeta[] = [
   { name: 'Data-Analyst',   role: 'Data Analyst · summaries & visualizations', avatar: '📊', color: '#8b5cf6', kind: 'specialist', models: [...CHAT_MODELS, ...REASON_MODELS], teams: ['cross', 'scrum-marketing'], tools: ['governance.lineage', 'wiki.lookup'] },
   { name: 'Data-Scientist', role: 'Data Scientist · models & experiments',     avatar: '🔬', color: '#ec4899', kind: 'specialist', models: [...REASON_MODELS, ...CODE_MODELS], teams: ['cross'], tools: ['governance.lineage', 'wiki.lookup'] },
   { name: 'Data-Manager',   role: 'Data Manager · lineage & versioning',       avatar: '📁', color: '#64748b', kind: 'governance', models: [...CHAT_MODELS], teams: ['cross'], tools: ['governance.*', 'wiki.lookup'] },
+
+  // ─── Game agent ─────────────────────────────────────────────────────────
+  { name: 'Molgang-Player', role: 'Molgang player · chemistry game agent on 5mart.ml/molgang', avatar: '🧪', color: '#84cc16', kind: 'specialist', models: [...CHAT_MODELS, ...REASON_MODELS], teams: ['cross', 'scrum-roblox', 'scrum-web'], tools: ['molgang.*', 'wiki.lookup'] },
 ];
 
 /** Canonical list of agent names — use this everywhere you need to iterate. */
