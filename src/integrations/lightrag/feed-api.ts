@@ -21,7 +21,7 @@
 import type { Express, Request, Response } from 'express';
 import type { NewsService, NewsItem } from './news';
 import type { AttentionChainService } from './attention-chain';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityResolverPort } from './identity-port';
 import type { ValueChainService } from './value-chain';
 import { unitsToTokenString } from './value-chain';
 import logger from '../../utils/logger';
@@ -73,7 +73,7 @@ export class FeedService {
   constructor(
     private readonly news: NewsService,
     private readonly attention: AttentionChainService,
-    private readonly identity: SovereignIdentityService,
+    private readonly identity: IdentityResolverPort,
     private readonly valueChain?: ValueChainService,
   ) {}
 

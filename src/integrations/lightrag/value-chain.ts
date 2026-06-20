@@ -54,7 +54,7 @@ import { verify as edVerify, createPublicKey } from 'crypto';
 import { v4 as uuid } from 'uuid';
 import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityPort } from './identity-port';
 import { didFromPublicKey } from './identity';
 import { canonicalize, sha256, buildMerkleRoot } from './graph-state-root';
 import { constantTimeEqual } from './constant-time';
@@ -252,7 +252,7 @@ export function verifyTransfer(t: Transfer): { valid: boolean; reason?: string }
 
 export class ValueChainService {
   private lightrag: LightRAGClient;
-  private identity?: SovereignIdentityService;
+  private identity?: IdentityPort;
   private accounts = new Map<string, Account>();
   private transfers = new Map<string, Transfer>();      // id → transfer (applied)
   private pendingTxIds: string[] = [];                  // applied, not yet sealed
@@ -274,7 +274,7 @@ export class ValueChainService {
   constructor(
     lightrag: LightRAGClient,
     opts: {
-      identity?: SovereignIdentityService;
+      identity?: IdentityPort;
       maxTransfers?: number;
       onTransfer?: (tx: Transfer) => void;
       pqPolicy?: PqTransferPolicy;
