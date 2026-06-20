@@ -19,6 +19,12 @@
  *                   time (plutocratic, like on-chain governance). Mode is
  *                   fixed per proposal at creation.
  *
+ *  - OPTIONAL EXPONENTIAL RECENCY: a proposal may set `recencyHalfLifeMs` so
+ *    that more recent ballots weigh exponentially more — each ballot's weight
+ *    is multiplied by 2^(-age/halfLife), age measured against the most recent
+ *    ballot. The cast time is server-assigned and committed in the ballot
+ *    hash, so the recency-weighted tally stays sybil-proof and reproducible.
+ *
  *  - VERIFIABLE RESULT: closing a proposal produces a certificate with a
  *    Merkle root over ballot hashes; the certificate can be published as a
  *    signed news claim ("stem resultaat als nieuws") and anchored on-chain
@@ -49,6 +55,8 @@ export const MAX_PROPOSALS = 10_000;
 export const MAX_OPTIONS = 32;
 export const MAX_QUESTION_LENGTH = 2048;
 export const MAX_OPTION_LENGTH = 256;
+// Recency half-life must be a sane positive duration (≤ 10 years in ms).
+export const MAX_RECENCY_HALF_LIFE_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -66,6 +74,13 @@ export interface Proposal {
   createdAt: string;
   status: ProposalStatus;
   closedAt?: string;
+  /**
+   * Optional exponential recency weighting. When set (> 0), each ballot's
+   * weight decays by half for every `recencyHalfLifeMs` it predates the most
+   * recent ballot — so newer votes count exponentially more. Fixed at
+   * creation, like `mode`. Absent ⇒ flat tallying (all ballots equal in time).
+   */
+  recencyHalfLifeMs?: number;
 }
 
 export interface Ballot {
@@ -74,6 +89,13 @@ export interface Ballot {
   option: string;
   weight: number;                // 1 for 'identity'; balance snapshot for 'stake'
   ts: string;                    // informational, NOT signed
+  /**
+   * Server-assigned cast time (epoch ms) used for recency weighting. Like
+   * `weight`, it is NEVER taken from the submitted ballot — a voter must not
+   * be able to backdate/forward-date their own recency. It IS committed in
+   * the ballot hash so the recency-weighted tally stays verifiable.
+   */
+  castAt?: number;
   publicKeyPem: string;
   signature: string;             // base64 Ed25519 over ballotPayload
 }
@@ -85,6 +107,7 @@ export interface Tally {
   ballots: number;
   turnoutDids: number;
   winner: string | null;            // null on tie or no ballots
+  recencyHalfLifeMs?: number;       // echoed when recency weighting is active
 }
 
 export interface VotingCertificate {
@@ -117,7 +140,25 @@ export function ballotHash(b: Ballot): string {
     voter: b.voter,
     option: b.option,
     weight: b.weight,
+    castAt: b.castAt ?? 0,
   }));
+}
+
+/**
+ * Exponential recency multiplier for a ballot, in [0, 1].
+ *
+ *   factor = 2 ^ ( -ageMs / halfLifeMs )
+ *
+ * The newest ballot (ageMs = 0) keeps full weight (1.0); every `halfLifeMs`
+ * of age halves the contribution. With `halfLifeMs` ≤ 0 (or non-finite) the
+ * weighting is disabled and the factor is a flat 1.0. Pure and deterministic:
+ * identical inputs give identical output on every peer, so a recency-weighted
+ * tally remains reproducible inside the voting certificate.
+ */
+export function recencyWeight(ageMs: number, halfLifeMs: number | undefined): number {
+  if (!halfLifeMs || !Number.isFinite(halfLifeMs) || halfLifeMs <= 0) return 1;
+  if (!Number.isFinite(ageMs) || ageMs <= 0) return 1;
+  return Math.pow(2, -ageMs / halfLifeMs);
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -134,6 +175,7 @@ export class SovereignVotingService {
   private voted = new Map<string, Set<string>>();       // proposalId → DIDs that voted
   private certificates = new Map<string, VotingCertificate>();
   private maxProposals: number;
+  private now: () => number;
 
   constructor(
     lightrag: LightRAGClient,
@@ -142,6 +184,7 @@ export class SovereignVotingService {
       valueChain?: ValueChainService;
       news?: NewsService;
       maxProposals?: number;
+      now?: () => number;        // injectable clock (epoch ms) — tests/determinism
     },
   ) {
     this.lightrag = lightrag;
@@ -149,11 +192,42 @@ export class SovereignVotingService {
     this.valueChain = opts.valueChain;
     this.news = opts.news;
     this.maxProposals = opts.maxProposals ?? MAX_PROPOSALS;
+    this.now = opts.now ?? Date.now;
+    void this.loadProposals();
+  }
+
+  /**
+   * Restore proposals persisted in LightRAG. Ballots are not persisted (they are
+   * rebuilt from P2P replay / certificates), but proposal configuration such as
+   * recencyHalfLifeMs is restored so a restarted node can tally correctly.
+   */
+  async loadProposals(): Promise<void> {
+    const rows = await this.lightrag.getTypedNodes('Proposal');
+    for (const row of rows) {
+      if (!row.id || !row.question || !Array.isArray(row.options)) continue;
+      const proposal: Proposal = {
+        id: String(row.id),
+        question: String(row.question),
+        options: row.options.map((o: any) => String(o)),
+        mode: row.mode === 'stake' ? 'stake' : 'identity',
+        createdBy: String(row.created_by ?? row.createdBy ?? 'unknown'),
+        createdAt: String(row.created_at ?? row.createdAt ?? new Date().toISOString()),
+        status: row.status === 'closed' ? 'closed' : 'open',
+        ...(row.closed_at || row.closedAt ? { closedAt: String(row.closed_at ?? row.closedAt) } : {}),
+        ...(row.recency_half_life_ms !== undefined || row.recencyHalfLifeMs !== undefined
+          ? { recencyHalfLifeMs: Number(row.recency_half_life_ms ?? row.recencyHalfLifeMs) }
+          : {}),
+      };
+      this.proposals.set(proposal.id, proposal);
+      this.ballots.set(proposal.id, []);
+      this.voted.set(proposal.id, new Set());
+    }
+    if (rows.length) logger.info(`🗳️  Restored ${rows.length} proposal(s) from LightRAG`);
   }
 
   // ── Proposals ───────────────────────────────────────────────────────────────
 
-  createProposal(params: { question: string; options: string[]; createdBy: string; mode?: WeightMode }): Proposal {
+  createProposal(params: { question: string; options: string[]; createdBy: string; mode?: WeightMode; recencyHalfLifeMs?: number }): Proposal {
     if (!params.question?.trim()) throw new Error('question required');
     if (params.question.length > MAX_QUESTION_LENGTH) throw new Error(`question exceeds ${MAX_QUESTION_LENGTH} chars`);
     if (this.proposals.size >= this.maxProposals) throw new Error('proposal table full');
@@ -167,6 +241,14 @@ export class SovereignVotingService {
     const mode = params.mode ?? 'identity';
     if (mode === 'stake' && !this.valueChain) throw new Error('stake mode requires a value chain');
 
+    let recencyHalfLifeMs: number | undefined;
+    if (params.recencyHalfLifeMs !== undefined && params.recencyHalfLifeMs !== null) {
+      const hl = Number(params.recencyHalfLifeMs);
+      if (!Number.isFinite(hl) || hl <= 0) throw new Error('recencyHalfLifeMs must be a positive number of milliseconds');
+      if (hl > MAX_RECENCY_HALF_LIFE_MS) throw new Error(`recencyHalfLifeMs exceeds ${MAX_RECENCY_HALF_LIFE_MS} ms`);
+      recencyHalfLifeMs = hl;
+    }
+
     const proposal: Proposal = {
       id: `prop_${uuid()}`,
       question: params.question.trim(),
@@ -175,6 +257,7 @@ export class SovereignVotingService {
       createdBy: params.createdBy,
       createdAt: new Date().toISOString(),
       status: 'open',
+      ...(recencyHalfLifeMs !== undefined ? { recencyHalfLifeMs } : {}),
     };
     this.proposals.set(proposal.id, proposal);
     this.ballots.set(proposal.id, []);
@@ -208,6 +291,7 @@ export class SovereignVotingService {
       voter: voterDid,
       option,
       weight: 0,                 // assigned by submitBallot from the proposal mode
+      castAt: 0,                 // assigned by submitBallot from the server clock
       ts: new Date().toISOString(),
       publicKeyPem,
       signature,
@@ -259,8 +343,15 @@ export class SovereignVotingService {
       return { accepted: false, reason: 'stake mode: voter has zero balance' };
     }
 
+    // Recency time is server-assigned (like weight): a voter cannot set their
+    // own `castAt` to game an exponential recency tally. Monotonic per proposal
+    // so later-accepted ballots never appear older than earlier ones.
+    const ballots = this.ballots.get(ballot.proposalId)!;
+    const lastCastAt = ballots.length ? (ballots[ballots.length - 1].castAt ?? 0) : 0;
+    const castAt = Math.max(this.now(), lastCastAt);
+
     votedSet.add(ballot.voter);
-    this.ballots.get(ballot.proposalId)!.push({ ...ballot, weight });
+    ballots.push({ ...ballot, weight, castAt, ts: new Date(castAt).toISOString() });
     return { accepted: true };
   }
 
@@ -272,7 +363,17 @@ export class SovereignVotingService {
     const ballots = this.ballots.get(proposalId) ?? [];
     const totals: Record<string, number> = {};
     for (const opt of proposal.options) totals[opt] = 0;
-    for (const b of ballots) totals[b.option] += b.weight;
+
+    // Recency reference = the most recent ballot's cast time, so the newest
+    // vote contributes its full weight and older ones decay exponentially.
+    // Derived purely from committed `castAt` values ⇒ reproducible per peer.
+    const halfLife = proposal.recencyHalfLifeMs;
+    const refMs = halfLife && ballots.length
+      ? Math.max(...ballots.map(b => b.castAt ?? 0))
+      : 0;
+    for (const b of ballots) {
+      totals[b.option] += b.weight * recencyWeight(refMs - (b.castAt ?? 0), halfLife);
+    }
 
     let winner: string | null = null;
     let best = -1;
@@ -290,6 +391,7 @@ export class SovereignVotingService {
       ballots: ballots.length,
       turnoutDids: this.voted.get(proposalId)?.size ?? 0,
       winner,
+      ...(halfLife ? { recencyHalfLifeMs: halfLife } : {}),
     };
   }
 
@@ -357,6 +459,7 @@ export class SovereignVotingService {
         created_by: p.createdBy,
         created_at: p.createdAt,
         content: p.question,
+        ...(p.recencyHalfLifeMs !== undefined ? { recency_half_life_ms: p.recencyHalfLifeMs } : {}),
       });
     } catch (e: any) {
       logger.warn(`proposal persist: ${e.message}`);
@@ -371,9 +474,9 @@ export class SovereignVotingService {
 export function registerSovereignVotingRoutes(app: Express, service: SovereignVotingService): void {
 
   app.post('/api/sovereign-votes/proposals', (req: Request, res: Response): void => {
-    const { question, options, createdBy, mode } = req.body ?? {};
+    const { question, options, createdBy, mode, recencyHalfLifeMs } = req.body ?? {};
     try {
-      const proposal = service.createProposal({ question, options, createdBy, mode });
+      const proposal = service.createProposal({ question, options, createdBy, mode, recencyHalfLifeMs });
       res.status(201).json({ success: true, proposal });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });

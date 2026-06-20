@@ -348,6 +348,27 @@ export class LightRAGClient {
   }
 
   /**
+   * Read all nodes of a given typed label.
+   * Returns raw property maps; callers must validate/convert.
+   */
+  async getTypedNodes(label: string): Promise<Record<string, any>[]> {
+    if (!this.connected) return [];
+    const safeLabel = label.replace(/[^A-Za-z0-9_]/g, '_');
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (n:\`${safeLabel}\`) RETURN n`,
+      );
+      return result.records.map(r => r.get('n').properties);
+    } catch (e: any) {
+      logger.warn(`getTypedNodes(${safeLabel}): ${e.message}`);
+      return [];
+    } finally {
+      await session.close();
+    }
+  }
+
+  /**
    * Close connection
    */
   async close(): Promise<void> {

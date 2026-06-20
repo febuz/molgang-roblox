@@ -321,7 +321,8 @@ describe('P9: random submitted ballot weights never influence the tally', () => 
       const { signature, publicKeyPem } = identity.signAs(voter.did, payload);
       const ballot: Ballot = {
         proposalId: p.id, voter: voter.did, option,
-        weight: Math.floor(rnd() * 1e9),   // adversarial junk
+        weight: Math.floor(rnd() * 1e9),    // adversarial junk
+        castAt: Math.floor(rnd() * 1e12),   // adversarial junk — server overrides it
         ts: new Date().toISOString(), publicKeyPem, signature,
       };
       if (voting.submitBallot(ballot).accepted) accepted++;
