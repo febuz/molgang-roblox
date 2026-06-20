@@ -25,6 +25,7 @@
     "docker:down": "docker-compose down",
     "db:migrate": "ts-node src/migrations/index.ts",
     "skill:register": "ts-node src/skills/register.ts",
+    "setup:models": "ts-node scripts/setup-model-roster.ts",
     "smoke-deliberation-gates": "node scripts/infisical-wrap.mjs --no-secrets -- node --import tsx/esm scripts/smoke-deliberation-gates.mts",
     "smoke-deliberation-gates:example": "bash scripts/run-smoke-on-example.sh"
   },
