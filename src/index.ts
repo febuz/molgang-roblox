@@ -75,6 +75,7 @@ import { killSwitch } from './openclaw-kill-switch';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
 import AuthSystem from './auth/auth-system';
+import { ASSET_REGISTRY_PATH } from './config/paths';
 import { loadSecrets, resolveFieldCrypto, setActiveSecrets, secretOrEnv } from './security/secretsBootstrap';
 import AuthMiddleware from './auth/auth-middleware';
 import CEOAuditLogger from './auth/audit-logger';
@@ -355,25 +356,41 @@ app.post('/api/backlog/:id/priority', (req, res) => {
   res.json({ success: true, task: { id: updated.id, priority: updated.priority } });
 });
 
+// Heuristic: pick the most appropriate lightweight Data-* agent for a data task.
+function routeDataTask(title: string, description: string): string {
+  const text = `${title} ${description}`.toLowerCase();
+  if (/schema|catalog|steward|quality|duplicate|currency|unit|governance|lineage|retention|pii/.test(text)) return 'Data-Steward';
+  if (/etl|pipeline|feature|engineer|partition|normalize|parquet|idempotency|clean|extract|transform/.test(text)) return 'Data-Engineer';
+  if (/regression|classification|clustering|model|experiment|feature importance|isolation forest|residual|cross-validation|hyperparameter|baseline/.test(text)) return 'Data-Scientist';
+  if (/snapshot|version|refresh|dashboard publish|lineage report|backlog grooming|artifact count|workspace status/.test(text)) return 'Data-Manager';
+  // default analyst covers summary, chart, outlier, peer comparison, etc.
+  return 'Data-Analyst';
+}
+
 // External delegators inject roadmap items here. Validates agent name
 // against the canonical roster so a typo can't create an orphan task.
+// Pass assigned_to: "auto" to route data-domain tasks to the lightweight Data-* agents.
 app.post('/api/backlog/items', (req, res) => {
   const b = req.body || {};
   if (!b.title || !b.description || !b.assigned_to) {
     res.status(400).json({ success: false, error: 'title, description, assigned_to required' });
     return;
   }
+  let assigned_to = String(b.assigned_to);
+  if (assigned_to.toLowerCase() === 'auto') {
+    assigned_to = routeDataTask(String(b.title), String(b.description));
+  }
   const t = taskEngine.addTask({
     title: String(b.title),
     description: String(b.description),
     priority: b.priority,
-    assigned_to: String(b.assigned_to),
+    assigned_to,
     estimated_hours: typeof b.estimated_hours === 'number' ? b.estimated_hours : undefined,
     subtasks: Array.isArray(b.subtasks) ? b.subtasks.map(String) : undefined,
     sprint: b.sprint ? String(b.sprint) : undefined,
   });
   if (!t) {
-    res.status(400).json({ success: false, error: `unknown agent '${b.assigned_to}' — must be in the canonical roster` });
+    res.status(400).json({ success: false, error: `unknown agent '${assigned_to}' — must be in the canonical roster` });
     return;
   }
   res.json({ success: true, task: { id: t.id, title: t.title, assigned_to: t.assigned_to, priority: t.priority, status: t.status } });
@@ -2502,7 +2519,7 @@ async function initialize() {
       try {
         const fs = require('fs');
         const path = require('path');
-        const REGISTRY_PATH = '/media/knight2/EDS2/projects/molgang-web/shared/asset-registry.json';
+        const REGISTRY_PATH = ASSET_REGISTRY_PATH;
         if (!fs.existsSync(REGISTRY_PATH)) { res.status(503).json({ success: false, error: 'registry not built' }); return; }
         const reg = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
         const asset = (reg.assets || []).find((a: any) => a.id === req.params.id);

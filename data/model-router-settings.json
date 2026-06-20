@@ -3,5 +3,6 @@
   "allowBigModels": false,
   "allowCloud": false,
   "maxDiskGB": 1.0,
-  "maxRAMGB": 6.0
+  "maxRAMGB": 6.0,
+  "lightweightMode": true
 }

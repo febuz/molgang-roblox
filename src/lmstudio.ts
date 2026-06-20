@@ -457,12 +457,21 @@ export async function chatAsAgent(
   }
 
   const started = Date.now();
+  // Clamp token budget to the host's weight class so lightweight machines don't
+  // get swamped by dashboards or agents requesting 2500-token completions.
+  const maxTokensCap = modelRouter.maxTokensForTask(opts.taskType as string | undefined, roster);
+  const requestedTokens = opts.max_tokens ?? 512;
+  const effectiveMaxTokens = Math.min(requestedTokens, maxTokensCap);
+  if (requestedTokens > maxTokensCap) {
+    logger.info(`lmstudio: clamped ${agent} ${opts.taskType || 'chat'} tokens ${requestedTokens} -> ${effectiveMaxTokens} (${roster.weightClass})`);
+  }
+
   const attemptChat = async (useModel: string): Promise<LmChatResponse> => {
     const req: LmChatRequest = {
       model: useModel,
       messages,
       temperature: opts.temperature ?? 0.6,
-      max_tokens: opts.max_tokens ?? 512,
+      max_tokens: effectiveMaxTokens,
       stream: false,
     };
     return await fetchJson<LmChatResponse>(
