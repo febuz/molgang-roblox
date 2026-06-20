@@ -57,8 +57,6 @@ export const MAX_QUESTION_LENGTH = 2048;
 export const MAX_OPTION_LENGTH = 256;
 // Recency half-life must be a sane positive duration (≤ 10 years in ms).
 export const MAX_RECENCY_HALF_LIFE_MS = 10 * 365 * 24 * 60 * 60 * 1000;
-// Tolerated clock skew when stamping a ballot's recency time, in ms.
-export const CAST_TIME_SKEW_MS = 5 * 60 * 1000;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -97,7 +95,7 @@ export interface Ballot {
    * be able to backdate/forward-date their own recency. It IS committed in
    * the ballot hash so the recency-weighted tally stays verifiable.
    */
-  castAt: number;
+  castAt?: number;
   publicKeyPem: string;
   signature: string;             // base64 Ed25519 over ballotPayload
 }
@@ -142,7 +140,7 @@ export function ballotHash(b: Ballot): string {
     voter: b.voter,
     option: b.option,
     weight: b.weight,
-    castAt: b.castAt,
+    castAt: b.castAt ?? 0,
   }));
 }
 
@@ -195,6 +193,36 @@ export class SovereignVotingService {
     this.news = opts.news;
     this.maxProposals = opts.maxProposals ?? MAX_PROPOSALS;
     this.now = opts.now ?? Date.now;
+    void this.loadProposals();
+  }
+
+  /**
+   * Restore proposals persisted in LightRAG. Ballots are not persisted (they are
+   * rebuilt from P2P replay / certificates), but proposal configuration such as
+   * recencyHalfLifeMs is restored so a restarted node can tally correctly.
+   */
+  async loadProposals(): Promise<void> {
+    const rows = await this.lightrag.getTypedNodes('Proposal');
+    for (const row of rows) {
+      if (!row.id || !row.question || !Array.isArray(row.options)) continue;
+      const proposal: Proposal = {
+        id: String(row.id),
+        question: String(row.question),
+        options: row.options.map((o: any) => String(o)),
+        mode: row.mode === 'stake' ? 'stake' : 'identity',
+        createdBy: String(row.created_by ?? row.createdBy ?? 'unknown'),
+        createdAt: String(row.created_at ?? row.createdAt ?? new Date().toISOString()),
+        status: row.status === 'closed' ? 'closed' : 'open',
+        ...(row.closed_at || row.closedAt ? { closedAt: String(row.closed_at ?? row.closedAt) } : {}),
+        ...(row.recency_half_life_ms !== undefined || row.recencyHalfLifeMs !== undefined
+          ? { recencyHalfLifeMs: Number(row.recency_half_life_ms ?? row.recencyHalfLifeMs) }
+          : {}),
+      };
+      this.proposals.set(proposal.id, proposal);
+      this.ballots.set(proposal.id, []);
+      this.voted.set(proposal.id, new Set());
+    }
+    if (rows.length) logger.info(`🗳️  Restored ${rows.length} proposal(s) from LightRAG`);
   }
 
   // ── Proposals ───────────────────────────────────────────────────────────────
@@ -319,7 +347,7 @@ export class SovereignVotingService {
     // own `castAt` to game an exponential recency tally. Monotonic per proposal
     // so later-accepted ballots never appear older than earlier ones.
     const ballots = this.ballots.get(ballot.proposalId)!;
-    const lastCastAt = ballots.length ? ballots[ballots.length - 1].castAt : 0;
+    const lastCastAt = ballots.length ? (ballots[ballots.length - 1].castAt ?? 0) : 0;
     const castAt = Math.max(this.now(), lastCastAt);
 
     votedSet.add(ballot.voter);
@@ -341,10 +369,10 @@ export class SovereignVotingService {
     // Derived purely from committed `castAt` values ⇒ reproducible per peer.
     const halfLife = proposal.recencyHalfLifeMs;
     const refMs = halfLife && ballots.length
-      ? ballots.reduce((max, b) => (b.castAt > max ? b.castAt : max), ballots[0].castAt)
+      ? Math.max(...ballots.map(b => b.castAt ?? 0))
       : 0;
     for (const b of ballots) {
-      totals[b.option] += b.weight * recencyWeight(refMs - b.castAt, halfLife);
+      totals[b.option] += b.weight * recencyWeight(refMs - (b.castAt ?? 0), halfLife);
     }
 
     let winner: string | null = null;
