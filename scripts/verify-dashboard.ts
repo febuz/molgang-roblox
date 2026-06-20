@@ -1,3 +1,4 @@
+#!/usr/bin/env tsx
 import { chromium } from '@playwright/test';
 
 (async () => {

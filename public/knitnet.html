@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KnitNet · Geweven kennisnetwerk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050810; color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5,8,16,.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(96,165,250,.15); padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 1.15rem; color: #f0f9ff; }
+  .brand img { width: 32px; height: 32px; }
+
+  .hero {
+    padding: 56px 24px 40px; text-align: center;
+    background:
+      radial-gradient(circle at 20% 25%, rgba(96,165,250,.14) 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, rgba(34,197,94,.12) 0%, transparent 45%);
+  }
+  .logo-hero { width: 140px; height: 140px; margin: 0 auto 24px; filter: drop-shadow(0 0 24px rgba(96,165,250,.25)); }
+  .eyebrow {
+    display: inline-block; font-size: .72rem; letter-spacing: .2em; text-transform: uppercase;
+    color: #93c5fd; border: 1px solid rgba(96,165,250,.3); border-radius: 999px;
+    padding: 6px 14px; margin-bottom: 18px;
+  }
+  h1 {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: clamp(2rem, 5.5vw, 3.4rem); line-height: 1.05;
+    background: linear-gradient(90deg, #60a5fa 0%, #a78bfa 50%, #22c55e 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 14px;
+  }
+  .hero p { color: #94a3b8; max-width: 720px; margin: 0 auto 28px; font-size: 1.1rem; }
+
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .92rem;
+    padding: 12px 20px; border-radius: 8px; transition: transform .12s;
+  }
+  .btn-primary { background: #2563eb; color: #fff; box-shadow: 0 4px 18px rgba(37,99,235,.35); }
+  .btn-primary:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-secondary { background: rgba(255,255,255,.06); color: #e6f0ff; border: 1px solid rgba(255,255,255,.12); }
+  .btn-secondary:hover { background: rgba(255,255,255,.10); text-decoration: none; }
+
+  section { padding: 56px 24px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h2 {
+    font-family: 'Orbitron', sans-serif; font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700;
+    margin-bottom: 12px; color: #f0f9ff;
+  }
+  .section-sub { color: #94a3b8; max-width: 680px; margin-bottom: 32px; }
+
+  /* Comparison */
+  .table-wrap { overflow-x: auto; margin: 22px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); }
+  th { color: #bfdbfe; background: rgba(255,255,255,.04); }
+  td { color: #cbd5e1; vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,.03); }
+  .ok { color: #22c55e; font-weight: 700; }
+  .no { color: #f87171; }
+  .knit-row td { background: rgba(37,99,235,.08); }
+
+  /* Principles */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px;
+    padding: 22px; transition: transform .12s, border-color .12s;
+  }
+  .card:hover { transform: translateY(-3px); border-color: rgba(96,165,250,.35); }
+  .card h3 { font-size: 1.05rem; color: #bfdbfe; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .card p { font-size: .9rem; color: #94a3b8; }
+
+  /* GUI mockup */
+  .gui-frame {
+    background: #0b1220; border: 1px solid rgba(96,165,250,.25); border-radius: 14px;
+    overflow: hidden; margin: 28px 0; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+  .gui-titlebar {
+    background: rgba(255,255,255,.05); padding: 10px 14px; display: flex; gap: 8px; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-red { background: #f87171; }
+  .dot-yellow { background: #facc15; }
+  .dot-green { background: #22c55e; }
+  .gui-title { font-size: .78rem; color: #94a3b8; margin-left: 8px; }
+  .gui-body { display: grid; grid-template-columns: 220px 1fr 260px; min-height: 360px; }
+  .gui-sidebar { border-right: 1px solid rgba(255,255,255,.08); padding: 16px; }
+  .gui-sidebar h4 { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: #93c5fd; margin-bottom: 12px; }
+  .yarn { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: .82rem; color: #cbd5e1; }
+  .yarn:hover { background: rgba(255,255,255,.05); }
+  .yarn-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .gui-main { padding: 16px; position: relative; }
+  .gui-search {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); border-radius: 8px;
+    padding: 8px 12px; color: #94a3b8; font-size: .85rem; margin-bottom: 16px;
+  }
+  .graph { position: relative; height: 260px; background: rgba(0,0,0,.15); border-radius: 10px; border: 1px dashed rgba(96,165,250,.2); }
+  .node {
+    position: absolute; width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: .65rem; font-weight: 700; text-align: center; color: #fff; border: 2px solid rgba(255,255,255,.2);
+  }
+  .node-center { background: linear-gradient(135deg, #2563eb, #7c3aed); top: 100px; left: 50%; transform: translateX(-50%); }
+  .node-a { background: #22c55e; top: 40px; left: 30%; }
+  .node-b { background: #f59e0b; top: 40px; right: 30%; }
+  .node-c { background: #ec4899; bottom: 40px; left: 35%; }
+  .node-d { background: #06b6d4; bottom: 40px; right: 35%; }
+  .edge { position: absolute; height: 2px; background: rgba(96,165,250,.35); transform-origin: left center; }
+  .gui-right { border-left: 1px solid rgba(255,255,255,.08); padding: 16px; }
+  .gui-right h4 { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: #93c5fd; margin-bottom: 12px; }
+  .stat { display: flex; justify-content: space-between; font-size: .82rem; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.06); color: #94a3b8; }
+  .stat strong { color: #cbd5e1; }
+
+  footer { text-align: center; padding: 40px 24px; color: #64748b; font-size: .85rem; border-top: 1px solid rgba(255,255,255,.06); }
+
+  @media (max-width: 800px) {
+    .gui-body { grid-template-columns: 1fr; }
+    .gui-sidebar, .gui-right { border: none; border-bottom: 1px solid rgba(255,255,255,.08); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="logos/knitnet-logo.svg" alt="KnitNet">
+    KnitNet
+  </div>
+  <nav style="display:flex;gap:18px;align-items:center;font-size:.9rem;">
+    <a href="index.html">Overview</a>
+    <a href="../docs/papers/08-knitnet-knitweb.md">Technical</a>
+    <a href="brands.html">Brands</a>
+    <a href="https://github.com/knitweb/virtualpc" target="_blank">GitHub</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <img src="logos/knitnet-logo.svg" alt="KnitNet logo" class="logo-hero">
+  <span class="eyebrow">P2P knowledge weave</span>
+  <h1>KnitNet</h1>
+  <p>Het protocol dat een gedecentraliseerde <strong>KnitWeb</strong> weeft — beter dan de oude file-sharing generatie. Geen blocks, geen hashgraph, geen piraterij — alleen geweven feiten die jijzelf vertrouwt.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="../docs/papers/08-knitnet-knitweb.md">Lees paper 8</a>
+    <a class="btn btn-secondary" href="#comparison">Vergelijk met Napster & co</a>
+    <a class="btn btn-secondary" href="#gui">Bekijk GUI</a>
+  </div>
+</section>
+
+<section id="comparison">
+  <div class="container">
+    <h2>Beter dan de klassieke P2P-systemen</h2>
+    <p class="section-sub">BearShare, Napster, BitTorrent, The Pirate Bay en DC++ waren revolutionair voor bestanden. KnitNet is revolutionair voor kennis.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Systeem</th>
+            <th>Doel</th>
+            <th>Centrale index?</th>
+            <th>Legaliteit</th>
+            <th>Vertrouwen</th>
+            <th>Datastructuur</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>BearShare</strong></td>
+            <td>Bestanden delen (Gnutella)</td>
+            <td class="no">Deels</td>
+            <td class="no">Veel auteursrecht-problemen</td>
+            <td class="no">Anoniem, onbekend</td>
+            <td>Bestanden + metadata</td>
+          </tr>
+          <tr>
+            <td><strong>Napster</strong></td>
+            <td>MP3’s delen</td>
+            <td class="no">Ja (centrale server)</td>
+            <td class="no">Afgesloten door rechtszaken</td>
+            <td class="no">Geen</td>
+            <td>Bestandsindex</td>
+          </tr>
+          <tr>
+            <td><strong>BitTorrent</strong></td>
+            <td>Grote bestanden verspreiden</td>
+            <td class="no">Trackers / DHT</td>
+            <td class="no">Vaak illegaal gebruik</td>
+            <td class="no">Hash = geen identiteit</td>
+            <td>Torrent + stukjes</td>
+          </tr>
+          <tr>
+            <td><strong>The Pirate Bay</strong></td>
+            <td>Zoeken naar torrents</td>
+            <td class="no">Ja (website)</td>
+            <td class="no">Langdurige juridische strijd</td>
+            <td class="no">Geen</td>
+            <td>Torrent-index</td>
+          </tr>
+          <tr>
+            <td><strong>DC++</strong></td>
+            <td>Hub-gebaseerd file sharing</td>
+            <td class="no">Ja (hubs)</td>
+            <td class="no">Veel ongecontroleerde inhoud</td>
+            <td class="no">Hub-beperkt</td>
+            <td>Bestandslijsten</td>
+          </tr>
+          <tr class="knit-row">
+            <td><strong>KnitNet / KnitWeb</strong></td>
+            <td class="ok">Kennisgrafiek delen</td>
+            <td class="ok">Nee</td>
+            <td class="ok">Eigen data, eigen verantwoordelijkheid</td>
+            <td class="ok">DID + web of trust</td>
+            <td class="ok">Geweven triples (CRDT)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Waarom KnitNet wint</h2>
+    <div class="grid">
+      <div class="card"><h3>🧶 Eigen kennis, geen files</h3><p>KnitNet deelt geen MP3’s of films, maar feiten, relaties en inzichten. Dat maakt het geschikt voor onderzoek, agentgeheugens en bedrijfskennis.</p></div>
+      <div class="card"><h3>🕸️ Geweven, niet gechained</h3><p>Geen blocks, geen hashgraph. Elke identiteit heeft een eigen draad (thread) van ondertekende feiten (stitches). Peers weven deze samen tot een lokale patch.</p></div>
+      <div class="card"><h3>🔐 Vertrouwen is subjectief</h3><p>Jij bepaalt welke yarns je volgt. Geen globale consensus, geen anonieme seeders. Wel een web-of-trust en optionele notary looms.</p></div>
+      <div class="card"><h3>🤖 Geboren voor agents</h3><p>VirtualPC-agenten publiceren elke observatie als stitch. Andere agents abonneren zich op relevante threads. Zo groeit collectief geheugen zonder centrale vector database.</p></div>
+      <div class="card"><h3>🧾 Volledige audit trail</h3><p>Elk feit is ondertekend en content-addressed. Je kunt altijd terugrekenen wie wat beweerde, wanneer en op basis van welke bron.</p></div>
+      <div class="card"><h3>🌐 Off-line eerste</h3><p>Een loom werkt zonder internet, weeft lokaal en synchroniseert later via epidemische gossip. Net zoals git, maar dan voor kennis.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="gui">
+  <div class="container">
+    <h2>KnitWeb GUI concept</h2>
+    <p class="section-sub">Een eerste visuele schets van hoe een KnitWeb-client eruit zou kunnen zien. Volg yarns, doorzoek de geweven stof en controleer het vertrouwen per feit.</p>
+
+    <div class="gui-frame">
+      <div class="gui-titlebar">
+        <div class="dot dot-red"></div>
+        <div class="dot dot-yellow"></div>
+        <div class="dot dot-green"></div>
+        <span class="gui-title">KnitWeb Loom — local patch preview</span>
+      </div>
+      <div class="gui-body">
+        <div class="gui-sidebar">
+          <h4>Gevolgde yarns</h4>
+          <div class="yarn"><span class="yarn-dot" style="background:#22c55e"></span> did:knit:alice</div>
+          <div class="yarn"><span class="yarn-dot" style="background:#f59e0b"></span> did:knit:bob</div>
+          <div class="yarn"><span class="yarn-dot" style="background:#ec4899"></span> did:knit:carol</div>
+          <div class="yarn"><span class="yarn-dot" style="background:#06b6d4"></span> did:knit:atlas</div>
+          <h4 style="margin-top:18px">Threads</h4>
+          <div class="yarn"><span class="yarn-dot" style="background:#64748b"></span> churn-model-v1</div>
+          <div class="yarn"><span class="yarn-dot" style="background:#64748b"></span> project-alpha</div>
+          <div class="yarn"><span class="yarn-dot" style="background:#64748b"></span> market-report-q2</div>
+        </div>
+        <div class="gui-main">
+          <div class="gui-search">🔎 Zoek in geweven kennis...</div>
+          <div class="graph">
+            <div class="node node-center">KnitWeb</div>
+            <div class="node node-a">Alice</div>
+            <div class="node node-b">Bob</div>
+            <div class="node node-c">Carol</div>
+            <div class="node node-d">Atlas</div>
+          </div>
+          <p style="margin-top:12px; font-size:.78rem; color:#64748b;">Elke node is een yarn; de lijnen zijn geverifieerde stitches die samen de lokale patch vormen.</p>
+        </div>
+        <div class="gui-right">
+          <h4>Patch stats</h4>
+          <div class="stat"><span>Stitches</span><strong>14 203</strong></div>
+          <div class="stat"><span>Yarns</span><strong>42</strong></div>
+          <div class="stat"><span>Notaries</span><strong>3</strong></div>
+          <div class="stat"><span>Sync status</span><strong class="ok">in sync</strong></div>
+          <h4 style="margin-top:18px">Selected stitch</h4>
+          <div class="stat"><span>Source</span><strong>did:knit:alice</strong></div>
+          <div class="stat"><span>Seq</span><strong>#128</strong></div>
+          <div class="stat"><span>Confidence</span><strong>0.92</strong></div>
+          <div class="stat"><span>CID</span><code style="font-size:.65rem">bafy...7x2</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Van Napster naar Netwerk van Kennis</h2>
+    <p class="section-sub">De oude P2P-systemen bewezen dat gedecentraliseerde netwerken schaalbaar zijn. KnitNet gebruikt die les voor iets productiefs: een soeverein, traceerbaar, samenwerkend brein.</p>
+    <div class="grid">
+      <div class="card"><h3>📀 Napster → identiteit</h3><p>Napster had een centrale index. KnitNet heeft DID’s: elke deelnemer is een identiteit, niet een anoniem IP-adres.</p></div>
+      <div class="card"><h3>🧲 BitTorrent → content addressing</h3><p>BitTorrent verdeelt bestanden via hashes. KnitNet verdeelt feiten via CIDs, zodat elke stitch van overal opvraagbaar is.</p></div>
+      <div class="card"><h3>🏴‍☠️ TPB → legale soevereiniteit</h3><p>The Pirate Bay leunde op een grijs gebied. KnitNet draait op je eigen hardware met je eigen data, zonder schaduwindex.</p></div>
+      <div class="card"><h3>🗣️ DC++ → communities</h3><p>DC++ had hubs voor gemeenschappen. KnitNet heeft trust circles: je volgt alleen yarns die je vertrouwt.</p></div>
+    </div>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Start een eigen loom</h2>
+    <div class="cta-row" style="justify-content:flex-start;">
+      <a class="btn btn-primary" href="../docs/papers/08-knitnet-knitweb.md">Lees paper 8</a>
+      <a class="btn btn-secondary" href="index.html">VirtualPC overzicht</a>
+      <a class="btn btn-secondary" href="../docs/DEPLOY-OLLAMA.md">Draai op Ollama</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>KnitNet is onderdeel van VirtualPC · <a href="index.html">Overzicht</a> · <a href="https://github.com/knitweb/virtualpc">GitHub</a></p>
+</footer>
+
+</body>
+</html>

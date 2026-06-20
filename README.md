@@ -1,20 +1,30 @@
-# VirtualPC — distributed multi-agent system
+# VirtualPC — self-hosted multi-agent operating system
 
-A multi-agent backend with a 14-agent roster (CEO Fill, CTO Kai, devs, artists,
-researchers, commercialization), a unified LiteLLM gateway in front of local
-LM Studio + cloud providers, a live task engine that streams subtask progress
-to dashboards, and an auto-update path that pulls from GitHub on a 15-min timer.
+> **Mission:** Turn one server into a trustworthy AI team that anyone can own,
+> audit, and direct.
+>
+> **Vision:** A world where useful autonomous systems are small, sovereign, and
+> verifiable — running on local hardware, sharing knowledge through a P2P
+> knowledge web, and always keeping a human in the loop for risky decisions.
+>
+> Read the full [Mission, Vision & Goal](docs/MISSION.md).
 
-Repository: [github.com/febuz/virtualpc](https://github.com/febuz/virtualpc)
+VirtualPC is a self-hosting roster of specialist agents (CEO, CTO, developers,
+analysts, testers, artists, reviewers) coordinated behind one dashboard and one
+OpenAI-compatible gateway. It runs local models first, keeps every decision
+auditable, and asks for human approval before risky work ships.
+
+Repository: [github.com/knitweb/virtualpc](https://github.com/knitweb/virtualpc)
 
 What's in the box:
 - **LiteLLM gateway** at `127.0.0.1:4000` (`deploy/docker-compose.litellm.yml`)
-  routing 13 model entries — 5 local LM Studio + 8 cloud — through one
+  routing multiple model entries — local LM Studio + cloud — through one
   OpenAI-compatible API. virtualpc points at it via `LITELLM_URL`.
 - **Agent registry** (`src/agent-registry.ts`) — single source of truth for
   the roster. Add a name there, every dashboard picks it up.
-- **Task engine** (`src/task-engine.ts`) — 14 agents, autonomous tick,
-  per-subtask progress, persistent state on EDS2.
+- **Task engine** (`src/task-engine.ts`) — autonomous tick,
+  per-subtask progress, persistent state. The roster size is defined in
+  `src/agent-registry.ts` and exposed live via `/api/agents/overview`.
 - **Auth** (`src/auth/`) — login, sessions, 2FA-ready, audit log,
   role-based specialist dashboards.
 - **Vitals dashboard** (`/vitals.html`) — live GPU/services snapshot,
@@ -30,7 +40,7 @@ What's in the box:
 ## 🎯 Quick start (5 minutes)
 
 ```bash
-git clone https://github.com/febuz/virtualpc.git ~/virtualpc
+git clone https://github.com/knitweb/virtualpc.git ~/virtualpc
 cd ~/virtualpc
 ./scripts/install.sh
 ```
@@ -138,7 +148,7 @@ Start here:
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌────────────────┐        ┌──────────────────────┐         │
-│  │   Paperclip    │        │   Model Router       │         │
+│  │   VirtualPC    │        │   Model Router       │         │
 │  │    Agents      │───────→│  (Cost Optimizer)    │         │
 │  └────────────────┘        └──────────────────────┘         │
 │          │                           │                       │
@@ -205,7 +215,7 @@ Agents query LightRAG before solving problems → **70-80% fewer tokens needed**
 
 7 topics for decoupled communication:
 
-1. **agent.tasks** — Paperclip publishes assigned work here
+1. **agent.tasks** — VirtualPC publishes assigned work here
 2. **agent.results** — Agents publish results here
 3. **model.requests** — API calls go to router, published here
 4. **model.responses** — Model responses published here

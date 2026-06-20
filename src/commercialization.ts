@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
 import { secretOrEnv } from './security/secretsBootstrap';
+import { STATE_DIR as DEFAULT_STATE_DIR } from './config/paths';
 
 // Lazy-required so the module loads on a build that skipped `npm install`
 // or in an environment that explicitly sets PROMO_REAL_MONEY=0 and never
@@ -40,7 +41,7 @@ function getStripe(): any | null {
   return _stripeClient;
 }
 
-const STATE_DIR = process.env.PROMO_STATE_DIR || '/media/knight2/EDS2/virtualpc-state';
+const STATE_DIR = process.env.PROMO_STATE_DIR || DEFAULT_STATE_DIR;
 const STATE_FILE = path.join(STATE_DIR, 'promotions.json');
 
 const PER_PROPOSAL_CAP_USD = Number(process.env.PROMO_PER_PROPOSAL_CAP || 5);

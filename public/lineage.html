@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirtualPC · Concrete data lineage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050810; color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5,8,16,.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(96,165,250,.15); padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 1.2rem; color: #60a5fa; }
+
+  .hero {
+    padding: 72px 24px 40px; text-align: center;
+    background:
+      radial-gradient(circle at 25% 20%, rgba(96,165,250,.12) 0%, transparent 45%),
+      radial-gradient(circle at 75% 80%, rgba(34,197,94,.12) 0%, transparent 45%);
+  }
+  .eyebrow {
+    display: inline-block; font-size: .72rem; letter-spacing: .2em; text-transform: uppercase;
+    color: #93c5fd; border: 1px solid rgba(96,165,250,.3); border-radius: 999px;
+    padding: 6px 14px; margin-bottom: 20px;
+  }
+  h1 {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: clamp(1.9rem, 5vw, 3rem); line-height: 1.05;
+    background: linear-gradient(90deg, #60a5fa 0%, #22c55e 50%, #f0abfc 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 16px;
+  }
+  .hero p { color: #94a3b8; max-width: 760px; margin: 0 auto 28px; font-size: 1.08rem; }
+
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .92rem;
+    padding: 12px 20px; border-radius: 8px; transition: transform .12s;
+  }
+  .btn-primary { background: #2563eb; color: #fff; box-shadow: 0 4px 18px rgba(37,99,235,.35); }
+  .btn-primary:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-secondary { background: rgba(255,255,255,.06); color: #e6f0ff; border: 1px solid rgba(255,255,255,.12); }
+  .btn-secondary:hover { background: rgba(255,255,255,.10); text-decoration: none; }
+
+  section { padding: 56px 24px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h2 {
+    font-family: 'Orbitron', sans-serif; font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700;
+    margin-bottom: 12px; color: #f0f9ff;
+  }
+  .section-sub { color: #94a3b8; max-width: 680px; margin-bottom: 32px; }
+
+  /* Flow diagram */
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 28px 0; }
+  .flow-step {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(96,165,250,.2); border-radius: 10px;
+    padding: 12px 16px; min-width: 110px; text-align: center; font-size: .85rem;
+  }
+  .flow-step strong { display: block; color: #bfdbfe; font-size: .9rem; margin-bottom: 4px; }
+  .flow-step span { font-size: .72rem; color: #94a3b8; }
+  .arrow { color: #60a5fa; font-size: 1.3rem; align-self: center; }
+  .source { border-color: #22c55e; }
+  .process { border-color: #60a5fa; }
+  .output { border-color: #f0abfc; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 22px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); }
+  th { color: #bfdbfe; background: rgba(255,255,255,.04); }
+  td { color: #cbd5e1; vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,.03); }
+  code { font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,.08); padding: 2px 5px; border-radius: 4px; font-size: .8rem; }
+
+  .card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px;
+    padding: 22px; margin-bottom: 16px;
+  }
+  .card h3 { color: #bfdbfe; margin-bottom: 8px; font-size: 1rem; }
+  .card p { color: #94a3b8; font-size: .9rem; }
+
+  .principles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .principle { background: rgba(255,255,255,.04); border-left: 4px solid #22c55e; border-radius: 8px; padding: 18px; }
+  .principle h4 { color: #bfdbfe; margin-bottom: 6px; }
+  .principle p { font-size: .87rem; color: #94a3b8; }
+
+  footer { text-align: center; padding: 40px 24px; color: #64748b; font-size: .85rem; border-top: 1px solid rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">VirtualPC</div>
+  <a href="index.html">← Terug naar overzicht</a>
+</header>
+
+<section class="hero">
+  <span class="eyebrow">Transparantie</span>
+  <h1>Geen black box: concrete lineage</h1>
+  <p>Elke agent-actie in VirtualPC is traceerbaar naar een bron, een schema, een eigenaar en een regelset. Hier zie je hoe dat er concreet uitziet voor een customer-churn pipeline.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="../examples/lineage/churn-governance.json">Bekijk registry</a>
+    <a class="btn btn-secondary" href="../docs/LINEAGE-EXAMPLES.md">Technisch document</a>
+    <a class="btn btn-secondary" href="../examples/lineage/business-glossary.yaml">Business glossary</a>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>De pipeline: van bron tot dashboard</h2>
+    <p class="section-sub">Elke rechthoek is een artifact in het governance-register. De pijlen zijn expliciet beschreven in het <code>lineage</code>-veld.</p>
+    <div class="flow">
+      <div class="flow-step source"><strong>raw_customers</strong><span>CRM · bevat PII</span></div>
+      <div class="arrow">→</div>
+      <div class="flow-step process"><strong>clean_customers</strong><span>Analyst · PII verwijderd</span></div>
+      <div class="arrow">→</div>
+      <div class="flow-step process"><strong>features</strong><span>Analyst · model-input</span></div>
+      <div class="arrow">→</div>
+      <div class="flow-step process"><strong>churn_model_v1</strong><span>Analyst · door Athena gereviewed</span></div>
+      <div class="arrow">→</div>
+      <div class="flow-step output"><strong>predictions</strong><span>Analyst · batch</span></div>
+      <div class="arrow">→</div>
+      <div class="flow-step output"><strong>dashboard</strong><span>Pixel · voor CEO</span></div>
+    </div>
+    <p style="text-align:center; color:#94a3b8; font-size:.85rem;">Nebenflow: <code>raw_subscriptions</code> → features, en <code>synthetic_customers</code> voor stress-tests.</p>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Business glossary</h2>
+    <p class="section-sub">Business-termen zijn niet vrijblijvend. Ze hebben een eigenaar, een definitie en een koppeling naar de artifacten waar ze worden gematerialiseerd.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Term</th><th>Eigenaar</th><th>Definitie</th><th>Berekend in</th></tr></thead>
+        <tbody>
+          <tr><td><code>active_user</code></td><td>Analyst</td><td>Klant met minstens één betaling in de afgelopen 90 dagen.</td><td><code>features</code></td></tr>
+          <tr><td><code>churn</code></td><td>Analyst</td><td>Eerder actieve klant zonder betaling in de afgelopen 90 dagen.</td><td><code>churn_predictions</code></td></tr>
+          <tr><td><code>risk_score</code></td><td>Analyst</td><td>Kans (0–1) dat een klant binnen 30 dagen churned.</td><td><code>churn_model_v1</code></td></tr>
+          <tr><td><code>clv</code></td><td>Croesus</td><td>Geschatte totale omzet per klant in EUR.</td><td><code>churn_predictions</code></td></tr>
+          <tr><td><code>pii</code></td><td>Governor</td><td>Data die een natuurlijk persoon kan identificeren; restricted.</td><td><code>raw_customers</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Governance-register: elk artifact is geborgd</h2>
+    <p class="section-sub">Dit is een subset van <code>examples/lineage/churn-governance.json</code>. Iedere regel volgt het <code>GovernanceEntry</code>-formaat uit <code>src/integrations/governance/index.ts</code>.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Artifact</th><th>Eigenaar</th><th>Schema</th><th>Lineage</th><th>Tags</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>raw_customers.csv</code></td>
+            <td>Governor</td>
+            <td><code>raw_customers.schema.json</code></td>
+            <td>Source extract CRM; bevat PII; retention 90 dagen.</td>
+            <td><code>pii</code>, <code>restricted</code>, <code>source-of-truth</code></td>
+          </tr>
+          <tr>
+            <td><code>clean_customers.parquet</code></td>
+            <td>Analyst</td>
+            <td><code>clean_customers.schema.json</code></td>
+            <td>Van raw_customers; PII verwijderd, landcodes genormaliseerd. Code: <code>clean_customers.py</code></td>
+            <td><code>intermediate</code>, <code>pii-reduced</code></td>
+          </tr>
+          <tr>
+            <td><code>features.parquet</code></td>
+            <td>Analyst</td>
+            <td><code>features.schema.json</code></td>
+            <td>Join van clean_customers + raw_subscriptions. Geen PII. Code: <code>build_features.py</code></td>
+            <td><code>model-input</code>, <code>no-pii</code></td>
+          </tr>
+          <tr>
+            <td><code>churn_model_v1.pkl</code></td>
+            <td>Analyst</td>
+            <td><code>model_card.json</code></td>
+            <td>Getraind op features; stratified split; gereviewed door Athena. Code: <code>train_model.py</code></td>
+            <td><code>model</code>, <code>reviewed</code></td>
+          </tr>
+          <tr>
+            <td><code>churn_predictions.parquet</code></td>
+            <td>Analyst</td>
+            <td><code>predictions.schema.json</code></td>
+            <td>Batch inference met churn_model_v1. Gebruikt door dashboard en Croesus.</td>
+            <td><code>predictions</code>, <code>campaign-input</code></td>
+          </tr>
+          <tr>
+            <td><code>churn_dashboard.html</code></td>
+            <td>Pixel</td>
+            <td><code>dashboard_card.json</code></td>
+            <td>Dashboard op basis van predictions; gebruikt door CEO Fill.</td>
+            <td><code>dashboard</code>, <code>executive</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Anti-blackbox principes</h2>
+    <p class="section-sub">Dit is hoe we de angst voor oncontroleerbare agenten wegnemen.</p>
+    <div class="principles">
+      <div class="principle"><h4>1. Code is gelinkt</h4><p>Elk artifact wijst naar het exacte Python-script dat het produceerde. Je kunt de transformatie altijd opnieuw draaien.</p></div>
+      <div class="principle"><h4>2. Schema’s zijn verplicht</h4><p>Elk bestand heeft een JSON Schema. Governor valideert dat een artifact aan zijn schema voldoet voordat het verder mag.</p></div>
+      <div class="principle"><h4>3. Eigenaarschap is expliciet</h4><p>Elk artifact heeft een agent-eigenaar. Als er iets misgaat, weet je wie verantwoordelijk is.</p></div>
+      <div class="principle"><h4>4. PII wordt getagd</h4><p>PII-gevoelige bronnen krijgen de tag <code>pii</code>. Downstream artifacten zijn gescheiden en bevatten geen identificeerbare data.</p></div>
+      <div class="principle"><h4>5. Review gate voor modellen</h4><p>Athena controleert model-code op data leakage, stratificatie en reproduceerbaarheid voordat het naar productie mag.</p></div>
+      <div class="principle"><h4>6. Business glossary bindt termen</h4><p>Definities zoals “churn” en “CLV” zijn niet interpretatie, maar eigendom van een business-rol en gekoppeld aan concrete kolommen.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Voorbeeld: van risk_score terug naar bron</h2>
+    <div class="card">
+      <p>Stel een gebruiker ziet in het dashboard dat <strong>klant #42 een risk_score van 0.87</strong> heeft. Met lineage kun je precies terugredeneren:</p>
+      <ol style="margin: 12px 0 0 20px; color:#94a3b8; font-size:.9rem;">
+        <li><code>churn_dashboard.html</code> toont <code>risk_score</code> uit <code>churn_predictions.parquet</code>.</li>
+        <li><code>churn_predictions</code> is geproduceerd door <code>predict.py</code> met <code>churn_model_v1.pkl</code>.</li>
+        <li><code>churn_model_v1</code> is getraind op <code>features.parquet</code> (gereviewed door Athena).</li>
+        <li><code>features</code> is een join van <code>clean_customers</code> en <code>raw_subscriptions</code>.</li>
+        <li><code>clean_customers</code> komt uit <code>raw_customers.csv</code> uit het CRM.</li>
+      </ol>
+      <p style="margin-top:12px;">Elke stap is zichtbaar in <code>churn-governance.json</code> en gekoppeld aan schema’s en business-termen.</p>
+    </div>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Start zelf met getraceerde pipelines</h2>
+    <div class="cta-row" style="justify-content:flex-start;">
+      <a class="btn btn-primary" href="../docs/LINEAGE-EXAMPLES.md">Lees het volledige document</a>
+      <a class="btn btn-secondary" href="../examples/lineage/">Bekijk alle voorbeeldbestanden</a>
+      <a class="btn btn-secondary" href="../docs/DATA-SCIENCE-WIKI.md">Data Science wiki</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>VirtualPC lineage · <a href="index.html">Overzicht</a> · <a href="demo-dashboard.html">Demo Dashboard</a> · <a href="https://github.com/knitweb/virtualpc">GitHub</a></p>
+</footer>
+
+</body>
+</html>

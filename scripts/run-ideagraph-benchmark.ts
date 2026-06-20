@@ -1,3 +1,4 @@
+#!/usr/bin/env tsx
 /**
  * Full-scale IdeaGraph benchmark runner.
  *

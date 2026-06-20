@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fiber · The same fabric underneath</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050810; color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: #06b6d4; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5,8,16,.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255,255,255,.08); padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 1.15rem; color: #f0f9ff; }
+  .brand img { width: 32px; height: 32px; }
+
+  .hero {
+    padding: 56px 24px 40px; text-align: center;
+    background:
+      radial-gradient(circle at 20% 25%, #06b6d418 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, #14b8a614 0%, transparent 45%);
+  }
+  .logo-hero { width: 140px; height: 140px; margin: 0 auto 24px; filter: drop-shadow(0 0 24px #06b6d440); }
+  .eyebrow {
+    display: inline-block; font-size: .72rem; letter-spacing: .2em; text-transform: uppercase;
+    color: #14b8a6; border: 1px solid #06b6d450; border-radius: 999px;
+    padding: 6px 14px; margin-bottom: 18px;
+  }
+  h1 {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: clamp(2rem, 5.5vw, 3.4rem); line-height: 1.05;
+    background: linear-gradient(135deg, #06b6d4 0%, #14b8a6 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 14px;
+  }
+  .hero p { color: #94a3b8; max-width: 720px; margin: 0 auto 28px; font-size: 1.1rem; }
+
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .92rem;
+    padding: 12px 20px; border-radius: 8px; transition: transform .12s;
+  }
+  .btn-primary { background: #06b6d4; color: #050810; box-shadow: 0 4px 18px #06b6d450; }
+  .btn-primary:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-secondary { background: rgba(255,255,255,.06); color: #e6f0ff; border: 1px solid rgba(255,255,255,.12); }
+  .btn-secondary:hover { background: rgba(255,255,255,.10); text-decoration: none; }
+
+  section { padding: 56px 24px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h2 {
+    font-family: 'Orbitron', sans-serif; font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700;
+    margin-bottom: 12px; color: #f0f9ff;
+  }
+  .section-sub { color: #94a3b8; max-width: 680px; margin-bottom: 32px; }
+
+  .table-wrap { overflow-x: auto; margin: 22px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); }
+  th { color: #bfdbfe; background: rgba(255,255,255,.04); }
+  td { color: #cbd5e1; vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,.03); }
+  .brand-row td { background: #06b6d415; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px;
+    padding: 22px; transition: transform .12s, border-color .12s;
+  }
+  .card:hover { transform: translateY(-3px); border-color: #06b6d460; }
+  .card h3 { font-size: 1.05rem; color: #bfdbfe; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .card p { font-size: .9rem; color: #94a3b8; }
+
+  footer { text-align: center; padding: 40px 24px; color: #64748b; font-size: .85rem; border-top: 1px solid rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="logos/fiber-logo.svg" alt="Fiber">
+    Fiber
+  </div>
+  <a href="brands.html">← All brands</a>
+</header>
+
+<section class="hero">
+  <img src="logos/fiber-logo.svg" alt="Fiber logo" class="logo-hero">
+  <span class="eyebrow">Textus-type database</span>
+  <h1>Fiber</h1>
+  <p>Fiber is the triple-native, content-addressed database that powers Loom, KnitNet and Plexus. One storage model, one query surface, many views.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="https://github.com/knitweb/virtualpc/blob/main/docs/BRAND-STRATEGY.md">Read the brand strategy</a>
+    <a class="btn btn-secondary" href="brands.html">All brands</a>
+    <a class="btn btn-secondary" href="https://github.com/knitweb/virtualpc">GitHub repo</a>
+  </div>
+</section>
+
+<section id="comparison">
+  <div class="container">
+    <h2>Fiber versus traditional graph stores</h2>
+    <p class="section-sub">Fiber is one view of the same fabric. The difference is the narrative, not the data model.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Approach</th>
+            <th>Storage / sync</th>
+            <th>Ownership</th>
+            <th>Identity</th>
+            <th>Topology</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Neo4j / RDF store</strong></td>
+            <td>Single server or managed cloud</td>
+            <td>Schema migrations</td>
+            <td>No offline merge</td>
+            <td>Centralised</td>
+          </tr>
+          <tr class="brand-row">
+            <td><strong>Fiber</strong></td>
+            <td>Embedded in every loom</td>
+            <td>Schema-less CRDT patches</td>
+            <td>Offline-first merge</td>
+            <td>Decentralised</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Why Fiber?</h2>
+    <div class="grid">
+      <div class="card"><h3>🧬 Triple-native</h3><p>Subject-predicate-object is the atom. No awkward mapping from tables or documents to a graph.</p></div>
+      <div class="card"><h3>📦 Content-addressed</h3><p>Every patch and stitch is a CID. Deduplication, verification and caching are free.</p></div>
+      <div class="card"><h3>🔄 CRDT merges</h3><p>Two patches from two looms merge cleanly without locks, leaders or consensus rounds.</p></div>
+      <div class="card"><h3>🔍 Query anything</h3><p>SPARQL-ish or Cypher-ish queries run locally against your own patch.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Part of one fabric</h2>
+    <p class="section-sub">Loom, KnitNet, Fiber and Plexus are not four products. They are four lenses on the same Textus-type database — the brain lives in the GitHub repo.</p>
+    <div class="cta-row" style="justify-content:flex-start;">
+      <a class="btn btn-primary" href="https://github.com/knitweb/virtualpc">Open the machine on GitHub</a>
+      <a class="btn btn-secondary" href="brands.html">Explore all brands</a>
+      <a class="btn btn-secondary" href="knitnet.html">KnitNet →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Fiber is a brand line of VirtualPC · <a href="brands.html">All brands</a> · <a href="https://github.com/knitweb/virtualpc">GitHub</a></p>
+</footer>
+
+</body>
+</html>

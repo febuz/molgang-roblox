@@ -67,7 +67,7 @@ const READ_ME_BRIEF = {
   audience: 'developers + technical stakeholders new to the repo',
   outline: [
     '## Mission',
-    'virtualpc orchestrates a 31-agent roster across four scrums (roblox, web, marketing, cross) plus testers and Hermes coordinators.',
+    'virtualpc orchestrates a live agent roster across four scrums (roblox, web, marketing, cross) plus testers and Hermes coordinators.',
     'It produces the Roblox + web ports of molgang and the marketing perception layer.',
     '',
     '## Quick start',

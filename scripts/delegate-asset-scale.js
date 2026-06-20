@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * delegate-asset-scale.js — push ~50 concrete asset-pipeline tasks
- * into virtualpc's task engine, distributed across the 14-agent roster.
+ * into virtualpc's task engine, distributed across the live agent roster.
  *
  * Source of truth: molgang-web/backlog/MOLGANG-009-Scale-Plan.md.
  *

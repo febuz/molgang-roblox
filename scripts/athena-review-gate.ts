@@ -1,3 +1,4 @@
+#!/usr/bin/env tsx
 /**
  * Athena review-gate runner — drives the Opus 4.8 PR gate end to end.
  *

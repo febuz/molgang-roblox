@@ -1,3 +1,4 @@
+#!/usr/bin/env tsx
 /**
  * Setup program: matches VirtualPC agents to models that fit this machine.
  *

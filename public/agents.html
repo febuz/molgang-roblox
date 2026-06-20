@@ -315,7 +315,7 @@ document.getElementById('benchBtn').addEventListener('click', async e => {
   const btn = e.target;
   const status = document.getElementById('benchStatus');
   btn.style.opacity = '0.5';
-  status.textContent = 'benchmarking 14 agents (sequential, ~30-90 s)…';
+  status.textContent = 'benchmarking the live roster (sequential, ~30-90 s)…';
   try {
     const t0 = Date.now();
     const r = await fetch('/api/agents/benchmark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });

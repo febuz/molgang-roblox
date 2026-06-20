@@ -25,7 +25,7 @@ since produced TypeScript / Python / Rust ports of the spec.
   orchestrator state. Decides which issues to dispatch / retry / release.
 
 **Why not adopting it now:**
-1. virtualpc already has a 14-agent task engine. Symphony would replace it,
+1. virtualpc already has an agent task engine. Symphony would replace it,
    not augment it.
 2. The spec assumes Linear / GitHub Issues as the work source. virtualpc's
    `tasks[]` and `addTask()` API is the equivalent surface; rewiring to

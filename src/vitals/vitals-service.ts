@@ -14,6 +14,7 @@ import { spawn, spawnSync } from 'child_process';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import logger from '../utils/logger';
+import { HOME_DIR } from '../config/paths';
 
 const SCRIPTS_DIR = path.join(__dirname, '..', '..', 'scripts');
 const LOG_DIR = path.join(__dirname, '..', '..', 'logs');
@@ -142,7 +143,7 @@ export class VitalsService {
     const limit = opts.limit ?? 20;
     const fsp = require('fs').promises;
     const path = require('path');
-    const HOME = '/home/knight2';
+    const HOME = HOME_DIR;
     const candidates: string[] = [];
 
     const enumerate = async (dir: string) => {
@@ -168,7 +169,7 @@ export class VitalsService {
       const bytes = Number((r.stdout || '0').split(/\s+/)[0]);
       if (!bytes || bytes < minBytes) continue;
       let status = '';
-      if (/\/(virtualpc|custom-paperclip)$/.test(p) || /\/.claude$|\/.paperclip$/.test(p))
+      if (/\/(virtualpc|custom-virtualpc)$/.test(p) || /\/.claude$|\/.virtualpc-state$/.test(p))
         status = 'ACTIVE — service in use';
       else if (/\/snap(\/|$)/.test(p)) status = 'snap-confined';
       else if (/\/agents$/.test(p)) status = 'git repo';

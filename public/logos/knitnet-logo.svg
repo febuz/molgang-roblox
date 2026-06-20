@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="knitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#a78bfa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#0b1220" stroke="url(#knitGrad)" stroke-width="4"/>
+
+  <!-- Woven net pattern -->
+  <g stroke="url(#knitGrad)" stroke-width="3" fill="none" stroke-linecap="round" filter="url(#glow)">
+    <!-- Horizontal-ish weave lines -->
+    <path d="M120 180 Q256 240 392 180"/>
+    <path d="M120 256 Q256 316 392 256"/>
+    <path d="M120 332 Q256 392 392 332"/>
+
+    <!-- Cross weave lines -->
+    <path d="M180 120 Q240 256 180 392"/>
+    <path d="M256 120 Q316 256 256 392"/>
+    <path d="M332 120 Q392 256 332 392"/>
+
+    <!-- Diagonal weave lines -->
+    <path d="M150 150 Q256 256 362 150"/>
+    <path d="M150 362 Q256 256 362 362"/>
+  </g>
+
+  <!-- Central node / knowledge atom -->
+  <circle cx="256" cy="256" r="36" fill="url(#knitGrad)"/>
+  <circle cx="256" cy="256" r="18" fill="#050810"/>
+  <circle cx="256" cy="256" r="8" fill="url(#knitGrad)"/>
+
+  <!-- Outer nodes at intersections -->
+  <g fill="#60a5fa">
+    <circle cx="180" cy="180" r="8"/>
+    <circle cx="256" cy="150" r="8"/>
+    <circle cx="332" cy="180" r="8"/>
+    <circle cx="150" cy="256" r="8"/>
+    <circle cx="362" cy="256" r="8"/>
+    <circle cx="180" cy="332" r="8"/>
+    <circle cx="256" cy="362" r="8"/>
+    <circle cx="332" cy="332" r="8"/>
+  </g>
+</svg>

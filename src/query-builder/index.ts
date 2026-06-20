@@ -3,7 +3,7 @@
  * knowledge surfaces (corpus/LightRAG, wiki, codegraph, memory).
  *
  * "Especially query building" from docs/CAPABILITY-CHARTER.md §2: agents and the
- * local Paperclip models reuse curated queries instead of re-phrasing the same
+ * local agent models reuse curated queries instead of re-phrasing the same
  * question. Each query has a template with {{params}}, a typed param list, and a
  * version history so a known-good query can't silently change.
  *

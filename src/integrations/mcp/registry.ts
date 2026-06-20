@@ -30,6 +30,7 @@ import * as kami from '../kami';
 import * as corpus from '../corpus';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ASSET_REGISTRY_PATH } from '../../config/paths';
 import logger from '../../utils/logger';
 
 // __dirname at runtime resolves to dist/integrations/mcp/, so three levels
@@ -181,7 +182,7 @@ const TOOLS: ToolDefinition[] = [
       required: ['q'],
     },
     handler: async ({ q }: { q: string }) => {
-      const REGISTRY_PATH = '/media/knight2/EDS2/projects/molgang-web/shared/asset-registry.json';
+      const REGISTRY_PATH = ASSET_REGISTRY_PATH;
       if (!fs.existsSync(REGISTRY_PATH)) return { entries: [], note: 'registry not yet built — run scripts/build-asset-registry.js' };
       try {
         const raw = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));

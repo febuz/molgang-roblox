@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirtualPC · Agent Roles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050810; color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6; padding-bottom: 60px;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5,8,16,.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(96,165,250,.15); padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand { font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 1.2rem; color: #60a5fa; }
+  .back { color: #93c5fd; font-size: .9rem; }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .hero { padding: 48px 24px 32px; text-align: center; }
+  h1 {
+    font-family: 'Orbitron', sans-serif; font-weight: 800;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    background: linear-gradient(90deg, #60a5fa 0%, #f0abfc 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 10px;
+  }
+  .hero p { color: #94a3b8; max-width: 680px; margin: 0 auto; }
+
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 0 24px 28px; }
+  .filter {
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10);
+    color: #cbd5e1; padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: .85rem;
+  }
+  .filter.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  .card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px;
+    padding: 20px; transition: transform .12s, border-color .12s;
+  }
+  .card:hover { transform: translateY(-3px); border-color: rgba(96,165,250,.35); }
+  .card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .avatar { font-size: 2rem; line-height: 1; }
+  .card-title { font-size: 1.05rem; font-weight: 700; color: #f0f9ff; }
+  .card-role { font-size: .82rem; color: #93c5fd; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .badge {
+    font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+    padding: 3px 8px; border-radius: 4px; background: rgba(96,165,250,.12); color: #bfdbfe;
+  }
+  .card p { font-size: .9rem; color: #94a3b8; margin-bottom: 10px; }
+  .tools { font-size: .8rem; color: #64748b; }
+  .tools strong { color: #94a3b8; }
+
+  footer { text-align: center; padding: 48px 24px 0; color: #64748b; font-size: .85rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">VirtualPC</div>
+  <a class="back" href="index.html">← Back to MVP overview</a>
+</header>
+
+<section class="hero">
+  <h1>Agent Roles</h1>
+  <p>Every agent has a clear mandate, preferred models, allowed tools and scrum team. No ambiguity, no overlap.</p>
+</section>
+
+<div class="filters" id="filters"></div>
+
+<div class="grid" id="grid"></div>
+
+<footer>
+  <p>Source of truth: <code>src/agent-registry.ts</code> · <a href="https://github.com/knitweb/virtualpc">GitHub</a></p>
+</footer>
+
+<script>
+const agents = [
+  { name: 'Fill', role: 'CEO · Scrum-of-Scrums chair', kind: 'core', avatar: '👑', color: '#fbbf24', tools: ['scrum.*', 'forum.*', 'codegraph.stats', 'governance.lineage', 'wiki.lookup'], desc: 'Sets strategy, chairs the scrum-of-scrums and signs off on high-risk decisions.' },
+  { name: 'Kai', role: 'CTO · Cross-team infra', kind: 'core', avatar: '⚡', color: '#a78bfa', tools: ['codegraph.*', 'governance.lineage', 'assets.search', 'scrum.standup', 'scrum.bug', 'wiki.lookup'], desc: 'Owns architecture, cross-team integrations and technical standards.' },
+  { name: 'Zip', role: 'Developer', kind: 'core', avatar: '💻', color: '#22c55e', tools: ['codegraph.*', 'wiki.lookup', 'assets.search'], desc: 'Writes backend and full-stack features across the web scrum.' },
+  { name: 'Mira', role: 'Creative Director', kind: 'core', avatar: '🎨', color: '#ec4899', tools: ['assets.search', 'wiki.lookup', 'governance.lineage', 'kami.queue', 'kami.briefs'], desc: 'Owns brand, UI direction and investor-facing visuals.' },
+  { name: 'Luna', role: 'Tech Artist', kind: 'core', avatar: '✨', color: '#06b6d4', tools: ['assets.search', 'codegraph.symbol', 'codegraph.file', 'wiki.lookup', 'kami.queue', 'kami.briefs'], desc: 'Bridges code and art: shaders, asset pipelines and interactive visuals.' },
+  { name: 'Pixel', role: 'Web Developer · Next.js / Wiki UX', kind: 'core', avatar: '🖼️', color: '#16a34a', tools: ['codegraph.*', 'wiki.*', 'assets.search', 'governance.lineage', 'kami.queue', 'kami.briefs'], desc: 'Ships the web UI, wiki pages and dashboard experiences.' },
+  { name: 'Cleopatra', role: 'Executive Authority', kind: 'decision', avatar: '👸', color: '#f97316', tools: ['scrum.*', 'governance.*', 'forum.read'], desc: 'Final arbiter on executive and governance conflicts.' },
+  { name: 'Alexander', role: 'Technical Arbiter', kind: 'decision', avatar: '🗡️', color: '#ef4444', tools: ['codegraph.*', 'governance.lineage', 'scrum.bug'], desc: 'Resolves technical disputes and escalation paths.' },
+  { name: 'MoneyGod', role: 'Economy Authority', kind: 'decision', avatar: '💰', color: '#10b981', tools: ['governance.lineage', 'wiki.lookup'], desc: 'Owns tokenomics, budgets and in-product economy design.' },
+  { name: 'Governor', role: 'Data Governance / Wiki Analyst', kind: 'governance', avatar: '📒', color: '#0891b2', tools: ['governance.*', 'codegraph.*', 'assets.search', 'wiki.*', 'kami.*'], desc: 'Curates the governance registry, wiki lineage and asset licensing.' },
+  { name: 'Analyst', role: 'Data Analyst', kind: 'resource', avatar: '📊', color: '#8b5cf6', tools: ['governance.*', 'codegraph.stats', 'forum.read', 'wiki.lookup'], desc: 'Turns metrics into actionable reports for product and marketing.' },
+  { name: 'VideoProducer', role: 'Video Producer', kind: 'resource', avatar: '🎬', color: '#d946ef', tools: ['assets.search', 'wiki.lookup'], desc: 'Produces demos, explainers and promotional video assets.' },
+  { name: 'Vice', role: 'Open-World Design Expert', kind: 'specialist', avatar: '🌆', color: '#e11d48', tools: ['assets.search', 'wiki.lookup', 'governance.lineage'], desc: 'Designs open-world systems, missions and player loops.' },
+  { name: 'Atlas', role: 'Simulation / AR / VR / CAD Realism', kind: 'specialist', avatar: '🥽', color: '#0ea5e9', tools: ['assets.search', 'codegraph.*', 'governance.lineage', 'wiki.lookup'], desc: 'Owns simulation fidelity, XR realism and physics integration.' },
+  { name: 'Kimi', role: 'Long-Context Researcher', kind: 'specialist', avatar: '🌙', color: '#7c3aed', tools: ['wiki.*', 'codegraph.*', 'governance.lineage', 'assets.search', 'forum.read'], desc: 'Deep research, literature reviews and knowledge-graph enrichment.' },
+  { name: 'Croesus', role: 'Commercialization Strategist', kind: 'specialist', avatar: '💎', color: '#fde047', tools: ['governance.lineage', 'wiki.lookup', 'forum.read'], desc: 'Drafts promotion proposals within bounded budgets and human approval.' },
+  { name: 'Hermes-Roblox', role: 'Scrum Master · Roblox team', kind: 'hermes-coordinator', avatar: '🪽', color: '#fb923c', tools: ['scrum.*', 'forum.*', 'codegraph.stats', 'wiki.lookup'], desc: 'Runs standups, tracks burndown and removes blockers for the Roblox team.' },
+  { name: 'Hermes-Web', role: 'Scrum Master · Web team', kind: 'hermes-coordinator', avatar: '🪽', color: '#22d3ee', tools: ['scrum.*', 'forum.*', 'codegraph.stats', 'wiki.lookup'], desc: 'Runs standups, tracks burndown and removes blockers for the web team.' },
+  { name: 'Hermes-Marketing', role: 'Scrum Master · Marketing & Perception', kind: 'hermes-coordinator', avatar: '🪽', color: '#facc15', tools: ['scrum.*', 'forum.*', 'wiki.lookup'], desc: 'Coordinates marketing sprints and perception loops.' },
+  { name: 'Hermes-Cross', role: 'Scrum-of-Scrums coordinator', kind: 'hermes-coordinator', avatar: '🪽', color: '#f472b6', tools: ['scrum.*', 'forum.*', 'governance.lineage'], desc: 'Synchronises cross-team dependencies and escalations.' },
+  { name: 'Hermes-Reviewer', role: 'DeepSeek-R1 cross-team reviewer', kind: 'hermes-coordinator', avatar: '🪽', color: '#a3e635', tools: ['scrum.*', 'forum.*', 'codegraph.*', 'governance.lineage'], desc: 'Reasoning-focused reviewer across all scrums.' },
+  { name: 'Athena', role: 'Principal Reviewer · senior PhD-level engineer', kind: 'reviewer', avatar: '🦉', color: '#9333ea', tools: ['codegraph.*', 'scrum.bug', 'scrum.standup', 'governance.lineage', 'forum.*', 'wiki.lookup'], desc: 'The final code-quality gate: reviews every branch against standards.' },
+  { name: 'Tester-RB-Casey', role: 'Casual Roblox player (10-13)', kind: 'tester', avatar: '🎮', color: '#34d399', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Synthetic casual player persona for Roblox.' },
+  { name: 'Tester-RB-Riley', role: 'Hardcore tycoon player (14-17)', kind: 'tester', avatar: '🎮', color: '#10b981', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Synthetic hardcore player persona for Roblox.' },
+  { name: 'Tester-RB-Morgan', role: 'Speedrunner / glitch-hunter', kind: 'tester', avatar: '🎮', color: '#059669', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Finds exploits and edge-cases in Roblox experiences.' },
+  { name: 'Tester-RB-Avery', role: 'Educator playing in classroom', kind: 'tester', avatar: '🎮', color: '#047857', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Validates classroom/educational use cases for Roblox.' },
+  { name: 'Tester-Web-Sam', role: 'Mobile-first web player (Z Fold)', kind: 'tester', avatar: '🌐', color: '#60a5fa', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Synthetic mobile-first web player.' },
+  { name: 'Tester-Web-Quinn', role: 'Desktop browser player', kind: 'tester', avatar: '🌐', color: '#3b82f6', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Synthetic desktop browser player.' },
+  { name: 'Tester-Web-Drew', role: 'Accessibility tester (screen reader)', kind: 'tester', avatar: '🌐', color: '#2563eb', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Validates screen-reader and keyboard accessibility.' },
+  { name: 'Tester-Web-Jordan', role: 'Chemistry teacher curriculum tester', kind: 'tester', avatar: '🌐', color: '#1d4ed8', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Validates curriculum fit for educational web games.' },
+  { name: 'Tester-MK-Alex', role: 'Plays competitor chemistry games', kind: 'tester', avatar: '🎯', color: '#eab308', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Benchmarks against competitor chemistry products.' },
+  { name: 'Tester-MK-Robin', role: 'TikTok / social-loop tester', kind: 'tester', avatar: '🎯', color: '#ca8a04', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup'], desc: 'Tests social-sharing loops and viral mechanics.' },
+  { name: 'Tester-GP-Sienna', role: 'Open-world feel · density + ambient life', kind: 'tester', avatar: '🌇', color: '#fb7185', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup', 'assets.search'], desc: 'Evaluates open-world density and ambient life.' },
+  { name: 'Tester-GP-Dante', role: 'Mission + narrative design', kind: 'tester', avatar: '📜', color: '#c084fc', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup', 'governance.lineage'], desc: 'Evaluates missions, quests and narrative flow.' },
+  { name: 'Tester-GP-Onyx', role: 'Physics + interaction realism', kind: 'tester', avatar: '🛞', color: '#475569', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup', 'codegraph.symbol'], desc: 'Evaluates physics and interaction realism.' },
+  { name: 'Tester-GP-Iris', role: 'Character animation · dialogue · NPC AI', kind: 'tester', avatar: '🎭', color: '#f0abfc', tools: ['scrum.bug', 'scrum.standup', 'forum.*', 'wiki.lookup', 'assets.search'], desc: 'Evaluates characters, dialogue and NPC AI.' },
+];
+
+const kinds = ['all', ...new Set(agents.map(a => a.kind))];
+const filters = document.getElementById('filters');
+const grid = document.getElementById('grid');
+let currentKind = 'all';
+
+function renderFilters() {
+  filters.innerHTML = kinds.map(k =>
+    `<button class="filter ${k === currentKind ? 'active' : ''}" data-kind="${k}">${k.replace(/-/g, ' ')}</button>`
+  ).join('');
+  filters.querySelectorAll('.filter').forEach(btn => {
+    btn.addEventListener('click', () => { currentKind = btn.dataset.kind; renderFilters(); renderGrid(); });
+  });
+}
+
+function renderGrid() {
+  const list = currentKind === 'all' ? agents : agents.filter(a => a.kind === currentKind);
+  grid.innerHTML = list.map(a => `
+    <div class="card" style="border-left:4px solid ${a.color}">
+      <div class="card-head">
+        <div class="avatar">${a.avatar}</div>
+        <div>
+          <div class="card-title">${a.name}</div>
+          <div class="card-role">${a.role}</div>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="badge">${a.kind.replace(/-/g, ' ')}</span>
+      </div>
+      <p>${a.desc}</p>
+      <div class="tools"><strong>Tools:</strong> ${a.tools.join(', ')}</div>
+    </div>
+  `).join('');
+}
+
+renderFilters();
+renderGrid();
+</script>
+
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 **Owner:** Claude Coordinator (Product Owner) · see [CLAUDE-COORDINATOR-CHARTER.md](CLAUDE-COORDINATOR-CHARTER.md)
 **Defined:** 2026-06-03, from the live backlog (`/api/backlog`, 145 items), the
-roster (`/api/agents/overview`, 35 agents), the scrum charters, README, and git.
+roster (`/api/agents/overview`), the scrum charters, README, and git.
 **Status legend:** 🟢 live · 🟡 in build · ⚪ planned
 
 The portfolio has **three products** plus shared platform capabilities. The
@@ -16,7 +16,7 @@ engine** monetising both.
 ## P1 — VirtualPC Platform 🟢🟡  *(flagship)*
 
 **One-liner:** A horizontal, self-hosting multi-agent operating system — a
-35-agent roster that grooms its own backlog, runs scrum ceremonies, writes and
+agent roster that grooms its own backlog, runs scrum ceremonies, writes and
 reviews code, and reports live, all behind one OpenAI-compatible gateway.
 
 **Why it's the flagship:** the in-flight backlog is dominated by platform work
@@ -27,7 +27,7 @@ horizontal platform."* The product being sold is the platform.
 **Primary owners:** Kai (CTO), Zip (Dev), Fill (CEO), Mira/Luna (dashboards).
 
 **Shipped (from README + git):**
-- 35-agent registry + autonomous task engine with per-subtask streaming
+- agent registry + autonomous task engine with per-subtask streaming
 - LiteLLM gateway (`:4000`) — 13 model entries, local LM Studio + cloud
 - Auth: login, sessions, 2FA-ready, role-based dashboards, **CEO audit log** (29 unit tests)
 - Vitals dashboard (GPU/services/auto-update), self-heal + repair-mode hooks

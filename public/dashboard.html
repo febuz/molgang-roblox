@@ -115,8 +115,8 @@
             min-width: 20px;
         }
 
-        /* PAPERCLIP ASSISTANT */
-        .paperclip-assistant {
+        /* VPC ASSISTANT */
+        .vpc-assistant {
             position: fixed;
             bottom: 20px;
             right: 20px;
@@ -130,7 +130,7 @@
             z-index: 1000;
         }
 
-        .paperclip-header {
+        .vpc-header {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -139,7 +139,7 @@
             color: var(--primary);
         }
 
-        .paperclip-icon {
+        .vpc-icon {
             font-size: 1.5em;
             animation: bounce 2s infinite;
         }
@@ -149,20 +149,20 @@
             50% { transform: translateY(-5px); }
         }
 
-        .paperclip-tip {
+        .vpc-tip {
             font-size: 0.85em;
             color: var(--text-secondary);
             line-height: 1.4;
             margin-bottom: 10px;
         }
 
-        .paperclip-actions {
+        .vpc-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 5px;
         }
 
-        .paperclip-btn {
+        .vpc-btn {
             padding: 6px 8px;
             background: rgba(96, 165, 250, 0.2);
             border: 1px solid var(--primary);
@@ -173,7 +173,7 @@
             transition: all 0.2s;
         }
 
-        .paperclip-btn:hover {
+        .vpc-btn:hover {
             background: rgba(96, 165, 250, 0.3);
         }
 
@@ -470,7 +470,7 @@
                 transform: translateX(0);
             }
 
-            .paperclip-assistant {
+            .vpc-assistant {
                 width: 250px;
                 bottom: 10px;
                 right: 10px;
@@ -835,7 +835,7 @@
             <div class="content-section" id="agents">
                 <div class="page-header">
                     <div class="page-title">👥 All Agents</div>
-                    <div class="page-subtitle">Complete team overview — all 14 agents, click any card to view persona prompt and recent actions</div>
+                    <div class="page-subtitle">Complete team overview — agents in the live roster — click any card to view persona prompt and recent actions</div>
                 </div>
 
                 <iframe
@@ -877,7 +877,7 @@
                     <p style="color: var(--text-secondary); margin-bottom: 15px;">
                         View the live virtualpc repo on GitHub
                     </p>
-                    <a href="https://github.com/febuz/virtualpc"
+                    <a href="https://github.com/knitweb/virtualpc"
                        style="display: inline-block; padding: 10px 20px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none; transition: all 0.3s;"
                        onmouseover="this.style.background='var(--secondary)'"
                        onmouseout="this.style.background='var(--primary)'">
@@ -1010,7 +1010,7 @@
                         <div class="stat-label">VirtualPC</div>
                         <div class="stat-value" style="font-size: 1.1em;">This platform</div>
                         <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="https://github.com/febuz/virtualpc" target="_blank" rel="noopener"
+                            <a href="https://github.com/knitweb/virtualpc" target="_blank" rel="noopener"
                                style="padding: 7px 14px; background: var(--primary); color: white; border-radius: 6px; text-decoration: none; font-size: 0.85em; font-weight: 600;">📦 GitHub repo</a>
                             <a href="/agents.html"
                                style="padding: 7px 14px; background: var(--secondary); color: white; border-radius: 6px; text-decoration: none; font-size: 0.85em; font-weight: 600;">👥 All Agents</a>
@@ -1171,7 +1171,7 @@
             </div>
 
             <!-- FILL PAGE -->
-            <!-- DYNAMIC AGENT DETAIL — used by ALL 14 agent sidebar links.
+            <!-- DYNAMIC AGENT DETAIL — used by all agent sidebar links.
                  Replaces the 5 stub pages and the 9 missing pages with a single
                  panel that fetches /api/agents/:name/{prompt,cli-log} on click. -->
             <div class="content-section" id="agent-detail">
@@ -1226,7 +1226,7 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-title">GitHub Authority Docs <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— from <code>febuz/virtualpc</code>, loaded live</span></div>
+                    <div class="card-title">GitHub Authority Docs <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— from <code>knitweb/virtualpc</code>, loaded live</span></div>
                     <div id="ad-gh-docs-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">Loading…</div>
                     <pre id="ad-gh-docs-viewer" style="display:none; margin-top: 14px; white-space: pre-wrap; word-wrap: break-word; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.82em; line-height: 1.55; color: var(--text-primary); background: var(--bg-darker); border: 1px solid var(--border); border-radius: 8px; padding: 14px; max-height: 480px; overflow-y: auto;"></pre>
                 </div>
@@ -1240,17 +1240,17 @@
     </div>
 
     <!-- VIRTUALPC ASSISTANT -->
-    <div class="paperclip-assistant">
-        <div class="paperclip-header">
-            <div class="paperclip-icon">🚀</div>
+    <div class="vpc-assistant">
+        <div class="vpc-header">
+            <div class="vpc-icon">🚀</div>
             <div>VirtualPC Assistant</div>
         </div>
-        <div class="paperclip-tip" id="paperclip-tip">
+        <div class="vpc-tip" id="vpc-tip">
             💡 <strong>Tip:</strong> Use the left sidebar to navigate between different views and team members.
         </div>
-        <div class="paperclip-actions">
-            <button class="paperclip-btn" onclick="nextPaperclipTip()">Next Tip</button>
-            <button class="paperclip-btn" onclick="hidePaperclip()">Dismiss</button>
+        <div class="vpc-actions">
+            <button class="vpc-btn" onclick="nextVpcTip()">Next Tip</button>
+            <button class="vpc-btn" onclick="hideVpc()">Dismiss</button>
         </div>
     </div>
 
@@ -1802,7 +1802,7 @@
             e.preventDefault();
             const out = document.getElementById('proj-molgang-content');
             out.style.display = 'block';
-            out.textContent = 'Loading from github.com/febuz/virtualpc/.backlog/high-priority.md …';
+            out.textContent = 'Loading from github.com/knitweb/virtualpc/.backlog/high-priority.md …';
             try {
                 const r = await fetch('/api/github/virtualpc/file?path=.backlog/high-priority.md').then(r => r.json());
                 out.textContent = r.success ? r.content : ('Error: ' + (r.error || 'unknown'));
@@ -1950,7 +1950,7 @@
                 const j = await r.json();
                 const docs = (j && j.docs) || [];
                 if (!docs.length) {
-                    host.innerHTML = '<em style="color: var(--text-secondary);">No authority docs in <code>febuz/virtualpc</code> yet for this agent.</em>';
+                    host.innerHTML = '<em style="color: var(--text-secondary);">No authority docs in <code>knitweb/virtualpc</code> yet for this agent.</em>';
                     return;
                 }
                 host.innerHTML = docs.map(d => {
@@ -2107,7 +2107,7 @@
             }
         });
 
-        // Paperclip Tips
+        // Vpc Tips
         const tips = [
             "💡 <strong>Tip:</strong> Use the left sidebar to navigate between different views and team members.",
             "🎯 <strong>Tip:</strong> Each agent has their own page showing their specific backlog and progress.",
@@ -2120,13 +2120,13 @@
 
         let tipIndex = 0;
 
-        function nextPaperclipTip() {
+        function nextVpcTip() {
             tipIndex = (tipIndex + 1) % tips.length;
-            document.getElementById('paperclip-tip').innerHTML = tips[tipIndex];
+            document.getElementById('vpc-tip').innerHTML = tips[tipIndex];
         }
 
-        function hidePaperclip() {
-            document.querySelector('.paperclip-assistant').style.display = 'none';
+        function hideVpc() {
+            document.querySelector('.vpc-assistant').style.display = 'none';
         }
 
         // Update task stats from API (LIVE DATA)
@@ -2217,7 +2217,7 @@
 
                     <div class="card">
                         <div class="card-title">📁 Backlog Files
-                            <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— from <code>febuz/virtualpc</code> (private; loaded via authenticated proxy)</span>
+                            <span style="color: var(--text-secondary); font-weight: normal; font-size: 0.85em;">— from <code>knitweb/virtualpc</code> (private; loaded via authenticated proxy)</span>
                         </div>
                         <p style="color: var(--text-secondary); margin-bottom: 10px;">Click any file to view it inline:</p>
                         <div id="backlog-files-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -2238,7 +2238,7 @@
             }
         }
 
-        // === Backlog Files: list febuz/virtualpc/.backlog/ via authenticated proxy
+        // === Backlog Files: list knitweb/virtualpc/.backlog/ via authenticated proxy
         async function populateBacklogFiles() {
             const host = document.getElementById('backlog-files-buttons');
             if (!host) return;
@@ -2262,7 +2262,7 @@
         async function loadBacklogFileInto(path, url, viewerId) {
             const viewer = document.getElementById(viewerId);
             viewer.style.display = 'block';
-            viewer.textContent = 'Loading ' + path + ' from github.com/febuz/virtualpc …';
+            viewer.textContent = 'Loading ' + path + ' from github.com/knitweb/virtualpc …';
             try {
                 const r = await fetch('/api/github/virtualpc/file?path=' + encodeURIComponent(path));
                 const j = await r.json();

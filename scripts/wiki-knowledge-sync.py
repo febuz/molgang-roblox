@@ -2,7 +2,7 @@
 """
 Wiki knowledge sync — publish the architecture/strategy docs into the Live Wiki
 under the Head / Hands / Heart tiers, and ingest the Heart (definitive) tier into
-LightRAG so queries + the local Paperclip models can use them.
+LightRAG so queries + the local VirtualPC models can use them.
 
   Head  — steering: ideas, prompts, strategy, agent memories
   Hands — process: agents, skills, rules, projects

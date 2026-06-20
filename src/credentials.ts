@@ -14,8 +14,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import logger from './utils/logger';
 import FieldCrypto from './security/fieldCrypto';
+import { STATE_DIR } from './config/paths';
 
-const STATE_DIR = process.env.VIRTUALPC_STATE_DIR || '/media/knight2/EDS2/virtualpc-state';
 const CRED_PATH = path.join(STATE_DIR, 'credentials.json');
 
 // Field encryption for api_key at rest. Mirrors AuthSystem's policy: enabled

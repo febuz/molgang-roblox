@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================
-# STOP SCRIPT - Shutdown Custom Paperclip Agent System
+# STOP SCRIPT - Shutdown VirtualPC Agent System
 # ============================================================
 
 set -e
@@ -16,7 +16,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PID_FILE="$SCRIPT_DIR/.service.pid"
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  ⏹  Stopping Custom Paperclip Agent System${NC}"
+echo -e "${BLUE}  ⏹  Stopping VirtualPC Agent System${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}\n"
 
 if [ ! -f "$PID_FILE" ]; then

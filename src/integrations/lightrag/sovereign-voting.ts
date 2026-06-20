@@ -202,6 +202,10 @@ export class SovereignVotingService {
    * recencyHalfLifeMs is restored so a restarted node can tally correctly.
    */
   async loadProposals(): Promise<void> {
+    if (typeof this.lightrag.getTypedNodes !== 'function') {
+      this.proposals = new Map();
+      return;
+    }
     const rows = await this.lightrag.getTypedNodes('Proposal');
     for (const row of rows) {
       if (!row.id || !row.question || !Array.isArray(row.options)) continue;

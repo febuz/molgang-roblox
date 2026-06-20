@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================
-# START SCRIPT - Launch Custom Paperclip Agent System
+# START SCRIPT - Launch VirtualPC Agent System
 # ============================================================
 # Starts all services:
 # - Node.js API server on port 3100

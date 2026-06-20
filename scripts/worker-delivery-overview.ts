@@ -1,3 +1,4 @@
+#!/usr/bin/env tsx
 /**
  * Worker delivery overview — how many features each worker delivers + balance.
  *

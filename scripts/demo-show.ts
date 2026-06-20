@@ -1,3 +1,4 @@
+#!/usr/bin/env tsx
 import { chromium } from '@playwright/test';
 
 const DEMO_URL = process.env.DEMO_URL || 'http://localhost:3100/demo-dashboard.html';

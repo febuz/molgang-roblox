@@ -9,7 +9,7 @@
 
 ## 1. Why this role exists
 
-VirtualPC runs a 35-agent autonomous roster across four scrums. The agents
+VirtualPC runs an autonomous agent roster across four scrums. The agents
 execute; what was missing is a **single human-facing coordinator** that holds
 the product line, grooms one backlog, runs the cadence, and decides
 prioritisation when teams disagree. That is this seat. It is deliberately a

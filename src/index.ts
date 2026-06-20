@@ -1,7 +1,7 @@
 /**
- * Custom Paperclip - Fork with LightRAG, Kafka, Autonomous Agents
+ * VirtualPC - Fork with LightRAG, Kafka, Autonomous Agents
  *
- * Main entry point for the custom Paperclip system.
+ * Main entry point for the custom VirtualPC system.
  * Initializes: LightRAG, Kafka, Model Router, Agent Executor
  */
 
@@ -397,14 +397,14 @@ app.post('/api/backlog/items', (req, res) => {
 });
 
 // ============================================================================
-// GitHub proxy for febuz/virtualpc — read-only access to the knowledge dirs
+// GitHub proxy for knitweb/virtualpc — read-only access to the knowledge dirs
 // (.backlog, .admin, .creative, .governance, .operations). The repo is private
 // so the dashboard's external <a href> links 404 for unauthenticated visitors.
 // This proxy uses the local `gh` CLI's keyring auth to fetch the file content,
 // so the dashboard can show it inline. Hardcoded allow-list of path prefixes
 // prevents using the proxy as a generic GitHub fetcher.
 // ============================================================================
-const GH_REPO = 'febuz/virtualpc';
+const GH_REPO = 'knitweb/virtualpc';
 const GH_ALLOWED_DIRS = ['.backlog', '.admin', '.creative', '.governance', '.operations'];
 
 // Map agent name → known doc paths in the repo. Used by the agent-detail panel.
@@ -1307,7 +1307,7 @@ app.get('/api/agents/:name/cli-log', (req, res) => {
 });
 
 // All-Agents overview — single payload powering /agents.html. Combines:
-//   • the canonical 14-agent registry (src/agent-registry.ts)
+//   • the canonical agent registry (src/agent-registry.ts)
 //   • Gemma-4-drafted persona prompts (data/agent-prompts.json)
 //   • live activity from the task engine (current task, completed counts, last action)
 function readAgentPrompts(): { [name: string]: { prompt: string; model?: string; generatedAt?: string } } {
@@ -1908,7 +1908,7 @@ app.get('/api/metrics', (req, res) => {
       pending,
       completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
       // Throughput windows so the dashboard can prove motion even when the
-      // pending count is at steady-state (14 agents × 2 pending = 28 always).
+      // pending count is at steady-state (roster size × 2 pending = steady state).
       completedLastMinute: gameStats.completedLastMinute,
       completedLastHour: gameStats.completedLastHour,
       completedLast24h: gameStats.completedLast24h,
@@ -2320,7 +2320,7 @@ app.get('/api/task-status', (req, res) => {
  * Initialize all system components
  */
 async function initialize() {
-  logger.info('🚀 Custom Paperclip starting...');
+  logger.info('🚀 VirtualPC starting...');
 
   // Initialize emergency kill switch (Ctrl-Q-Q to stop all automation)
   logger.info('🔴 OpenClaw Emergency Kill Switch active (Ctrl+Q+Q to stop)');

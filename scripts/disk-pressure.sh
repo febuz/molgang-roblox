@@ -7,7 +7,7 @@
 #   scripts/relocate-to-eds2.sh <path>
 #
 # Skips currently in-use service state dirs (virtualpc/node_modules,
-# claude/, paperclip/) by default — pass --include-active to override.
+# claude/, virtualpc/) by default — pass --include-active to override.
 
 set -eu
 
@@ -52,7 +52,7 @@ echo "    (size · path · status)"
   hsize=$(du -hs "$d" 2>/dev/null | cut -f1)
   status=""
   case "$d" in
-    */virtualpc/node_modules|*/custom-paperclip/node_modules|*/.claude|*/.paperclip|*/virtualpc|*/custom-paperclip)
+    */virtualpc/node_modules|*/custom-virtualpc/node_modules|*/.claude|*/.virtualpc|*/virtualpc|*/custom-virtualpc)
       status="ACTIVE — skip" ;;
     */snap|*/snap/*)
       status="snap-confined — edit app config instead" ;;

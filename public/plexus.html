@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plexus · Every thread leaves a trace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050810; color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: #7c3aed; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5,8,16,.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255,255,255,.08); padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 1.15rem; color: #f0f9ff; }
+  .brand img { width: 32px; height: 32px; }
+
+  .hero {
+    padding: 56px 24px 40px; text-align: center;
+    background:
+      radial-gradient(circle at 20% 25%, #7c3aed18 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, #ec489914 0%, transparent 45%);
+  }
+  .logo-hero { width: 140px; height: 140px; margin: 0 auto 24px; filter: drop-shadow(0 0 24px #7c3aed40); }
+  .eyebrow {
+    display: inline-block; font-size: .72rem; letter-spacing: .2em; text-transform: uppercase;
+    color: #ec4899; border: 1px solid #7c3aed50; border-radius: 999px;
+    padding: 6px 14px; margin-bottom: 18px;
+  }
+  h1 {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: clamp(2rem, 5.5vw, 3.4rem); line-height: 1.05;
+    background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 14px;
+  }
+  .hero p { color: #94a3b8; max-width: 720px; margin: 0 auto 28px; font-size: 1.1rem; }
+
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .92rem;
+    padding: 12px 20px; border-radius: 8px; transition: transform .12s;
+  }
+  .btn-primary { background: #7c3aed; color: #050810; box-shadow: 0 4px 18px #7c3aed50; }
+  .btn-primary:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-secondary { background: rgba(255,255,255,.06); color: #e6f0ff; border: 1px solid rgba(255,255,255,.12); }
+  .btn-secondary:hover { background: rgba(255,255,255,.10); text-decoration: none; }
+
+  section { padding: 56px 24px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h2 {
+    font-family: 'Orbitron', sans-serif; font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700;
+    margin-bottom: 12px; color: #f0f9ff;
+  }
+  .section-sub { color: #94a3b8; max-width: 680px; margin-bottom: 32px; }
+
+  .table-wrap { overflow-x: auto; margin: 22px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.08); }
+  th { color: #bfdbfe; background: rgba(255,255,255,.04); }
+  td { color: #cbd5e1; vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,.03); }
+  .brand-row td { background: #7c3aed15; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px;
+    padding: 22px; transition: transform .12s, border-color .12s;
+  }
+  .card:hover { transform: translateY(-3px); border-color: #7c3aed60; }
+  .card h3 { font-size: 1.05rem; color: #bfdbfe; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .card p { font-size: .9rem; color: #94a3b8; }
+
+  footer { text-align: center; padding: 40px 24px; color: #64748b; font-size: .85rem; border-top: 1px solid rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <img src="logos/plexus-logo.svg" alt="Plexus">
+    Plexus
+  </div>
+  <a href="brands.html">← All brands</a>
+</header>
+
+<section class="hero">
+  <img src="logos/plexus-logo.svg" alt="Plexus logo" class="logo-hero">
+  <span class="eyebrow">Historical lineage layer</span>
+  <h1>Plexus</h1>
+  <p>Plexus reads the fabric like a historian reads a timeline. Browse the evolution of any yarn, replay patches, and prove what was known when.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="https://github.com/knitweb/virtualpc/blob/main/docs/BRAND-STRATEGY.md">Read the brand strategy</a>
+    <a class="btn btn-secondary" href="brands.html">All brands</a>
+    <a class="btn btn-secondary" href="https://github.com/knitweb/virtualpc">GitHub repo</a>
+  </div>
+</section>
+
+<section id="comparison">
+  <div class="container">
+    <h2>Plexus versus traditional archives</h2>
+    <p class="section-sub">Plexus is one view of the same fabric. The difference is the narrative, not the data model.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Approach</th>
+            <th>Storage / sync</th>
+            <th>Ownership</th>
+            <th>Identity</th>
+            <th>Topology</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Static archive / PDF</strong></td>
+            <td>Read-only snapshot</td>
+            <td>No provenance</td>
+            <td>No signed history</td>
+            <td>Dead data</td>
+          </tr>
+          <tr class="brand-row">
+            <td><strong>Plexus</strong></td>
+            <td>Living, queryable fabric</td>
+            <td>Triple provenance</td>
+            <td>Cryptographic audit trail</td>
+            <td>Evolving data</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Why Plexus?</h2>
+    <div class="grid">
+      <div class="card"><h3>⏳ Time-aware queries</h3><p>Ask "what did the graph look like on June 1st?" and get a reproducible patch.</p></div>
+      <div class="card"><h3>🕸️ Lineage by construction</h3><p>Every triple carries source yarn, source stitch and confidence. No retrofitted audit log.</p></div>
+      <div class="card"><h3>🗂️ Curated histories</h3><p>Historians can weave archival yarns that annotate, correct and contextualise events.</p></div>
+      <div class="card"><h3>📜 Proof of record</h3><p>Signed stitches give cryptographic evidence of who asserted what, and when.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Part of one fabric</h2>
+    <p class="section-sub">Loom, KnitNet, Fiber and Plexus are not four products. They are four lenses on the same Textus-type database — the brain lives in the GitHub repo.</p>
+    <div class="cta-row" style="justify-content:flex-start;">
+      <a class="btn btn-primary" href="https://github.com/knitweb/virtualpc">Open the machine on GitHub</a>
+      <a class="btn btn-secondary" href="brands.html">Explore all brands</a>
+      <a class="btn btn-secondary" href="knitnet.html">KnitNet →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Plexus is a brand line of VirtualPC · <a href="brands.html">All brands</a> · <a href="https://github.com/knitweb/virtualpc">GitHub</a></p>
+</footer>
+
+</body>
+</html>

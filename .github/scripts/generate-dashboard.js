@@ -233,7 +233,7 @@ const htmlPage = `<!DOCTYPE html>
     </div>
 
     <footer>
-      <p>VirtualPC v1.0 | Complete with Interactive UI | All Paperclip Features Integrated</p>
+      <p>VirtualPC v1.0 | Complete with Interactive UI | All VirtualPC Features Integrated</p>
       <p>Built with React, TypeScript, Socket.io, Express, Neo4j, Kafka, Redis</p>
       <p class="last-updated">Last Updated: ${new Date().toLocaleString()}</p>
     </footer>

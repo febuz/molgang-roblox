@@ -13,7 +13,7 @@
  *   - 'hands' → process: agents, skills, rules, projects, task + git log
  *   - 'heart' → output: definitive, client-ready documents and services.
  *                Heart entries are the high-quality tier that also gets
- *                ingested into LightRAG (so queries + Paperclip models can
+ *                ingested into LightRAG (so queries + agent models can
  *                use them).
  *
  * Each entry carries a governance.entryId so the wiki page can show

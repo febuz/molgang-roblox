@@ -13,6 +13,7 @@
 import * as os from 'os';
 import * as path from 'path';
 import type { ContainmentPolicy, CommandRule, CapabilityTier, TierCapabilities } from './types';
+import { PROJECT_ROOT } from '../config/paths';
 
 const HOME = os.homedir();
 
@@ -97,7 +98,7 @@ export function buildDefaultPolicy(): ContainmentPolicy {
     path.join(HOME, 'virtualpc'),
     path.join(HOME, 'molgang-roblox'),
     path.join(HOME, 'molgang-backup'),
-    '/media/knight2/EDS2/projects/molgang-web',
+    PROJECT_ROOT,
     path.join(HOME, '.claude', 'projects'), // memory + task state
     os.tmpdir(),
   ];

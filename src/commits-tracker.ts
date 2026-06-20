@@ -240,7 +240,7 @@ export function getRepoUrl(): string {
       if (https) { _repoUrlCache = out.replace(/\.git$/, ''); return _repoUrlCache; }
     }
   }
-  _repoUrlCache = 'https://github.com/febuz/virtualpc';
+  _repoUrlCache = 'https://github.com/knitweb/virtualpc';
   return _repoUrlCache;
 }
 
