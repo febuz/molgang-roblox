@@ -114,6 +114,19 @@ model_list:
     litellm_params:
       model: mistral/mistral-large-latest
       api_key: os.environ/MISTRAL_API_KEY
+  # Z.AI GLM Coding Plan (yearly subscription). Use the /api/coding/paas/v4
+  # endpoint; the generic /api/paas/v4 endpoint bills pay-as-you-go and may
+  # return error 1113 under a Coding Plan.
+  - model_name: zai-glm-5.2
+    litellm_params:
+      model: openai/glm-5.2
+      api_base: https://api.z.ai/api/coding/paas/v4
+      api_key: os.environ/ZAI_API_KEY
+  - model_name: zai-glm-4.6v
+    litellm_params:
+      model: openai/glm-4.6v
+      api_base: https://api.z.ai/api/coding/paas/v4
+      api_key: os.environ/ZAI_API_KEY
   - model_name: gemini
     litellm_params:
       model: gemini/gemini-1.5-pro
