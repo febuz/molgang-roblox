@@ -8,6 +8,7 @@
 import express from 'express';
 import { config } from 'dotenv';
 import * as http from 'http';
+import * as os from 'os';
 import { Server as SocketIOServer } from 'socket.io';
 import logger from './utils/logger';
 import { KafkaOrchestrator } from './integrations/kafka/orchestrator';
@@ -96,6 +97,7 @@ import setupQualityRoutes from './quality/quality-routes';
 import { activityMonitor } from './terminal-activity-monitor';
 import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
+import * as resourceModelRouter from './model-router';
 import * as commitsTracker from './commits-tracker';
 import * as lmstudio from './lmstudio';
 import { AGENT_META } from './agent-registry';
@@ -117,6 +119,11 @@ import { registerAssetMirrorRoutes } from './assets';
 import { registerCodexRoutes } from './codex';
 import { registerTournamentRoutes } from './org/tournament-routes';
 import { registerRequirementRoutes } from './requirements';
+import { registerFundamentalRoutes } from './fundamentals/routes';
+import { MicroPostStore, DaoParamStore, MicroPostGossip, registerMicroPostRoutes } from './integrations/lightrag/micro-post';
+import { SilkNodeRegistry, SilkGossip, registerSilkRoutes } from './integrations/lightrag/silk-net';
+import { PulseEngine, PulseWalletStore, KnotValidationStore, registerPulseRoutes } from './integrations/lightrag/pulse';
+import { RiskKnotStore, registerRiskRoutes } from './integrations/lightrag/risk-knot';
 import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
@@ -150,6 +157,7 @@ const io = new SocketIOServer(server, {
   cors: { origin: SOCKET_CORS_ORIGINS, methods: ['GET', 'POST'] }
 });
 const PORT = process.env.PORT || 3100;
+const SERVER_START_TIME = Date.now();
 
 // Middleware
 // Bumped from default 100kb so /api/migration/slag/claim can accept a base64-
@@ -212,6 +220,8 @@ registerPlanRoutes(app);
 registerDataQualityRoutes(app);
 // Finance — intangible-asset (immateriële activa) capitalization report + ROI.
 registerFinanceRoutes(app);
+// Fundamentals, news, and filings storage with source + publication date.
+registerFundamentalRoutes(app);
 // GPU daemon — availability detection (3h), dynamic no-GPU model fallback, and
 // LM Studio auto-boot when a GPU returns.
 registerGpuRoutes(app);
@@ -263,6 +273,36 @@ app.get('/newsgroup', (_req, res) => {
 });
 
 // Dashboard is now served at root (localhost:3100) - no separate /dashboard route needed
+
+// Data-agent dashboard + config pages (also served by express.static, explicit routes for discoverability)
+app.get('/data-agent-dashboard', (_req, res) => {
+  res.type('html').sendFile(path.resolve(__dirname, '..', 'public', 'data-agent-dashboard.html'), (err: any) => {
+    if (err) res.status(500).send('Error loading data-agent dashboard');
+  });
+});
+
+app.get('/data-agent-config', (_req, res) => {
+  res.type('html').sendFile(path.resolve(__dirname, '..', 'public', 'data-agent-config.html'), (err: any) => {
+    if (err) res.status(500).send('Error loading data-agent config');
+  });
+});
+
+// Data-science starter example — JSON mirror of public/examples/data-science/starter.py
+app.get('/api/data-science/starter', (_req, res) => {
+  const filePath = path.resolve(__dirname, '..', 'public', 'examples', 'data-science', 'starter.py');
+  try {
+    const code = require('fs').readFileSync(filePath, 'utf8');
+    res.json({
+      ok: true,
+      title: 'VirtualPC Data Science Starter',
+      description: 'Minimal self-contained example: load CSV, validate, engineer features, baseline regression, outlier detection.',
+      file_path: '/examples/data-science/starter.py',
+      code,
+    });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // Terminal Activity Monitor - Track what's happening in both terminals
 app.get('/api/terminal/activity', (req, res) => {
@@ -916,6 +956,54 @@ app.get('/api/tokens/events', (req, res) => {
   res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
 });
 
+// Model scheduler — current reservations and idle models.
+app.get('/api/models/schedule', (req, res) => {
+  const { getSchedule } = require('./lmstudio');
+  res.json({ success: true, ...getSchedule() });
+});
+
+app.post('/api/models/schedule/:modelId/extend', (req, res) => {
+  const { extendModelReservation } = require('./lmstudio');
+  const extraMs = parseInt(req.body.extraMs, 10) || 30_000;
+  const ok = extendModelReservation(req.params.modelId, extraMs);
+  if (!ok) { res.status(404).json({ success: false, error: 'model not reserved' }); return; }
+  res.json({ success: true, modelId: req.params.modelId, extendedByMs: extraMs });
+});
+
+// Trigger background download of the smallest recommended local model.
+app.post('/api/models/download-recommended', async (req, res) => {
+  const { ensureLocalModel } = require('./model-downloader');
+  const result = await ensureLocalModel();
+  res.json({ success: result.ok, ...result });
+});
+
+// Model-router health: resource detection + matched roster + recommended downloads.
+app.get('/api/health/models', (req, res) => {
+  const roster = resourceModelRouter.generateRoster();
+  res.json({
+    success: true,
+    weightClass: roster.weightClass,
+    resources: roster.resources,
+    simulationByDefault: roster.simulationByDefault,
+    allowBigModels: roster.allowBigModels,
+    allowCloud: roster.allowCloud,
+    recommendedDownloads: roster.recommendedDownloads.map(m => ({
+      id: m.id,
+      name: m.name,
+      diskGB: m.diskGB,
+      ramGB: m.ramGB,
+      loadCommand: m.lmStudioLoad ? `lms load ${m.lmStudioLoad}` : null,
+    })),
+    rosterSample: roster.roster.slice(0, 10),
+  });
+});
+
+app.post('/api/health/models/refresh', (req, res) => {
+  const { refreshRoster } = require('./lmstudio');
+  const roster = refreshRoster(req.body);
+  res.json({ success: true, weightClass: roster.weightClass, rosterSample: roster.roster.slice(0, 10) });
+});
+
 // Auto-update status — what the last scripts/auto-update.sh tick observed.
 // Returns { status, message, local_sha, remote_sha, checked_at } or
 // { absent: true } before the timer has fired even once.
@@ -971,14 +1059,32 @@ app.get('/api/commercialization/budget', (req, res) => {
 });
 
 // Approve / reject / execute — these mutate spend, so they require an
-// authenticated human with one of the privileged roles. AuthMiddleware
-// is wired further down via setupAuthRoutes; until then we accept a
-// development X-Approver header that the dashboard sends along.
+// authenticated human with one of the privileged roles. The auth system is
+// constructed later inside initialize(); we hold a reference here so these
+// module-level routes can verify a Bearer session token against a role.
+let approverAuthSystem: AuthSystem | null = null;
+const APPROVER_ROLES = ['ceo', 'cto'];
+
 function privilegedActor(req: express.Request): string | null {
-  // TODO: replace with proper authMiddleware.requireRole(['ceo','cto','economy'])
-  // once the routes are reorganized to receive it. For now, trust the header
-  // only when the request is from localhost — same posture as other admin
-  // endpoints in this file.
+  // Preferred path: an authenticated session token with a privileged role.
+  // This is the real check and is the only one honoured in production.
+  const token = req.headers.authorization?.split(' ')[1];
+  if (approverAuthSystem && token) {
+    const authToken = approverAuthSystem.verifyToken(token);
+    if (authToken && APPROVER_ROLES.includes(authToken.role)) {
+      return authToken.username;
+    }
+    // A token was supplied but is invalid or under-privileged — reject it
+    // outright rather than silently falling through to the dev header.
+    return null;
+  }
+
+  // Dev-only fallback: the dashboard's X-Approver header from localhost. This
+  // is spoofable, so it is OFF unless explicitly opted into and never in
+  // production. Set ALLOW_HEADER_APPROVER=1 for local UI work without a login.
+  const headerFallbackAllowed =
+    process.env.NODE_ENV !== 'production' && process.env.ALLOW_HEADER_APPROVER === '1';
+  if (!headerFallbackAllowed) return null;
   const ip = String(req.ip || '');
   const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
   if (!isLocal) return null;
@@ -989,7 +1095,7 @@ function privilegedActor(req: express.Request): string | null {
 app.post('/api/commercialization/:id/approve', (req, res) => {
   const who = privilegedActor(req);
   if (!who) {
-    res.status(403).json({ success: false, error: 'approval requires X-Approver header from localhost' });
+    res.status(403).json({ success: false, error: 'approval requires an authenticated ceo/cto session token' });
     return;
   }
   const r = commercialization.approve(req.params.id, who);
@@ -1003,7 +1109,7 @@ app.post('/api/commercialization/:id/approve', (req, res) => {
 app.post('/api/commercialization/:id/reject', (req, res) => {
   const who = privilegedActor(req);
   if (!who) {
-    res.status(403).json({ success: false, error: 'rejection requires X-Approver header from localhost' });
+    res.status(403).json({ success: false, error: 'rejection requires an authenticated ceo/cto session token' });
     return;
   }
   const r = commercialization.reject(req.params.id, who);
@@ -1017,7 +1123,7 @@ app.post('/api/commercialization/:id/reject', (req, res) => {
 app.post('/api/commercialization/:id/execute', async (req, res) => {
   const who = privilegedActor(req);
   if (!who) {
-    res.status(403).json({ success: false, error: 'execute requires X-Approver header from localhost' });
+    res.status(403).json({ success: false, error: 'execute requires an authenticated ceo/cto session token' });
     return;
   }
   // execute() is now async — Stripe paymentIntents.create() is a network call.
@@ -1719,46 +1825,57 @@ app.get('/api/progress/:person', (req, res) => {
 
 // Note: /api/backlog is defined in setupRoutes() to avoid route duplication
 
-// System metrics - LIVE from task engine
+// System metrics - LIVE from task engine and token tracker
 app.get('/api/metrics', (req, res) => {
   const gameStats = taskEngine.getGameStats();
   const allItems = taskEngine.getBacklogItems();
   const completed = allItems.filter((i: any) => i.status === 'completed').length;
   const inProg = allItems.filter((i: any) => i.status === 'in_progress').length;
   const pending = allItems.filter((i: any) => i.status === 'pending').length;
+  const errored = allItems.filter((i: any) => i.status === 'error').length;
   const total = allItems.length;
 
+  const tokenSummary = tokenTracker.getAgentSummary().combined;
+  const uptimeSeconds = Math.floor((Date.now() - SERVER_START_TIME) / 1000);
+  const uptimePct = uptimeSeconds > 0 ? 100 : 0; // since last server start
+  // Cache hit rate = ratio of tier-1 (free local / simulated) calls vs total.
+  const cacheHitRate = tokenSummary.totalCalls > 0
+    ? Math.round((tokenTracker.getRecentEvents(undefined, 1000).filter((e: any) => e.tier === 1).length / Math.max(1, tokenTracker.getRecentEvents(undefined, 1000).length)) * 100)
+    : 100;
+
   const metrics = {
-    version: '3.2',
+    version: process.env.npm_package_version || '1.0.0',
     timestamp: new Date().toISOString(),
     totalTasks: gameStats.tasksCompleted + gameStats.tasksInProgress,
     completed: gameStats.tasksCompleted,
     inProgress: gameStats.tasksInProgress,
     pending,
-    costSavings: '87%',
+    errored,
+    costSavings: `${tokenSummary.costSavingsPercent}%`,
 
-    dailyUpdates: gameStats.tasksCompleted * 3,
-    dailyActiveUsers: 1247,
-    studentCapacity: 1000000,
+    dailyUpdates: gameStats.completedLastHour + gameStats.completedLastMinute,
+    dailyActiveUsers: 0, // not tracked; reserved for future auth/session layer
+    studentCapacity: 0,  // not tracked; removed from dashboard
 
     qwenTokens: {
       dailyBudget: 1000000,
-      consumed: 847650,
-      remaining: 152350,
-      percentUsed: 85,
-      status: 'healthy'
+      consumed: tokenSummary.totalTokens,
+      remaining: Math.max(0, 1000000 - tokenSummary.totalTokens),
+      percentUsed: Math.min(100, Math.round((tokenSummary.totalTokens / 1000000) * 100)),
+      status: tokenSummary.totalTokens > 900000 ? 'critical' : tokenSummary.totalTokens > 700000 ? 'warning' : 'healthy'
     },
 
-    apiResponseTime: 145,
-    cacheHitRate: 87,
-    uptime: 99.87,
+    apiResponseTime: 0, // not instrumented yet
+    cacheHitRate,
+    uptime: uptimePct,
+    uptimeSeconds,
 
     costBreakdown: {
-      description: '87% Cost Reduction achieved through:',
+      description: `${tokenSummary.costSavingsPercent}% Cost Reduction achieved through:`,
       items: [
-        { method: 'Intelligent Caching', savings: 40, description: 'Cache common queries' },
-        { method: 'Request Batching', savings: 30, description: 'Batch multiple requests' },
-        { method: 'Model Routing', savings: 20, description: 'Route to optimal model' }
+        { method: 'Local / Simulated Routing', savings: tokenSummary.costSavingsPercent, description: 'Route to on-device or simulated models' },
+        { method: 'Model Routing', savings: 20, description: 'Route to optimal model by weight class' },
+        { method: 'Request Batching', savings: 10, description: 'Batch multiple requests' }
       ]
     },
     agents: {
@@ -2069,6 +2186,37 @@ app.get('/api/kafka/audit', (req, res) => {
   res.json({ success: true, count: limit, tail: _kafkaAuditTail(limit) });
 });
 
+// Demo network info — local IP + port-forward instructions
+function getLocalIp(): string {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
+app.get('/api/demo/network-info', (req, res) => {
+  const port = process.env.PORT || 3100;
+  const localIp = getLocalIp();
+  res.json({
+    success: true,
+    localIp,
+    port,
+    localUrl: `http://${localIp}:${port}`,
+    localhostUrl: `http://localhost:${port}`,
+    routerSteps: [
+      `Open your router admin page (usually http://192.168.1.1 or http://192.168.0.1).`,
+      `Find "Port Forwarding", "Virtual Servers", or "NAT/PAT".`,
+      `Add a rule: external TCP port ${port} → internal ${localIp}:${port}.`,
+      `Save/apply. Your colleague can now reach this demo at http://<your-public-ip>:${port}`,
+    ],
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({
@@ -2150,10 +2298,18 @@ async function initialize() {
 
     // 1. Initialize LightRAG (shared memory)
     logger.info('📊 Initializing LightRAG...');
+    const neo4jPassword = secretOrEnv('infra', 'NEO4J_PASSWORD');
+    if (!neo4jPassword) {
+      const msg = 'NEO4J_PASSWORD is not set.';
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(`${msg} Refusing to start with a default Neo4j password in production.`);
+      }
+      logger.warn(`⚠️  ${msg} Falling back to the insecure default 'password' (dev only).`);
+    }
     const lightrag = new LightRAGClient({
       neo4j_url: secretOrEnv('infra', 'NEO4J_URI') || 'bolt://localhost:7687',
       neo4j_username: secretOrEnv('infra', 'NEO4J_USER') || 'neo4j',
-      neo4j_password: secretOrEnv('infra', 'NEO4J_PASSWORD') || 'password'
+      neo4j_password: neo4jPassword || 'password'
     });
     await lightrag.connect();
     logger.info('✓ LightRAG connected');
@@ -2678,6 +2834,39 @@ async function initialize() {
     gossip.start();
     logger.info(`✓ P2PGossip configured (${gossipPeers.length} peers, swarm-managed)`);
 
+    // 1f-micro. Micro-post P2P network — 2-line content, TTL chain anchors, DAO governance.
+    const microSnapshotPath = process.env.MICRO_POST_DATA_DIR
+      ? `${process.env.MICRO_POST_DATA_DIR}/micro-posts.json`
+      : './data/micro-posts.json';
+    const microPostStore = new MicroPostStore(undefined, { storage: microSnapshotPath });
+    const microRestored = microPostStore.load();
+    if (microRestored) logger.info(`✓ MicroPost store: restored ${microRestored.loaded} posts`);
+    const microPostDao = new DaoParamStore(microPostStore);
+    const microPostGossip = new MicroPostGossip(microPostStore, gossipPeers);
+    microPostStore.startGc();
+    microPostGossip.start();
+    registerMicroPostRoutes(app, microPostStore, microPostDao, microPostGossip);
+    logger.info('✓ MicroPost P2P network active');
+
+    // 1f-pulse. Pulse (PLS) economy — mined by knot validation, burned when idle 3 months.
+    const pulseWallets    = new PulseWalletStore();
+    const pulseKnots      = new KnotValidationStore();
+    const pulseEngine     = new PulseEngine(pulseWallets, pulseKnots);
+    pulseEngine.startGc();
+    registerPulseRoutes(app, pulseEngine, microPostStore);
+    const riskKnotStore = new RiskKnotStore();
+    registerRiskRoutes(app, riskKnotStore, pulseWallets);
+    logger.info('✓ Pulse economy active — mine PLS by validating knots, stake on risk knots');
+
+    // 1f-silk. Silk Net — free, open-source knitweb participation tier.
+    // Silk nodes are permissionless; posts propagate into the shared MicroPostStore
+    // and reach the full knitweb via bridge nodes. Not a testnet — data is real.
+    const silkRegistry = new SilkNodeRegistry();
+    const silkGossip   = new SilkGossip(silkRegistry, microPostStore, myUrl);
+    silkGossip.start();
+    registerSilkRoutes(app, silkRegistry, microPostStore, silkGossip, myUrl);
+    logger.info('✓ Silk Net active — permissionless knitweb tier ready');
+
     // 1g. Agent Bridge — wires task completions/failures into the knowledge graph.
     const agentBridge = new AgentBridge(agentAPI, factValidator);
     app.get('/api/lightrag/bridge', (_req, res) => res.json({ success: true, ...agentBridge.getStats() }));
@@ -2788,6 +2977,9 @@ async function initialize() {
     // the top of initialize()); falls back to AuthSystem's env behavior when
     // Infisical isn't configured yet.
     const authSystem = new AuthSystem({ fieldCrypto: secrets ? resolveFieldCrypto(secrets) : undefined });
+    // Expose the auth system to the module-level spend-approval routes so they
+    // can verify a Bearer session token + privileged role (see privilegedActor).
+    approverAuthSystem = authSystem;
     const authMiddleware = new AuthMiddleware(authSystem);
     const ceoAuditLogger = new CEOAuditLogger();
     const specialistDashboards = new SpecialistDashboards();
