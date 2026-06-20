@@ -2159,10 +2159,30 @@ app.get('/dashboard-static', (req, res) => {
 // publish events to model.responses, agent.tasks, agent.results.
 import { ensureSharedProducer as _ensureSharedKafka, isKafkaConnected as _kafkaConnected, getKafkaBrokers as _kafkaBrokers, bestEffortPublish } from './integrations/kafka/shared';
 import { startAuditConsumer as _startAudit, getCostState as _kafkaCost, readAuditTail as _kafkaAuditTail, isAuditConsumerRunning as _auditRunning } from './integrations/kafka/audit-consumer';
-_ensureSharedKafka().catch(() => { /* logged in shared module */ });
-// Boot the audit + cost consumer. Idempotent; if Kafka is offline it
-// logs a warning and stays dormant — next service restart re-attempts.
-_startAudit().catch(() => { /* logged in module */ });
+
+// If Kafka is not reachable on localhost:9092 and the user has not explicitly
+// enabled it, disable it automatically in development to avoid cascades of
+// ECONNREFUSED retry logs on lightweight machines.
+(async function maybeDisableKafkaInDev() {
+  if (process.env.KAFKA_DISABLED || process.env.KAFKA_BROKERS) return;
+  const net = require('net');
+  const reachable = await new Promise<boolean>(resolve => {
+    const socket = net.connect(9092, 'localhost');
+    socket.setTimeout(800);
+    socket.once('connect', () => { socket.destroy(); resolve(true); });
+    socket.once('error', () => { socket.destroy(); resolve(false); });
+    socket.once('timeout', () => { socket.destroy(); resolve(false); });
+  });
+  if (!reachable) {
+    process.env.KAFKA_DISABLED = '1';
+    logger.info('Kafka not reachable on localhost:9092 — auto-disabling in dev (set KAFKA_BROKERS or unset KAFKA_DISABLED=0 to override)');
+  }
+})().finally(() => {
+  _ensureSharedKafka().catch(() => { /* logged in shared module */ });
+  // Boot the audit + cost consumer. Idempotent; if Kafka is offline it
+  // logs a warning and stays dormant — next service restart re-attempts.
+  _startAudit().catch(() => { /* logged in module */ });
+});
 
 app.get('/api/kafka/health', (_req, res) => {
   res.json({

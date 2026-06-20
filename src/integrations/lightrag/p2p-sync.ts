@@ -83,6 +83,11 @@ export class P2PSync {
   }
 
   async start(): Promise<void> {
+    if (/^(1|true|yes)$/i.test(process.env.KAFKA_DISABLED || '')) {
+      logger.info('P2PSync disabled via KAFKA_DISABLED — Kafka topic sync not started');
+      this.stats.running = false;
+      return;
+    }
     try {
       await this.consumer.connect();
       await this.consumer.subscribe({ topic: TOPIC, fromBeginning: false });

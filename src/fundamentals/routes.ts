@@ -28,6 +28,16 @@ export function registerFundamentalRoutes(app: Express): void {
     res.json({ success: true, count: fundamentalsStore.getAllFundamentals().length, data: fundamentalsStore.getAllFundamentals() });
   });
 
+  app.get('/api/fundamentals/news', (req, res) => {
+    const ticker = typeof req.query.ticker === 'string' ? req.query.ticker.toUpperCase() : undefined;
+    res.json({ success: true, count: fundamentalsStore.getNews(ticker).length, data: fundamentalsStore.getNews(ticker) });
+  });
+
+  app.get('/api/fundamentals/filings', (req, res) => {
+    const ticker = typeof req.query.ticker === 'string' ? req.query.ticker.toUpperCase() : undefined;
+    res.json({ success: true, count: fundamentalsStore.getFilings(ticker).length, data: fundamentalsStore.getFilings(ticker) });
+  });
+
   app.get('/api/fundamentals/:ticker', (req, res) => {
     const ticker = req.params.ticker.toUpperCase();
     const fundamental = fundamentalsStore.getFundamental(ticker);
@@ -39,16 +49,6 @@ export function registerFundamentalRoutes(app: Express): void {
       news: fundamentalsStore.getNews(ticker),
       filings: fundamentalsStore.getFilings(ticker),
     });
-  });
-
-  app.get('/api/fundamentals/news', (req, res) => {
-    const ticker = typeof req.query.ticker === 'string' ? req.query.ticker.toUpperCase() : undefined;
-    res.json({ success: true, count: fundamentalsStore.getNews(ticker).length, data: fundamentalsStore.getNews(ticker) });
-  });
-
-  app.get('/api/fundamentals/filings', (req, res) => {
-    const ticker = typeof req.query.ticker === 'string' ? req.query.ticker.toUpperCase() : undefined;
-    res.json({ success: true, count: fundamentalsStore.getFilings(ticker).length, data: fundamentalsStore.getFilings(ticker) });
   });
 
   app.post('/api/fundamentals/ingest', (req, res): any => {

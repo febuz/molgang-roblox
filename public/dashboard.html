@@ -212,6 +212,12 @@
             animation: fadeIn 0.3s ease-in;
         }
 
+        #backlog-container {
+            max-height: calc(100vh - 220px);
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -751,6 +757,34 @@
                     <div class="page-subtitle">Per-person task assignments and priorities</div>
                 </div>
 
+                <div class="card">
+                    <div class="card-title">➕ Add to Backlog</div>
+                    <form id="backlog-add-form" autocomplete="off" style="display: grid; gap: 10px;">
+                        <input id="ba-title" type="text" placeholder="Task title…" required
+                            style="padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-darker); color: var(--text-primary); font-size: 0.95em; font-family: inherit;">
+                        <textarea id="ba-desc" placeholder="Description (optional)" rows="2"
+                            style="padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-darker); color: var(--text-primary); font-size: 0.9em; font-family: inherit; resize: vertical;"></textarea>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <select id="ba-priority"
+                                style="padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-darker); color: var(--text-primary); font-size: 0.9em; font-family: inherit; min-width: 120px;">
+                                <option value="medium">Priority: Medium</option>
+                                <option value="critical">Critical</option>
+                                <option value="high">High</option>
+                                <option value="low">Low</option>
+                            </select>
+                            <select id="ba-assignee"
+                                style="padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-darker); color: var(--text-primary); font-size: 0.9em; font-family: inherit; min-width: 160px;">
+                                <option value="auto">Assignee: auto-route</option>
+                            </select>
+                            <input id="ba-tags" type="text" placeholder="Tags, comma separated"
+                                style="flex: 1; min-width: 140px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-darker); color: var(--text-primary); font-size: 0.9em; font-family: inherit;">
+                        </div>
+                        <button type="submit"
+                            style="justify-self: start; padding: 9px 20px; border-radius: 8px; border: 1px solid var(--primary); background: rgba(96,165,250,0.18); color: var(--primary); font-weight: 600; cursor: pointer; font-family: inherit;">Add Task</button>
+                    </form>
+                    <div id="ba-result" style="margin-top: 10px; font-size: 0.9em; min-height: 1.4em;"></div>
+                </div>
+
                 <div id="backlog-container">
                     <!-- Dynamically populated -->
                 </div>
@@ -1205,11 +1239,11 @@
         </div>
     </div>
 
-    <!-- PAPERCLIP ASSISTANT -->
+    <!-- VIRTUALPC ASSISTANT -->
     <div class="paperclip-assistant">
         <div class="paperclip-header">
-            <div class="paperclip-icon">📎</div>
-            <div>Paperclip Assistant</div>
+            <div class="paperclip-icon">🚀</div>
+            <div>VirtualPC Assistant</div>
         </div>
         <div class="paperclip-tip" id="paperclip-tip">
             💡 <strong>Tip:</strong> Use the left sidebar to navigate between different views and team members.
@@ -2278,6 +2312,52 @@
             }
         }
 
+        async function populateBacklogAssignees() {
+            const sel = document.getElementById('ba-assignee');
+            if (!sel) return;
+            try {
+                const r = await fetch('/api/agents/overview').then(x => x.json());
+                const agents = (r && r.agents) || [];
+                for (const a of agents) {
+                    const opt = document.createElement('option');
+                    opt.value = a.name;
+                    opt.textContent = a.name + ' · ' + (a.role || a.kind);
+                    sel.appendChild(opt);
+                }
+            } catch (e) { /* static auto-route option is enough */ }
+        }
+        populateBacklogAssignees();
+
+        document.getElementById('backlog-add-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const result = document.getElementById('ba-result');
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true; btn.textContent = 'Adding…';
+            try {
+                const body = {
+                    title: document.getElementById('ba-title').value.trim(),
+                    description: document.getElementById('ba-desc').value.trim(),
+                    priority: document.getElementById('ba-priority').value,
+                    assigned_to: document.getElementById('ba-assignee').value,
+                    tags: document.getElementById('ba-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+                };
+                const r = await fetch('/api/backlog/items', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                const j = await r.json();
+                if (!j.success) throw new Error(j.error || 'failed');
+                result.innerHTML = '<span style="color: var(--success);">✓ Added <code>' + escapeHtml(j.task.id) + '</code> → ' + escapeHtml(j.task.assigned_to || 'auto') + '</span>';
+                e.target.reset();
+                populateBacklog();
+                updateTaskStats();
+            } catch (err) {
+                result.innerHTML = '<span style="color: var(--danger);">Error: ' + escapeHtml(err.message) + '</span>';
+            } finally {
+                btn.disabled = false; btn.textContent = 'Add Task';
+            }
+        });
+
         populateBacklog();
 
         // Load per-agent metrics from the live registry so new/lightweight agents
@@ -2320,6 +2400,14 @@
                             </div>
                         </div>
                     `;
+                    card.style.cursor = 'pointer';
+                    card.title = 'Click to open ' + agent.name + ' detail';
+                    card.addEventListener('click', () => {
+                        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                        document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                        document.getElementById('agent-detail').classList.add('active');
+                        loadAgentDetail(agent.name);
+                    });
                     container.appendChild(card);
                 }
             } catch (error) {
@@ -2392,17 +2480,18 @@
                 }
 
                 // Overview card
+                const overall = d.overall || 'healthy';
                 const card = document.getElementById('guardrails-card');
                 const pill = document.getElementById('gr-overview-pill');
                 if (card) {
-                    if (d.overall === 'critical') card.style.borderLeftColor = 'var(--danger)';
-                    else if (d.overall === 'degraded') card.style.borderLeftColor = 'var(--warning)';
+                    if (overall === 'critical') card.style.borderLeftColor = 'var(--danger)';
+                    else if (overall === 'degraded') card.style.borderLeftColor = 'var(--warning)';
                     else card.style.borderLeftColor = 'var(--success)';
                 }
                 if (pill) {
-                    pill.textContent = d.overall.toUpperCase();
-                    if (d.overall === 'critical') { pill.style.background = 'rgba(232,90,100,0.15)'; pill.style.color = 'var(--danger)'; }
-                    else if (d.overall === 'degraded') { pill.style.background = 'rgba(255,174,59,0.15)'; pill.style.color = 'var(--warning)'; }
+                    pill.textContent = overall.toUpperCase();
+                    if (overall === 'critical') { pill.style.background = 'rgba(232,90,100,0.15)'; pill.style.color = 'var(--danger)'; }
+                    else if (overall === 'degraded') { pill.style.background = 'rgba(255,174,59,0.15)'; pill.style.color = 'var(--warning)'; }
                     else { pill.style.background = 'rgba(80,200,130,0.15)'; pill.style.color = 'var(--success)'; }
                 }
                 const elAlerts = document.getElementById('gr-alerts');

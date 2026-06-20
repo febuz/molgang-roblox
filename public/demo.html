@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VirtualPC Demo — Fundamentals & Knitweb P2P</title>
+  <style>
+    :root {
+      --bg: #0b0f19; --bg-2: #111827; --card: #1f2937;
+      --text: #e5e7eb; --muted: #9ca3af; --border: #374151;
+      --primary: #60a5fa; --success: #22c55e; --warning: #f59e0b; --danger: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 18px 24px; background: var(--bg-2); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    h1 { margin: 0; font-size: 1.25rem; }
+    .status { display: flex; gap: 12px; align-items: center; font-size: 0.85rem; }
+    .badge { padding: 4px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); }
+    .badge.ok { border-color: var(--success); color: var(--success); }
+    .badge.warn { border-color: var(--warning); color: var(--warning); }
+    main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .tab { padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
+    .tab.active { color: var(--primary); border-color: var(--primary); }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .card h2 { margin: 0 0 12px; font-size: 1rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; }
+    tr:hover td { background: rgba(96,165,250,0.08); }
+    button { background: var(--primary); color: #0b0f19; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input[type="text"] { background: var(--bg-2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    .summary-box { white-space: pre-wrap; background: var(--bg-2); padding: 12px; border-radius: 8px; border: 1px solid var(--border); min-height: 80px; }
+    .muted { color: var(--muted); }
+    .steps { line-height: 1.8; }
+    .peer-form { display: flex; gap: 8px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>VirtualPC Demo — Small local LLMs · Fundamentals · Knitweb P2P</h1>
+    <div class="status">
+      <span class="badge" id="model-badge">Model: …</span>
+      <span class="badge" id="node-badge">Node: …</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <div class="tab active" data-tab="fundamentals">Fundamentals</div>
+      <div class="tab" data-tab="news">News & Filings</div>
+      <div class="tab" data-tab="p2p">Knitweb P2P</div>
+      <div class="tab" data-tab="network">Port Forward</div>
+    </div>
+
+    <section class="panel active" id="fundamentals-panel">
+      <div class="card">
+        <h2>Fundamental Data <span class="muted">— source + publication date</span></h2>
+        <div id="fundamentals-table">Loading…</div>
+      </div>
+      <div class="card">
+        <h2>LLM Summary</h2>
+        <div class="peer-form">
+          <input type="text" id="summary-ticker" value="AAPL" placeholder="Ticker" style="width:120px;text-transform:uppercase;">
+          <button id="summary-btn">Summarize with local model</button>
+        </div>
+        <div class="summary-box" id="summary-box">Pick a ticker and click Summarize.</div>
+      </div>
+    </section>
+
+    <section class="panel" id="news-panel">
+      <div class="grid">
+        <div class="card">
+          <h2>News</h2>
+          <div id="news-table">Loading…</div>
+        </div>
+        <div class="card">
+          <h2>Filings</h2>
+          <div id="filings-table">Loading…</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="p2p-panel">
+      <div class="card">
+        <h2>This Node</h2>
+        <p><strong>Local URL:</strong> <span id="node-url">…</span></p>
+        <p><strong>Public URL (after router port-forward):</strong> <span id="public-url">…</span></p>
+      </div>
+      <div class="card">
+        <h2>Peers</h2>
+        <div class="peer-form">
+          <input type="text" id="peer-url" placeholder="http://peer-ip:3100" style="flex:1;">
+          <button id="add-peer-btn">Add peer</button>
+        </div>
+        <div id="peers-table">Loading…</div>
+      </div>
+      <div class="card">
+        <h2>Silk Nodes</h2>
+        <div id="silk-table">Loading…</div>
+      </div>
+    </section>
+
+    <section class="panel" id="network-panel">
+      <div class="card">
+        <h2>Router Port-Forward Instructions</h2>
+        <div class="steps" id="network-steps">Loading…</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const fmtDate = s => s ? new Date(s).toLocaleDateString() : '';
+
+    async function api(path, opts) {
+      const r = await fetch(path, opts);
+      return r.json().catch(() => ({ success: false, error: 'network' }));
+    }
+
+    document.querySelectorAll('.tab').forEach(t => {
+      t.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        $(t.dataset.tab + '-panel').classList.add('active');
+      });
+    });
+
+    async function loadFundamentals() {
+      const j = await api('/api/fundamentals');
+      if (!j.success) { $('fundamentals-table').textContent = 'Error loading fundamentals.'; return; }
+      $('fundamentals-table').innerHTML = `<table><thead><tr>
+        <th>Ticker</th><th>Company</th><th>Period</th><th>Revenue $M</th><th>Net Income $M</th><th>EPS</th><th>P/E</th><th>Source</th><th>Published</th>
+      </tr></thead><tbody>` + j.data.map(f => `<tr>
+        <td><strong>${f.ticker}</strong></td><td>${f.company}</td><td>${f.period}</td><td>${f.revenue.toLocaleString()}</td>
+        <td>${f.netIncome.toLocaleString()}</td><td>${f.eps}</td><td>${f.peRatio}</td>
+        <td>${f.source}</td><td>${fmtDate(f.publicationDate)}</td>
+      </tr>`).join('') + '</tbody></table>';
+    }
+
+    async function loadNews() {
+      const j = await api('/api/fundamentals/news');
+      $('news-table').innerHTML = j.success && j.data.length ? `<table><thead><tr><th>Date</th><th>Ticker</th><th>Headline</th><th>Source</th></tr></thead><tbody>` +
+        j.data.map(n => `<tr><td>${fmtDate(n.publicationDate)}</td><td>${n.ticker}</td><td>${n.headline}</td><td>${n.source}</td></tr>`).join('') + '</tbody></table>'
+        : '<p class="muted">No news items.</p>';
+    }
+
+    async function loadFilings() {
+      const j = await api('/api/fundamentals/filings');
+      $('filings-table').innerHTML = j.success && j.data.length ? `<table><thead><tr><th>Filing Date</th><th>Ticker</th><th>Form</th><th>Description</th><th>Source</th></tr></thead><tbody>` +
+        j.data.map(f => `<tr><td>${fmtDate(f.filingDate)}</td><td>${f.ticker}</td><td>${f.formType}</td><td>${f.description}</td><td>${f.source}</td></tr>`).join('') + '</tbody></table>'
+        : '<p class="muted">No filings.</p>';
+    }
+
+    async function loadModelStatus() {
+      const h = await api('/api/llm/health');
+      const badge = $('model-badge');
+      if (h.success && h.modelsLoaded > 0) {
+        badge.textContent = `Model: ${h.models[0]}`;
+        badge.classList.add('ok');
+      } else {
+        badge.textContent = 'Model: unavailable';
+        badge.classList.add('warn');
+      }
+    }
+
+    $('summary-btn').addEventListener('click', async () => {
+      const ticker = $('summary-ticker').value.trim();
+      if (!ticker) return;
+      $('summary-box').textContent = 'Thinking… (small local model)';
+      $('summary-btn').disabled = true;
+      const j = await api(`/api/fundamentals/summarize/${encodeURIComponent(ticker)}`);
+      $('summary-btn').disabled = false;
+      if (j.success) {
+        $('summary-box').textContent = j.summary + `\n\n— ${j.model} · ${(j.latencyMs/1000).toFixed(1)}s`;
+      } else {
+        $('summary-box').textContent = 'Error: ' + (j.reason || j.error || 'unknown');
+      }
+    });
+
+    async function loadP2P() {
+      const net = await api('/api/demo/network-info');
+      if (net.success) {
+        $('node-url').textContent = net.localUrl;
+        $('public-url').textContent = net.localUrl; // placeholder until public IP known
+        $('node-badge').textContent = 'Node: ' + net.localUrl;
+      }
+      const peers = await api('/api/swarm/peers');
+      $('peers-table').innerHTML = peers.success && peers.peers?.length ? `<table><thead><tr><th>URL</th><th>Score</th><th>Push OK</th><th>Pull OK</th><th>Choked</th></tr></thead><tbody>` +
+        peers.peers.map(p => `<tr><td>${p.url}</td><td>${p.score}</td><td>${p.pushOk}</td><td>${p.pullOk}</td><td>${p.choked}</td></tr>`).join('') + '</tbody></table>'
+        : '<p class="muted">No peers configured yet.</p>';
+      const silk = await api('/api/silk/nodes');
+      $('silk-table').innerHTML = (silk.nodes || silk.success && silk.data?.nodes)?.length ? `<table><thead><tr><th>URL</th><th>Label</th><th>Last Seen</th><th>Bridges</th></tr></thead><tbody>` +
+        (silk.nodes || silk.data?.nodes).map(n => `<tr><td>${n.url}</td><td>${n.label}</td><td>${new Date(n.lastSeenAt).toLocaleString()}</td><td>${n.bridgesKnitweb ? 'yes' : 'no'}</td></tr>`).join('') + '</tbody></table>'
+        : '<p class="muted">No silk nodes yet.</p>';
+    }
+
+    $('add-peer-btn').addEventListener('click', async () => {
+      const url = $('peer-url').value.trim();
+      if (!url) return;
+      $('add-peer-btn').disabled = true;
+      const j = await api('/api/swarm/peers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      $('add-peer-btn').disabled = false;
+      if (j.success) { $('peer-url').value = ''; loadP2P(); }
+      else { alert('Failed to add peer: ' + (j.error || j.reason || 'unknown')); }
+    });
+
+    async function loadNetworkSteps() {
+      const j = await api('/api/demo/network-info');
+      $('network-steps').innerHTML = j.success ? `<ol>` + j.routerSteps.map(s => `<li>${s}</li>`).join('') + `</ol>
+        <p><strong>Local URL:</strong> <code>${j.localUrl}</code></p>
+        <p><strong>Localhost URL:</strong> <code>${j.localhostUrl}</code></p>`
+        : '<p class="muted">Could not load network info.</p>';
+    }
+
+    (async () => {
+      await loadModelStatus();
+      await loadFundamentals();
+      await loadNews();
+      await loadFilings();
+      await loadP2P();
+      await loadNetworkSteps();
+    })();
+  </script>
+</body>
+</html>

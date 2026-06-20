@@ -47,6 +47,7 @@ Thumbs.db
 mock-data/
 test-data/
 test-results/
+tests/e2e/screenshots/*.png
 .venv-mlx/
 .virtualpc-state/
 data-agents-sidecar/
