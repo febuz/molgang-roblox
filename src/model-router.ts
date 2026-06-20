@@ -117,8 +117,11 @@ export const AGENT_MODEL_RULES: AgentModelRule[] = [
   { agent: 'Luna',       capabilities: ['code', 'chat'],            minModels: 2, maxModels: 3, allowCloud: true },
   { agent: 'Pixel',      capabilities: ['code', 'chat', 'long-context'], minModels: 2, maxModels: 3, allowCloud: true },
   { agent: 'Atlas',      capabilities: ['code', 'reasoning'],       minModels: 2, maxModels: 3, allowCloud: true },
+  { agent: 'Data-Steward',   capabilities: ['chat'],                minModels: 2, maxModels: 3, allowCloud: true },
   { agent: 'Data-Engineer',  capabilities: ['code', 'chat'],        minModels: 2, maxModels: 3, allowCloud: true },
+  { agent: 'Data-Analyst',   capabilities: ['chat', 'reasoning'],   minModels: 2, maxModels: 3, allowCloud: true },
   { agent: 'Data-Scientist', capabilities: ['reasoning', 'chat'],   minModels: 2, maxModels: 3, allowCloud: true },
+  { agent: 'Data-Manager',   capabilities: ['chat', 'long-context'], minModels: 2, maxModels: 3, allowCloud: true },
   { agent: 'Athena',     capabilities: ['code', 'reasoning'],       minModels: 1, maxModels: 2, allowCloud: true },
 ];
 
@@ -155,6 +158,7 @@ export interface ModelRouterSettings {
   allowBigModels?: boolean;
   allowCloud?: boolean;
   forceSimulation?: boolean;
+  lightweightMode?: boolean;
 }
 
 let _cachedSettings: ModelRouterSettings | null = null;
@@ -555,4 +559,28 @@ export function shouldSimulate(roster?: GeneratedRoster): boolean {
   if (process.env.FORCE_SIMULATE === '1') return true;
   if (process.env.SIMULATE_INFERENCE === '1') return true;
   return false;
+}
+
+export function isLightweightHost(roster?: GeneratedRoster): boolean {
+  if (readSettings().lightweightMode) return true;
+  const r = roster ?? generateRoster();
+  return r.weightClass === 'featherweight' || r.weightClass === 'lightweight';
+}
+
+export function maxTokensForTask(taskType: string | undefined, roster?: GeneratedRoster): number {
+  const settings = readSettings();
+  const r = roster ?? generateRoster();
+  const effectiveClass: WeightClass = settings.lightweightMode ? 'lightweight' : r.weightClass;
+  const base = {
+    featherweight: 256,
+    lightweight: 512,
+    middleweight: 1200,
+    heavyweight: 2500,
+    donkeykongweight: 4096,
+  }[effectiveClass] ?? 512;
+  // reasoning/code tasks may need a bit more headroom, but still capped tight on small hosts
+  if (taskType === 'code' || taskType === 'reasoning' || taskType === 'arbitration') {
+    return Math.min(Math.round(base * 1.5), r.weightClass === 'featherweight' ? 384 : r.weightClass === 'lightweight' ? 768 : 2048);
+  }
+  return base;
 }

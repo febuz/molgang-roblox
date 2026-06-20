@@ -21,7 +21,7 @@
  *    anywhere — a quantum adversary capable of breaking every Ed25519 key
  *    in the ledger still cannot forge this proof.
  *
- * Custody model: like SovereignIdentityService, the node holds PQ master
+ * Custody model: like the sovereign identity service, the node holds PQ master
  * seeds in memory; the vault export is how a user takes custody. Seeds are
  * NEVER persisted in plaintext (ChainStore does not see this service).
  *
@@ -42,7 +42,7 @@ import {
   HBS_DEFAULT_HEIGHT,
 } from './pq-crypto';
 import { verifySMTProof, SMTProof } from './sparse-merkle';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityResolverPort } from './identity-port';
 import type { ValueChainService, Transfer } from './value-chain';
 import { unitsToTokenString, accountLeafValue, tokensToUnits } from './value-chain';
 import { canonicalize, sha256 } from './graph-state-root';
@@ -190,7 +190,7 @@ export class PqWalletService {
   private enrollments = new Map<string, PqEnrollment>(); // did → enrollment
 
   constructor(
-    private readonly identity: SovereignIdentityService,
+    private readonly identity: IdentityResolverPort,
     private readonly valueChain: ValueChainService,
     private readonly opts: { treeHeight?: number } = {},
   ) {}

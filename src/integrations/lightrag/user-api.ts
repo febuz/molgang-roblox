@@ -41,7 +41,7 @@
 
 import { createHmac, randomBytes } from 'crypto';
 import type { Express, Request, Response } from 'express';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityPort } from './identity-port';
 import type { ValueChainService } from './value-chain';
 import type { AttentionChainService } from './attention-chain';
 import type { NewsService } from './news';
@@ -141,7 +141,7 @@ export class UserApiService {
   readonly sessions = new SessionStore();
 
   constructor(
-    private readonly identity: SovereignIdentityService,
+    private readonly identity: IdentityPort,
     private readonly valueChain: ValueChainService,
     private readonly attention: AttentionChainService,
     private readonly news: NewsService,

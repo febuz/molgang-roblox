@@ -44,7 +44,7 @@ import { sign as edSign, verify as edVerify, generateKeyPairSync, createPublicKe
 import { v4 as uuid } from 'uuid';
 import type { Express, Request, Response } from 'express';
 import type { LightRAGClient } from './client';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityResolverPort } from './identity-port';
 import { canonicalize, sha256 } from './graph-state-root';
 import { constantTimeEqual } from './constant-time';
 import logger from '../../utils/logger';
@@ -238,7 +238,7 @@ export class ConsensusEngine {
 
   constructor(
     private readonly lightrag: LightRAGClient,
-    private readonly identity?: SovereignIdentityService,
+    private readonly identity?: IdentityResolverPort,
     private readonly opts: {
       blockTimeoutMs?: number;
       onFinalized?: (block: FinalizedBlock) => void;

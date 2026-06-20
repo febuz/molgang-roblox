@@ -41,7 +41,7 @@
 import { verify as edVerify, createPublicKey } from 'crypto';
 import { v4 as uuid } from 'uuid';
 import type { Express, Request, Response } from 'express';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityPort } from './identity-port';
 import type { ValueChainService } from './value-chain';
 import type { GroupEventBus } from './group-events';
 import type { FactMatrixService } from './fact-matrix';
@@ -152,7 +152,7 @@ export class GroupVotingService {
   private onClose?: (cert: GroupVotingCertificate) => void;
 
   constructor(
-    private readonly identity: SovereignIdentityService,
+    private readonly identity: IdentityPort,
     private readonly opts: {
       valueChain?: ValueChainService;
       events?: GroupEventBus;

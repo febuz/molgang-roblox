@@ -2033,7 +2033,7 @@
                         agent: adCurrentAgent,
                         taskType: 'concept',
                         temperature: 0.6,
-                        max_tokens: 2500,
+                        max_tokens: 512,
                         messages: [
                             { role: 'system', content: adCurrentPersona || ('You are ' + adCurrentAgent + '.') },
                             { role: 'user', content: q },
@@ -2100,24 +2100,43 @@
             try {
                 const response = await fetch('/api/metrics');
                 const data = await response.json();
-                const tasks = data.tasks;
+                const total = data.totalTasks || 0;
+                const completed = data.completed || 0;
+                const inProgress = data.inProgress || 0;
+                const pending = data.pending || 0;
 
-                document.getElementById('stat-total').textContent = tasks.total;
-                document.getElementById('stat-completed').textContent = tasks.completed;
-                document.getElementById('stat-inprogress').textContent = tasks.inProgress;
-                document.getElementById('stat-pending').textContent = tasks.pending;
+                const totalEl = document.getElementById('active-tasks');
+                const completedEl = document.getElementById('today-tasks');
+                if (totalEl) totalEl.textContent = String(total + inProgress + pending);
+                if (completedEl) completedEl.textContent = String(completed);
 
-                const percent = Math.round((tasks.completed / tasks.total) * 100);
-                document.getElementById('progress-percent').textContent = percent;
-                document.getElementById('progress-overall').style.width = percent + '%';
+                // Update the backlog card if it exists
+                const backlogTotal = document.getElementById('backlog-total');
+                const backlogCompleted = document.getElementById('backlog-completed');
+                const backlogInProgress = document.getElementById('backlog-inprogress');
+                const backlogPending = document.getElementById('backlog-pending');
+                if (backlogTotal) backlogTotal.textContent = String(total);
+                if (backlogCompleted) backlogCompleted.textContent = String(completed);
+                if (backlogInProgress) backlogInProgress.textContent = String(inProgress);
+                if (backlogPending) backlogPending.textContent = String(pending);
             } catch (error) {
                 console.log('Metrics fetch (expected during startup):', error.message);
             }
         }
 
-        // Initialize
-        updateTaskStats();
-        setInterval(updateTaskStats, 5000); // Update every 5 seconds
+        // Poll less aggressively on lightweight hosts
+        let statsPollMs = 5000;
+        (async () => {
+            try {
+                const r = await fetch('/api/health/models');
+                const d = await r.json();
+                if (d.weightClass === 'featherweight' || d.weightClass === 'lightweight') {
+                    statsPollMs = 15000;
+                }
+            } catch (e) { /* ignore */ }
+            updateTaskStats();
+            setInterval(updateTaskStats, statsPollMs);
+        })();
 
         // Load backlog data
         async function loadBacklog() {
@@ -2261,54 +2280,47 @@
 
         populateBacklog();
 
-        // Load per-agent metrics
+        // Load per-agent metrics from the live registry so new/lightweight agents
+        // (Data-*, Hermes-*, Tester-*) appear automatically.
         async function loadTeamOverview() {
             try {
-                // Keep this list in sync with dist/public/index.html — both pages
-                // surface the same roster. New agent? Update both files.
-                const agents = ['Fill', 'Kai', 'Zip', 'Mira', 'Luna', 'Cleopatra', 'Alexander', 'MoneyGod', 'Analyst', 'VideoProducer', 'Vice', 'Atlas', 'Kimi', 'Croesus'];
-                const avatars = { Fill: '👑', Kai: '⚡', Zip: '💻', Mira: '🎨', Luna: '✨', Cleopatra: '👸', Alexander: '🗡️', MoneyGod: '💰', Analyst: '📊', VideoProducer: '🎬', Vice: '🌆', Atlas: '🥽', Kimi: '🌙', Croesus: '💎' };
-                const roles = { Fill: 'CEO', Kai: 'CTO', Zip: 'Developer', Mira: 'Artist', Luna: 'Tech Artist', Cleopatra: 'Executive Authority', Alexander: 'Technical Arbiter', MoneyGod: 'Economy Authority', Analyst: 'Data Analyst', VideoProducer: 'Video Producer', Vice: 'Open-World Expert', Atlas: 'AR/VR/CAD/Realism', Kimi: 'Long-Context Researcher', Croesus: 'Commercialization Strategist' };
-                const status = { Fill: 'online', Kai: 'online', Zip: 'online', Mira: 'online', Luna: 'busy', Cleopatra: 'online', Alexander: 'online', MoneyGod: 'online', Analyst: 'online', VideoProducer: 'online', Vice: 'online', Atlas: 'online', Kimi: 'online', Croesus: 'online' };
+                const response = await fetch('/api/agents/overview');
+                const data = await response.json();
+                if (!data.success || !Array.isArray(data.agents)) return;
 
                 const container = document.getElementById('team-overview');
                 container.innerHTML = '';
 
-                for (const agent of agents) {
-                    try {
-                        const response = await fetch(`/api/progress/${agent}`);
-                        const data = await response.json();
-
-                        const card = document.createElement('div');
-                        card.className = 'agent-card';
-                        card.innerHTML = `
-                            <div class="agent-header">
-                                <div class="agent-avatar">${avatars[agent]}</div>
-                                <div class="agent-info">
-                                    <div class="agent-name">${agent}</div>
-                                    <div class="agent-role">${roles[agent]}</div>
-                                </div>
+                for (const agent of data.agents) {
+                    const statusClass = agent.status === 'working' ? 'busy' : (agent.status === 'queued' ? 'warning' : 'online');
+                    const focus = agent.currentTask || 'Idle';
+                    const card = document.createElement('div');
+                    card.className = 'agent-card';
+                    card.innerHTML = `
+                        <div class="agent-header">
+                            <div class="agent-avatar">${agent.avatar}</div>
+                            <div class="agent-info">
+                                <div class="agent-name">${agent.name}</div>
+                                <div class="agent-role">${agent.role}</div>
                             </div>
-                            <div class="agent-status">
-                                <div class="status-indicator ${status[agent]}"></div>
-                                <span>${data.focus}</span>
+                        </div>
+                        <div class="agent-status">
+                            <div class="status-indicator ${statusClass}"></div>
+                            <span>${focus}</span>
+                        </div>
+                        <div class="task-list">
+                            <div class="task-item">
+                                <span class="task-badge">${agent.tasksInProgress || 0}</span> In Progress
                             </div>
-                            <div class="task-list">
-                                <div class="task-item">
-                                    <span class="task-badge">${data.inProgress || 0}</span> In Progress
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">${data.completed || 0}</span> Completed
-                                </div>
-                                <div class="task-item">
-                                    <span class="task-badge">${data.total || 0}</span> Total
-                                </div>
+                            <div class="task-item">
+                                <span class="task-badge">${agent.tasksCompleted || 0}</span> Completed
                             </div>
-                        `;
-                        container.appendChild(card);
-                    } catch (error) {
-                        console.log(`Error loading ${agent} metrics:`, error.message);
-                    }
+                            <div class="task-item">
+                                <span class="task-badge">${agent.kind}</span> Kind
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
                 }
             } catch (error) {
                 console.log('Team overview error:', error.message);
@@ -2414,7 +2426,7 @@
             } catch (e) { console.log('Guardrails ack error:', e.message); }
         }
 
-        // Update metrics immediately and every 5 seconds
+        // Update metrics immediately and every 5 seconds (15s on lightweight hosts)
         loadTeamOverview();
         updateMetrics();
         fetchGuardrailsStatus();
@@ -2422,7 +2434,7 @@
             updateMetrics();
             loadTeamOverview();
             fetchGuardrailsStatus();
-        }, 5000);
+        }, statsPollMs);
     </script>
 </body>
 </html>

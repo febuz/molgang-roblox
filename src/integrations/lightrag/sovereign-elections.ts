@@ -34,7 +34,7 @@
 import { verify as edVerify, createPublicKey } from 'crypto';
 import { v4 as uuid } from 'uuid';
 import type { Express, Request, Response } from 'express';
-import type { SovereignIdentityService } from './identity';
+import type { IdentityResolverPort } from './identity-port';
 import type { ValueChainService } from './value-chain';
 import { keyHistory } from './identity';
 import { canonicalize, sha256, buildMerkleRoot } from './graph-state-root';
@@ -538,7 +538,7 @@ export class DemocraticElectionService {
   private readonly ballotIndex = new Map<string, string>();
 
   constructor(
-    private readonly identity: SovereignIdentityService,
+    private readonly identity: IdentityResolverPort,
   ) {}
 
   // ── Election lifecycle ────────────────────────────────────────────────────
@@ -800,7 +800,7 @@ export class DemocraticElectionService {
     payload: string,
     publicKeyPem: string,
     signatureB64: string,
-    doc: ReturnType<SovereignIdentityService['resolve']>,
+    doc: ReturnType<IdentityResolverPort['resolve']>,
   ): boolean {
     if (!doc) return false;
     try {

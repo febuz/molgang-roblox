@@ -12,6 +12,8 @@ import logger from './utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 import { AGENT_NAMES, ROLE_MAP, AVATAR_MAP } from './agent-registry';
+import { STATE_DIR } from './config/paths';
+import * as modelRouter from './model-router';
 
 interface Subtask {
   name: string;
@@ -344,7 +346,6 @@ const tasks: Task[] = [];
 // State is saved to EDS2 so restarts don't reset Kai's (or anyone's) progress.
 // Survives server restarts, TypeScript rebuilds, and hook-triggered restarts.
 
-const STATE_DIR = process.env.VIRTUALPC_STATE_DIR || '/media/knight2/EDS2/virtualpc-state';
 const STATE_PATH = path.join(STATE_DIR, 'task-state.json');
 let dirty = false;
 
@@ -1016,14 +1017,35 @@ async function generateArtifactForCompletedTask(agent: string, task: Task): Prom
   // Lazy import to avoid circular dep with the lmstudio module
   const lms = await import('./lmstudio');
   const prompt = artifactPromptFor(agent, task);
-  const result = await lms.chatAsAgent(
-    agent,
-    [
-      { role: 'system', content: lms.systemPromptForAgent(agent, roleMap[agent] || agent) },
-      { role: 'user', content: prompt },
-    ],
-    { taskType: 'cheap', max_tokens: 300 }
-  );
+  const messages = [
+    { role: 'system', content: lms.systemPromptForAgent(agent, roleMap[agent] || agent) },
+    { role: 'user', content: prompt },
+  ];
+
+  // On lightweight hosts, avoid swamping the machine with artifact LLM calls.
+  // Use the deterministic simulated fallback so the dashboard still has content.
+  if (modelRouter.isLightweightHost()) {
+    const sim = modelRouter.simulateAgentResponse(agent, messages as { role: string; content: string }[]);
+    const art: Artifact = {
+      id: `art-${task.id}-${Date.now()}`,
+      agent,
+      taskId: task.id,
+      taskTitle: task.title,
+      timestamp: new Date().toISOString(),
+      model: sim.model,
+      latencyMs: sim.latencyMs,
+      tokens: sim.usage.total_tokens,
+      content: sim.content,
+      promptType: 'task_summary',
+    };
+    artifacts.push(art);
+    if (artifacts.length > MAX_ARTIFACTS) artifacts.splice(0, artifacts.length - MAX_ARTIFACTS);
+    logger.info(`📄 simulated artifact saved for ${agent}/${task.id} (${art.tokens} tokens, lightweight host)`);
+    dirty = true;
+    return { ok: true, model: sim.model, latencyMs: sim.latencyMs, usage: sim.usage, content: sim.content };
+  }
+
+  const result = await lms.chatAsAgent(agent, messages as any, { taskType: 'cheap', max_tokens: 300 });
   if (!result.ok) {
     logger.warn(`artifact skipped (${agent}/${task.id}): ${result.reason}`);
     return { ok: false, reason: result.reason };
@@ -1108,33 +1130,49 @@ async function generateProposal(): Promise<void> {
   const lane = pickProposalLane();
   try {
     const lms = await import('./lmstudio');
-    const result = await lms.chatAsAgent(
-      lane.from,
-      [
-        { role: 'system', content: lms.systemPromptForAgent(lane.from, roleMap[lane.from] || lane.from) },
-        { role: 'user', content: lane.prompt(lane.from, lane.to) },
-      ],
-      { taskType: 'cheap', max_tokens: 260 }
-    );
-    if (!result.ok) {
-      logger.warn(`proposal skipped (${lane.from} -> ${lane.to}): ${result.reason}`);
-      return;
+    const messages = [
+      { role: 'system', content: lms.systemPromptForAgent(lane.from, roleMap[lane.from] || lane.from) },
+      { role: 'user', content: lane.prompt(lane.from, lane.to) },
+    ];
+
+    let content: string;
+    let model: string;
+    let latencyMs: number;
+    let tokens: number;
+
+    if (modelRouter.isLightweightHost()) {
+      const sim = modelRouter.simulateAgentResponse(lane.from, messages as { role: string; content: string }[]);
+      content = sim.content;
+      model = sim.model;
+      latencyMs = sim.latencyMs;
+      tokens = sim.usage.total_tokens;
+    } else {
+      const result = await lms.chatAsAgent(lane.from, messages as any, { taskType: 'cheap', max_tokens: 260 });
+      if (!result.ok) {
+        logger.warn(`proposal skipped (${lane.from} -> ${lane.to}): ${result.reason}`);
+        return;
+      }
+      content = result.content;
+      model = result.model;
+      latencyMs = result.latencyMs;
+      tokens = result.usage?.total_tokens || 0;
     }
+
     const p: Proposal = {
       id: `prop-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       from: lane.from,
       to: lane.to,
       timestamp: new Date().toISOString(),
       topic: lane.topic,
-      content: result.content,
-      model: result.model,
-      latencyMs: result.latencyMs,
-      tokens: result.usage?.total_tokens || 0,
+      content,
+      model,
+      latencyMs,
+      tokens,
       status: 'delivered',
     };
     proposals.push(p);
     if (proposals.length > MAX_PROPOSALS) proposals.splice(0, proposals.length - MAX_PROPOSALS);
-    logger.info(`📨 proposal ${lane.from} → ${lane.to}: ${lane.topic} (${p.tokens} tokens)`);
+    logger.info(`📨 proposal ${lane.from} → ${lane.to}: ${lane.topic} (${p.tokens} tokens, ${model})`);
     dirty = true;
   } catch (e: any) {
     logger.warn(`proposal generation crashed: ${e.message}`);
@@ -1331,10 +1369,46 @@ const agentCommands: { [agent: string]: string[] } = {
     '$ python tools/promo-attribution.py --window 7d --channel all',
     '$ test $PROMO_REAL_MONEY = 0 && echo "DRY-RUN MODE — no real money"',
   ],
+  'Data-Steward': [
+    '$ data-agent schema audit --dataset commodity_companies.csv',
+    '$ data-agent quality rule --field revenue --constraint non-negative',
+    '$ data-agent catalog publish --sector Gold --owner Data-Steward',
+    '$ data-agent lineage trace --from filings --to peer_comparison',
+    '$ data-agent duplicate scan --keys symbol,fiscalYear,period',
+  ],
+  'Data-Engineer': [
+    '$ data-agent etl run --source as-reported-filings --target standardized',
+    '$ data-agent feature build --name ebitda_margin --unit ratio',
+    '$ data-agent parquet validate --path data/fundamentals.parquet',
+    '$ data-agent pipeline idempotency-check --etl commodity_companies',
+    '$ data-agent partition --dataset filings --key sector',
+  ],
+  'Data-Analyst': [
+    '$ data-agent summary --dataset commodity_companies --by sector',
+    '$ data-agent chart correlation --dataset fundamentals --out plot.png',
+    '$ data-agent outlier iqr --field revenue --by sector',
+    '$ data-agent peer table --sector Uranium --metrics revenue,ebitda_margin',
+    '$ data-agent report publish --title "Sector breakdown Q2"',
+  ],
+  'Data-Scientist': [
+    '$ data-agent experiment run --model linear_regression --target revenue',
+    '$ data-agent model compare --models linear,ridge,lasso --metric rmse',
+    '$ data-agent cluster kmeans --dataset fundamentals --k 5',
+    '$ data-agent outlier isolation-forest --dataset fundamentals',
+    '$ data-agent experiment index --write',
+  ],
+  'Data-Manager': [
+    '$ data-agent snapshot create --artifact-set filings-standardized',
+    '$ data-agent lineage report --pipeline filings',
+    '$ data-agent catalog refresh --dataset peer_groups',
+    '$ data-agent governance audit --tokens --rate-limits',
+    '$ data-agent dashboard publish --index index.html',
+  ],
 };
 
 const cliSessionLog: { [agent: string]: Array<{ t: number; line: string; level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' }> } = {
   Fill: [], Kai: [], Zip: [], Mira: [], Luna: [], Cleopatra: [], Alexander: [], MoneyGod: [], Analyst: [], VideoProducer: [], Vice: [], Atlas: [], Kimi: [], Croesus: [],
+  'Data-Steward': [], 'Data-Engineer': [], 'Data-Analyst': [], 'Data-Scientist': [], 'Data-Manager': [],
 };
 
 function pushCli(agent: string, line: string, level: 'cmd' | 'out' | 'ok' | 'warn' | 'err' = 'out') {
