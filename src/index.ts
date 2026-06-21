@@ -11,6 +11,7 @@ import * as http from 'http';
 import * as os from 'os';
 import { Server as SocketIOServer } from 'socket.io';
 import logger from './utils/logger';
+import { readFileTail } from './utils/readFileTail';
 import { KafkaOrchestrator } from './integrations/kafka/orchestrator';
 import { LightRAGClient } from './integrations/lightrag/client';
 import { AgentAPIWrapper } from './integrations/lightrag/agent-api';
@@ -1164,7 +1165,7 @@ app.get('/api/gpu/symbiosis', (req, res) => {
     let lastTickAgoS: number | null = null;
     let blenderMemMb: number | null = null;
     if (fs.existsSync('/tmp/gpu-symbiosis.log')) {
-      const buf = fs.readFileSync('/tmp/gpu-symbiosis.log', 'utf8');
+      const buf = readFileTail('/tmp/gpu-symbiosis.log');  // tail only — log grows unbounded
       const lines = buf.trim().split('\n');
       lastLog = lines.slice(-5).join('\n');
       // Last "blender_gpu_mem=N MiB threshold=M MiB" tick tells us when the
