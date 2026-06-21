@@ -189,13 +189,19 @@ export function writeSettings(settings: ModelRouterSettings) {
   _cachedSettings = settings;
 }
 
+// Hardware probes (nvidia-smi/df/system_profiler) can hang — nvidia-smi
+// notoriously so on a wedged driver. execSync without a timeout would block the
+// calling thread indefinitely; cap every probe so a hang throws and falls back
+// to safe defaults via the surrounding try/catch.
+const PROBE_TIMEOUT_MS = 5000;
+
 function detectVRAM(): { totalVRAMGB: number; freeVRAMGB: number; hasCUDA: boolean } {
   let totalVRAMGB = 0;
   let freeVRAMGB = 0;
   let hasCUDA = false;
   try {
     // nvidia-smi gives VRAM in MiB
-    const smi = execSync('nvidia-smi --query-gpu=memory.total,memory.free --format=csv,noheader,nounits', { encoding: 'utf8' });
+    const smi = execSync('nvidia-smi --query-gpu=memory.total,memory.free --format=csv,noheader,nounits', { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS });
     const lines = smi.trim().split('\n');
     for (const line of lines) {
       const [totalMiB, freeMiB] = line.split(',').map((s: string) => parseInt(s.trim(), 10));
@@ -207,7 +213,7 @@ function detectVRAM(): { totalVRAMGB: number; freeVRAMGB: number; hasCUDA: boole
     // No NVIDIA GPU; check Metal on macOS via system_profiler (rough, only Apple Silicon)
     if (process.platform === 'darwin') {
       try {
-        const metal = execSync('system_profiler SPDisplaysDataType -json', { encoding: 'utf8' });
+        const metal = execSync('system_profiler SPDisplaysDataType -json', { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS });
         const json = JSON.parse(metal);
         const displays = json?.SPDisplaysDataType || [];
         for (const d of displays) {
@@ -237,26 +243,26 @@ export function detectHostResources(): HostResources {
 
   try {
     if (platform === 'darwin') {
-      const mem = execSync('sysctl -n hw.memsize', { encoding: 'utf8' }).trim();
+      const mem = execSync('sysctl -n hw.memsize', { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS }).trim();
       totalRAMGB = parseInt(mem, 10) / (1024 ** 3);
-      const cores = execSync('sysctl -n hw.ncpu', { encoding: 'utf8' }).trim();
+      const cores = execSync('sysctl -n hw.ncpu', { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS }).trim();
       cpuCores = parseInt(cores, 10);
-      const vm = execSync('vm_stat', { encoding: 'utf8' });
+      const vm = execSync('vm_stat', { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS });
       const pageSize = 16384;
       const freePages = (vm.match(/Pages free:\s+(\d+)/)?.[1] || '0');
       const inactivePages = (vm.match(/Pages inactive:\s+(\d+)/)?.[1] || '0');
       freeRAMGB = (parseInt(freePages) + parseInt(inactivePages)) * pageSize / (1024 ** 3);
-      const df = execSync('df -g / 2>/dev/null | tail -1 | awk \'{print $4}\'', { encoding: 'utf8', shell: '/bin/bash' }).trim();
+      const df = execSync('df -g / 2>/dev/null | tail -1 | awk \'{print $4}\'', { encoding: 'utf8', shell: '/bin/bash', timeout: PROBE_TIMEOUT_MS }).trim();
       freeDiskGB = parseFloat(df) || 4;
     } else if (platform === 'linux') {
-      const meminfo = execSync('cat /proc/meminfo', { encoding: 'utf8' });
+      const meminfo = execSync('cat /proc/meminfo', { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS });
       const totalKB = parseInt(meminfo.match(/MemTotal:\s+(\d+)/)?.[1] || '0');
       const availableKB = parseInt(meminfo.match(/MemAvailable:\s+(\d+)/)?.[1] || '0');
       totalRAMGB = totalKB / (1024 ** 2);
       freeRAMGB = availableKB / (1024 ** 2);
-      const df = execSync("df -BG / | tail -1 | awk '{print $4}' | tr -d 'G'", { encoding: 'utf8', shell: '/bin/bash' }).trim();
+      const df = execSync("df -BG / | tail -1 | awk '{print $4}' | tr -d 'G'", { encoding: 'utf8', shell: '/bin/bash', timeout: PROBE_TIMEOUT_MS }).trim();
       freeDiskGB = parseFloat(df) || 4;
-      cpuCores = parseInt(execSync('nproc', { encoding: 'utf8' }).trim(), 10);
+      cpuCores = parseInt(execSync('nproc', { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS }).trim(), 10);
     }
   } catch (e) {
     logger.warn('model-router: could not detect host resources, using safe defaults');
