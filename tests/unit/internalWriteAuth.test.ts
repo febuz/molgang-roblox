@@ -31,15 +31,69 @@ function run(mw: any, req: any) {
 }
 
 describe('internalWriteAuth (TOP_100 #19)', () => {
-  it('protects exactly the six documented write paths', () => {
+  it('protects the documented write paths plus the high-risk control endpoints', () => {
     expect([...PROTECTED_WRITE_PATHS].sort()).toEqual([
       '/api/backlog/items',
       '/api/corpus/ingest',
+      '/api/docs/regenerate',
       '/api/governance/register',
       '/api/kami/queue',
       '/api/mcp/call',
+      '/api/models/download-recommended',
+      '/api/models/inference',
+      '/api/openclaw/command',
+      '/api/vitals/repair-mode',
       '/api/wiki',
     ]);
+  });
+
+  it.each([
+    '/api/openclaw/command',
+    '/api/vitals/repair-mode',
+    '/api/models/inference',
+  ])('ENFORCE: blocks unauthenticated non-local POST to high-risk %s', (path) => {
+    const { res, nexted } = run(internalWriteAuth({ enforce: true }), mockReq({ path, ip: '203.0.113.7' }));
+    expect(nexted).toBe(false);
+    expect(res.statusCode).toBe(403);
+  });
+
+  it.each([
+    '/api/credentials/openai',
+    '/api/deployments/abc123/rollback',
+    '/api/guardrails/rules/r1/toggle',
+    '/api/containment/mode',
+  ])('ENFORCE: blocks parametrized mutation route via prefix match: %s', (path) => {
+    const { res, nexted } = run(internalWriteAuth({ enforce: true }), mockReq({ path, ip: '203.0.113.7' }));
+    expect(nexted).toBe(false);
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('ENFORCE: blocks a non-local DELETE on a protected prefix (credentials)', () => {
+    const { res, nexted } = run(
+      internalWriteAuth({ enforce: true }),
+      mockReq({ method: 'DELETE', path: '/api/credentials/anthropic', ip: '203.0.113.7' }),
+    );
+    expect(nexted).toBe(false);
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('localhost still passes a protected prefix route under enforce', () => {
+    const { res, nexted } = run(
+      internalWriteAuth({ enforce: true }),
+      mockReq({ path: '/api/credentials/openai', ip: '127.0.0.1' }),
+    );
+    expect(nexted).toBe(true);
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('does not protect a benign sibling that only shares a prefix string (not a path segment)', () => {
+    // '/api/credentialsx' must NOT be caught by the '/api/credentials' prefix.
+    const { res, nexted } = run(
+      internalWriteAuth({ enforce: true }),
+      mockReq({ path: '/api/credentialsx', ip: '203.0.113.7' }),
+    );
+    expect(nexted).toBe(true);
+    expect(res.statusCode).toBe(200);
   });
 
   it.each(['127.0.0.1', '::1', '::ffff:127.0.0.1'])('allows loopback caller %s even when enforcing', (ip) => {
