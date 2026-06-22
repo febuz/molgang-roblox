@@ -136,7 +136,7 @@ describe('internalWriteAuth (TOP_100 #19)', () => {
     expect(res.statusCode).toBe(200);
   });
 
-  it('ignores non-POST methods on protected paths (read-through)', () => {
+  it('ignores read methods on protected paths (read-through)', () => {
     const { res, nexted } = run(internalWriteAuth({ enforce: true }), mockReq({ method: 'GET', ip: '203.0.113.7' }));
     expect(nexted).toBe(true);
     expect(res.statusCode).toBe(200);

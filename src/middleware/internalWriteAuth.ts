@@ -16,11 +16,11 @@
  * changes with zero breakage and the logs reveal whether any legitimate caller
  * is non-local. Flip INTERNAL_WRITE_ENFORCE=true to actually reject.
  *
- * It is mounted ONCE, globally, and is a no-op for every request except a POST
- * to one of the protected paths — so there is no per-route wiring to drift, and
- * it deliberately depends on nothing instantiated later in startup (the write
- * routes are registered at module load, long before ApiKeyManager / the audit
- * logger exist).
+ * It is mounted ONCE, globally, and is a no-op for every request except a mutating
+ * method to one of the protected paths/prefixes — so there is no per-route wiring
+ * to drift, and it deliberately depends on nothing instantiated later in startup
+ * (the write routes are registered at module load, long before ApiKeyManager / the
+ * audit logger exist).
  *
  * Note: req.ip is the direct socket address because the app sets no `trust
  * proxy`. If this is ever deployed behind a reverse proxy, configure
@@ -141,7 +141,7 @@ export function internalWriteAuth(opts: InternalWriteAuthOptions = {}) {
 
     // Unauthorized write to a protected endpoint.
     logger.warn(
-      `[internal-write-auth] unauthorized POST ${req.path} from ip=${req.ip} ` +
+      `[internal-write-auth] unauthorized ${req.method} ${req.path} from ip=${req.ip} ` +
         `enforce=${enforce} tokenPresented=${!!token}`,
     );
     if (enforce) {
