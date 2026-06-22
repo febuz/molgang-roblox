@@ -159,6 +159,12 @@ const io = new SocketIOServer(server, {
   cors: { origin: SOCKET_CORS_ORIGINS, methods: ['GET', 'POST'] }
 });
 const PORT = process.env.PORT || 3100;
+// Bind to loopback by default so the API is NOT exposed on the network. A prior
+// security review found the server bound 0.0.0.0 with most routes unauthenticated.
+// Set HOST=0.0.0.0 to deliberately expose it on the LAN — doing so also flips the
+// internal-write guard into enforce mode (see internalWriteAuth below).
+const HOST = process.env.HOST || '127.0.0.1';
+const BOUND_NON_LOCAL = !['127.0.0.1', 'localhost', '::1'].includes(HOST);
 const SERVER_START_TIME = Date.now();
 
 // Middleware
@@ -210,10 +216,21 @@ if (rateLimitEnabled) {
   logger.warn('Rate limiter disabled (RATE_LIMIT_ENABLED=false)');
 }
 
-// 3) Guard the internal-only write endpoints. WARN mode by default (logs but
-//    allows) so it's non-breaking; INTERNAL_WRITE_ENFORCE=true rejects callers
-//    that are neither localhost nor presenting INTERNAL_WRITE_SERVICE_TOKEN.
-app.use(internalWriteAuth());
+// 3) Guard the internal-only write endpoints. Localhost callers always pass;
+//    non-local callers need INTERNAL_WRITE_SERVICE_TOKEN. WARN mode (log-but-
+//    allow) when bound to loopback so local dev is non-breaking, but ENFORCE
+//    automatically when the server is deliberately exposed on the network
+//    (HOST != loopback) so the high-risk routes can't be hit unauthenticated.
+//    INTERNAL_WRITE_ENFORCE=true forces enforce even on loopback.
+const enforceInternalWrites =
+  BOUND_NON_LOCAL || (process.env.INTERNAL_WRITE_ENFORCE || '').toLowerCase() === 'true';
+if (BOUND_NON_LOCAL) {
+  logger.warn(
+    `[security] HOST=${HOST} exposes the API on the network — internal-write guard set to ENFORCE. ` +
+      `Set INTERNAL_WRITE_SERVICE_TOKEN for non-local callers.`,
+  );
+}
+app.use(internalWriteAuth({ enforce: enforceInternalWrites }));
 
 // Plan review — make plans available from VirtualPC + per-section human comments
 // that relay back to the agents. See src/plan-review + /plan-review.html.
@@ -3132,14 +3149,14 @@ async function initialize() {
       });
     });
 
-    // 7. Start server
-    server.listen(PORT, () => {
+    // 7. Start server — bind to HOST (loopback by default; see HOST above).
+    server.listen(PORT as number, HOST, () => {
       logger.info(`
 ╔════════════════════════════════════════════════╗
 ║  VirtualPC Ready                               ║
 ╠════════════════════════════════════════════════╣
 ║  Status: Running                               ║
-║  Port: ${PORT}                                 ║
+║  Bind: ${HOST}:${PORT}                         ║
 ║  Web UI: http://localhost:${PORT}             ║
 ║  Components: LightRAG, Kafka, Socket.io        ║
 ║  Agents: Ready to execute                      ║

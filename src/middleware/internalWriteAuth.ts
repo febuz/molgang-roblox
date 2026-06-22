@@ -16,11 +16,11 @@
  * changes with zero breakage and the logs reveal whether any legitimate caller
  * is non-local. Flip INTERNAL_WRITE_ENFORCE=true to actually reject.
  *
- * It is mounted ONCE, globally, and is a no-op for every request except a POST
- * to one of the protected paths — so there is no per-route wiring to drift, and
- * it deliberately depends on nothing instantiated later in startup (the write
- * routes are registered at module load, long before ApiKeyManager / the audit
- * logger exist).
+ * It is mounted ONCE, globally, and is a no-op for every request except a mutating
+ * method to one of the protected paths/prefixes — so there is no per-route wiring
+ * to drift, and it deliberately depends on nothing instantiated later in startup
+ * (the write routes are registered at module load, long before ApiKeyManager / the
+ * audit logger exist).
  *
  * Note: req.ip is the direct socket address because the app sets no `trust
  * proxy`. If this is ever deployed behind a reverse proxy, configure
@@ -32,15 +32,42 @@ import { Request, Response, NextFunction } from 'express';
 import { timingSafeEqual } from 'crypto';
 import logger from '../utils/logger';
 
-/** The exact paths this guard protects (matched on POST only). */
+/** The exact paths this guard protects (matched on any mutating method). */
 export const PROTECTED_WRITE_PATHS: ReadonlySet<string> = new Set([
+  // Original six internal write endpoints.
   '/api/governance/register',
   '/api/wiki',
   '/api/corpus/ingest',
   '/api/mcp/call',
   '/api/kami/queue',
   '/api/backlog/items',
+  // High-risk control endpoints added 2026-06-21 after a security review found
+  // them reachable unauthenticated: agent command dispatch, self-repair toggle,
+  // model inference/download (cost/DoS), and doc regeneration (process spawn).
+  '/api/openclaw/command',
+  '/api/vitals/repair-mode',
+  '/api/models/inference',
+  '/api/models/download-recommended',
+  '/api/docs/regenerate',
 ]);
+
+/**
+ * Protected path PREFIXES — for parametrized mutation routes the exact-path Set
+ * cannot enumerate, e.g. /api/credentials/:provider (set/delete API keys),
+ * /api/deployments/:id/rollback, /api/guardrails/rules/:id/toggle,
+ * /api/containment/mode. Any mutation whose normalised path equals a prefix or
+ * starts with `<prefix>/` is guarded. Prefixes MUST be lower-case (the request
+ * path is lower-cased before matching).
+ */
+export const PROTECTED_WRITE_PREFIXES: readonly string[] = [
+  '/api/credentials',
+  '/api/deployments',
+  '/api/guardrails',
+  '/api/containment',
+];
+
+/** Mutating HTTP methods the guard inspects; reads (GET/HEAD/OPTIONS) pass through. */
+const MUTATION_METHODS: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function isLoopback(ip: string | undefined): boolean {
   if (!ip) return false;
@@ -70,6 +97,8 @@ export interface InternalWriteAuthOptions {
   serviceToken?: string;
   /** Override the protected path set (defaults to PROTECTED_WRITE_PATHS). */
   protectedPaths?: ReadonlySet<string>;
+  /** Override the protected prefix list (defaults to PROTECTED_WRITE_PREFIXES). */
+  protectedPrefixes?: readonly string[];
 }
 
 /**
@@ -80,6 +109,7 @@ export function internalWriteAuth(opts: InternalWriteAuthOptions = {}) {
   const enforce = opts.enforce ?? (process.env.INTERNAL_WRITE_ENFORCE || '').toLowerCase() === 'true';
   const serviceToken = opts.serviceToken ?? process.env.INTERNAL_WRITE_SERVICE_TOKEN ?? '';
   const protectedPaths = opts.protectedPaths ?? PROTECTED_WRITE_PATHS;
+  const protectedPrefixes = opts.protectedPrefixes ?? PROTECTED_WRITE_PREFIXES;
 
   return (req: Request, res: Response, next: NextFunction): void => {
     // Normalise the path the SAME way Express routes it, or the guard can be
@@ -88,7 +118,14 @@ export function internalWriteAuth(opts: InternalWriteAuthOptions = {}) {
     // the /api/wiki handler while a raw req.path lookup would miss the Set.
     // Lower-case and strip trailing slash(es) before matching.
     const normalizedPath = (req.path || '').toLowerCase().replace(/\/+$/, '') || '/';
-    if (req.method !== 'POST' || !protectedPaths.has(normalizedPath)) {
+    const isMutation = MUTATION_METHODS.has((req.method || '').toUpperCase());
+    const isProtected =
+      isMutation &&
+      (protectedPaths.has(normalizedPath) ||
+        protectedPrefixes.some(
+          (prefix) => normalizedPath === prefix || normalizedPath.startsWith(prefix + '/'),
+        ));
+    if (!isProtected) {
       next();
       return;
     }
@@ -104,7 +141,7 @@ export function internalWriteAuth(opts: InternalWriteAuthOptions = {}) {
 
     // Unauthorized write to a protected endpoint.
     logger.warn(
-      `[internal-write-auth] unauthorized POST ${req.path} from ip=${req.ip} ` +
+      `[internal-write-auth] unauthorized ${req.method} ${req.path} from ip=${req.ip} ` +
         `enforce=${enforce} tokenPresented=${!!token}`,
     );
     if (enforce) {
