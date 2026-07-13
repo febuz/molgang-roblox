@@ -10,6 +10,25 @@ local Players = game:GetService("Players")
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
+-- Café drink effects on quiz rewards
+local function getQuizRewardMultiplier(player)
+	local playerData = ReplicatedStorage:FindFirstChild("PlayerData")
+	if not playerData then return 1.0 end
+
+	local data = playerData:FindFirstChild(player.Name)
+	if not data then return 1.0 end
+
+	local activeCafeItem = data:FindFirstChild("activeCafeItem")
+	if not activeCafeItem or not activeCafeItem.Value then return 1.0 end
+
+	-- Jasmine Green Tea provides +20% quiz reward bonus
+	if activeCafeItem.Value == "Jasmine Green Tea" then
+		return 1.2
+	end
+
+	return 1.0
+end
+
 -- ══════════════════════════════════════════════
 -- QUESTION BANK
 -- Generated from real chemistry data
@@ -243,12 +262,19 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 		-- Check answer
 		if answer == current.correct then
 			session.score = session.score + 1
-			-- Award MolCoins
-			player:SetAttribute("LastCollectReward", 10)
+			-- Award MolCoins with café multiplier
+			local baseReward = 10
+			local multiplier = getQuizRewardMultiplier(player)
+			local totalReward = math.floor(baseReward * multiplier)
+			player:SetAttribute("LastCollectReward", totalReward)
 			player:SetAttribute("CollectTimestamp", tick())
 
+			local message = "Correct! +" .. totalReward .. " MolCoins"
+			if multiplier > 1.0 then
+				message = message .. " (Jasmine +" .. math.floor((multiplier - 1) * 100) .. "%)"
+			end
 			Remotes.FireClient("ServerAnnounce", player, {
-				message = "Correct! +10 MolCoins",
+				message = message,
 				rarity = "common",
 			})
 		else
