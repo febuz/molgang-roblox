@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 
 local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
+local MOLCO2Shop = require(ReplicatedStorage.Modules.MOLCO2Shop)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
@@ -85,6 +86,9 @@ local function loadPlayerData(player)
 
 	playerDailyEarned[userId] = 0
 
+	-- Sync leaderboard attributes
+	syncLeaderboardAttributes(player)
+
 	-- Send initial data to client
 	Remotes.FireClient("PlayerDataLoaded", player, playerData[userId])
 
@@ -147,6 +151,35 @@ local function spendMolCoins(player, amount, reason)
 	data.totalMolCoinsSpent = data.totalMolCoinsSpent + amount
 
 	return true
+end
+
+-- ══════════════════════════════════════════════
+-- LEADERBOARD SYNC (set player attributes for ranking)
+-- ══════════════════════════════════════════════
+
+local function syncLeaderboardAttributes(player)
+	local userId = player.UserId
+	local data = playerData[userId]
+	if not data then return end
+
+	-- Count elements found
+	local elementCount = 0
+	for _ in pairs(data.elementsFound) do
+		elementCount = elementCount + 1
+	end
+
+	-- Count molecules built
+	local moleculeCount = 0
+	for _ in pairs(data.moleculesBuilt) do
+		moleculeCount = moleculeCount + 1
+	end
+
+	-- Set player attributes for leaderboard
+	player:SetAttribute("MolCoins", data.molCoins)
+	player:SetAttribute("ElementCount", elementCount)
+	player:SetAttribute("MoleculeCount", moleculeCount)
+	player:SetAttribute("ChainTokens", data.chainTokens)
+	player:SetAttribute("MOLCO2", data.molco2Tokens or 0)
 end
 
 -- ══════════════════════════════════════════════
@@ -219,6 +252,9 @@ local function processAtomCollect(player, collectData)
 			rarity = "legendary",
 		})
 	end
+
+	-- Sync leaderboard attributes
+	syncLeaderboardAttributes(player)
 end
 
 -- Poll PlayerDataBridge for pending collections (secure server-side)
@@ -285,6 +321,49 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	-- Award MolCoins for molecule
 	addMolCoins(player, recipe.points, "molecule_build")
 
+	-- Award MOLCO2 tokens if building CO2
+	if molName == "CO2" then
+		data.molco2Tokens = (data.molco2Tokens or 0) + 1
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = player.Name .. " earned 1 MOLCO2 carbon credit for synthesizing CO₂!",
+			rarity = "uncommon",
+		})
+
+		-- Check for MOLCO2 achievements
+		if data.molco2Tokens == 1 and not data.badges["EcoWarrior"] then
+			data.badges["EcoWarrior"] = true
+			Remotes.FireClient("AchievementUnlocked", player, {
+				id = "EcoWarrior",
+				name = "Eco Warrior",
+				description = "Synthesize your first CO₂ molecule",
+			})
+		end
+
+		if data.molco2Tokens >= 10 and not data.badges["CarbonNeutral"] then
+			data.badges["CarbonNeutral"] = true
+			addMolCoins(player, 500, "carbon_neutral_badge")
+			Remotes.FireClient("AchievementUnlocked", player, {
+				id = "CarbonNeutral",
+				name = "Carbon Neutral",
+				description = "Synthesize 10 CO₂ molecules",
+			})
+		end
+
+		if data.molco2Tokens >= 50 and not data.badges["CarbonSavior"] then
+			data.badges["CarbonSavior"] = true
+			addMolCoins(player, 2000, "carbon_savior_badge")
+			Remotes.FireClient("AchievementUnlocked", player, {
+				id = "CarbonSavior",
+				name = "Carbon Savior",
+				description = "Synthesize 50 CO₂ molecules",
+			})
+			Remotes.FireAllClients("ServerAnnounce", {
+				message = player.Name .. " is a true environmental hero! 50 CO₂ molecules synthesized!",
+				rarity = "epic",
+			})
+		end
+	end
+
 	-- Update statistics
 	data.totalMoleculesBuilt = data.totalMoleculesBuilt + 1
 	data.chainEntries = data.chainEntries + 1
@@ -323,6 +402,9 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	-- Check tutorial progress
 	TutorialSystem.checkProgress(player, userId, data)
 
+	-- Sync leaderboard attributes
+	syncLeaderboardAttributes(player)
+
 	-- ChainRegistry handles the chain entry
 	-- (the ChainRegistry script also listens to this event)
 end)
@@ -353,6 +435,19 @@ Remotes.RequestDailyClaim.OnServerEvent:Connect(function(player)
 	local streakBonus = math.min(data.loginStreak * 10, 100)  -- up to 100 bonus
 	local totalClaim = DAILY_CLAIM_AMOUNT + streakBonus
 
+	-- Apply daily bonus 2x if purchased and not yet used
+	local dailyBonusApplied = false
+	if data.molco2Shop and data.molco2Shop["daily_bonus_2x"] then
+		totalClaim = totalClaim * 2
+		dailyBonusApplied = true
+		-- Consume the bonus (one-time use per purchase)
+		data.molco2Shop["daily_bonus_2x"] = nil
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = player.Name .. " used Daily Bonus 2x! Claim doubled!",
+			rarity = "uncommon",
+		})
+	end
+
 	data.lastDailyClaim = now
 	addMolCoins(player, totalClaim, "daily_claim")
 
@@ -361,8 +456,12 @@ Remotes.RequestDailyClaim.OnServerEvent:Connect(function(player)
 		amount = totalClaim,
 		streak = data.loginStreak,
 		streakBonus = streakBonus,
+		dailyBonusApplied = dailyBonusApplied,
 		nextClaimTime = now + DAILY_CLAIM_COOLDOWN,
 	})
+
+	-- Sync leaderboard after potential bonus application
+	syncLeaderboardAttributes(player)
 end)
 
 -- ══════════════════════════════════════════════
@@ -457,6 +556,35 @@ Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityType
 	print("[EconomyManager] Facility built:", player.Name, facilityType)
 end)
 
+-- ══════════════════════════════════════════════
+-- HELPER: Calculate production bonuses
+-- ══════════════════════════════════════════════
+
+local function getProductionMultiplier(data, facilityType)
+	local multiplier = 1.0
+	local shop = data.molco2Shop or {}
+
+	-- General production bonuses (all facilities)
+	if shop["farm_boost_25pct"] then
+		multiplier = multiplier * 1.25
+	elseif shop["farm_boost_10pct"] then
+		multiplier = multiplier * 1.1
+	end
+
+	-- Café drink effects (production speed boost)
+	local activeCafeItem = data.activeCafeItem or ""
+	if activeCafeItem == "Mango Milk Tea" then
+		multiplier = multiplier * 1.1  -- +10% production speed
+	end
+
+	-- Facility-specific bonuses
+	if facilityType == "mine" and shop["atom_generator"] then
+		multiplier = multiplier * 1.5
+	end
+
+	return multiplier
+end
+
 -- Production cycle
 task.spawn(function()
 	local Elements = require(ReplicatedStorage.Data.Elements)
@@ -481,8 +609,13 @@ task.spawn(function()
 
 				facility.lastProduced = now
 
+				-- Get production multiplier from shop bonuses
+				local multiplier = getProductionMultiplier(data, facility.type)
+
 				if facility.type == "mine" then
-					for _ = 1, cfg.rate do
+					-- Mines: multiply atomic output
+					local rate = math.floor(cfg.rate * multiplier)
+					for _ = 1, rate do
 						local z = cfg.elements[math.random(1, #cfg.elements)]
 						local elem = Elements[z]
 						if elem then
@@ -490,21 +623,197 @@ task.spawn(function()
 						end
 					end
 
-				elseif facility.type == "factory" and math.random() < cfg.rate then
-					local mol = cfg.molecules[math.random(1, #cfg.molecules)]
-					data.molecules[mol] = (data.molecules[mol] or 0) + 1
+				elseif facility.type == "factory" then
+					-- Factories: multiply success chance
+					local chance = cfg.rate * multiplier
+					if math.random() < chance then
+						local mol = cfg.molecules[math.random(1, #cfg.molecules)]
+						data.molecules[mol] = (data.molecules[mol] or 0) + 1
+					end
 
-				elseif facility.type == "researchLab" and math.random() < cfg.rate then
-					local mol = cfg.molecules[math.random(1, #cfg.molecules)]
-					data.molecules[mol] = (data.molecules[mol] or 0) + 1
+				elseif facility.type == "researchLab" then
+					-- Research labs: multiply success chance
+					local chance = cfg.rate * multiplier
+					if math.random() < chance then
+						local mol = cfg.molecules[math.random(1, #cfg.molecules)]
+						data.molecules[mol] = (data.molecules[mol] or 0) + 1
+					end
 
 				elseif facility.type == "office" then
-					data.molCoins = data.molCoins + cfg.coins
+					-- Offices: multiply coin output
+					local coins = math.floor(cfg.coins * multiplier)
+					data.molCoins = data.molCoins + coins
 				end
 			end
 		end
 	end
 end)
+
+-- ══════════════════════════════════════════════
+-- MARKET TRADING
+-- ══════════════════════════════════════════════
+
+Remotes.RequestBuyFromMarket.OnServerEvent:Connect(function(player, symbol, quantity, pricePerUnit)
+	local userId = player.UserId
+	local data = playerData[userId]
+	if not data then return end
+
+	if not symbol or quantity < 1 or pricePerUnit < 1 then return end
+
+	local totalCost = quantity * pricePerUnit
+
+	-- Apply market discount if purchased
+	if data.molco2Shop and data.molco2Shop["market_discount"] then
+		totalCost = math.floor(totalCost * 0.9)  -- 10% discount
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Market Discount applied: -10% to buy cost!",
+			rarity = "uncommon",
+		})
+	end
+
+	-- Check if player has enough MolCoins
+	if data.molCoins < totalCost then
+		print("[Market] Buy failed:", player.Name, "insufficient MolCoins")
+		return
+	end
+
+	-- Deduct MolCoins
+	data.molCoins = data.molCoins - totalCost
+
+	-- Add commodity to inventory (atoms or molecules)
+	if symbol == "H" or symbol == "O" or symbol == "C" or symbol == "N" or symbol == "Fe" then
+		-- Element atoms
+		data.atoms[symbol] = (data.atoms[symbol] or 0) + quantity
+	else
+		-- Molecules
+		data.molecules[symbol] = (data.molecules[symbol] or 0) + quantity
+	end
+
+	-- Send confirmation to client
+	Remotes.FireClient("TradeSuccess", player, {type = "buy", symbol = symbol, quantity = quantity, price = pricePerUnit, total = totalCost})
+
+	-- Sync leaderboard attributes
+	syncLeaderboardAttributes(player)
+
+	print("[Market]", player.Name, "bought", symbol, "x" .. quantity, "for", totalCost, "coins (discount applied: " .. (data.molco2Shop and data.molco2Shop["market_discount"] and "yes" or "no") .. ")")
+end)
+
+Remotes.RequestSellToMarket.OnServerEvent:Connect(function(player, symbol, quantity, pricePerUnit)
+	local userId = player.UserId
+	local data = playerData[userId]
+	if not data then return end
+
+	if not symbol or quantity < 1 or pricePerUnit < 1 then return end
+
+	-- Check if player has commodity
+	local hasQuantity = 0
+	if symbol == "H" or symbol == "O" or symbol == "C" or symbol == "N" or symbol == "Fe" then
+		hasQuantity = data.atoms[symbol] or 0
+	else
+		hasQuantity = data.molecules[symbol] or 0
+	end
+
+	if hasQuantity < quantity then
+		print("[Market] Sell failed:", player.Name, "insufficient", symbol)
+		return
+	end
+
+	-- Remove commodity from inventory
+	if symbol == "H" or symbol == "O" or symbol == "C" or symbol == "N" or symbol == "Fe" then
+		data.atoms[symbol] = data.atoms[symbol] - quantity
+		if data.atoms[symbol] == 0 then data.atoms[symbol] = nil end
+	else
+		data.molecules[symbol] = data.molecules[symbol] - quantity
+		if data.molecules[symbol] == 0 then data.molecules[symbol] = nil end
+	end
+
+	-- Award MolCoins (with market discount if owned)
+	local totalEarnings = quantity * pricePerUnit
+
+	-- Apply market discount bonus if player owns it (slightly better sell prices)
+	if data.molco2Shop and data.molco2Shop["market_discount"] then
+		totalEarnings = math.floor(totalEarnings * 1.1)  -- 10% bonus on sales
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Market Trader bonus: +10% to sell price!",
+			rarity = "uncommon",
+		})
+	end
+
+	addMolCoins(player, totalEarnings, "market_sell")
+
+	-- Send confirmation to client
+	Remotes.FireClient("TradeSuccess", player, {type = "sell", symbol = symbol, quantity = quantity, price = pricePerUnit, total = totalEarnings})
+
+	-- Sync leaderboard attributes
+	syncLeaderboardAttributes(player)
+
+	print("[Market]", player.Name, "sold", symbol, "x" .. quantity, "for", totalEarnings, "coins (bonus applied: " .. (data.molco2Shop and data.molco2Shop["market_discount"] and "yes" or "no") .. ")")
+end)
+
+-- ══════════════════════════════════════════════
+-- MOLCO2 SHOP PURCHASES
+-- ══════════════════════════════════════════════
+
+Remotes.BuyMOLCO2Item.OnServerInvoke = function(player, itemId)
+	local userId = player.UserId
+	local data = playerData[userId]
+	if not data then
+		return {success = false, reason = "Player data not found"}
+	end
+
+	-- Validate item exists
+	local item = MOLCO2Shop.GetItem(itemId)
+	if not item then
+		return {success = false, reason = "Item not found"}
+	end
+
+	-- Check if already purchased (cosmetics/permanent bonuses)
+	if data.molco2Shop[itemId] then
+		return {success = false, reason = "Already purchased"}
+	end
+
+	-- Check balance
+	if data.molco2Tokens < item.cost then
+		return {success = false, reason = "Insufficient MOLCO2 tokens"}
+	end
+
+	-- Deduct tokens
+	data.molco2Tokens = data.molco2Tokens - item.cost
+	data.molco2Shop[itemId] = true
+
+	-- Apply bonus effects
+	if item.bonus.type == "production" then
+		-- Production bonus stored for facility calculations
+		-- When facilities produce, they'll check player's bonuses
+		-- For now, we notify the client which will apply visually
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = player.Name .. " purchased " .. item.name .. "! Production increased!",
+			rarity = "uncommon",
+		})
+	elseif item.bonus.type == "daily" then
+		-- Daily bonus - flag this purchase for next claim
+		-- Client will show indicator, next daily claim will be 2x
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = player.Name .. " purchased " .. item.name .. "! Next daily claim doubled!",
+			rarity = "uncommon",
+		})
+	elseif item.bonus.type == "trading" then
+		-- Market discount - stored for market purchase validation
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = player.Name .. " purchased " .. item.name .. "! Market trades now 10% cheaper!",
+			rarity = "uncommon",
+		})
+	end
+
+	-- Update leaderboard
+	syncLeaderboardAttributes(player)
+
+	-- Log transaction
+	print("[MOLCO2Shop]", player.Name, "purchased", item.name, "for", item.cost, "tokens")
+
+	-- Return success with updated balance
+	return {success = true, newBalance = data.molco2Tokens, item = item}
+end
 
 -- ══════════════════════════════════════════════
 -- PLAYER LIFECYCLE
