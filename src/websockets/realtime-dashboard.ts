@@ -5,23 +5,15 @@
  * Integrates with Hive Mind + task-engine + agent-orchestrator.
  */
 
-import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import logger from '../utils/logger';
-import { hiveMind } from '../orchestration/hive-mind';
-import { taskEngine } from '../task-engine';
-import { agentOrchestrator } from '../orchestration/agent-orchestrator';
 
 export class RealtimeDashboard {
   private io: SocketIOServer;
   private realtimeData: any = {};
 
-  constructor(httpServer: HTTPServer) {
-    this.io = new SocketIOServer(httpServer, {
-      cors: { origin: '*', methods: ['GET', 'POST'] },
-      transports: ['websocket', 'polling'],
-    });
-
+  constructor(io: SocketIOServer) {
+    this.io = io;
     this.setupHandlers();
     this.startPolling();
   }
@@ -62,30 +54,65 @@ export class RealtimeDashboard {
    * Build current dashboard state from all sources
    */
   private buildDashboardState(): any {
-    return {
-      timestamp: new Date().toISOString(),
+    try {
+      // Lazy-load optional modules (only available after ClaudeClaw PRs merged)
+      let hiveMindData = { recent_entries: [], inter_agent_tasks: [] };
+      let tasksData = { all: [], summary: { total: 0, completed: 0, pending: 0 } };
+      let agentStats = { active_sessions: 0, total_messages: 0, agents: {} };
 
-      // Hive Mind activity
-      hive_mind: {
-        recent_entries: hiveMind.getRecentHiveMind(10),
-        inter_agent_tasks: hiveMind.getInterAgentTasks({ status: 'pending' }),
-      },
+      try {
+        const { hiveMind } = require('../orchestration/hive-mind');
+        if (hiveMind) {
+          hiveMindData = {
+            recent_entries: hiveMind.getRecentHiveMind(10),
+            inter_agent_tasks: hiveMind.getInterAgentTasks({ status: 'pending' }),
+          };
+        }
+      } catch (e) {
+        // Hive Mind not yet merged; use empty data
+      }
 
-      // Task engine status
-      tasks: {
-        all: (taskEngine as any).getTasks?.() || [],
-        summary: (taskEngine as any).getTaskSummary?.() || { total: 0, completed: 0, pending: 0 },
-      },
+      try {
+        const taskEngine = require('../task-engine');
+        if (taskEngine) {
+          tasksData = {
+            all: taskEngine.getTasks?.() || [],
+            summary: taskEngine.getTaskSummary?.() || { total: 0, completed: 0, pending: 0 },
+          };
+        }
+      } catch (e) {
+        // Task engine data unavailable
+      }
 
-      // Agent orchestrator stats
-      agents: agentOrchestrator.getStats(),
+      try {
+        const { agentOrchestrator } = require('../orchestration/agent-orchestrator');
+        if (agentOrchestrator) {
+          agentStats = agentOrchestrator.getStats?.() || agentStats;
+        }
+      } catch (e) {
+        // Agent orchestrator not yet merged; use empty data
+      }
 
-      // Metadata
-      meta: {
-        server_uptime: process.uptime(),
-        memory_usage: process.memoryUsage(),
-      },
-    };
+      return {
+        timestamp: new Date().toISOString(),
+        hive_mind: hiveMindData,
+        tasks: tasksData,
+        agents: agentStats,
+        meta: {
+          server_uptime: process.uptime(),
+          memory_usage: process.memoryUsage(),
+        },
+      };
+    } catch (error: any) {
+      logger.error(`[RealtimeDashboard] buildDashboardState error: ${error.message}`);
+      return {
+        timestamp: new Date().toISOString(),
+        hive_mind: { recent_entries: [], inter_agent_tasks: [] },
+        tasks: { all: [], summary: { total: 0, completed: 0, pending: 0 } },
+        agents: { active_sessions: 0, total_messages: 0, agents: {} },
+        meta: { server_uptime: process.uptime(), memory_usage: process.memoryUsage() },
+      };
+    }
   }
 
   /**
@@ -102,5 +129,3 @@ export class RealtimeDashboard {
     return this.io;
   }
 }
-
-export const realtimeDashboard = { getInstance: () => null };

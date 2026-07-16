@@ -16,6 +16,7 @@ import { AgentAPIWrapper } from './integrations/lightrag/agent-api';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
+import { RealtimeDashboard } from './websockets/realtime-dashboard';
 import * as path from 'path';
 import { MetricsDashboard } from './api/metrics-dashboard';
 import { TaskScheduler } from './agent/task-scheduler';
@@ -2203,6 +2204,11 @@ async function initialize() {
 
     // 6. Setup WebSocket handlers for real-time updates
     setupWebSocketHandlers(io, { lightrag, kafka });
+
+    // 6a. Initialize real-time dashboard (Hive Mind + task tracking)
+    logger.info('🔴 Initializing Real-time Dashboard...');
+    const realtimeDashboard = new RealtimeDashboard(io);
+    logger.info('✓ Real-time Dashboard ready (Hive Mind + task updates)');
 
     // 6b. Start vitals monitor (if GPU_ENABLED). Spawns vitals-monitor.sh
     //     as a child so the JSONL keeps updating. Routes wired below.
