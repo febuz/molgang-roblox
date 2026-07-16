@@ -299,10 +299,31 @@
                 </div>
             </div>
 
+            <!-- Token Usage -->
+            <div class="card">
+                <h2>💰 Token Usage</h2>
+                <div class="meta-info" style="grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="meta-item">
+                        <div class="meta-label">Hourly Cost</div>
+                        <div class="meta-value" id="hourly-cost">$-</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Daily Cost</div>
+                        <div class="meta-value" id="daily-cost">$-</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <h3 style="font-size: 0.95em; color: var(--text-secondary); margin-bottom: 10px;">By Agent</h3>
+                    <div id="token-by-agent" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                        <div class="empty-state">No token usage yet</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- System Metrics -->
-            <div class="card" style="grid-column: 1 / -1;">
+            <div class="card">
                 <h2>⚙️ System Metrics</h2>
-                <div class="meta-info">
+                <div class="meta-info" style="grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="meta-item">
                         <div class="meta-label">Server Uptime</div>
                         <div class="meta-value" id="uptime">-</div>
@@ -311,10 +332,10 @@
                         <div class="meta-label">Memory Usage</div>
                         <div class="meta-value" id="memory">-</div>
                     </div>
-                    <div class="meta-item">
-                        <div class="meta-label">Last Update</div>
-                        <div class="meta-value" id="last-update">-</div>
-                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <div class="meta-label">Last Update</div>
+                    <div class="meta-value" id="last-update" style="font-size: 1.2em; margin-top: 10px;">-</div>
                 </div>
             </div>
         </div>
@@ -400,6 +421,37 @@
                         </div>
                     `).join('');
                 document.getElementById('agents-list').innerHTML = agentsHtml || '<div class="empty-state">No agents active</div>';
+            }
+
+            // Update Token Usage
+            if (state.tokens) {
+                const hourlyStr = state.tokens.hourly_total
+                    ? `$${state.tokens.hourly_total.toFixed(4)}`
+                    : '$0.00';
+                const dailyStr = state.tokens.daily_total
+                    ? `$${state.tokens.daily_total.toFixed(4)}`
+                    : '$0.00';
+
+                document.getElementById('hourly-cost').textContent = hourlyStr;
+                document.getElementById('daily-cost').textContent = dailyStr;
+
+                // Token usage by agent
+                if (state.tokens.agents && Object.keys(state.tokens.agents).length > 0) {
+                    const agentTokensHtml = Object.entries(state.tokens.agents)
+                        .map(([agent, data]: any) => `
+                            <div style="padding: 8px; background: rgba(96, 165, 250, 0.05); border-radius: 4px; font-size: 0.85em;">
+                                <div style="font-weight: 600; color: var(--secondary); margin-bottom: 4px;">${agent}</div>
+                                <div style="color: var(--text-secondary);">
+                                    ${data.prompt_tokens || 0} input<br/>
+                                    ${data.completion_tokens || 0} output<br/>
+                                    <strong>$${(data.total_cost || 0).toFixed(4)}</strong>
+                                </div>
+                            </div>
+                        `).join('');
+                    document.getElementById('token-by-agent').innerHTML = agentTokensHtml || '<div class="empty-state">No usage</div>';
+                } else {
+                    document.getElementById('token-by-agent').innerHTML = '<div class="empty-state">No usage yet</div>';
+                }
             }
 
             // Update Metrics

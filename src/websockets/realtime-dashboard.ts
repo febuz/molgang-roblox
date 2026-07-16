@@ -59,6 +59,7 @@ export class RealtimeDashboard {
       let hiveMindData = { recent_entries: [], inter_agent_tasks: [] };
       let tasksData = { all: [], summary: { total: 0, completed: 0, pending: 0 } };
       let agentStats = { active_sessions: 0, total_messages: 0, agents: {} };
+      let tokenUsage = { agents: {}, recent_events: [], daily_total: 0, hourly_total: 0 };
 
       try {
         const { hiveMind } = require('../orchestration/hive-mind');
@@ -93,11 +94,41 @@ export class RealtimeDashboard {
         // Agent orchestrator not yet merged; use empty data
       }
 
+      try {
+        const tokenTracker = require('../token-tracker');
+        if (tokenTracker) {
+          const agentSummary = tokenTracker.getAgentSummary?.();
+          const recentEvents = tokenTracker.getRecentEvents?.(undefined, 5) || [];
+          const hourlyUsage = tokenTracker.getHourlyUsage?.() || [];
+          const dailyUsage = tokenTracker.getDailyUsage?.() || [];
+
+          // Aggregate token costs from daily usage
+          const dailyTotal = dailyUsage.length > 0
+            ? dailyUsage[0]?.total_cost || 0
+            : 0;
+
+          // Aggregate token costs from hourly usage
+          const hourlyTotal = hourlyUsage.length > 0
+            ? hourlyUsage[0]?.total_cost || 0
+            : 0;
+
+          tokenUsage = {
+            agents: agentSummary || {},
+            recent_events: recentEvents,
+            daily_total: dailyTotal,
+            hourly_total: hourlyTotal,
+          };
+        }
+      } catch (e) {
+        // Token tracker data unavailable
+      }
+
       return {
         timestamp: new Date().toISOString(),
         hive_mind: hiveMindData,
         tasks: tasksData,
         agents: agentStats,
+        tokens: tokenUsage,
         meta: {
           server_uptime: process.uptime(),
           memory_usage: process.memoryUsage(),
@@ -110,6 +141,7 @@ export class RealtimeDashboard {
         hive_mind: { recent_entries: [], inter_agent_tasks: [] },
         tasks: { all: [], summary: { total: 0, completed: 0, pending: 0 } },
         agents: { active_sessions: 0, total_messages: 0, agents: {} },
+        tokens: { agents: {}, recent_events: [], daily_total: 0, hourly_total: 0 },
         meta: { server_uptime: process.uptime(), memory_usage: process.memoryUsage() },
       };
     }
