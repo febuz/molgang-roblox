@@ -76,6 +76,7 @@ const specialist_dashboards_1 = __importDefault(require("./auth/specialist-dashb
 const auth_routes_1 = __importDefault(require("./auth/auth-routes"));
 const audit_routes_1 = __importDefault(require("./auth/audit-routes"));
 const specialist_routes_1 = __importDefault(require("./auth/specialist-routes"));
+const audit_retention_1 = require("./auth/audit-retention");
 const github_sync_1 = __importDefault(require("./automation/github-sync"));
 const github_routes_1 = __importDefault(require("./automation/github-routes"));
 const securityDashboard_1 = require("./security/securityDashboard");
@@ -89,11 +90,20 @@ const commitsTracker = __importStar(require("./commits-tracker"));
 const lmstudio = __importStar(require("./lmstudio"));
 const agent_registry_1 = require("./agent-registry");
 const fs = __importStar(require("fs"));
+const codegraph = __importStar(require("./integrations/codegraph"));
+const governance = __importStar(require("./integrations/governance"));
+const wiki = __importStar(require("./integrations/wiki"));
+const scrum = __importStar(require("./integrations/scrum"));
+const forum = __importStar(require("./integrations/forum"));
+const kami = __importStar(require("./integrations/kami"));
+const corpus = __importStar(require("./integrations/corpus"));
+const mcp = __importStar(require("./integrations/mcp/registry"));
+const autoresearch = __importStar(require("./integrations/autoresearch"));
+const selfheal = __importStar(require("./integrations/selfheal"));
 const timeseries_1 = require("./timeseries");
 const credentials = __importStar(require("./credentials"));
 const commercialization = __importStar(require("./commercialization"));
 const commitAudit = __importStar(require("./commit-audit"));
-const slagCarryover = __importStar(require("./migration/slag-carryover"));
 // Load environment
 (0, dotenv_1.config)();
 const app = (0, express_1.default)();
@@ -186,6 +196,29 @@ app.post('/api/backlog/:id/priority', (req, res) => {
     }
     res.json({ success: true, task: { id: updated.id, priority: updated.priority } });
 });
+// External delegators inject roadmap items here. Validates agent name
+// against the canonical roster so a typo can't create an orphan task.
+app.post('/api/backlog/items', (req, res) => {
+    const b = req.body || {};
+    if (!b.title || !b.description || !b.assigned_to) {
+        res.status(400).json({ success: false, error: 'title, description, assigned_to required' });
+        return;
+    }
+    const t = taskEngine.addTask({
+        title: String(b.title),
+        description: String(b.description),
+        priority: b.priority,
+        assigned_to: String(b.assigned_to),
+        estimated_hours: typeof b.estimated_hours === 'number' ? b.estimated_hours : undefined,
+        subtasks: Array.isArray(b.subtasks) ? b.subtasks.map(String) : undefined,
+        sprint: b.sprint ? String(b.sprint) : undefined,
+    });
+    if (!t) {
+        res.status(400).json({ success: false, error: `unknown agent '${b.assigned_to}' — must be in the canonical roster` });
+        return;
+    }
+    res.json({ success: true, task: { id: t.id, title: t.title, assigned_to: t.assigned_to, priority: t.priority, status: t.status } });
+});
 // ============================================================================
 // GitHub proxy for febuz/virtualpc — read-only access to the knowledge dirs
 // (.backlog, .admin, .creative, .governance, .operations). The repo is private
@@ -264,6 +297,616 @@ app.get('/api/github/virtualpc/file', async (req, res) => {
 app.get('/api/github/agent-docs/:name', async (req, res) => {
     const docs = GH_AGENT_DOCS[req.params.name] || [];
     res.json({ success: true, agent: req.params.name, repo: GH_REPO, docs: docs.map(p => ({ path: p, html_url: `https://github.com/${GH_REPO}/blob/main/${p}` })) });
+});
+// ============================================================================
+// Codegraph (GitNexus-compatible) — structural index of src/**.ts so agents
+// don't have to read the whole repo to answer "where is X defined?" or
+// "who calls Y?". Builds on demand, caches to data/codegraph.json (30 min TTL).
+// Pairs with the existing LightRAG integration: codegraph = "how" (structure),
+// LightRAG = "why" (semantics from docs/comments).
+// ============================================================================
+const REPO_ROOT = path.resolve(__dirname, '..');
+app.get('/api/codegraph/stats', (_req, res) => {
+    try {
+        res.json({ success: true, ...codegraph.summarize(codegraph.getCodegraph(REPO_ROOT)) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/codegraph/rebuild', (_req, res) => {
+    try {
+        const t0 = Date.now();
+        const g = codegraph.getCodegraph(REPO_ROOT, true);
+        res.json({ success: true, builtInMs: Date.now() - t0, ...codegraph.summarize(g) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/codegraph/symbol/:name', (req, res) => {
+    try {
+        const g = codegraph.getCodegraph(REPO_ROOT);
+        const defs = codegraph.findSymbol(g, req.params.name);
+        const refs = codegraph.findReferences(g, req.params.name);
+        res.json({ success: true, name: req.params.name, definitions: defs, referencedBy: refs });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/codegraph/file', (req, res) => {
+    try {
+        const rel = String(req.query.path || '');
+        if (!rel || rel.includes('..')) {
+            res.status(400).json({ success: false, error: 'path required' });
+            return;
+        }
+        const g = codegraph.getCodegraph(REPO_ROOT);
+        const file = g.files[rel];
+        if (!file) {
+            res.status(404).json({ success: false, error: 'file not in graph' });
+            return;
+        }
+        res.json({
+            success: true,
+            file,
+            dependencies: g.dependencies?.[rel] || [],
+            importedBy: g.importedBy?.[rel] || [],
+        });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// Cross-file dependency view — borrowed from GitNexus. Lets agents ask
+// "what does file X depend on?" and "what depends on X?" without parsing
+// the whole graph client-side.
+app.get('/api/codegraph/dependencies', (req, res) => {
+    try {
+        const rel = req.query.path ? String(req.query.path) : null;
+        const g = codegraph.getCodegraph(REPO_ROOT);
+        if (rel) {
+            if (rel.includes('..')) {
+                res.status(400).json({ success: false, error: 'path traversal' });
+                return;
+            }
+            res.json({
+                success: true,
+                path: rel,
+                imports: g.dependencies?.[rel] || [],
+                importedBy: g.importedBy?.[rel] || [],
+            });
+        }
+        else {
+            // Fan-in / fan-out summary across the whole graph
+            const fanIn = Object.entries(g.importedBy || {}).map(([p, arr]) => ({ path: p, count: arr.length }));
+            const fanOut = Object.entries(g.dependencies || {}).map(([p, arr]) => ({ path: p, count: arr.length }));
+            fanIn.sort((a, b) => b.count - a.count);
+            fanOut.sort((a, b) => b.count - a.count);
+            res.json({
+                success: true,
+                topImported: fanIn.slice(0, 20),
+                topImporters: fanOut.slice(0, 20),
+                totalEdges: Object.values(g.dependencies || {}).reduce((s, a) => s + a.length, 0),
+            });
+        }
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/codegraph/search', (req, res) => {
+    try {
+        const q = String(req.query.q || '').trim();
+        if (!q) {
+            res.status(400).json({ success: false, error: 'q required' });
+            return;
+        }
+        const g = codegraph.getCodegraph(REPO_ROOT);
+        const matches = codegraph.findSymbol(g, q);
+        const limited = matches.slice(0, 30);
+        res.json({ success: true, q, matchCount: matches.length, matches: limited });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// Data governance — Governor agent owns shared/*.json + asset registry +
+// wiki lineage. Read endpoints are open (any agent can lookup); write is
+// gated to Governor or the autonomous regenerate-docs script.
+// ============================================================================
+app.get('/api/governance', (req, res) => {
+    try {
+        const kind = req.query.kind;
+        const owner = req.query.owner;
+        const tag = req.query.tag;
+        res.json({ success: true, entries: governance.listEntries({ kind, owner, tag }) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/governance/lineage/:id', (req, res) => {
+    try {
+        const r = governance.getLineage(String(req.params.id));
+        res.json({ success: true, ...r });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/governance/register', (req, res) => {
+    try {
+        const body = req.body || {};
+        if (!body.id || !body.name || !body.kind || !body.owner || !body.source) {
+            res.status(400).json({ success: false, error: 'id, name, kind, owner, source required' });
+            return;
+        }
+        const entry = governance.registerEntry(body);
+        // Best-effort knowledge-graph notify (fire-and-forget).
+        const hooks = app.locals.governanceGraphHooks;
+        const lr = app.locals.lightrag;
+        if (hooks && lr)
+            hooks.notifyGovernanceWrite(lr, entry);
+        res.json({ success: true, entry });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// Wiki — game terms + quantum chemical engineering glossary. Pixel renders
+// /wiki on molgang-web from these entries; Kimi authors them.
+// ============================================================================
+app.get('/api/wiki', (req, res) => {
+    try {
+        const namespace = req.query.namespace;
+        const q = req.query.q;
+        res.json({ success: true, entries: wiki.listEntries({ namespace, q }) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/wiki/:id', (req, res) => {
+    try {
+        const e = wiki.getEntry(String(req.params.id));
+        if (!e) {
+            res.status(404).json({ success: false, error: 'not found' });
+            return;
+        }
+        res.json({ success: true, entry: e });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/wiki', (req, res) => {
+    try {
+        const body = req.body || {};
+        if (!body.id || !body.term || !body.namespace || !body.summary || !body.body) {
+            res.status(400).json({ success: false, error: 'id, term, namespace, summary, body required' });
+            return;
+        }
+        const entry = wiki.upsertEntry(body);
+        // Best-effort knowledge-graph notify (fire-and-forget).
+        const hooks = app.locals.governanceGraphHooks;
+        const lr = app.locals.lightrag;
+        if (hooks && lr)
+            hooks.notifyWikiWrite(lr, entry);
+        res.json({ success: true, entry });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// Scrum — standup feed + bug-report ingestion per team. Hermes coordinators
+// drive the standups; testers file bugs; Fill / Cleopatra read across teams.
+// ============================================================================
+app.get('/api/scrums', (_req, res) => {
+    try {
+        res.json({ success: true, ...scrum.summary() });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/scrums/:team/standups', (req, res) => {
+    try {
+        const team = req.params.team;
+        const limit = req.query.limit ? parseInt(String(req.query.limit)) : 50;
+        res.json({ success: true, team, items: scrum.listStandups(team, limit) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/scrums/:team/standup', (req, res) => {
+    try {
+        const team = req.params.team;
+        const { agent, body } = req.body || {};
+        if (!agent || !body) {
+            res.status(400).json({ success: false, error: 'agent + body required' });
+            return;
+        }
+        res.json({ success: true, item: scrum.logStandup(team, agent, body) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/scrums/:team/bugs', (req, res) => {
+    try {
+        const team = req.params.team;
+        const status = req.query.status;
+        const severity = req.query.severity;
+        res.json({ success: true, team, bugs: scrum.listBugs({ team, status, severity, limit: 100 }) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/scrums/:team/bug', (req, res) => {
+    try {
+        const team = req.params.team;
+        const { reporter, title, body, severity, surface, refs } = req.body || {};
+        if (!reporter || !title || !body) {
+            res.status(400).json({ success: false, error: 'reporter + title + body required' });
+            return;
+        }
+        res.json({ success: true, bug: scrum.fileBug({ team, reporter, title, body, severity, surface, refs }) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/scrums/bug/:id/update', (req, res) => {
+    try {
+        const updated = scrum.updateBug(req.params.id, req.body || {});
+        if (!updated) {
+            res.status(404).json({ success: false, error: 'not found' });
+            return;
+        }
+        res.json({ success: true, bug: updated });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// Forum — testers share tips/tricks/feature ideas in their team's subforum.
+// ============================================================================
+app.get('/api/forum/:team', (req, res) => {
+    try {
+        const team = req.params.team;
+        const tag = req.query.tag;
+        const q = req.query.q;
+        res.json({ success: true, team, threads: forum.listThreads({ team, tag, q, limit: 50 }) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/forum/:team', (req, res) => {
+    try {
+        const team = req.params.team;
+        const { author, title, body, tags } = req.body || {};
+        if (!author || !title || !body) {
+            res.status(400).json({ success: false, error: 'author + title + body required' });
+            return;
+        }
+        const parsedTags = typeof tags === 'string'
+            ? tags.split(',').map((s) => s.trim()).filter(Boolean)
+            : Array.isArray(tags) ? tags : undefined;
+        res.json({ success: true, thread: forum.createThread({ team, author, title, body, tags: parsedTags }) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/forum/thread/:id', (req, res) => {
+    try {
+        const t = forum.getThread(req.params.id);
+        if (!t) {
+            res.status(404).json({ success: false, error: 'not found' });
+            return;
+        }
+        res.json({ success: true, thread: t });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/forum/thread/:id/reply', (req, res) => {
+    try {
+        const { author, body } = req.body || {};
+        if (!author || !body) {
+            res.status(400).json({ success: false, error: 'author + body required' });
+            return;
+        }
+        const r = forum.reply(req.params.id, author, body);
+        if (!r) {
+            res.status(404).json({ success: false, error: 'thread not found' });
+            return;
+        }
+        res.json({ success: true, reply: r });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// Kami — doc-brief queue. Agents queue briefs here describing typeset
+// documents they want; a Claude Code session (with the Kami skill
+// installed at ~/.claude/skills/kami) drains the queue and renders.
+// virtualpc never tries to invoke `claude` itself — auth + autoloop-hook
+// recursion would bite. The renderer marks each brief delivered when
+// the HTML/PDF lands at outputPath.
+// ============================================================================
+app.get('/api/kami/briefs', (req, res) => {
+    try {
+        const status = req.query.status;
+        const requester = req.query.requester;
+        const limit = req.query.limit ? parseInt(String(req.query.limit)) : 50;
+        res.json({ success: true, briefs: kami.listBriefs({ status, requester, limit }) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/kami/briefs/:id', (req, res) => {
+    try {
+        const b = kami.getBrief(String(req.params.id));
+        if (!b) {
+            res.status(404).json({ success: false, error: 'not found' });
+            return;
+        }
+        res.json({ success: true, brief: b });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/kami/queue', (req, res) => {
+    try {
+        const body = req.body || {};
+        if (!body.requester || !body.type || !body.title || !body.outline) {
+            res.status(400).json({ success: false, error: 'requester, type, title, outline required' });
+            return;
+        }
+        res.json({ success: true, brief: kami.queueBrief(body) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/kami/briefs/:id/status', (req, res) => {
+    try {
+        const { status, notes } = req.body || {};
+        if (!status) {
+            res.status(400).json({ success: false, error: 'status required' });
+            return;
+        }
+        const b = kami.setStatus(req.params.id, status, notes);
+        if (!b) {
+            res.status(404).json({ success: false, error: 'not found' });
+            return;
+        }
+        res.json({ success: true, brief: b });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/kami/summary', (_req, res) => {
+    try {
+        res.json({ success: true, ...kami.summary() });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// Corpus — semantic-chunked + vector-embedded knowledge store. Hybrid
+// search via the same Neo4j instance LightRAG uses (separate :Corpus
+// label + native vector index, 768-dim from nomic-embed). Lets agents
+// retrieve prior context before reasoning — closes the "agent reasons
+// from scratch" cost gap. See § 10 of VIRTUALPC-ARCHITECTURE.md.
+// ============================================================================
+app.get('/api/corpus/search', async (req, res) => {
+    try {
+        const q = String(req.query.q || '').trim();
+        if (!q) {
+            res.status(400).json({ success: false, error: 'q required' });
+            return;
+        }
+        const k = Math.min(50, Math.max(1, parseInt(String(req.query.k || '8'))));
+        const sourceKind = req.query.kind ? String(req.query.kind) : undefined;
+        const lr = app.locals.lightrag;
+        if (!lr) {
+            res.json({ success: true, results: [], note: 'lightrag not initialized' });
+            return;
+        }
+        const results = await corpus.search(lr, q, { k, sourceKind });
+        res.json({ success: true, q, k, count: results.length, results });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/corpus/stats', async (_req, res) => {
+    try {
+        const lr = app.locals.lightrag;
+        if (!lr) {
+            res.json({ success: true, total: 0, by_kind: {}, vector_indexed: 0, offline: true });
+            return;
+        }
+        const s = await corpus.stats(lr);
+        res.json({ success: true, ...s });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/corpus/ingest', async (req, res) => {
+    try {
+        const chunks = req.body?.chunks;
+        if (!Array.isArray(chunks)) {
+            res.status(400).json({ success: false, error: 'chunks[] required' });
+            return;
+        }
+        const lr = app.locals.lightrag;
+        if (!lr) {
+            res.status(503).json({ success: false, error: 'lightrag not initialized' });
+            return;
+        }
+        const r = await corpus.ingestChunks(lr, chunks);
+        res.json({ success: true, ...r });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// MCP — tool-use coordination layer. Replaces the need for OpenAI Symphony
+// for tool orchestration: each agent has an ACL (`tools` field on AgentMeta)
+// and every tool call goes through this dispatcher. Both Claude CLI and
+// Kimi CLI can consume this catalogue once we shim it to the MCP RPC shape;
+// for now agents call directly via /api/mcp/call.
+// ============================================================================
+app.get('/api/mcp/tools', (req, res) => {
+    try {
+        const agent = req.query.agent;
+        res.json({ success: true, agent: agent || null, tools: mcp.listTools(agent) });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.post('/api/mcp/call', async (req, res) => {
+    try {
+        const { agent, tool, args } = req.body || {};
+        if (!agent || !tool) {
+            res.status(400).json({ success: false, error: 'agent + tool required' });
+            return;
+        }
+        const r = await mcp.callTool(String(agent), String(tool), args || {});
+        if (!r.ok) {
+            res.status(403).json({ success: false, error: r.error });
+            return;
+        }
+        res.json({ success: true, result: r.result });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// Docs regeneration — kicks scripts/regenerate-docs.js which uses Kimi
+// (taskType:'docs') to refresh README, architecture, and wiki entries.
+// Long-running; returns the run id so the caller can poll if needed.
+// ============================================================================
+app.post('/api/docs/regenerate', async (req, res) => {
+    try {
+        const scope = String(req.body?.scope || 'all');
+        const { spawn } = require('child_process');
+        const script = path.join(REPO_ROOT, 'scripts', 'regenerate-docs.js');
+        if (!require('fs').existsSync(script)) {
+            res.status(404).json({ success: false, error: `script not found: ${script}` });
+            return;
+        }
+        const child = spawn('node', [script, '--scope', scope], { detached: true, stdio: 'ignore', cwd: REPO_ROOT });
+        child.unref();
+        res.json({ success: true, scope, pid: child.pid, note: 'queued — Kimi-backed long-context author runs in background' });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+// ============================================================================
+// Auto-research (Karpathy-style) — reserved for the research-flavored agents
+// (Vice, Kimi, Analyst, Atlas). Plans → probes the codegraph for evidence →
+// synthesizes → self-critiques. Pure-local Gemma 4 calls, zero API credits.
+// ============================================================================
+app.post('/api/autoresearch', async (req, res) => {
+    const agent = String(req.body?.agent || '');
+    const question = String(req.body?.question || '');
+    if (!agent || !question) {
+        res.status(400).json({ success: false, error: 'agent + question required' });
+        return;
+    }
+    if (!autoresearch.RESEARCH_AGENTS.includes(agent)) {
+        res.status(400).json({ success: false, error: `agent must be one of: ${autoresearch.RESEARCH_AGENTS.join(', ')}` });
+        return;
+    }
+    try {
+        const r = await autoresearch.research({
+            agent,
+            question,
+            sources: Array.isArray(req.body?.sources) ? req.body.sources : ['corpus', 'codegraph'],
+            staticContext: Array.isArray(req.body?.staticContext) ? req.body.staticContext : undefined,
+            maxSubQuestions: Number(req.body?.maxSubQuestions) || undefined,
+            maxDepth: Number(req.body?.maxDepth) || undefined,
+            rootDir: REPO_ROOT,
+            lightragClient: req.app.locals.lightrag,
+        });
+        res.json({ success: true, ...r });
+    }
+    catch (e) {
+        res.status(502).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/autoresearch/agents', (_req, res) => {
+    res.json({ success: true, agents: autoresearch.RESEARCH_AGENTS });
+});
+// ============================================================================
+// Self-heal — deterministic crawler that finds broken links / dead endpoints /
+// dangling onclick handlers / orphaned nav-items in the dashboard's static
+// HTML. Runs on demand. Gemma 4 is intentionally NOT in the audit loop —
+// scans are cheap and predictable; reserve LLM hops for the optional /suggest.
+// ============================================================================
+app.post('/api/selfheal/audit', async (_req, res) => {
+    try {
+        const t0 = Date.now();
+        const report = await selfheal.runAndCache(REPO_ROOT);
+        res.json({ success: true, runMs: Date.now() - t0, ...report });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+app.get('/api/selfheal/audit', (_req, res) => {
+    const last = selfheal.getLastAudit();
+    if (!last) {
+        res.json({ success: true, fresh: false, message: 'No audit yet — POST to /api/selfheal/audit to run' });
+        return;
+    }
+    res.json({ success: true, fresh: true, ...last });
+});
+app.post('/api/selfheal/suggest', async (req, res) => {
+    // Optional Gemma 4 patch suggestion for a single finding. Cheap, single hop.
+    const finding = req.body?.finding;
+    if (!finding || !finding.detail) {
+        res.status(400).json({ success: false, error: 'finding required' });
+        return;
+    }
+    try {
+        const r = await lmstudio.chatAsAgent('Kai', [
+            { role: 'system', content: 'You are Kai, CTO. Given a self-heal finding, propose a one-paragraph fix in plain text. No code blocks. Under 80 words.' },
+            { role: 'user', content: `Finding (${finding.kind}, ${finding.severity}) at ${finding.file}:${finding.line}\n${finding.detail}` },
+        ], { taskType: 'concept', temperature: 0.3, max_tokens: 800 });
+        if (!r.ok) {
+            res.status(503).json({ success: false, error: r.reason });
+            return;
+        }
+        res.json({ success: true, suggestion: r.content, model: r.model, latencyMs: r.latencyMs });
+    }
+    catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 // Game development milestones - LIVE from task engine
 app.get('/api/game/milestones', (req, res) => {
@@ -515,6 +1158,30 @@ app.get('/api/agents/:name/in-progress-detail', (req, res) => {
     res.json({ success: true, agent: req.params.name, tasks: details, count: details.length });
 });
 // Live CLI log stream for an agent (client polls every 2s)
+// All-agents merged CLI feed — backs the /terminal.html page that streams
+// every agent's stdout into one timeline. Each line is tagged with agent +
+// color (from the registry) so the client can show colored output and let
+// the user toggle individual agents on/off without an extra fetch per agent.
+app.get('/api/agents/cli-log/all', (req, res) => {
+    const limitPerAgent = parseInt(req.query.limit) || 30;
+    const since = req.query.since ? Date.parse(String(req.query.since)) : 0;
+    const merged = [];
+    for (const meta of agent_registry_1.AGENT_META) {
+        const lines = taskEngine.getAgentCliLog(meta.name, limitPerAgent);
+        for (const l of lines) {
+            if (since && Date.parse(l.ts) <= since)
+                continue;
+            merged.push({ ts: l.ts, agent: meta.name, color: meta.color, avatar: meta.avatar, line: l.line, level: l.level });
+        }
+    }
+    merged.sort((a, b) => a.ts.localeCompare(b.ts));
+    res.json({
+        success: true,
+        count: merged.length,
+        lastTs: merged.length ? merged[merged.length - 1].ts : null,
+        lines: merged,
+    });
+});
 app.get('/api/agents/:name/cli-log', (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const lines = taskEngine.getAgentCliLog(req.params.name, limit);
@@ -545,11 +1212,13 @@ function readAgentPrompts() {
 app.get('/api/agents/overview', (_req, res) => {
     const prompts = readAgentPrompts();
     const tail = (s, n) => s.length > n ? s.slice(0, n) + '…' : s;
+    const throughput = lmstudio.getLastThroughput();
     const agents = agent_registry_1.AGENT_META.map(meta => {
         const prog = taskEngine.getAgentProgress?.(meta.name) || { completed: 0, inProgress: 0, currentTask: null };
         const cli = taskEngine.getAgentCliLog(meta.name, 1);
         const lastLine = cli[0];
         const persona = prompts[meta.name];
+        const tp = throughput[meta.name];
         return {
             name: meta.name,
             role: meta.role,
@@ -557,6 +1226,8 @@ app.get('/api/agents/overview', (_req, res) => {
             color: meta.color,
             kind: meta.kind,
             models: meta.models,
+            teams: meta.teams || [],
+            tools: meta.tools || [],
             status: prog.inProgress > 0 ? 'working' : (prog.currentTask ? 'queued' : 'idle'),
             currentTask: prog.currentTask || null,
             tasksCompleted: prog.completed || 0,
@@ -566,6 +1237,7 @@ app.get('/api/agents/overview', (_req, res) => {
             promptModel: persona?.model || null,
             promptGeneratedAt: persona?.generatedAt || null,
             hasPrompt: !!persona,
+            throughput: tp || null, // {tokensPerSec, model, promptTokens, completionTokens, latencyMs, ts}
         };
     });
     res.json({
@@ -575,6 +1247,50 @@ app.get('/api/agents/overview', (_req, res) => {
         promptsAvailable: Object.keys(prompts).length,
         generatedAt: new Date().toISOString(),
     });
+});
+// Live tokens-per-second per agent. Updated by lmstudio.chatAsAgent on every
+// successful real call. Empty until something has actually been measured.
+app.get('/api/agents/throughput', (_req, res) => {
+    res.json({ success: true, throughput: lmstudio.getLastThroughput() });
+});
+// Run a one-shot benchmark for every agent (or a subset). Each agent gets a
+// short identical prompt, lmstudio.chatAsAgent serves it (Kimi via CLI; the
+// rest via LM Studio with the existing fallback chain), and the resulting
+// tokens/second + which model actually served are returned. Updates the
+// in-memory throughput cache so the All-Agents page can show fresh numbers
+// without re-running. Sequential to avoid GPU contention spikes.
+app.post('/api/agents/benchmark', async (req, res) => {
+    const wanted = Array.isArray(req.body?.agents) ? req.body.agents
+        : agent_registry_1.AGENT_META.map(a => a.name);
+    const maxTokens = parseInt(req.body?.max_tokens) || 80;
+    const prompt = String(req.body?.prompt || 'Reply with this exact sentence and nothing else: BENCHMARK_OK.');
+    const results = [];
+    const t0 = Date.now();
+    for (const agent of wanted) {
+        const meta = agent_registry_1.AGENT_META.find(a => a.name === agent);
+        if (!meta) {
+            results.push({ agent, ok: false, reason: 'unknown agent' });
+            continue;
+        }
+        try {
+            const r = await lmstudio.chatAsAgent(agent, [
+                { role: 'system', content: 'You are a benchmark probe. Reply tersely.' },
+                { role: 'user', content: prompt },
+            ], { taskType: 'cheap', temperature: 0.1, max_tokens: maxTokens });
+            if (r.ok) {
+                const tt = lmstudio.getLastThroughput()[agent];
+                results.push({ agent, ok: true, model: r.model, tokensPerSec: tt?.tokensPerSec ?? 0,
+                    promptTokens: tt?.promptTokens, completionTokens: tt?.completionTokens, latencyMs: r.latencyMs });
+            }
+            else {
+                results.push({ agent, ok: false, reason: r.reason });
+            }
+        }
+        catch (e) {
+            results.push({ agent, ok: false, reason: e.message });
+        }
+    }
+    res.json({ success: true, totalMs: Date.now() - t0, results });
 });
 // Single-agent zoom-in: full persona prompt + recent activity
 app.get('/api/agents/:name/prompt', (req, res) => {
@@ -663,90 +1379,6 @@ app.get('/api/commits/hourly', (req, res) => {
 app.get('/api/commits/recent', (req, res) => {
     const limit = parseInt(req.query.limit) || 30;
     res.json({ success: true, commits: commitsTracker.getRecentCommits(limit) });
-});
-// Slag carry-over — Roblox players move their slag stockpile to the web
-// build by submitting a screenshot. Manual review (with caps) until the
-// OCR enrichment pass is wired. See src/migration/slag-carryover.ts.
-app.post('/api/migration/slag/claim', (req, res) => {
-    const r = slagCarryover.submit({
-        roblox_username: String(req.body?.roblox_username || ''),
-        web_username: String(req.body?.web_username || ''),
-        claimed_amount: Number(req.body?.claimed_amount),
-        screenshot_base64: String(req.body?.screenshot_base64 || ''),
-    });
-    if (!r.ok) {
-        res.status(400).json({ success: false, error: r.error });
-        return;
-    }
-    // Don't echo the path on disk — the reviewer dashboard fetches the image
-    // through GET /screenshot. Submitter only needs id + status.
-    const { screenshot_path: _omit, ...safe } = r.claim;
-    res.json({ success: true, claim: safe });
-});
-app.get('/api/migration/slag/claims', (req, res) => {
-    const filter = {};
-    if (req.query.status)
-        filter.status = String(req.query.status);
-    if (req.query.roblox_username)
-        filter.roblox_username = String(req.query.roblox_username);
-    // Trim screenshot_path from the listing response — it's a server-side path.
-    const claims = slagCarryover.list(filter).map(({ screenshot_path: _, ...rest }) => rest);
-    res.json({ success: true, claims });
-});
-app.get('/api/migration/slag/summary', (req, res) => {
-    res.json({ success: true, ...slagCarryover.summary() });
-});
-// Reviewer-only mutations — same X-Approver-from-localhost gate as the
-// commercialization queue. Replace with authMiddleware.requireRole when
-// routes are reorganized.
-function privilegedReviewer(req) {
-    const ip = String(req.ip || '');
-    const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
-    if (!isLocal)
-        return null;
-    const who = String(req.header('x-approver') || '').trim();
-    return who || null;
-}
-app.post('/api/migration/slag/claims/:id/approve', (req, res) => {
-    const who = privilegedReviewer(req);
-    if (!who) {
-        res.status(403).json({ success: false, error: 'approval requires X-Approver header from localhost' });
-        return;
-    }
-    const r = slagCarryover.approve(req.params.id, who, req.body?.notes);
-    if (!r.ok) {
-        res.status(400).json({ success: false, error: r.error });
-        return;
-    }
-    res.json({ success: true, claim: r.claim });
-});
-app.post('/api/migration/slag/claims/:id/reject', (req, res) => {
-    const who = privilegedReviewer(req);
-    if (!who) {
-        res.status(403).json({ success: false, error: 'rejection requires X-Approver header from localhost' });
-        return;
-    }
-    const r = slagCarryover.reject(req.params.id, who, req.body?.notes);
-    if (!r.ok) {
-        res.status(400).json({ success: false, error: r.error });
-        return;
-    }
-    res.json({ success: true, claim: r.claim });
-});
-// Stream the stored screenshot (PNG) so the reviewer dashboard can show it.
-// Same localhost-only gate as approve/reject.
-app.get('/api/migration/slag/claims/:id/screenshot', (req, res) => {
-    if (!privilegedReviewer(req)) {
-        res.status(403).json({ success: false, error: 'screenshot view requires X-Approver header from localhost' });
-        return;
-    }
-    const r = slagCarryover.readScreenshot(req.params.id);
-    if (!r.ok) {
-        res.status(404).json({ success: false, error: r.error });
-        return;
-    }
-    res.setHeader('Content-Type', 'image/png');
-    res.send(r.bytes);
 });
 // Domain progression tracks (chemical engineering, quantum computing, ...).
 // Content lives in public/assets/tracks/*.json so writers can edit without
@@ -908,9 +1540,9 @@ if (false) {
                 role: 'CTO',
                 avatar: '⚡',
                 tasks: [
-                    { id: 'bl-1', title: 'MOLGANG-6.1: Kafka Integration', status: 'in-progress', priority: 'critical', description: 'Full Kafka message queue integration with producer/consumer pipelines. Setting up 7 topics: agent.tasks, agent.results, model.requests, model.responses, lightrag.updates, game.events, system.alerts.', sprint: 'week1', estimated_hours: 8, started_at: new Date(Date.now() - 5400000).toISOString(), progress: 65 },
-                    { id: 'bl-2', title: 'MOLGANG-6.2: Redis Clustering', status: 'in-progress', priority: 'high', description: 'Redis cluster configuration for high-availability caching. Configure ioredis with sentinel failover for 99.9% cache availability.', sprint: 'week1', estimated_hours: 6, started_at: new Date(Date.now() - 3600000).toISOString(), progress: 40 },
-                    { id: 'bl-3', title: 'MOLGANG-6.3: Kubernetes Deployment', status: 'completed', priority: 'high', description: 'K8s manifests and production deployment pipeline. Multi-stage Docker builds, GPU support, Prometheus monitoring.', sprint: 'week1', estimated_hours: 10, completed_at: new Date(Date.now() - 86400000).toISOString() },
+                    { id: 'bl-1', title: 'PLATFORM-6.1: Kafka Integration', status: 'in-progress', priority: 'critical', description: 'Full Kafka message queue integration with producer/consumer pipelines. Setting up 7 topics: agent.tasks, agent.results, model.requests, model.responses, lightrag.updates, game.events, system.alerts.', sprint: 'week1', estimated_hours: 8, started_at: new Date(Date.now() - 5400000).toISOString(), progress: 65 },
+                    { id: 'bl-2', title: 'PLATFORM-6.2: Redis Clustering', status: 'in-progress', priority: 'high', description: 'Redis cluster configuration for high-availability caching. Configure ioredis with sentinel failover for 99.9% cache availability.', sprint: 'week1', estimated_hours: 6, started_at: new Date(Date.now() - 3600000).toISOString(), progress: 40 },
+                    { id: 'bl-3', title: 'PLATFORM-6.3: Kubernetes Deployment', status: 'completed', priority: 'high', description: 'K8s manifests and production deployment pipeline. Multi-stage Docker builds, GPU support, Prometheus monitoring.', sprint: 'week1', estimated_hours: 10, completed_at: new Date(Date.now() - 86400000).toISOString() },
                     { id: 'kai-4', title: 'Neo4j connection pooling', status: 'in-progress', priority: 'medium', description: 'Fix LightRAG connection drops after 30min idle. Implement connection pool with keepalive and auto-reconnect.', sprint: 'week2', estimated_hours: 4, started_at: new Date(Date.now() - 1200000).toISOString(), progress: 25 },
                 ],
                 completed: 19,
@@ -937,7 +1569,7 @@ if (false) {
                     { id: 'bl-5', title: 'Zone Visual Design', status: 'in-progress', priority: 'high', description: 'Visual assets and UI design for all game zones. Deep Ocean (bioluminescent), Crystal Caves (prismatic), Atmosphere (aurora), Upload Zone (digital), Tournament Arena (competitive).', sprint: 'week2', estimated_hours: 16, started_at: new Date(Date.now() - 10800000).toISOString(), progress: 45 },
                     { id: 'mira-2', title: 'Agent status card icons (SVG)', status: 'in-progress', priority: 'high', description: 'Design unique SVG icons for each agent: Fill crown, Kai lightning, Zip terminal, Mira palette, Luna star. Animated idle/active/busy states.', sprint: 'week2', estimated_hours: 4, started_at: new Date(Date.now() - 5400000).toISOString(), progress: 70 },
                     { id: 'mira-3', title: 'Leaderboard visualization', status: 'pending', priority: 'medium', description: 'Design animated leaderboard with rank transitions, sparkline performance history, and agent avatar integration.', sprint: 'week3', estimated_hours: 6 },
-                    { id: 'mira-4', title: 'MOLGANG brand style guide', status: 'pending', priority: 'medium', description: 'Comprehensive brand guide: color palette, typography, iconography, motion principles, accessibility guidelines.', sprint: 'week3', estimated_hours: 8 },
+                    { id: 'mira-4', title: 'Platform brand style guide', status: 'pending', priority: 'medium', description: 'Comprehensive brand guide: color palette, typography, iconography, motion principles, accessibility guidelines.', sprint: 'week3', estimated_hours: 8 },
                 ],
                 completed: 7,
                 active: 2,
@@ -965,9 +1597,9 @@ if (false) {
         const backlogPersonRes = require('http').request({ hostname: 'localhost', port: process.env.PORT || 3100, path: '/api/backlog/per-person', method: 'GET' });
         // Use a simpler static lookup
         const itemDb = {
-            'bl-1': { id: 'bl-1', title: 'MOLGANG-6.1: Kafka Integration', priority: 'high', assigned_to: 'Kai', status: 'in-progress', sprint: 'week1', description: 'Full Kafka message queue integration with producer/consumer pipelines. Setting up 7 topics for distributed agent communication.', estimated_hours: 8, progress: 65, subtasks: ['Configure KafkaJS client', 'Create producer module', 'Create consumer module', 'Setup orchestrator', 'Test message routing', 'Deploy to staging'] },
-            'bl-2': { id: 'bl-2', title: 'MOLGANG-6.2: Redis Clustering', priority: 'high', assigned_to: 'Kai', status: 'in-progress', sprint: 'week1', description: 'Redis cluster configuration for high-availability caching with sentinel failover.', estimated_hours: 6, progress: 40, subtasks: ['Configure ioredis cluster', 'Setup sentinel nodes', 'Implement cache invalidation', 'Load test cluster'] },
-            'bl-3': { id: 'bl-3', title: 'MOLGANG-6.3: Kubernetes Deployment', priority: 'high', assigned_to: 'Kai', status: 'completed', sprint: 'week1', description: 'K8s manifests and production deployment pipeline with GPU support.', estimated_hours: 10, progress: 100, subtasks: ['Write k8s manifests', 'Multi-stage Dockerfile', 'GPU deployment config', 'Prometheus monitoring', 'Health check probes'] },
+            'bl-1': { id: 'bl-1', title: 'PLATFORM-6.1: Kafka Integration', priority: 'high', assigned_to: 'Kai', status: 'in-progress', sprint: 'week1', description: 'Full Kafka message queue integration with producer/consumer pipelines. Setting up 7 topics for distributed agent communication.', estimated_hours: 8, progress: 65, subtasks: ['Configure KafkaJS client', 'Create producer module', 'Create consumer module', 'Setup orchestrator', 'Test message routing', 'Deploy to staging'] },
+            'bl-2': { id: 'bl-2', title: 'PLATFORM-6.2: Redis Clustering', priority: 'high', assigned_to: 'Kai', status: 'in-progress', sprint: 'week1', description: 'Redis cluster configuration for high-availability caching with sentinel failover.', estimated_hours: 6, progress: 40, subtasks: ['Configure ioredis cluster', 'Setup sentinel nodes', 'Implement cache invalidation', 'Load test cluster'] },
+            'bl-3': { id: 'bl-3', title: 'PLATFORM-6.3: Kubernetes Deployment', priority: 'high', assigned_to: 'Kai', status: 'completed', sprint: 'week1', description: 'K8s manifests and production deployment pipeline with GPU support.', estimated_hours: 10, progress: 100, subtasks: ['Write k8s manifests', 'Multi-stage Dockerfile', 'GPU deployment config', 'Prometheus monitoring', 'Health check probes'] },
             'bl-4': { id: 'bl-4', title: 'Deep Ocean Reactor Zone', priority: 'medium', assigned_to: 'Zip', status: 'in-progress', sprint: 'week2', description: 'Implement Deep Ocean zone: chemistry crafting, underwater physics, reactor chain-reaction mini-game.', estimated_hours: 12, progress: 55, subtasks: ['Zone layout & spawning', 'Chemistry crafting system', 'Underwater physics engine', 'Reactor puzzle logic', 'NPC dialogue system', 'Zone rewards'] },
             'bl-5': { id: 'bl-5', title: 'Zone Visual Design', priority: 'medium', assigned_to: 'Mira', status: 'in-progress', sprint: 'week2', description: 'Visual assets for all 5 game zones: Deep Ocean, Crystal Caves, Atmosphere, Upload Zone, Tournament Arena.', estimated_hours: 16, progress: 45, subtasks: ['Deep Ocean bioluminescent theme', 'Crystal Caves prismatic assets', 'Atmosphere aurora effects', 'Upload Zone digital grid', 'Tournament Arena competitive stage'] },
             'bl-6': { id: 'bl-6', title: 'Weather System', priority: 'medium', assigned_to: 'Luna', status: 'in-progress', sprint: 'week2', description: 'Dynamic weather with particle rain/snow, volumetric fog, day/night cycle, wind physics.', estimated_hours: 10, progress: 50, subtasks: ['Particle system (rain/snow)', 'Volumetric fog shader', 'Day/night cycle', 'Wind physics for vegetation', 'Weather transition blending'] },
@@ -981,7 +1613,7 @@ if (false) {
             'kai-4': { id: 'kai-4', title: 'Neo4j connection pooling', priority: 'medium', assigned_to: 'Kai', status: 'in-progress', sprint: 'week2', description: 'Fix LightRAG connection drops after 30min idle. Connection pool with keepalive and auto-reconnect.', estimated_hours: 4, progress: 25, subtasks: ['Connection pool config', 'Keepalive heartbeat', 'Auto-reconnect logic', 'Integration test'] },
             'mira-2': { id: 'mira-2', title: 'Agent status card icons (SVG)', priority: 'high', assigned_to: 'Mira', status: 'in-progress', sprint: 'week2', description: 'SVG icons for each agent with animated idle/active/busy states.', estimated_hours: 4, progress: 70, subtasks: ['Fill crown icon', 'Kai lightning icon', 'Zip terminal icon', 'Mira palette icon', 'Luna star icon', 'Animation states'] },
             'mira-3': { id: 'mira-3', title: 'Leaderboard visualization', priority: 'medium', assigned_to: 'Mira', status: 'pending', sprint: 'week3', description: 'Animated leaderboard with rank transitions and sparkline history.', estimated_hours: 6, progress: 0, subtasks: ['Rank transition animations', 'Sparkline charts', 'Avatar integration'] },
-            'mira-4': { id: 'mira-4', title: 'MOLGANG brand style guide', priority: 'medium', assigned_to: 'Mira', status: 'pending', sprint: 'week3', description: 'Color palette, typography, iconography, motion principles, accessibility.', estimated_hours: 8, progress: 0, subtasks: ['Color system', 'Typography scale', 'Icon library', 'Motion principles'] },
+            'mira-4': { id: 'mira-4', title: 'Platform brand style guide', priority: 'medium', assigned_to: 'Mira', status: 'pending', sprint: 'week3', description: 'Color palette, typography, iconography, motion principles, accessibility.', estimated_hours: 8, progress: 0, subtasks: ['Color system', 'Typography scale', 'Icon library', 'Motion principles'] },
             'luna-3': { id: 'luna-3', title: 'Shader library', priority: 'medium', assigned_to: 'Luna', status: 'pending', sprint: 'week3', description: 'Reusable GLSL shaders: water, crystal, energy, holographic, portal. WebGL 2.0 fallback.', estimated_hours: 8, progress: 0, subtasks: ['Water surface shader', 'Crystal refraction', 'Energy flow effect', 'Holographic UI', 'Portal warp'] },
         };
         const itemId = req.params.itemId;
@@ -1026,7 +1658,7 @@ if (false) {
                 total: 22,
                 progress: 88,
                 focus: 'Kafka integration, Redis clustering, Neo4j pooling',
-                currentTask: 'MOLGANG-6.1: Kafka Integration'
+                currentTask: 'PLATFORM-6.1: Kafka Integration'
             },
             'Zip': {
                 completed: 16,
@@ -1124,7 +1756,6 @@ app.get('/api/metrics', (req, res) => {
         systems: {
             neo4j: { status: 'operational', uptime: '99.9%' },
             redis: { status: 'operational', uptime: '99.8%' },
-            molgang: { status: 'operational', endpoints: 12 },
             auth: { status: 'operational', users: 5 }
         }
     };
@@ -1234,7 +1865,7 @@ app.get('/dashboard-static', (req, res) => {
     <div class="container">
         <header>
             <h1>🚀 VirtualPC</h1>
-            <p class="subtitle">Autonomous Agent System - MOLGANG Web Phase 5 Development</p>
+            <p class="subtitle">Autonomous Agent System - VirtualPC Platform</p>
         </header>
 
         <div class="status-grid">
@@ -1327,7 +1958,7 @@ app.get('/dashboard-static', (req, res) => {
         </div>
 
         <div class="footer">
-            <p>VirtualPC Autonomous Agent System • All systems operational • Ready for MOLGANG Phase 5</p>
+            <p>VirtualPC Autonomous Agent System • All systems operational • All systems operational</p>
         </div>
     </div>
 
@@ -1358,6 +1989,50 @@ app.get('/dashboard-static', (req, res) => {
 </html>
   `);
 });
+// Kafka shared producer + health endpoint. Promoted from dev-only to a
+// production wire in May 2026: chatAsAgent and addTask now best-effort-
+// publish events to model.responses, agent.tasks, agent.results.
+const shared_1 = require("./integrations/kafka/shared");
+const audit_consumer_1 = require("./integrations/kafka/audit-consumer");
+(0, shared_1.ensureSharedProducer)().catch(() => { });
+// Boot the audit + cost consumer. Idempotent; if Kafka is offline it
+// logs a warning and stays dormant — next service restart re-attempts.
+(0, audit_consumer_1.startAuditConsumer)().catch(() => { });
+app.get('/api/kafka/health', (_req, res) => {
+    res.json({
+        success: true,
+        producer_connected: (0, shared_1.isKafkaConnected)(),
+        audit_consumer_running: (0, audit_consumer_1.isAuditConsumerRunning)(),
+        brokers: (0, shared_1.getKafkaBrokers)(),
+        note: (0, shared_1.isKafkaConnected)()
+            ? 'Producer connected. chatAsAgent + addTask + setTaskStatus(completed) publish events to model.responses / agent.tasks / agent.results.'
+            : 'Producer not connected. Bring brokers up via: docker compose -f deploy/docker-compose.yml up -d zookeeper kafka',
+    });
+});
+// Cost dashboard fed by the audit consumer subscribing to model.responses.
+// Returns running totals (lifetime + today + per-agent + per-model + per-pair).
+app.get('/api/kafka/cost', (_req, res) => {
+    const s = (0, audit_consumer_1.getCostState)();
+    // Sort the agent + model maps by spend descending so the dashboard
+    // doesn't have to do that work client-side.
+    const sortByCost = (m) => Object.entries(m).sort((a, b) => b[1].cost_usd - a[1].cost_usd)
+        .map(([k, v]) => ({ key: k, ...v }));
+    res.json({
+        success: true,
+        total: s.total,
+        by_agent: sortByCost(s.byAgent),
+        by_model: sortByCost(s.byModel),
+        by_pair: sortByCost(s.byPair).slice(0, 50),
+        by_day: Object.entries(s.byDay).sort().map(([d, v]) => ({ date: d, ...v })),
+        last_flushed: s.lastFlushed,
+    });
+});
+// Live tail of the audit JSONL — every event the producer emitted across
+// every topic. Useful for debugging "did my publish actually fire?".
+app.get('/api/kafka/audit', (req, res) => {
+    const limit = Math.min(500, parseInt(String(req.query.limit || '50')) || 50);
+    res.json({ success: true, count: limit, tail: (0, audit_consumer_1.readAuditTail)(limit) });
+});
 // Health check
 app.get('/health', (req, res) => {
     res.json({
@@ -1372,18 +2047,41 @@ app.get('/health', (req, res) => {
         }
     });
 });
-// Health check alias for React SPA
-app.get('/api/health', (req, res) => {
+// Health check alias for React SPA — real status of every component the
+// dashboard cares about. Does NOT cost an LLM call (just probes liveness).
+app.get('/api/health', async (_req, res) => {
+    // LightRAG: read whatever was stashed at startup.
+    const lr = app.locals.lightrag;
+    const lightragOk = lr?.isConnected?.() ?? false;
+    // Kafka: producer connection state from the shared singleton.
+    let kafkaOk = false;
+    try {
+        const { isKafkaConnected } = require('./integrations/kafka/shared');
+        kafkaOk = !!isKafkaConnected();
+    }
+    catch { /* shared.ts not loaded */ }
+    // LM Studio: cheap models-list probe (cached 15 s upstream).
+    let modelsLoaded = 0;
+    try {
+        const h = await lmstudio.healthCheck();
+        modelsLoaded = h.modelsLoaded || 0;
+    }
+    catch { /* */ }
+    // Process uptime + memory.
+    const uptimeSec = Math.round(process.uptime());
+    const mem = process.memoryUsage();
     res.json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
+        uptime_sec: uptimeSec,
+        memory_mb: { rss: Math.round(mem.rss / 1024 / 1024), heap: Math.round(mem.heapUsed / 1024 / 1024) },
         services: {
             api: 'operational',
-            lightrag: 'operational',
-            kafka: 'dev-mode',
-            redis: 'operational'
-        }
+            lightrag: lightragOk ? 'operational' : 'offline (graceful fallback)',
+            kafka: kafkaOk ? 'operational' : 'offline (events not persisted)',
+            lm_studio: modelsLoaded > 0 ? `operational (${modelsLoaded} models loaded)` : 'no models loaded',
+        },
     });
 });
 // Task status endpoint (used by static dashboard) - LIVE
@@ -1414,6 +2112,128 @@ async function initialize() {
         });
         await lightrag.connect();
         logger_1.default.info('✓ LightRAG connected');
+        // 1a. Ingest the shared asset registry (molgang-roblox + molgang-web).
+        //     Idempotent. Silently noops when LightRAG is offline. The
+        //     /api/assets/* surface below queries this graph live.
+        try {
+            const { ingestAssetRegistry } = await Promise.resolve().then(() => __importStar(require('./integrations/lightrag/asset-graph')));
+            const r = await ingestAssetRegistry(lightrag);
+            if (r.offline)
+                logger_1.default.warn('asset-graph: LightRAG offline — skip ingest');
+            else
+                logger_1.default.info(`✓ asset-graph: ${r.ingested} assets indexed (${r.mirrored} mirrored, ${r.orphan} orphan)`);
+        }
+        catch (e) {
+            logger_1.default.warn(`asset-graph init failed: ${e.message}`);
+        }
+        // 1aa. Bootstrap the corpus vector index so corpus.search works on
+        //      the very first call after a fresh DB. Idempotent.
+        try {
+            await corpus.bootstrapIndex(lightrag);
+            logger_1.default.info('✓ corpus: vector index bootstrapped');
+        }
+        catch (e) {
+            logger_1.default.warn(`corpus bootstrap failed: ${e.message}`);
+        }
+        // 1b. Ingest governance + wiki entries so the knowledge graph has
+        //     the full lineage layer (term → governance → source). Same
+        //     graceful-offline behavior as asset-graph.
+        try {
+            const gg = await Promise.resolve().then(() => __importStar(require('./integrations/lightrag/governance-graph')));
+            const govR = await gg.ingestGovernanceState(lightrag);
+            const wikR = await gg.ingestWikiState(lightrag);
+            if (govR.offline)
+                logger_1.default.warn('governance-graph: LightRAG offline — skip ingest');
+            else
+                logger_1.default.info(`✓ governance-graph: ${govR.ingested} governance + ${wikR.ingested} wiki nodes ingested`);
+            // Stash the hooks on the global app so the write routes can call them.
+            app.locals.governanceGraphHooks = gg;
+            app.locals.lightrag = lightrag;
+        }
+        catch (e) {
+            logger_1.default.warn(`governance-graph init failed: ${e.message}`);
+        }
+        // Asset query endpoints — read straight from the LightRAG graph so
+        // designers (Mira, Luna) can ask "which 3D models from Roblox are not
+        // yet ported to web?" without scanning the filesystem each time.
+        const { queryAssets, getCategorySummary } = await Promise.resolve().then(() => __importStar(require('./integrations/lightrag/asset-graph')));
+        app.get('/api/assets/categories', async (_req, res) => {
+            try {
+                res.json({ success: true, lightrag_connected: lightrag.isConnected(), categories: await getCategorySummary(lightrag) });
+            }
+            catch (e) {
+                res.status(500).json({ success: false, error: e.message });
+            }
+        });
+        app.get('/api/assets', async (req, res) => {
+            try {
+                const assets = await queryAssets(lightrag, {
+                    category: req.query.category ? String(req.query.category) : undefined,
+                    origin: req.query.origin ? String(req.query.origin) : undefined,
+                    orphan_only: req.query.orphan === '1' || req.query.orphan === 'true',
+                    limit: parseInt(String(req.query.limit || '50')) || 50,
+                });
+                res.json({ success: true, lightrag_connected: lightrag.isConnected(), count: assets.length, assets });
+            }
+            catch (e) {
+                res.status(500).json({ success: false, error: e.message });
+            }
+        });
+        app.get('/api/assets/orphans', async (_req, res) => {
+            try {
+                const orphans = await queryAssets(lightrag, { orphan_only: true, limit: 200 });
+                res.json({ success: true, count: orphans.length, orphans });
+            }
+            catch (e) {
+                res.status(500).json({ success: false, error: e.message });
+            }
+        });
+        // Stream a single asset file by registry id. The three.js viewer
+        // (Atlas's queued task) consumes this. Sandboxed to the three known
+        // storage roots — anything outside `roblox-repo`, `web-repo`, `eds2`
+        // is rejected so a path-traversal payload can't escape.
+        app.get('/api/assets/file/:id', async (req, res) => {
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const REGISTRY_PATH = '/media/knight2/EDS2/projects/molgang-web/shared/asset-registry.json';
+                if (!fs.existsSync(REGISTRY_PATH)) {
+                    res.status(503).json({ success: false, error: 'registry not built' });
+                    return;
+                }
+                const reg = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
+                const asset = (reg.assets || []).find((a) => a.id === req.params.id);
+                if (!asset || !asset.abs_path) {
+                    res.status(404).json({ success: false, error: 'asset not found' });
+                    return;
+                }
+                // Allowlist: file must live under one of the three known roots.
+                const roots = Object.values(reg.storage_roots || {});
+                const real = path.resolve(asset.abs_path);
+                if (!roots.some(r => real.startsWith(path.resolve(r) + path.sep) || real === path.resolve(r))) {
+                    res.status(403).json({ success: false, error: 'asset outside known storage roots' });
+                    return;
+                }
+                if (!fs.existsSync(real)) {
+                    res.status(404).json({ success: false, error: 'file missing on disk' });
+                    return;
+                }
+                // Set sensible content-type by extension. Browsers + three.js loaders
+                // both work fine without it but the explicit header helps caches.
+                const mime = {
+                    '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json',
+                    '.fbx': 'application/octet-stream', '.obj': 'text/plain',
+                    '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+                    '.svg': 'image/svg+xml', '.webp': 'image/webp',
+                };
+                res.setHeader('Content-Type', mime[asset.ext] || 'application/octet-stream');
+                res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day; assets don't change often
+                fs.createReadStream(real).pipe(res);
+            }
+            catch (e) {
+                res.status(500).json({ success: false, error: e.message });
+            }
+        });
         // 1b. Initialize Agent API Wrapper (with caching + rate limiting)
         logger_1.default.info('📦 Initializing Agent API Wrapper...');
         const agentAPI = new agent_api_1.AgentAPIWrapper(lightrag);
@@ -1468,6 +2288,10 @@ async function initialize() {
         logger_1.default.info('📋 Initializing Autonomous Session Manager...');
         const sessionManager = new autonomous_session_manager_1.default();
         logger_1.default.info('✓ Autonomous Session Manager ready');
+        // 5d. Initialize 007 (rogue-agent watch)
+        logger_1.default.info('🎯 Initializing 007 — Rogue Agent Watch...');
+        // guardrailsAgent.start();
+        logger_1.default.info('✓ 007 active and monitoring');
         // 5c. Initialize Authentication System (employee auth + roles)
         logger_1.default.info('🔐 Initializing Authentication System...');
         const authSystem = new auth_system_1.default();
@@ -1481,6 +2305,15 @@ async function initialize() {
         (0, auth_routes_1.default)(app, authSystem, authMiddleware);
         (0, audit_routes_1.default)(app, ceoAuditLogger, authMiddleware);
         (0, specialist_routes_1.default)(app, specialistDashboards, authMiddleware);
+        // 5e-bis. Audit log retention (purge events older than the window; auto unless AUDIT_RETENTION_AUTO=false)
+        const auditRetention = new audit_retention_1.AuditRetentionScheduler(ceoAuditLogger, {
+            retentionDays: parseInt(process.env.AUDIT_RETENTION_DAYS || '90'),
+            intervalMs: parseInt(process.env.AUDIT_RETENTION_INTERVAL_HOURS || '24') * 60 * 60 * 1000,
+            runOnStart: (process.env.AUDIT_RETENTION_RUN_ON_START || 'false').toLowerCase() === 'true',
+        });
+        if ((process.env.AUDIT_RETENTION_AUTO || 'true').toLowerCase() === 'true') {
+            auditRetention.start();
+        }
         // 5f. Setup GitHub sync (auto-sync disabled unless GITHUB_SYNC_AUTO=true)
         const githubSync = new github_sync_1.default({
             remoteUrl: process.env.GITHUB_SYNC_REMOTE || '',
@@ -1497,7 +2330,7 @@ async function initialize() {
         const securityDashboard = new securityDashboard_1.SecurityDashboard(authSystem, ceoAuditLogger);
         (0, security_routes_1.default)(app, securityDashboard, authMiddleware);
         // 5h. Quality dashboard (CEO view of QA gate reports — mirrors the
-        // security dashboard pattern but reads molgang-roblox/build/qa/*.json
+        // security dashboard pattern but reads <project>/build/qa/*.json
         // produced by the four QA tools defined in QUALITY_STANDARDS.md).
         const qualityDashboard = new qualityDashboard_1.QualityDashboard();
         (0, quality_routes_1.default)(app, qualityDashboard, authMiddleware);
@@ -1515,15 +2348,23 @@ async function initialize() {
         setupWebSocketHandlers(io, { lightrag, kafka });
         // 6b. Start vitals monitor (if GPU_ENABLED). Spawns vitals-monitor.sh
         //     as a child so the JSONL keeps updating. Routes wired below.
+        //
+        // Sample interval: 5s (was 30s). nvtop refreshes ~1-2s, so 30s caused
+        // the dashboard to lag visibly behind a side-by-side terminal. 5s cuts
+        // the gap to within one dashboard refresh tick. JSONL grows 6× faster
+        // (~17k entries/24h vs ~2.9k) — still trivial vs available disk.
+        // Override via VITALS_INTERVAL_SEC env var.
         const vitals = new vitals_service_1.default();
+        const vitalsInterval = parseInt(process.env.VITALS_INTERVAL_SEC || '5');
         if (vitals.isGpuEnabled())
-            vitals.startMonitor(30);
+            vitals.startMonitor(vitalsInterval);
         const inferenceAudit = new inference_audit_1.default();
         const selfRepair = new self_repair_1.default(inferenceAudit);
         if (vitals.isGpuEnabled() && (process.env.SELF_REPAIR_ENABLED ?? 'true').toLowerCase() !== 'false') {
             selfRepair.start();
         }
         setupVitalsRoutes(app, vitals, inferenceAudit, selfRepair);
+        // setupGuardrailsRoutes(app); // TODO: implement guardrails agent module
         // 7. Start server
         server.listen(PORT, () => {
             logger_1.default.info(`
@@ -1538,6 +2379,68 @@ async function initialize() {
 ╚════════════════════════════════════════════════╝
       `);
         });
+        // Graceful shutdown — without this, the Express + Socket.IO + Kafka
+        // sockets keep the event loop alive after SIGTERM, so systemd waits
+        // the full 90 s default before SIGKILLing. Now: stop accepting new
+        // connections, flush every dirty store, disconnect Kafka + Neo4j,
+        // exit. Force-exit at 8s so the unit can restart cleanly.
+        let shuttingDown = false;
+        async function shutdown(sig) {
+            if (shuttingDown)
+                return;
+            shuttingDown = true;
+            logger_1.default.info(`▶ ${sig} received — graceful shutdown`);
+            const forceExit = setTimeout(() => {
+                logger_1.default.warn('graceful shutdown took >8s — force-exit');
+                process.exit(1);
+            }, 8000);
+            try {
+                // Stop accepting new HTTP connections (existing in-flight ones still complete).
+                await new Promise(resolve => server.close(() => resolve()));
+                // Flush every dirty in-memory store synchronously.
+                try {
+                    taskEngine.flushSync?.();
+                }
+                catch { /* */ }
+                try {
+                    governance.flushSync();
+                }
+                catch { /* */ }
+                try {
+                    wiki.flushSync();
+                }
+                catch { /* */ }
+                try {
+                    scrum.flushSync();
+                }
+                catch { /* */ }
+                try {
+                    forum.flushSync();
+                }
+                catch { /* */ }
+                try {
+                    kami.flushSync();
+                }
+                catch { /* */ }
+                // Disconnect Kafka producer (consumer disconnect is best-effort).
+                try {
+                    const { ensureSharedProducer } = require('./integrations/kafka/shared');
+                    const p = await ensureSharedProducer();
+                    await p?.disconnect?.();
+                }
+                catch { /* */ }
+                clearTimeout(forceExit);
+                logger_1.default.info('✓ shutdown complete');
+                process.exit(0);
+            }
+            catch (e) {
+                logger_1.default.warn(`shutdown error: ${e.message}`);
+                clearTimeout(forceExit);
+                process.exit(1);
+            }
+        }
+        process.on('SIGTERM', () => shutdown('SIGTERM'));
+        process.on('SIGINT', () => shutdown('SIGINT'));
     }
     catch (error) {
         logger_1.default.error('❌ Initialization failed:', error);
@@ -1745,8 +2648,8 @@ function setupRoutes(app, components) {
             res.json({
                 success: true,
                 issues: [
-                    { id: 'iss-1', title: 'Neo4j connection timeout', description: 'LightRAG connection drops after 30min idle. Need connection pooling or keepalive configuration.', severity: 'high', assigned_to: 'Kai (CTO)', status: 'in_progress', blocking_task: 'MOLGANG-6.1', created_at: now, updated_at: now },
-                    { id: 'iss-2', title: 'Kafka topic creation race condition', description: 'When multiple agents try to create the same topic simultaneously, only one succeeds. Need pre-creation or locking.', severity: 'medium', assigned_to: 'Kai (CTO)', status: 'open', blocking_task: 'MOLGANG-6.1', created_at: now, updated_at: now }
+                    { id: 'iss-1', title: 'Neo4j connection timeout', description: 'LightRAG connection drops after 30min idle. Need connection pooling or keepalive configuration.', severity: 'high', assigned_to: 'Kai (CTO)', status: 'in_progress', blocking_task: 'PLATFORM-6.1', created_at: now, updated_at: now },
+                    { id: 'iss-2', title: 'Kafka topic creation race condition', description: 'When multiple agents try to create the same topic simultaneously, only one succeeds. Need pre-creation or locking.', severity: 'medium', assigned_to: 'Kai (CTO)', status: 'open', blocking_task: 'PLATFORM-6.1', created_at: now, updated_at: now }
                 ],
                 total: 2,
                 open: 1,
@@ -1774,7 +2677,7 @@ function setupRoutes(app, components) {
                 },
                 agents: {
                     fill: { status: 'idle', tasks_completed: 8, current_task: 'Strategic planning' },
-                    kai: { status: 'working', tasks_completed: 18, current_task: 'MOLGANG-6.1: Kafka Integration' },
+                    kai: { status: 'working', tasks_completed: 18, current_task: 'PLATFORM-6.1: Kafka Integration' },
                     zip: { status: 'working', tasks_completed: 15, current_task: 'Deep Ocean Reactor Zone' },
                     mira: { status: 'working', tasks_completed: 6, current_task: 'VirtualPC Dashboard Design' },
                     luna: { status: 'idle', tasks_completed: 11, current_task: 'Performance optimization' }
@@ -2512,15 +3415,19 @@ function setupRoutes(app, components) {
     });
     app.get('/api/models/config', (req, res) => {
         try {
+            // Policy (2026-06-03): every agent runs on Claude Sonnet as primary;
+            // Athena (Principal Reviewer) is the lone Opus 4.8 PR gate. Derived
+            // from the registry so the map can never drift from the roster.
+            const agents = {};
+            for (const meta of agent_registry_1.AGENT_META) {
+                const primary = meta.models[0] || 'claude-sonnet';
+                const fallback = meta.models.find(m => m !== primary) || 'claude-opus';
+                agents[meta.name.toLowerCase()] = { primary, fallback };
+            }
             const config = {
                 success: true,
-                agents: {
-                    fill: { primary: 'qwen-27b', fallback: 'claude-opus' },
-                    kai: { primary: 'qwen-27b', fallback: 'claude-opus' },
-                    zip: { primary: 'qwen-14b', fallback: 'claude-sonnet' },
-                    mira: { primary: 'phi-4-15b', fallback: 'claude-opus' },
-                    luna: { primary: 'deepseek-r1-8b', fallback: 'claude-sonnet' }
-                },
+                policy: 'sonnet-everywhere; Athena=opus reviewer',
+                agents,
                 tier1_models: ['qwen-27b', 'qwen-14b', 'qwen-7b', 'deepseek-r1-8b', 'phi-4-15b', 'mistral-7b'],
                 tier3_models: ['claude-opus', 'claude-sonnet', 'claude-haiku'],
                 cost_optimization: {
@@ -2666,7 +3573,7 @@ function setupWebSocketHandlers(io, components) {
                     { name: 'Fill', role: 'CEO', status: 'working', currentTask: 'Strategic Planning & WBSO Coordination', tasksCompleted: 12, costUsed: 4.50 },
                     { name: 'Kai', role: 'CTO', status: 'working', currentTask: 'Kafka Optimization & Infrastructure', tasksCompleted: 18, costUsed: 8.91 },
                     { name: 'Zip', role: 'Developer', status: 'working', currentTask: 'VirtualPC Core Features', tasksCompleted: 15, costUsed: 6.75 },
-                    { name: 'Mira', role: 'Artist', status: 'working', currentTask: 'MOLGANG Asset Pipeline & UI Design', tasksCompleted: 8, costUsed: 3.60 },
+                    { name: 'Mira', role: 'Artist', status: 'working', currentTask: 'Design system v2', tasksCompleted: 8, costUsed: 3.60 },
                     { name: 'Luna', role: 'Tech Artist', status: 'working', currentTask: '3D Optimization & VR/AR Integration', tasksCompleted: 11, costUsed: 5.25 }
                 ];
                 socket.emit('agent-status-update', agents);
@@ -2738,15 +3645,40 @@ function setupVitalsRoutes(app, vitals, audit, repair) {
             return res.status(500).json({ success: false, error: e.message });
         }
     });
-    app.get('/api/vitals/gpu', async (_req, res) => {
+    app.get('/api/vitals/gpu', async (req, res) => {
         try {
             const snap = await vitals.getSnapshot();
             if (!snap)
                 return res.status(404).json({ success: false, error: 'no snapshot yet' });
+            // ?fresh=1 — bypass the cached snapshot and run nvidia-smi inline so
+            // util/mem/temp match what nvtop shows right now (cached data lags by
+            // up to one sample interval). Costs ~50 ms per call. Keeps gpu_procs
+            // from the snapshot since that requires a separate nvidia-smi call.
+            let gpus = snap.gpus;
+            let live = false;
+            if (req.query.fresh) {
+                try {
+                    const fresh = await new Promise((resolve, reject) => {
+                        const { execFile } = require('child_process');
+                        execFile('nvidia-smi', ['--query-gpu=index,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw', '--format=csv,noheader,nounits'], { timeout: 4000 }, (err, stdout) => {
+                            if (err)
+                                return reject(err);
+                            resolve(stdout.trim().split('\n').map(line => {
+                                const [i, util, mu, mt, t, p] = line.split(',').map(s => s.trim());
+                                return { i: parseInt(i), util: parseInt(util) || 0, mem_used: parseInt(mu) || 0, mem_total: parseInt(mt) || 0, temp: parseInt(t) || 0, power: parseFloat(p) || 0 };
+                            }));
+                        });
+                    });
+                    gpus = fresh;
+                    live = true;
+                }
+                catch { /* fall through to cached */ }
+            }
             return res.json({
                 success: true,
                 gpu_enabled: vitals.isGpuEnabled(),
-                gpus: snap.gpus,
+                live,
+                gpus,
                 gpu_procs: snap.gpu_procs,
                 ollama: snap.ollama,
             });
@@ -2835,6 +3767,87 @@ function setupVitalsRoutes(app, vitals, audit, repair) {
     }
     logger_1.default.info('✓ Vitals/GPU routes wired: /api/vitals, /api/vitals/history, /api/vitals/gpu, /api/vitals/inference-log, /api/vitals/repair-log, POST /api/gpu/{clean,enable,disable}, POST /api/vitals/repair-mode');
 }
+/**
+ * Guardrails — suspicious-activity monitoring + manual intervention
+ */
+// function setupGuardrailsRoutes(app: express.Express) {
+//   app.get('/api/guardrails/health', (_req, res) => {
+//     try { res.json({ success: true, data: // guardrailsAgent.getSystemHealth() }); }
+//     catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.get('/api/guardrails/alerts', (req, res) => {
+//     try {
+//       const opts: any = {};
+//       if (req.query.severity) opts.severity = String(req.query.severity);
+//       if (req.query.acknowledged !== undefined) opts.acknowledged = req.query.acknowledged === 'true';
+//       if (req.query.agent) opts.agent = String(req.query.agent);
+//       if (req.query.limit) opts.limit = parseInt(String(req.query.limit), 10);
+//       res.json({ success: true, data: // guardrailsAgent.getAlerts(opts) });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.post('/api/guardrails/alerts/:id/acknowledge', (req, res) => {
+//     try {
+//       const ok = // guardrailsAgent.acknowledgeAlert(req.params.id, String(req.body?.by || 'user'));
+//       res.json({ success: ok, message: ok ? 'acknowledged' : 'alert not found' });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.get('/api/guardrails/incidents', (req, res) => {
+//     try {
+//       const opts: any = {};
+//       if (req.query.resolved !== undefined) opts.resolved = req.query.resolved === 'true';
+//       if (req.query.agent) opts.agent = String(req.query.agent);
+//       if (req.query.limit) opts.limit = parseInt(String(req.query.limit), 10);
+//       res.json({ success: true, data: // guardrailsAgent.getIncidents(opts) });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.post('/api/guardrails/incidents/:id/resolve', (req, res) => {
+//     try {
+//       const ok = // guardrailsAgent.resolveIncident(req.params.id);
+//       res.json({ success: ok, message: ok ? 'resolved' : 'incident not found' });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.post('/api/guardrails/intervene', (req, res) => {
+//     try {
+//       const { type, targetAgent, targetTask, targetModel, reason } = req.body;
+//       if (!type || !reason) {
+//         res.status(400).json({ success: false, error: 'type and reason are required' });
+//         return;
+//       }
+//       const rec = // guardrailsAgent.intervene({
+//         type, targetAgent, targetTask, targetModel, reason,
+//         initiatedBy: 'user',
+//       });
+//       res.json({ success: rec.result !== 'failed', data: rec });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.get('/api/guardrails/interventions', (req, res) => {
+//     try {
+//       const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : undefined;
+//       res.json({ success: true, data: // guardrailsAgent.getInterventions(limit) });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.get('/api/guardrails/rules', (_req, res) => {
+//     try { res.json({ success: true, data: // guardrailsAgent.getRules() }); }
+//     catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.post('/api/guardrails/rules/:id/toggle', (req, res) => {
+//     try {
+//       const enabled = req.body?.enabled !== undefined ? Boolean(req.body.enabled) : true;
+//       const ok = // guardrailsAgent.setRuleEnabled(req.params.id, enabled);
+//       res.json({ success: ok, message: ok ? 'rule updated' : 'rule not found' });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   logger.info('✓ 007 routes wired: /api/guardrails/{health,alerts,incidents,intervene,interventions,rules}');
+// }
 // Start the system
 initialize().catch(error => {
     logger_1.default.error('Fatal error:', error);

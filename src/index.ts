@@ -65,7 +65,6 @@ import * as corpus from './integrations/corpus';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
-import { guardrailsAgent } from './guardrails/guardrails-agent';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
@@ -2139,7 +2138,7 @@ async function initialize() {
 
     // 5d. Initialize 007 (rogue-agent watch)
     logger.info('🎯 Initializing 007 — Rogue Agent Watch...');
-    guardrailsAgent.start();
+    // guardrailsAgent.start();
     logger.info('✓ 007 active and monitoring');
 
     // 5c. Initialize Authentication System (employee auth + roles)
@@ -2222,7 +2221,7 @@ async function initialize() {
       selfRepair.start();
     }
     setupVitalsRoutes(app, vitals, inferenceAudit, selfRepair);
-    setupGuardrailsRoutes(app);
+    // setupGuardrailsRoutes(app); // TODO: implement guardrails agent module
 
     // 7. Start server
     server.listen(PORT, () => {
@@ -3634,84 +3633,84 @@ function setupVitalsRoutes(app: express.Express, vitals: VitalsService, audit?: 
 /**
  * Guardrails — suspicious-activity monitoring + manual intervention
  */
-function setupGuardrailsRoutes(app: express.Express) {
-  app.get('/api/guardrails/health', (_req, res) => {
-    try { res.json({ success: true, data: guardrailsAgent.getSystemHealth() }); }
-    catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  app.get('/api/guardrails/alerts', (req, res) => {
-    try {
-      const opts: any = {};
-      if (req.query.severity) opts.severity = String(req.query.severity);
-      if (req.query.acknowledged !== undefined) opts.acknowledged = req.query.acknowledged === 'true';
-      if (req.query.agent) opts.agent = String(req.query.agent);
-      if (req.query.limit) opts.limit = parseInt(String(req.query.limit), 10);
-      res.json({ success: true, data: guardrailsAgent.getAlerts(opts) });
-    } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  app.post('/api/guardrails/alerts/:id/acknowledge', (req, res) => {
-    try {
-      const ok = guardrailsAgent.acknowledgeAlert(req.params.id, String(req.body?.by || 'user'));
-      res.json({ success: ok, message: ok ? 'acknowledged' : 'alert not found' });
-    } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  app.get('/api/guardrails/incidents', (req, res) => {
-    try {
-      const opts: any = {};
-      if (req.query.resolved !== undefined) opts.resolved = req.query.resolved === 'true';
-      if (req.query.agent) opts.agent = String(req.query.agent);
-      if (req.query.limit) opts.limit = parseInt(String(req.query.limit), 10);
-      res.json({ success: true, data: guardrailsAgent.getIncidents(opts) });
-    } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  app.post('/api/guardrails/incidents/:id/resolve', (req, res) => {
-    try {
-      const ok = guardrailsAgent.resolveIncident(req.params.id);
-      res.json({ success: ok, message: ok ? 'resolved' : 'incident not found' });
-    } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  app.post('/api/guardrails/intervene', (req, res) => {
-    try {
-      const { type, targetAgent, targetTask, targetModel, reason } = req.body;
-      if (!type || !reason) {
-        res.status(400).json({ success: false, error: 'type and reason are required' });
-        return;
-      }
-      const rec = guardrailsAgent.intervene({
-        type, targetAgent, targetTask, targetModel, reason,
-        initiatedBy: 'user',
-      });
-      res.json({ success: rec.result !== 'failed', data: rec });
-    } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  app.get('/api/guardrails/interventions', (req, res) => {
-    try {
-      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : undefined;
-      res.json({ success: true, data: guardrailsAgent.getInterventions(limit) });
-    } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  app.get('/api/guardrails/rules', (_req, res) => {
-    try { res.json({ success: true, data: guardrailsAgent.getRules() }); }
-    catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  app.post('/api/guardrails/rules/:id/toggle', (req, res) => {
-    try {
-      const enabled = req.body?.enabled !== undefined ? Boolean(req.body.enabled) : true;
-      const ok = guardrailsAgent.setRuleEnabled(req.params.id, enabled);
-      res.json({ success: ok, message: ok ? 'rule updated' : 'rule not found' });
-    } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
-  });
-
-  logger.info('✓ 007 routes wired: /api/guardrails/{health,alerts,incidents,intervene,interventions,rules}');
-}
+// function setupGuardrailsRoutes(app: express.Express) {
+//   app.get('/api/guardrails/health', (_req, res) => {
+//     try { res.json({ success: true, data: // guardrailsAgent.getSystemHealth() }); }
+//     catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.get('/api/guardrails/alerts', (req, res) => {
+//     try {
+//       const opts: any = {};
+//       if (req.query.severity) opts.severity = String(req.query.severity);
+//       if (req.query.acknowledged !== undefined) opts.acknowledged = req.query.acknowledged === 'true';
+//       if (req.query.agent) opts.agent = String(req.query.agent);
+//       if (req.query.limit) opts.limit = parseInt(String(req.query.limit), 10);
+//       res.json({ success: true, data: // guardrailsAgent.getAlerts(opts) });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.post('/api/guardrails/alerts/:id/acknowledge', (req, res) => {
+//     try {
+//       const ok = // guardrailsAgent.acknowledgeAlert(req.params.id, String(req.body?.by || 'user'));
+//       res.json({ success: ok, message: ok ? 'acknowledged' : 'alert not found' });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.get('/api/guardrails/incidents', (req, res) => {
+//     try {
+//       const opts: any = {};
+//       if (req.query.resolved !== undefined) opts.resolved = req.query.resolved === 'true';
+//       if (req.query.agent) opts.agent = String(req.query.agent);
+//       if (req.query.limit) opts.limit = parseInt(String(req.query.limit), 10);
+//       res.json({ success: true, data: // guardrailsAgent.getIncidents(opts) });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.post('/api/guardrails/incidents/:id/resolve', (req, res) => {
+//     try {
+//       const ok = // guardrailsAgent.resolveIncident(req.params.id);
+//       res.json({ success: ok, message: ok ? 'resolved' : 'incident not found' });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.post('/api/guardrails/intervene', (req, res) => {
+//     try {
+//       const { type, targetAgent, targetTask, targetModel, reason } = req.body;
+//       if (!type || !reason) {
+//         res.status(400).json({ success: false, error: 'type and reason are required' });
+//         return;
+//       }
+//       const rec = // guardrailsAgent.intervene({
+//         type, targetAgent, targetTask, targetModel, reason,
+//         initiatedBy: 'user',
+//       });
+//       res.json({ success: rec.result !== 'failed', data: rec });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.get('/api/guardrails/interventions', (req, res) => {
+//     try {
+//       const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : undefined;
+//       res.json({ success: true, data: // guardrailsAgent.getInterventions(limit) });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.get('/api/guardrails/rules', (_req, res) => {
+//     try { res.json({ success: true, data: // guardrailsAgent.getRules() }); }
+//     catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   app.post('/api/guardrails/rules/:id/toggle', (req, res) => {
+//     try {
+//       const enabled = req.body?.enabled !== undefined ? Boolean(req.body.enabled) : true;
+//       const ok = // guardrailsAgent.setRuleEnabled(req.params.id, enabled);
+//       res.json({ success: ok, message: ok ? 'rule updated' : 'rule not found' });
+//     } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+//   });
+// 
+//   logger.info('✓ 007 routes wired: /api/guardrails/{health,alerts,incidents,intervene,interventions,rules}');
+// }
 
 // Start the system
 initialize().catch(error => {

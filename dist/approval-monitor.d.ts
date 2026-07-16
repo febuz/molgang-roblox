@@ -68,7 +68,7 @@ export declare const approvalMonitor: ApprovalMonitor;
  * // Flag an approval
  * approvalMonitor.flagApproval(
  *   'Terminal B (Cleopatra)',
- *   'Continue MOLGANG development?',
+ *   'Continue the project development?',
  *   ['yes', 'no'],
  *   'high'
  * );

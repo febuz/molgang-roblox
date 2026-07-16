@@ -89,6 +89,15 @@ export declare function getTaskDetail(taskId: string): {
 } | null;
 export declare function setTaskStatus(taskId: string, next: Task['status']): Task | null;
 export declare function setTaskPriority(taskId: string, next: Task['priority']): Task | null;
+export declare function addTask(input: {
+    title: string;
+    description: string;
+    priority?: Task['priority'];
+    assigned_to: string;
+    estimated_hours?: number;
+    subtasks?: string[];
+    sprint?: string;
+}): Task | null;
 export declare function getGameMilestones(): GameMilestone[];
 export declare function getGameStats(): {
     sprint: string;
