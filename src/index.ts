@@ -271,6 +271,10 @@ app.use((req, res, next) => {
   }
   next();
 });
+// The primary VirtualPC experience is the multi-agent dashboard. Keep the
+// product landing page available as /index.html, but never let static
+// index.html shadow the dashboard at the service root.
+app.get('/', serveSPAFile);
 app.use(express.static('dist/public'));
 app.use(express.static('public'));
 
