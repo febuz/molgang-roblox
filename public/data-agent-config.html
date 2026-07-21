@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VirtualPC Data Agent Config</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 2rem; }
+    h1 { border-bottom: 2px solid #334155; padding-bottom: 0.5rem; }
+    .card { background: #1e293b; border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+    label { display: block; margin: 0.75rem 0 0.25rem; font-weight: 600; }
+    input, select { width: 100%; padding: 0.5rem; border-radius: 0.375rem; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; box-sizing: border-box; }
+    input[type="number"] { width: 8rem; }
+    .row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1rem; align-items: end; }
+    button { background: #22c55e; color: #020617; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 700; cursor: pointer; }
+    button:hover { background: #4ade80; }
+    .hint { color: #94a3b8; font-size: 0.85rem; margin-top: 0.25rem; }
+    .status { margin-top: 1rem; padding: 0.75rem; border-radius: 0.5rem; background: #334155; }
+    .tier-free { color: #38bdf8; }
+    .tier-paid { color: #fbbf24; }
+  </style>
+</head>
+<body>
+  <h1>VirtualPC Data Agent Configuration</h1>
+  <p>Configure data-provider tokens and rate-limiting schedules. Settings are stored in <code>data-agents-sidecar/.env</code> and used by the download orchestrator.</p>
+
+  <div class="card">
+    <h2>API Tokens</h2>
+    <div class="row">
+      <div>
+        <label for="fmp-key">Financial Modeling Prep (FMP)</label>
+        <input id="fmp-key" type="password" placeholder="pk_... or leave blank for free tier" />
+        <div class="hint">Free tier: 250 calls/day @ 5/min. Paid: higher limits.</div>
+      </div>
+      <div>
+        <label for="fmp-tier">Tier</label>
+        <select id="fmp-tier">
+          <option value="free" class="tier-free">Free (5/min, 250/day)</option>
+          <option value="starter" class="tier-paid">Starter (60/min)</option>
+          <option value="premium" class="tier-paid">Premium (unlimited)</option>
+        </select>
+      </div>
+      <div>
+        <label for="alpha-key">Alpha Vantage</label>
+        <input id="alpha-key" type="password" placeholder="API key" />
+        <div class="hint">Free: 25 calls/day.</div>
+      </div>
+      <div>
+        <label for="factset-key">FactSet / Open:FactSet</label>
+        <input id="factset-key" type="password" placeholder="OAuth client / token" />
+        <div class="hint">Usually paid; leave blank if not configured.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Rate Limiting</h2>
+    <p class="hint">Downloads are spread over time slots so free-tier limits are respected.</p>
+    <div class="row">
+      <div>
+        <label for="calls-per-min">Calls per minute</label>
+        <input id="calls-per-min" type="number" value="5" min="1" />
+      </div>
+      <div>
+        <label for="calls-per-day">Calls per day</label>
+        <input id="calls-per-day" type="number" value="250" min="1" />
+      </div>
+      <div>
+        <label for="time-slot-min">Time slot (minutes)</label>
+        <input id="time-slot-min" type="number" value="5" min="1" />
+      </div>
+      <div>
+        <label for="parallel">Parallel workers</label>
+        <input id="parallel" type="number" value="1" min="1" max="5" />
+      </div>
+    </div>
+    <div class="hint">Example: 5 calls/min × 5 min slots = 25 calls/slot. A 250-call/day free tier finishes in ~50 minutes.</div>
+  </div>
+
+  <div class="card">
+    <h2>Download Targets</h2>
+    <div class="row">
+      <div>
+        <label for="symbols">Symbols / tickers (comma separated)</label>
+        <input id="symbols" placeholder="AAPL, MSFT, GOOGL" />
+      </div>
+      <div>
+        <label for="datasets">Datasets</label>
+        <select id="datasets" multiple size="3">
+          <option value="income">Income Statement</option>
+          <option value="balance">Balance Sheet</option>
+          <option value="cashflow">Cash Flow</option>
+          <option value="peers">Stock Peers</option>
+          <option value="key-metrics">Key Metrics</option>
+          <option value="profile">Company Profile</option>
+        </select>
+      </div>
+      <div>
+        <label for="years">Years</label>
+        <input id="years" type="number" value="5" min="1" max="20" />
+      </div>
+    </div>
+  </div>
+
+  <button id="save">Save Configuration</button>
+  <div id="status" class="status" style="display:none"></div>
+
+  <script>
+    const fields = ['fmp-key','fmp-tier','alpha-key','factset-key','calls-per-min','calls-per-day','time-slot-min','parallel','symbols','years'];
+    const storageKey = 'virtualpc-data-agent-config';
+
+    function load() {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (saved[id]) el.value = saved[id];
+      });
+    }
+
+    document.getElementById('save').addEventListener('click', () => {
+      const config = {};
+      fields.forEach(id => config[id] = document.getElementById(id).value);
+      const datasets = Array.from(document.getElementById('datasets').selectedOptions).map(o => o.value);
+      config.datasets = datasets;
+      localStorage.setItem(storageKey, JSON.stringify(config));
+      const s = document.getElementById('status');
+      s.style.display = 'block';
+      s.textContent = 'Configuration saved to browser localStorage. To persist server-side, copy values to data-agents-sidecar/.env';
+    });
+
+    load();
+  </script>
+</body>
+</html>

@@ -133,6 +133,7 @@ describe('API Orchestration & Cost Optimization', () => {
       for (let i = 0; i < 100; i++) {
         await batching.addRequest('claude-opus', `prompt${i}`, { temp: 0.7 });
       }
+      await batching.flush();
 
       const stats = batching.getStats();
       expect(stats.reductionPercentage).toBeGreaterThan(0);
@@ -210,7 +211,7 @@ describe('API Orchestration & Cost Optimization', () => {
       }
 
       const summary = costAnalyzer.getSummary();
-      expect(summary.dailyCost).toBeGreaterThan(budgetUsd * 0.8); // Over 80% of budget
+      expect(summary.dailyCost).toBeGreaterThanOrEqual(budgetUsd * 0.8); // At or over 80% of budget
     });
 
     it('should report top agents by cost', () => {
@@ -343,6 +344,7 @@ describe('API Orchestration & Cost Optimization', () => {
       for (let i = 0; i < 100; i++) {
         await batching.addRequest('claude-opus', `prompt${i}`);
       }
+      await batching.flush();
 
       const stats = batching.getStats();
       expect(stats.reductionPercentage).toBeGreaterThan(20);

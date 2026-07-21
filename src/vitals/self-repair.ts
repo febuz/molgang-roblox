@@ -17,6 +17,7 @@ import { spawnSync } from 'child_process';
 import * as path from 'path';
 import logger from '../utils/logger';
 import InferenceAudit from './inference-audit';
+import { HOME_DIR } from '../config/paths';
 
 const LOG_DIR = path.join(__dirname, '..', '..', 'logs');
 const REPAIR_LOG = path.join(LOG_DIR, 'self-repair.jsonl');
@@ -165,7 +166,12 @@ export class SelfRepair {
     if (this.ollamaDownStreak >= OLLAMA_DOWN_TICKS) {
       const finding = `Ollama /api/tags failed ${this.ollamaDownStreak} consecutive checks`;
       if (this.mode === 'act') {
-        const r = spawnSync('bash', ['-c', 'nohup /home/knight2/.local/bin/ollama-serve > /home/knight2/virtualpc/logs/ollama.log 2>&1 &']);
+        // Restart command is configurable; defaults to the per-user ollama-serve
+        // binary and a log under the repo. Override with OLLAMA_RESTART_CMD.
+        const ollamaCmd =
+          process.env.OLLAMA_RESTART_CMD ||
+          `nohup ${HOME_DIR}/.local/bin/ollama-serve > ${HOME_DIR}/virtualpc/logs/ollama.log 2>&1 &`;
+        const r = spawnSync('bash', ['-c', ollamaCmd]);
         await this.record({ ts, rule: 'service_down_ollama', severity: 'action', finding, action: 'restart_ollama', details: { status: r.status } });
         this.ollamaDownStreak = 0;
       } else {

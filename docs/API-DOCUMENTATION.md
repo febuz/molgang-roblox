@@ -5,21 +5,36 @@ Complete reference for VirtualPC REST API.
 ## Base URL
 
 ```
-https://api.virtualpc.com/api
+http://localhost:3100/api
 ```
+
+## Interactive API Docs (OpenAPI)
+
+A machine-readable OpenAPI 3.0 spec covers the auth, audit, dashboard, and
+security endpoints, with an interactive Swagger UI:
+
+```
+GET /api/openapi.json   # the spec (also served statically at /openapi.json)
+GET /api/docs           # Swagger UI (try-it-out console)
+```
+
+The spec declares a `bearerAuth` scheme — the bearer token is the `sessionId`
+returned by `POST /api/auth/login`. CEO/role-gated routes carry an explicit
+`security` requirement; `POST /api/auth/login` and `POST /api/auth/2fa/verify`
+are the only public routes.
 
 ## Authentication
 
 ### Bearer Token
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  https://api.virtualpc.com/api/auth/profile
+  http://localhost:3100/api/auth/profile
 ```
 
 ### API Key
 ```bash
 curl -H "X-API-Key: your-api-key" \
-  https://api.virtualpc.com/api/data
+  http://localhost:3100/api/data
 ```
 
 ## Response Format
@@ -58,7 +73,7 @@ Login with email and password.
 
 **Request:**
 ```bash
-curl -X POST https://api.virtualpc.com/api/auth/login \
+curl -X POST http://localhost:3100/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -86,7 +101,7 @@ Create new account.
 
 **Request:**
 ```bash
-curl -X POST https://api.virtualpc.com/api/auth/register \
+curl -X POST http://localhost:3100/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "newuser@example.com",
@@ -176,7 +191,7 @@ Create new backlog item.
 
 **Request:**
 ```bash
-curl -X POST https://api.virtualpc.com/api/backlog/create \
+curl -X POST http://localhost:3100/api/backlog/create \
   -H "Content-Type: application/json" \
   -d '{
     "title": "New feature",
@@ -204,7 +219,7 @@ Update backlog item.
 
 **Request:**
 ```bash
-curl -X PUT https://api.virtualpc.com/api/backlog/task123 \
+curl -X PUT http://localhost:3100/api/backlog/task123 \
   -H "Content-Type: application/json" \
   -d '{
     "status": "done",
@@ -216,7 +231,7 @@ curl -X PUT https://api.virtualpc.com/api/backlog/task123 \
 Delete backlog item.
 
 ```bash
-curl -X DELETE https://api.virtualpc.com/api/backlog/task123
+curl -X DELETE http://localhost:3100/api/backlog/task123
 ```
 
 ### Issues & Blockers
@@ -245,7 +260,7 @@ Report new issue.
 
 **Request:**
 ```bash
-curl -X POST https://api.virtualpc.com/api/issues/create \
+curl -X POST http://localhost:3100/api/issues/create \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Performance degradation",
@@ -304,7 +319,7 @@ Search team knowledge base.
 
 **Request:**
 ```bash
-curl -X POST https://api.virtualpc.com/api/memory/query \
+curl -X POST http://localhost:3100/api/memory/query \
   -H "Content-Type: application/json" \
   -d '{
     "query": "authentication best practices"
@@ -330,7 +345,7 @@ Add fact to knowledge base.
 
 **Request:**
 ```bash
-curl -X POST https://api.virtualpc.com/api/memory/add \
+curl -X POST http://localhost:3100/api/memory/add \
   -H "Content-Type: application/json" \
   -d '{
     "type": "best_practice",
@@ -421,7 +436,7 @@ GET /api/backlog?sort=priority         # Ascending
 Subscribe to events:
 
 ```bash
-curl -X POST https://api.virtualpc.com/api/webhooks \
+curl -X POST http://localhost:3100/api/webhooks \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://your-domain.com/webhook",
@@ -442,7 +457,7 @@ curl -X POST https://api.virtualpc.com/api/webhooks \
 ### Get Tasks for Current Sprint
 ```bash
 curl -H "Authorization: Bearer TOKEN" \
-  "https://api.virtualpc.com/api/backlog?sprint=week1&status=open"
+  "http://localhost:3100/api/backlog?sprint=week1&status=open"
 ```
 
 ### Update Task Status
@@ -451,7 +466,7 @@ curl -X PUT \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status": "done"}' \
-  https://api.virtualpc.com/api/backlog/task123
+  http://localhost:3100/api/backlog/task123
 ```
 
 ### Create Issue and Link to Task
@@ -464,7 +479,7 @@ curl -X POST \
     "severity": "high",
     "blocking_task": "task123"
   }' \
-  https://api.virtualpc.com/api/issues/create
+  http://localhost:3100/api/issues/create
 ```
 
 ## Changelog

@@ -1,0 +1,70 @@
+#cloud-config
+# Deploy VirtualPC on a fresh Vultr instance.
+# Paste this into the "Cloud-Init User-Data" field when deploying a server.
+#
+# What it does:
+#   - Creates a dedicated 'virtualpc' user
+#   - Installs Docker, Node.js 20, git, nginx, certbot
+#   - Clones the repo into /home/virtualpc/virtualpc
+#   - Runs the standard install.sh
+#   - Enables auto-update
+#
+# After boot, SSH in as root and run:
+#   tail -f /var/log/virtualpc-bootstrap.log
+# Then continue with docs/DEPLOY-VULTR.md for Nginx + HTTPS.
+
+users:
+  - default
+  - name: virtualpc
+    shell: /bin/bash
+    home: /home/virtualpc
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys: []  # Add your public key here, e.g. ["ssh-ed25519 AAAAC3... user@host"]
+
+packages:
+  - git
+  - curl
+  - wget
+  - nano
+  - htop
+  - nginx
+  - certbot
+  - python3-certbot-nginx
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+
+package_update: true
+package_upgrade: true
+
+runcmd:
+  # 1. Install Docker
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  - usermod -aG docker virtualpc
+
+  # 2. Install Node.js 20
+  - curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  - apt-get install -y nodejs
+
+  # 3. Clone repo as virtualpc user
+  - su - virtualpc -c "git clone https://github.com/knitweb/virtualpc.git /home/virtualpc/virtualpc"
+
+  # 4. Install VirtualPC
+  - su - virtualpc -c "cd /home/virtualpc/virtualpc && cp .env.example .env"
+  - su - virtualpc -c "cd /home/virtualpc/virtualpc && ./scripts/install.sh" > /var/log/virtualpc-bootstrap.log 2>&1
+
+  # 5. Enable and start services
+  - su - virtualpc -c "systemctl --user enable virtualpc.service virtualpc-litellm.service virtualpc-auto-update.timer"
+  - su - virtualpc -c "systemctl --user start virtualpc.service virtualpc-litellm.service virtualpc-auto-update.timer"
+
+  # 6. Persist user systemd sessions for the virtualpc user
+  - loginctl enable-linger virtualpc
+
+final_message: |
+  VirtualPC bootstrap complete. Inspect /var/log/virtualpc-bootstrap.log for details.
+  Next: follow docs/DEPLOY-VULTR.md to configure Nginx, HTTPS and DNS.

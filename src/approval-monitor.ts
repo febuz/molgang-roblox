@@ -28,6 +28,9 @@ export class ApprovalMonitor {
   private pendingApprovals: Map<string, ApprovalEvent> = new Map();
   private approvalHistory: ApprovalEvent[] = [];
   private maxHistorySize: number = 100;
+  // Monotonic counter so two approvals from the same source in the same
+  // millisecond get distinct ids (otherwise they overwrite in the map).
+  private idSeq: number = 0;
 
   /**
    * Flag a new approval event
@@ -39,7 +42,7 @@ export class ApprovalMonitor {
     options: string[] = ['yes', 'no'],
     urgency: 'low' | 'medium' | 'high' | 'critical' = 'high'
   ): ApprovalEvent {
-    const approvalId = `approval_${source}_${Date.now()}`;
+    const approvalId = `approval_${source}_${Date.now()}_${this.idSeq++}`;
 
     const approval: ApprovalEvent = {
       id: approvalId,

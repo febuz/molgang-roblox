@@ -4,11 +4,17 @@
  * using this catalogue. Authored by Kimi via taskType:'docs' so the
  * long-context Moonshot model produces internally-consistent definitions.
  *
- * Two namespaces:
+ * Namespaces — two glossaries plus the Head/Hands/Heart knowledge tiers:
  *   - 'game'  → quests, currencies, age-bands, factions, mechanics
  *   - 'qchem' → quantum chemistry / chemical engineering (orbitals,
  *                hybridization, partition function, fugacity, mass
  *                transfer, residence time, Damköhler number, ...)
+ *   - 'head'  → steering: ideas, prompts, strategy, agent memories
+ *   - 'hands' → process: agents, skills, rules, projects, task + git log
+ *   - 'heart' → output: definitive, client-ready documents and services.
+ *                Heart entries are the high-quality tier that also gets
+ *                ingested into LightRAG (so queries + agent models can
+ *                use them).
  *
  * Each entry carries a governance.entryId so the wiki page can show
  * lineage ("this term was authored by Kimi from IUPAC source X").
@@ -17,7 +23,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../../utils/logger';
 
-export type WikiNamespace = 'game' | 'qchem';
+export type WikiNamespace = 'game' | 'qchem' | 'head' | 'hands' | 'heart';
 
 export interface WikiEntry {
   /** kebab-case id, e.g. "fugacity" or "molco2" */

@@ -187,6 +187,39 @@ export function setupAuditRoutes(app: express.Express, auditLogger: CEOAuditLogg
     }
   });
 
+  /**
+   * Combined audit search (CEO only). All filters are optional query params and
+   * combine with AND semantics: username, ip, eventType, severity, outcome,
+   * action, start (ISO), end (ISO), limit.
+   */
+  app.get('/api/audit/search', authMiddleware.requireRole('ceo'), (req: AuthRequest, res: express.Response) => {
+    try {
+      const q = req.query;
+      const parseDate = (v: any): Date | undefined => {
+        if (!v) return undefined;
+        const d = new Date(v as string);
+        return isNaN(d.getTime()) ? undefined : d;
+      };
+      const limit = Math.min(Math.max(parseInt(q.limit as string) || 100, 1), 1000);
+      const events = auditLogger.search(
+        {
+          username: (q.username as string) || undefined,
+          ipAddress: (q.ip as string) || undefined,
+          eventType: (q.eventType as any) || undefined,
+          severity: (q.severity as any) || undefined,
+          outcome: (q.outcome as any) || undefined,
+          action: (q.action as string) || undefined,
+          startTime: parseDate(q.start),
+          endTime: parseDate(q.end),
+        },
+        limit
+      );
+      return res.json({ success: true, count: events.length, events });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   logger.info('✓ Audit routes configured');
 }
 

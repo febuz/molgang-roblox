@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================
-# SETUP SCRIPT - Initialize Custom Paperclip Development Environment
+# SETUP SCRIPT - Initialize VirtualPC Development Environment
 # ============================================================
 # Sets up all dependencies, environment variables, and configuration
 # for the autonomous agent system (LightRAG + Kafka + API Interceptor)
@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  🚀 Custom Paperclip - Agent System Setup${NC}"
+echo -e "${BLUE}  🚀 VirtualPC - Agent System Setup${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}\n"
 
 # ============================================================

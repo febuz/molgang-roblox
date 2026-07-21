@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirtualPC · Self-hosted AI team</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: #050810;
+    color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Hero */
+  .hero {
+    min-height: 80vh;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center; padding: 60px 24px;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(96,165,250,0.12) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(240,171,252,0.10) 0%, transparent 40%),
+      linear-gradient(180deg, #050810 0%, #0a1220 100%);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><circle cx="30" cy="30" r="1" fill="rgba(96,165,250,0.15)"/></svg>');
+    opacity: .5; pointer-events: none;
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 900px; }
+  .eyebrow {
+    display: inline-block; font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
+    color: #93c5fd; border: 1px solid rgba(96,165,250,.3); border-radius: 999px;
+    padding: 6px 14px; margin-bottom: 24px;
+  }
+  h1 {
+    font-family: 'Orbitron', 'Inter', sans-serif; font-weight: 900;
+    font-size: clamp(2.6rem, 6vw, 4.6rem); line-height: 1.05; letter-spacing: -.02em;
+    background: linear-gradient(90deg, #60a5fa 0%, #f0abfc 50%, #fbbf24 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 20px;
+  }
+  .hero p { font-size: 1.15rem; color: #94a3b8; max-width: 660px; margin: 0 auto 32px; }
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .95rem;
+    padding: 12px 22px; border-radius: 8px; transition: transform .15s, box-shadow .15s;
+  }
+  .btn-primary { background: #2563eb; color: #fff; box-shadow: 0 4px 20px rgba(37,99,235,.35); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(37,99,235,.45); text-decoration: none; }
+  .btn-secondary { background: rgba(255,255,255,.06); color: #e6f0ff; border: 1px solid rgba(255,255,255,.12); }
+  .btn-secondary:hover { background: rgba(255,255,255,.10); text-decoration: none; }
+
+  /* Sections */
+  section { padding: 72px 24px; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  .section-title {
+    font-family: 'Orbitron', sans-serif; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 700;
+    margin-bottom: 12px; color: #f0f9ff;
+  }
+  .section-sub { color: #94a3b8; max-width: 700px; margin-bottom: 36px; }
+
+  /* Features */
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  .feature {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px;
+    padding: 24px; transition: transform .15s, border-color .15s;
+  }
+  .feature:hover { transform: translateY(-4px); border-color: rgba(96,165,250,.35); }
+  .feature-icon { font-size: 1.6rem; margin-bottom: 12px; }
+  .feature h3 { font-size: 1.05rem; color: #bfdbfe; margin-bottom: 8px; }
+  .feature p { font-size: .92rem; color: #94a3b8; line-height: 1.55; }
+
+  /* Videos */
+  .lang-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .lang-tab {
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10);
+    color: #cbd5e1; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;
+  }
+  .lang-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .video-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+  .video-card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px;
+    overflow: hidden;
+  }
+  .video-card h4 { padding: 14px 16px 0; font-size: .95rem; color: #bfdbfe; }
+  .video-card video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; }
+  .video-card p { padding: 0 16px 16px; font-size: .85rem; color: #94a3b8; }
+
+  /* Roles preview */
+  .roles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .role-card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px;
+    padding: 20px; border-left: 4px solid #60a5fa;
+  }
+  .role-card h4 { color: #bfdbfe; margin-bottom: 6px; }
+  .role-card .tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: #fbbf24; margin-bottom: 10px; display: block; }
+  .role-card p { font-size: .88rem; color: #94a3b8; }
+
+  /* Footer */
+  footer { text-align: center; padding: 40px 24px; color: #64748b; font-size: .9rem; border-top: 1px solid rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-content">
+    <span class="eyebrow">Multi-agent operating system</span>
+    <h1>VirtualPC</h1>
+    <p>Turn one server into a trustworthy AI team. Local models first, full audit trail, and a human gate on every risky decision — no cloud lock-in, no per-token tax.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#videos">▶ Watch the demos</a>
+      <a class="btn btn-secondary" href="demo-dashboard.html">📊 Demo Dashboard</a>
+      <a class="btn btn-secondary" href="microsoft-blend.html">🟦 Microsoft Copilot</a>
+      <a class="btn btn-secondary" href="lineage.html">🔎 Lineage</a>
+      <a class="btn btn-secondary" href="knitnet.html">🧶 KnitNet</a>
+      <a class="btn btn-secondary" href="brands.html">🧵 Brand fabric</a>
+      <a class="btn btn-secondary" href="roles.html">Meet the agents</a>
+      <a class="btn btn-secondary" href="pricing.html">Pricing</a>
+      <a class="btn btn-secondary" href="https://github.com/knitweb/virtualpc" target="_blank">GitHub</a>
+    </div>
+  </div>
+</section>
+
+
+<section id="mission">
+  <div class="container">
+    <h2 class="section-title">Mission & Vision</h2>
+    <p class="section-sub">VirtualPC exists to make useful autonomous systems small, sovereign, and verifiable.</p>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🎯</div>
+        <h3>Mission</h3>
+        <p>Turn one server into a trustworthy AI team that anyone can own, audit, and direct.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🌐</div>
+        <h3>Vision</h3>
+        <p>A world where intelligence serves the people it touches — local-first, open to inspection, and governed by human override.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🧶</div>
+        <h3>KnitWeb</h3>
+        <p>A sovereign P2P knowledge web where agents share proven memory without surrendering control to a single vendor.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🛡️</div>
+        <h3>Human-in-the-loop</h3>
+        <p>High-risk spend, code, and governance changes stop at a human gate — and every decision is logged.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="container">
+    <h2 class="section-title">Why VirtualPC?</h2>
+    <p class="section-sub">Turn any VPS, home server or Ollama box into a managed AI workforce. No cloud lock-in, no per-token surprises.</p>
+    <div class="features">
+      <div class="feature"><div class="feature-icon">🧑‍💼</div><h3>14 Specialist Agents</h3><p>Pre-defined roles with clear responsibilities, from strategy to code, art, legal and commercialisation.</p></div>
+      <div class="feature"><div class="feature-icon">🔌</div><h3>One LLM Gateway</h3><p>LiteLLM unifies 13 local and cloud models. Swap providers without changing agent code.</p></div>
+      <div class="feature"><div class="feature-icon">📋</div><h3>Task Engine</h3><p>Agents run autonomous ticks, split work into subtasks and stream progress via Server-Sent Events.</p></div>
+      <div class="feature"><div class="feature-icon">🛡️</div><h3>Deliberation Gates</h3><p>High-risk changes are reviewed by 6 independent agents + a judge before they reach master.</p></div>
+      <div class="feature"><div class="feature-icon">🌐</div><h3>P2P Knowledge Graph</h3><p>Newsgroup stores agent knowledge as a sovereign graph with DID identities and state proofs.</p></div>
+      <div class="feature"><div class="feature-icon">🚀</div><h3>Self-Healing Deploy</h3><p>Auto-update polls GitHub every 15 minutes and only restarts on a clean tree.</p></div>
+      <div class="feature"><div class="feature-icon">📊</div><h3>Demo Dashboard</h3><p>Run an autonomous data-science team: Analyst, Governor, Atlas and Athena on one pipeline. <a href="demo-dashboard.html">Learn more →</a></p></div>
+      <div class="feature"><div class="feature-icon">🟦</div><h3>Microsoft Copilot ready</h3><p>Complements Microsoft 365 Copilot with backend agents, Graph API and Azure OpenAI. <a href="microsoft-blend.html">Learn more →</a></p></div>
+      <div class="feature"><div class="feature-icon">🔎</div><h3>Full lineage</h3><p>Concrete data lineage with schemas, business glossary and governance registry — no black boxes. <a href="lineage.html">Learn more →</a></p></div>
+      <div class="feature"><div class="feature-icon">🧶</div><h3>KnitNet / KnitWeb</h3><p>A woven P2P knowledge graph — no blocks, no hashgraph, better than legacy P2P. <a href="knitnet.html">Learn more →</a></p></div>
+      <div class="feature"><div class="feature-icon">🧵</div><h3>Brand fabric</h3><p>Four entry points — Loom, KnitNet, Fiber and Plexus — on the same Textus-type database. <a href="brands.html">Explore →</a></p></div>
+    </div>
+  </div>
+</section>
+
+<section id="videos">
+  <div class="container">
+    <h2 class="section-title">Demo library</h2>
+    <p class="section-sub">Every video is available in four languages, with native macOS voice-overs.</p>
+
+    <div class="lang-tabs" id="langTabs">
+      <button class="lang-tab active" data-lang="nl">🇳🇱 Nederlands</button>
+      <button class="lang-tab" data-lang="en">🇬🇧 English</button>
+      <button class="lang-tab" data-lang="yue">🇭🇰 Cantonees</button>
+      <button class="lang-tab" data-lang="ru">🇷🇺 Русский</button>
+    </div>
+
+    <div class="video-grid" id="videoGrid">
+      <div class="video-card">
+        <h4>Installation walkthrough</h4>
+        <video controls>
+          <source id="v-install" src="../docs/videos/install-nl.mp4" type="video/mp4">
+        </video>
+        <p>From clone to running dashboard in under a minute.</p>
+      </div>
+      <div class="video-card">
+        <h4>Feature demonstration</h4>
+        <video controls>
+          <source id="v-demo" src="../docs/videos/demo-nl.mp4" type="video/mp4">
+        </video>
+        <p>Agents, gateway, task engine, gates and commercialisation.</p>
+      </div>
+      <div class="video-card">
+        <h4>GUI walkthrough</h4>
+        <video controls>
+          <source id="v-gui" src="../docs/videos/gui-nl.mp4" type="video/mp4">
+        </video>
+        <p>Login, dashboard layout, roster, tasks and settings.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="roles">
+  <div class="container">
+    <h2 class="section-title">Agent roster</h2>
+    <p class="section-sub">Clear roles and responsibilities. <a href="roles.html">See the full roster →</a></p>
+    <div class="roles-grid">
+      <div class="role-card"><span class="tag">Strategy</span><h4>CEO Fill</h4><p>Prioritises backlog, owns human-in-the-loop approvals and investor-facing decisions.</p></div>
+      <div class="role-card"><span class="tag">Architecture</span><h4>CTO Kai</h4><p>Owns technical design, modularisation and enforces deliberation gates.</p></div>
+      <div class="role-card"><span class="tag">Backend</span><h4>Dev Alice & Dev Bob</h4><p>Implement API routes, integrations, Kafka/LightRAG plumbing and tests.</p></div>
+      <div class="role-card"><span class="tag">Creative</span><h4>Art Mira</h4><p>Produces UI assets, logos, investor-demo visuals and brand consistency.</p></div>
+      <div class="role-card"><span class="tag">Research</span><h4>Research Kim</h4><p>Surveys LLM/infra/security papers and feeds the P2P knowledge graph.</p></div>
+      <div class="role-card"><span class="tag">Commercial</span><h4>Croesus</h4><p>Drafts promotion proposals within bounded budgets and human approval.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="deploy" style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2 class="section-title">Deploy anywhere</h2>
+    <p class="section-sub">Run on a local Ollama machine or on a Vultr cloud instance. Pick the guide that matches your stack.</p>
+    <div class="cta-row" style="justify-content:flex-start;">
+      <a class="btn btn-secondary" href="../docs/DEPLOY-OLLAMA.md">🦙 Ollama deployment</a>
+      <a class="btn btn-secondary" href="../docs/DEPLOY-VULTR.md">☁️ Vultr deployment</a>
+      <a class="btn btn-secondary" href="../docs/DATA-SCIENCE-WIKI.md">📊 Data Science wiki</a>
+      <a class="btn btn-secondary" href="pricing.html">💰 Pricing</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>VirtualPC · <a href="https://github.com/knitweb/virtualpc">github.com/knitweb/virtualpc</a></p>
+</footer>
+
+<script>
+const sources = {
+  nl: { install: '../docs/videos/install-nl.mp4', demo: '../docs/videos/demo-nl.mp4', gui: '../docs/videos/gui-nl.mp4' },
+  en: { install: '../docs/videos/install-en.mp4', demo: '../docs/videos/demo-en.mp4', gui: '../docs/videos/gui-en.mp4' },
+  yue: { install: '../docs/videos/install-yue.mp4', demo: '../docs/videos/demo-yue.mp4', gui: '../docs/videos/gui-yue.mp4' },
+  ru: { install: '../docs/videos/install-ru.mp4', demo: '../docs/videos/demo-ru.mp4', gui: '../docs/videos/gui-ru.mp4' },
+};
+const tabs = document.querySelectorAll('.lang-tab');
+const videos = document.querySelectorAll('#videoGrid video');
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const lang = tab.dataset.lang;
+    videos.forEach(v => { v.pause(); });
+    document.getElementById('v-install').src = sources[lang].install;
+    document.getElementById('v-demo').src = sources[lang].demo;
+    document.getElementById('v-gui').src = sources[lang].gui;
+    videos.forEach(v => { v.load(); });
+  });
+});
+</script>
+
+</body>
+</html>

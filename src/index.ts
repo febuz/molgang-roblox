@@ -1,22 +1,64 @@
 /**
- * Custom Paperclip - Fork with LightRAG, Kafka, Autonomous Agents
+ * VirtualPC - Fork with LightRAG, Kafka, Autonomous Agents
  *
- * Main entry point for the custom Paperclip system.
+ * Main entry point for the custom VirtualPC system.
  * Initializes: LightRAG, Kafka, Model Router, Agent Executor
  */
 
 import express from 'express';
 import { config } from 'dotenv';
 import * as http from 'http';
+import * as os from 'os';
 import { Server as SocketIOServer } from 'socket.io';
 import logger from './utils/logger';
+import { readFileTail } from './utils/readFileTail';
 import { KafkaOrchestrator } from './integrations/kafka/orchestrator';
 import { LightRAGClient } from './integrations/lightrag/client';
 import { AgentAPIWrapper } from './integrations/lightrag/agent-api';
+import { P2PSync } from './integrations/lightrag/p2p-sync';
+import { P2PGossip } from './integrations/lightrag/p2p-gossip';
+import { FactValidator } from './integrations/lightrag/fact-validator';
+import { InferenceEngine } from './integrations/lightrag/graph-inference';
+import { AgentBridge } from './integrations/lightrag/agent-bridge';
+import { seedQuantumAlgorithms } from './integrations/lightrag/quantum-schema';
+import { registerGraphRoutes } from './integrations/lightrag/graph-api';
+import { registerSnapshotRoutes } from './integrations/lightrag/graph-snapshot';
+import { registerMonitorRoutes } from './integrations/lightrag/p2p-monitor';
+import { registerQueryRoutes as registerGraphQueryRoutes } from './integrations/lightrag/graph-query';
+import { registerProvenanceRoutes } from './integrations/lightrag/provenance';
+import { registerNFCRoutes } from './integrations/lightrag/nfc-api';
+import { NewsService, registerNewsRoutes } from './integrations/lightrag/news';
+import { VoteCertificateService, registerVoteCertRoutes } from './integrations/lightrag/vote-certificate';
+import { AttentionChainService, registerAttentionRoutes } from './integrations/lightrag/attention-chain';
+import { P2PSwarm, registerSwarmRoutes } from './integrations/lightrag/p2p-swarm';
+import { SovereignIdentityService, registerIdentityRoutes, didFromPublicKey } from './integrations/lightrag/identity';
+import * as nodeCrypto from 'crypto';
+import { ValueChainService, registerValueRoutes } from './integrations/lightrag/value-chain';
+import { SovereignVotingService, registerSovereignVotingRoutes } from './integrations/lightrag/sovereign-voting';
+import { ConsensusEngine, registerConsensusRoutes } from './integrations/lightrag/consensus';
+import { ConsensusNetwork } from './integrations/lightrag/consensus-network';
+import { ChainStore, defaultSnapshotPath } from './integrations/lightrag/chain-store';
+import { UserApiService, registerUserRoutes } from './integrations/lightrag/user-api';
+import { FeedService, registerFeedRoutes } from './integrations/lightrag/feed-api';
+import { PqWalletService, registerPqRoutes } from './integrations/lightrag/wallet-vault';
+import { DemocraticElectionService, registerElectionRoutes } from './integrations/lightrag/sovereign-elections';
+import { GroupVotingService, registerGroupVotingRoutes } from './integrations/lightrag/group-voting';
+import { GroupEventBus } from './integrations/lightrag/group-events';
+import { MqttTelemetryAdapter } from './integrations/lightrag/transport-adapter';
+import { FactMatrixService, registerFactMatrixRoutes } from './integrations/lightrag/fact-matrix';
+import { mqttClientFromEnv } from './integrations/mqtt/mqtt-client';
+import { BacklogService, registerHubBacklogRoutes } from './integrations/lightrag/backlog';
+import { registerGitHubSyncRoutes, gitHubSyncFromEnv } from './integrations/backlog/github-sync';
+import { registerGitLabSyncRoutes, gitLabSyncFromEnv } from './integrations/backlog/gitlab-sync';
+import { LightningService, registerLightningRoutes, lightningFromEnv } from './integrations/lightrag/lightning';
+import { protocolService, registerProtocolRoutes } from './integrations/lightrag/protocol-version';
+import { AnchorService, defaultAnchorTargets, registerAnchorRoutes } from './integrations/chain/anchor';
+import { OtsService, registerOtsRoutes } from './integrations/chain/opentimestamps';
 import { ModelRouter } from './orchestration/model-router';
 import { registerSkills } from './skills/register';
 import setupOpenClawRoutes from './openclaw/openclaw-api';
 import { RealtimeDashboard } from './websockets/realtime-dashboard';
+import setupHiveMindRoutes from './orchestration/hive-mind-api';
 import * as path from 'path';
 import { MetricsDashboard } from './api/metrics-dashboard';
 import { TaskScheduler } from './agent/task-scheduler';
@@ -36,6 +78,8 @@ import { killSwitch } from './openclaw-kill-switch';
 import TaskFacilitator from './agent/task-facilitator';
 import AutonomousSessionManager from './automation/autonomous-session-manager';
 import AuthSystem from './auth/auth-system';
+import { ASSET_REGISTRY_PATH } from './config/paths';
+import { loadSecrets, resolveFieldCrypto, setActiveSecrets, secretOrEnv } from './security/secretsBootstrap';
 import AuthMiddleware from './auth/auth-middleware';
 import CEOAuditLogger from './auth/audit-logger';
 import SpecialistDashboards from './auth/specialist-dashboards';
@@ -43,15 +87,21 @@ import setupAuthRoutes from './auth/auth-routes';
 import setupAuditRoutes from './auth/audit-routes';
 import setupSpecialistRoutes from './auth/specialist-routes';
 import { AuditRetentionScheduler } from './auth/audit-retention';
+import { LoginAnomalyMonitor } from './security/loginAnomalyMonitor';
+import { setupOpenApiRoutes } from './api/openapi';
 import GitHubSync from './automation/github-sync';
 import setupGitHubRoutes from './automation/github-routes';
 import { SecurityDashboard } from './security/securityDashboard';
+import { securityHeaders } from './security/securityHeaders';
+import { AdvancedRateLimiter } from './security/rateLimiter';
+import { internalWriteAuth } from './middleware/internalWriteAuth';
 import setupSecurityRoutes from './security/security-routes';
 import { QualityDashboard } from './quality/qualityDashboard';
 import setupQualityRoutes from './quality/quality-routes';
 import { activityMonitor } from './terminal-activity-monitor';
 import * as taskEngine from './task-engine';
 import * as tokenTracker from './token-tracker';
+import * as resourceModelRouter from './model-router';
 import * as commitsTracker from './commits-tracker';
 import * as lmstudio from './lmstudio';
 import { AGENT_META } from './agent-registry';
@@ -63,28 +113,154 @@ import * as scrum from './integrations/scrum';
 import * as forum from './integrations/forum';
 import * as kami from './integrations/kami';
 import * as corpus from './integrations/corpus';
+import { registerPlanRoutes } from './plan-review';
+import { registerDataQualityRoutes } from './data-quality';
+import { registerFinanceRoutes } from './finance';
+import { registerGpuRoutes, getGpuAvailable } from './gpu';
+import { registerInferenceRoutes } from './integrations/local-inference/inference-routes';
+import { registerQueryRoutes } from './query-builder';
+import { registerSpectroscopyRoutes } from './spectroscopy';
+import { registerAssetMirrorRoutes } from './assets';
+import { registerCodexRoutes } from './codex';
+import { registerTournamentRoutes } from './org/tournament-routes';
+import { registerRequirementRoutes } from './requirements';
+import { registerFundamentalRoutes } from './fundamentals/routes';
+import { MicroPostStore, DaoParamStore, MicroPostGossip, registerMicroPostRoutes } from './integrations/lightrag/micro-post';
+import { SilkNodeRegistry, SilkGossip, registerSilkRoutes } from './integrations/lightrag/silk-net';
+import { PulseEngine, PulseWalletStore, KnotValidationStore, registerPulseRoutes } from './integrations/lightrag/pulse';
+import { RiskKnotStore, registerRiskRoutes } from './integrations/lightrag/risk-knot';
+import { resolveModel } from './gpu/availability';
 import * as mcp from './integrations/mcp/registry';
 import * as autoresearch from './integrations/autoresearch';
 import * as selfheal from './integrations/selfheal';
+import { containmentGuard, setupContainmentRoutes } from './containment';
+import { setupPlaytestRoutes } from './playtest';
 import { analyzeCsv } from './timeseries';
 import * as credentials from './credentials';
 import * as commercialization from './commercialization';
 import * as commitAudit from './commit-audit';
+import { registerExportRoutes } from './api/export';
 
 // Load environment
 config();
+// Re-load credentials now that dotenv has populated process.env: the module's
+// boot-time load ran at import (before config()), so FIELD_ENCRYPTION_KEY from
+// .env was not yet visible. This pass decrypts api_keys and migrates any
+// plaintext-at-rest to encrypted (no-op when the key is unset). See #31.
+credentials.loadCredentials();
 
 const app = express();
 const server = http.createServer(app);
+// Restrict WebSocket CORS to the local dashboards. `origin: '*'` let any
+// website on the internet open a socket to this server, violating the
+// local-only posture. Override with SOCKET_CORS_ORIGINS (comma-separated)
+// if the dashboard is ever served from another origin.
+const SOCKET_CORS_ORIGINS = (process.env.SOCKET_CORS_ORIGINS ||
+  'http://localhost:3000,http://localhost:3100,http://127.0.0.1:3000,http://127.0.0.1:3100')
+  .split(',').map(o => o.trim()).filter(Boolean);
 const io = new SocketIOServer(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] }
+  cors: { origin: SOCKET_CORS_ORIGINS, methods: ['GET', 'POST'] }
 });
 const PORT = process.env.PORT || 3100;
+// Bind to loopback by default so the API is NOT exposed on the network. A prior
+// security review found the server bound 0.0.0.0 with most routes unauthenticated.
+// Set HOST=0.0.0.0 to deliberately expose it on the LAN — doing so also flips the
+// internal-write guard into enforce mode (see internalWriteAuth below).
+const HOST = process.env.HOST || '127.0.0.1';
+const BOUND_NON_LOCAL = !['127.0.0.1', 'localhost', '::1'].includes(HOST);
+const SERVER_START_TIME = Date.now();
 
 // Middleware
 // Bumped from default 100kb so /api/migration/slag/claim can accept a base64-
 // encoded screenshot (~5 MB worst case after the ~33% base64 overhead).
 app.use(express.json({ limit: '6mb' }));
+
+// ── Security middleware (mounted before any route so it applies globally) ──
+// 1) Response security headers. Safe-by-default; strict mode (COEP/COOP/strict
+//    CSP/X-Frame DENY) is opt-in via ENFORCE_STRICT_SECURITY — see
+//    src/security/securityHeaders.ts.
+app.use(securityHeaders);
+
+// 2) Global per-IP rate limiter. Default 1200 req/min/IP with a 60s window.
+//    The recon measured a single multi-dashboard browser at ~270 req/min, and
+//    all LOCAL dashboards share one bucket (req.ip == 127.0.0.1, no trust
+//    proxy), so the headroom covers a power user with several tabs. External
+//    attackers each get their OWN per-IP bucket, so the flooding-defense value
+//    is unaffected by the generous localhost ceiling. Socket.IO + the canonical
+//    liveness probes are exempt (bypassed before the limiter). cleanup() runs
+//    every 5 min so the in-memory store can't leak; the timer is unref'd.
+const rateLimitEnabled = (process.env.RATE_LIMIT_ENABLED ?? 'true').toLowerCase() !== 'false';
+if (rateLimitEnabled) {
+  const rateLimiter = new AdvancedRateLimiter();
+  // Parse defensively: a non-numeric / non-positive env value would otherwise
+  // yield NaN (perIp's `count >= NaN` is always false → limiting silently off)
+  // or disable limiting, so fall back to the safe default instead.
+  const parsePositive = (v: string | undefined, fallback: number): number => {
+    const n = parseInt(v ?? '', 10);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  };
+  const windowMs = parsePositive(process.env.RATE_LIMIT_WINDOW_MS, 60000);
+  const maxRequests = parsePositive(process.env.RATE_LIMIT_MAX_REQUESTS, 1200);
+  const limiterMw = rateLimiter.perIp({ windowMs, maxRequests });
+  // Exempt the persistent WebSocket transport and the two canonical liveness
+  // probes by BYPASSING the limiter entirely — perIp() has no skip path (a null
+  // key buckets under 'unknown'), so exemption must happen before it runs.
+  // NOTE: match the health probes EXACTLY, not by `/health` suffix — a suffix
+  // match let an attacker dodge the limiter with any `/x/health` path. The
+  // per-subsystem health routes (/api/llm/health, …) are low-frequency and stay
+  // rate-limited, which 1200/min easily accommodates.
+  const EXEMPT_PATHS = new Set(['/health', '/api/health']);
+  const isExempt = (p: string) => p.startsWith('/socket.io') || EXEMPT_PATHS.has(p);
+  app.use((req, res, next) => (isExempt(req.path || '') ? next() : limiterMw(req, res, next)));
+  const cleanupTimer = setInterval(() => rateLimiter.cleanup(), 5 * 60 * 1000);
+  if (typeof cleanupTimer.unref === 'function') cleanupTimer.unref();
+  logger.info(`Rate limiter enabled: ${maxRequests} req / ${windowMs}ms per IP (socket.io + health exempt)`);
+} else {
+  logger.warn('Rate limiter disabled (RATE_LIMIT_ENABLED=false)');
+}
+
+// 3) Guard the internal-only write endpoints. Localhost callers always pass;
+//    non-local callers need INTERNAL_WRITE_SERVICE_TOKEN. WARN mode (log-but-
+//    allow) when bound to loopback so local dev is non-breaking, but ENFORCE
+//    automatically when the server is deliberately exposed on the network
+//    (HOST != loopback) so the high-risk routes can't be hit unauthenticated.
+//    INTERNAL_WRITE_ENFORCE=true forces enforce even on loopback.
+const enforceInternalWrites =
+  BOUND_NON_LOCAL || (process.env.INTERNAL_WRITE_ENFORCE || '').toLowerCase() === 'true';
+if (BOUND_NON_LOCAL) {
+  logger.warn(
+    `[security] HOST=${HOST} exposes the API on the network — internal-write guard set to ENFORCE. ` +
+      `Set INTERNAL_WRITE_SERVICE_TOKEN for non-local callers.`,
+  );
+}
+app.use(internalWriteAuth({ enforce: enforceInternalWrites }));
+
+// Plan review — make plans available from VirtualPC + per-section human comments
+// that relay back to the agents. See src/plan-review + /plan-review.html.
+registerPlanRoutes(app);
+// Data-quality daemon — continuous profiling + SLA on the platform's datasets.
+registerDataQualityRoutes(app);
+// Finance — intangible-asset (immateriële activa) capitalization report + ROI.
+registerFinanceRoutes(app);
+// Fundamentals, news, and filings storage with source + publication date.
+registerFundamentalRoutes(app);
+// GPU daemon — availability detection (3h), dynamic no-GPU model fallback, and
+// LM Studio auto-boot when a GPU returns.
+registerGpuRoutes(app);
+// Inference throughput governor — hardware-adaptive concurrency control + calibration.
+registerInferenceRoutes(app);
+// Query builder — saved, parameterised, versioned queries over the knowledge surfaces.
+registerQueryRoutes(app);
+// Spectroscopy — ingest + peak detection for real spectra (Engel QChem payload).
+registerSpectroscopyRoutes(app);
+// Asset mirror coverage — Roblox→Web cross-platform remediation plan for designers.
+registerAssetMirrorRoutes(app);
+// Codex bridge — coding/review tasks via codex exec (GPT-5.5 dev leg).
+registerCodexRoutes(app);
+// Dev tournament — 3-developer competing-branch regime.
+registerTournamentRoutes(app);
+// Requirements register — USDP use-case-driven requirements with traceability.
+registerRequirementRoutes(app);
 // Force fresh HTML on every load so updates (new agents, panels, fixes)
 // show up immediately instead of serving stale cached markup.
 app.use((req, res, next) => {
@@ -113,7 +289,44 @@ function serveSPAFile(_req: express.Request, res: express.Response) {
   });
 }
 
+// Newsgroup 2.0 frontend — design rationale in docs/NEWSGROUP-FRONTEND-LESSONS.md
+app.get('/newsgroup', (_req, res) => {
+  res.type('html').sendFile(path.resolve(__dirname, '..', 'public', 'newsgroup.html'), (err: any) => {
+    if (err) res.status(500).send('Error loading newsgroup frontend');
+  });
+});
+
 // Dashboard is now served at root (localhost:3100) - no separate /dashboard route needed
+
+// Data-agent dashboard + config pages (also served by express.static, explicit routes for discoverability)
+app.get('/data-agent-dashboard', (_req, res) => {
+  res.type('html').sendFile(path.resolve(__dirname, '..', 'public', 'data-agent-dashboard.html'), (err: any) => {
+    if (err) res.status(500).send('Error loading data-agent dashboard');
+  });
+});
+
+app.get('/data-agent-config', (_req, res) => {
+  res.type('html').sendFile(path.resolve(__dirname, '..', 'public', 'data-agent-config.html'), (err: any) => {
+    if (err) res.status(500).send('Error loading data-agent config');
+  });
+});
+
+// Data-science starter example — JSON mirror of public/examples/data-science/starter.py
+app.get('/api/data-science/starter', (_req, res) => {
+  const filePath = path.resolve(__dirname, '..', 'public', 'examples', 'data-science', 'starter.py');
+  try {
+    const code = require('fs').readFileSync(filePath, 'utf8');
+    res.json({
+      ok: true,
+      title: 'VirtualPC Data Science Starter',
+      description: 'Minimal self-contained example: load CSV, validate, engineer features, baseline regression, outlier detection.',
+      file_path: '/examples/data-science/starter.py',
+      code,
+    });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // Terminal Activity Monitor - Track what's happening in both terminals
 app.get('/api/terminal/activity', (req, res) => {
@@ -166,39 +379,55 @@ app.post('/api/backlog/:id/priority', (req, res) => {
   res.json({ success: true, task: { id: updated.id, priority: updated.priority } });
 });
 
+// Heuristic: pick the most appropriate lightweight Data-* agent for a data task.
+function routeDataTask(title: string, description: string): string {
+  const text = `${title} ${description}`.toLowerCase();
+  if (/schema|catalog|steward|quality|duplicate|currency|unit|governance|lineage|retention|pii/.test(text)) return 'Data-Steward';
+  if (/etl|pipeline|feature|engineer|partition|normalize|parquet|idempotency|clean|extract|transform/.test(text)) return 'Data-Engineer';
+  if (/regression|classification|clustering|model|experiment|feature importance|isolation forest|residual|cross-validation|hyperparameter|baseline/.test(text)) return 'Data-Scientist';
+  if (/snapshot|version|refresh|dashboard publish|lineage report|backlog grooming|artifact count|workspace status/.test(text)) return 'Data-Manager';
+  // default analyst covers summary, chart, outlier, peer comparison, etc.
+  return 'Data-Analyst';
+}
+
 // External delegators inject roadmap items here. Validates agent name
 // against the canonical roster so a typo can't create an orphan task.
+// Pass assigned_to: "auto" to route data-domain tasks to the lightweight Data-* agents.
 app.post('/api/backlog/items', (req, res) => {
   const b = req.body || {};
   if (!b.title || !b.description || !b.assigned_to) {
     res.status(400).json({ success: false, error: 'title, description, assigned_to required' });
     return;
   }
+  let assigned_to = String(b.assigned_to);
+  if (assigned_to.toLowerCase() === 'auto') {
+    assigned_to = routeDataTask(String(b.title), String(b.description));
+  }
   const t = taskEngine.addTask({
     title: String(b.title),
     description: String(b.description),
     priority: b.priority,
-    assigned_to: String(b.assigned_to),
+    assigned_to,
     estimated_hours: typeof b.estimated_hours === 'number' ? b.estimated_hours : undefined,
     subtasks: Array.isArray(b.subtasks) ? b.subtasks.map(String) : undefined,
     sprint: b.sprint ? String(b.sprint) : undefined,
   });
   if (!t) {
-    res.status(400).json({ success: false, error: `unknown agent '${b.assigned_to}' — must be in the canonical roster` });
+    res.status(400).json({ success: false, error: `unknown agent '${assigned_to}' — must be in the canonical roster` });
     return;
   }
   res.json({ success: true, task: { id: t.id, title: t.title, assigned_to: t.assigned_to, priority: t.priority, status: t.status } });
 });
 
 // ============================================================================
-// GitHub proxy for febuz/virtualpc — read-only access to the knowledge dirs
+// GitHub proxy for knitweb/virtualpc — read-only access to the knowledge dirs
 // (.backlog, .admin, .creative, .governance, .operations). The repo is private
 // so the dashboard's external <a href> links 404 for unauthenticated visitors.
 // This proxy uses the local `gh` CLI's keyring auth to fetch the file content,
 // so the dashboard can show it inline. Hardcoded allow-list of path prefixes
 // prevents using the proxy as a generic GitHub fetcher.
 // ============================================================================
-const GH_REPO = 'febuz/virtualpc';
+const GH_REPO = 'knitweb/virtualpc';
 const GH_ALLOWED_DIRS = ['.backlog', '.admin', '.creative', '.governance', '.operations'];
 
 // Map agent name → known doc paths in the repo. Used by the agent-detail panel.
@@ -217,7 +446,9 @@ function ghPathAllowed(p: string): boolean {
 function ghApiFetch(repoPath: string): Promise<{ path: string; content: string; size: number; html_url: string; encoding: string }> {
   return new Promise((resolve, reject) => {
     const { execFile } = require('child_process');
-    execFile('gh', ['api', `repos/${GH_REPO}/contents/${repoPath}`], { maxBuffer: 4 * 1024 * 1024 }, (err: any, stdout: string, stderr: string) => {
+    // 15s timeout so a slow/hung `gh` call can't block the request indefinitely
+    // (the event loop isn't blocked, but the awaiting request would hang forever).
+    execFile('gh', ['api', `repos/${GH_REPO}/contents/${repoPath}`], { maxBuffer: 4 * 1024 * 1024, timeout: 15000 }, (err: any, stdout: string, stderr: string) => {
       if (err) { reject(new Error(stderr || err.message)); return; }
       try {
         const j = JSON.parse(stdout);
@@ -645,6 +876,14 @@ app.post('/api/mcp/call', async (req, res) => {
 app.post('/api/docs/regenerate', async (req, res) => {
   try {
     const scope = String(req.body?.scope || 'all');
+    // Allow-list the scope before it reaches the spawned script as a CLI arg.
+    // regenerate-docs.js only understands these four values; anything else is
+    // either a typo or an injection attempt and must not be forwarded.
+    const ALLOWED_SCOPES = ['all', 'readme', 'architecture', 'wiki'];
+    if (!ALLOWED_SCOPES.includes(scope)) {
+      res.status(400).json({ success: false, error: `invalid scope; allowed: ${ALLOWED_SCOPES.join(', ')}` });
+      return;
+    }
     const { spawn } = require('child_process');
     const script = path.join(REPO_ROOT, 'scripts', 'regenerate-docs.js');
     if (!require('fs').existsSync(script)) {
@@ -757,6 +996,54 @@ app.get('/api/tokens/events', (req, res) => {
   res.json({ success: true, events: tokenTracker.getRecentEvents(agent, limit) });
 });
 
+// Model scheduler — current reservations and idle models.
+app.get('/api/models/schedule', (req, res) => {
+  const { getSchedule } = require('./lmstudio');
+  res.json({ success: true, ...getSchedule() });
+});
+
+app.post('/api/models/schedule/:modelId/extend', (req, res) => {
+  const { extendModelReservation } = require('./lmstudio');
+  const extraMs = parseInt(req.body.extraMs, 10) || 30_000;
+  const ok = extendModelReservation(req.params.modelId, extraMs);
+  if (!ok) { res.status(404).json({ success: false, error: 'model not reserved' }); return; }
+  res.json({ success: true, modelId: req.params.modelId, extendedByMs: extraMs });
+});
+
+// Trigger background download of the smallest recommended local model.
+app.post('/api/models/download-recommended', async (req, res) => {
+  const { ensureLocalModel } = require('./model-downloader');
+  const result = await ensureLocalModel();
+  res.json({ success: result.ok, ...result });
+});
+
+// Model-router health: resource detection + matched roster + recommended downloads.
+app.get('/api/health/models', (req, res) => {
+  const roster = resourceModelRouter.generateRoster();
+  res.json({
+    success: true,
+    weightClass: roster.weightClass,
+    resources: roster.resources,
+    simulationByDefault: roster.simulationByDefault,
+    allowBigModels: roster.allowBigModels,
+    allowCloud: roster.allowCloud,
+    recommendedDownloads: roster.recommendedDownloads.map(m => ({
+      id: m.id,
+      name: m.name,
+      diskGB: m.diskGB,
+      ramGB: m.ramGB,
+      loadCommand: m.lmStudioLoad ? `lms load ${m.lmStudioLoad}` : null,
+    })),
+    rosterSample: roster.roster.slice(0, 10),
+  });
+});
+
+app.post('/api/health/models/refresh', (req, res) => {
+  const { refreshRoster } = require('./lmstudio');
+  const roster = refreshRoster(req.body);
+  res.json({ success: true, weightClass: roster.weightClass, rosterSample: roster.roster.slice(0, 10) });
+});
+
 // Auto-update status — what the last scripts/auto-update.sh tick observed.
 // Returns { status, message, local_sha, remote_sha, checked_at } or
 // { absent: true } before the timer has fired even once.
@@ -812,14 +1099,32 @@ app.get('/api/commercialization/budget', (req, res) => {
 });
 
 // Approve / reject / execute — these mutate spend, so they require an
-// authenticated human with one of the privileged roles. AuthMiddleware
-// is wired further down via setupAuthRoutes; until then we accept a
-// development X-Approver header that the dashboard sends along.
+// authenticated human with one of the privileged roles. The auth system is
+// constructed later inside initialize(); we hold a reference here so these
+// module-level routes can verify a Bearer session token against a role.
+let approverAuthSystem: AuthSystem | null = null;
+const APPROVER_ROLES = ['ceo', 'cto'];
+
 function privilegedActor(req: express.Request): string | null {
-  // TODO: replace with proper authMiddleware.requireRole(['ceo','cto','economy'])
-  // once the routes are reorganized to receive it. For now, trust the header
-  // only when the request is from localhost — same posture as other admin
-  // endpoints in this file.
+  // Preferred path: an authenticated session token with a privileged role.
+  // This is the real check and is the only one honoured in production.
+  const token = req.headers.authorization?.split(' ')[1];
+  if (approverAuthSystem && token) {
+    const authToken = approverAuthSystem.verifyToken(token);
+    if (authToken && APPROVER_ROLES.includes(authToken.role)) {
+      return authToken.username;
+    }
+    // A token was supplied but is invalid or under-privileged — reject it
+    // outright rather than silently falling through to the dev header.
+    return null;
+  }
+
+  // Dev-only fallback: the dashboard's X-Approver header from localhost. This
+  // is spoofable, so it is OFF unless explicitly opted into and never in
+  // production. Set ALLOW_HEADER_APPROVER=1 for local UI work without a login.
+  const headerFallbackAllowed =
+    process.env.NODE_ENV !== 'production' && process.env.ALLOW_HEADER_APPROVER === '1';
+  if (!headerFallbackAllowed) return null;
   const ip = String(req.ip || '');
   const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
   if (!isLocal) return null;
@@ -830,7 +1135,7 @@ function privilegedActor(req: express.Request): string | null {
 app.post('/api/commercialization/:id/approve', (req, res) => {
   const who = privilegedActor(req);
   if (!who) {
-    res.status(403).json({ success: false, error: 'approval requires X-Approver header from localhost' });
+    res.status(403).json({ success: false, error: 'approval requires an authenticated ceo/cto session token' });
     return;
   }
   const r = commercialization.approve(req.params.id, who);
@@ -844,7 +1149,7 @@ app.post('/api/commercialization/:id/approve', (req, res) => {
 app.post('/api/commercialization/:id/reject', (req, res) => {
   const who = privilegedActor(req);
   if (!who) {
-    res.status(403).json({ success: false, error: 'rejection requires X-Approver header from localhost' });
+    res.status(403).json({ success: false, error: 'rejection requires an authenticated ceo/cto session token' });
     return;
   }
   const r = commercialization.reject(req.params.id, who);
@@ -858,7 +1163,7 @@ app.post('/api/commercialization/:id/reject', (req, res) => {
 app.post('/api/commercialization/:id/execute', async (req, res) => {
   const who = privilegedActor(req);
   if (!who) {
-    res.status(403).json({ success: false, error: 'execute requires X-Approver header from localhost' });
+    res.status(403).json({ success: false, error: 'execute requires an authenticated ceo/cto session token' });
     return;
   }
   // execute() is now async — Stripe paymentIntents.create() is a network call.
@@ -882,7 +1187,7 @@ app.get('/api/gpu/symbiosis', (req, res) => {
     let lastTickAgoS: number | null = null;
     let blenderMemMb: number | null = null;
     if (fs.existsSync('/tmp/gpu-symbiosis.log')) {
-      const buf = fs.readFileSync('/tmp/gpu-symbiosis.log', 'utf8');
+      const buf = readFileTail('/tmp/gpu-symbiosis.log');  // tail only — log grows unbounded
       const lines = buf.trim().split('\n');
       lastLog = lines.slice(-5).join('\n');
       // Last "blender_gpu_mem=N MiB threshold=M MiB" tick tells us when the
@@ -1025,7 +1330,7 @@ app.get('/api/agents/:name/cli-log', (req, res) => {
 });
 
 // All-Agents overview — single payload powering /agents.html. Combines:
-//   • the canonical 14-agent registry (src/agent-registry.ts)
+//   • the canonical agent registry (src/agent-registry.ts)
 //   • Gemma-4-drafted persona prompts (data/agent-prompts.json)
 //   • live activity from the task engine (current task, completed counts, last action)
 function readAgentPrompts(): { [name: string]: { prompt: string; model?: string; generatedAt?: string } } {
@@ -1239,7 +1544,21 @@ app.get('/api/tracks', (req, res) => {
 app.get('/api/tracks/:id', (req, res) => {
   try {
     const fs = require('fs');
-    const file = path.resolve(__dirname, '..', 'public', 'assets', 'tracks', `${req.params.id}.json`);
+    // Path-traversal guard: a track id is a flat slug, never a path. Reject
+    // anything outside [A-Za-z0-9_-] so encoded "../" sequences can't escape
+    // the tracks directory and read arbitrary files (e.g. /etc/passwd).
+    const id = String(req.params.id);
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+      res.status(400).json({ success: false, error: 'invalid track id' });
+      return;
+    }
+    const tracksDir = path.resolve(__dirname, '..', 'public', 'assets', 'tracks');
+    const file = path.resolve(tracksDir, `${id}.json`);
+    // Defence in depth: confirm the resolved path is still inside tracksDir.
+    if (file !== path.join(tracksDir, `${id}.json`) || !file.startsWith(tracksDir + path.sep)) {
+      res.status(400).json({ success: false, error: 'invalid track id' });
+      return;
+    }
     if (!fs.existsSync(file)) {
       res.status(404).json({ success: false, error: 'track not found' });
       return;
@@ -1546,46 +1865,57 @@ app.get('/api/progress/:person', (req, res) => {
 
 // Note: /api/backlog is defined in setupRoutes() to avoid route duplication
 
-// System metrics - LIVE from task engine
+// System metrics - LIVE from task engine and token tracker
 app.get('/api/metrics', (req, res) => {
   const gameStats = taskEngine.getGameStats();
   const allItems = taskEngine.getBacklogItems();
   const completed = allItems.filter((i: any) => i.status === 'completed').length;
   const inProg = allItems.filter((i: any) => i.status === 'in_progress').length;
   const pending = allItems.filter((i: any) => i.status === 'pending').length;
+  const errored = allItems.filter((i: any) => i.status === 'error').length;
   const total = allItems.length;
 
+  const tokenSummary = tokenTracker.getAgentSummary().combined;
+  const uptimeSeconds = Math.floor((Date.now() - SERVER_START_TIME) / 1000);
+  const uptimePct = uptimeSeconds > 0 ? 100 : 0; // since last server start
+  // Cache hit rate = ratio of tier-1 (free local / simulated) calls vs total.
+  const cacheHitRate = tokenSummary.totalCalls > 0
+    ? Math.round((tokenTracker.getRecentEvents(undefined, 1000).filter((e: any) => e.tier === 1).length / Math.max(1, tokenTracker.getRecentEvents(undefined, 1000).length)) * 100)
+    : 100;
+
   const metrics = {
-    version: '3.2',
+    version: process.env.npm_package_version || '1.0.0',
     timestamp: new Date().toISOString(),
     totalTasks: gameStats.tasksCompleted + gameStats.tasksInProgress,
     completed: gameStats.tasksCompleted,
     inProgress: gameStats.tasksInProgress,
     pending,
-    costSavings: '87%',
+    errored,
+    costSavings: `${tokenSummary.costSavingsPercent}%`,
 
-    dailyUpdates: gameStats.tasksCompleted * 3,
-    dailyActiveUsers: 1247,
-    studentCapacity: 1000000,
+    dailyUpdates: gameStats.completedLastHour + gameStats.completedLastMinute,
+    dailyActiveUsers: 0, // not tracked; reserved for future auth/session layer
+    studentCapacity: 0,  // not tracked; removed from dashboard
 
     qwenTokens: {
       dailyBudget: 1000000,
-      consumed: 847650,
-      remaining: 152350,
-      percentUsed: 85,
-      status: 'healthy'
+      consumed: tokenSummary.totalTokens,
+      remaining: Math.max(0, 1000000 - tokenSummary.totalTokens),
+      percentUsed: Math.min(100, Math.round((tokenSummary.totalTokens / 1000000) * 100)),
+      status: tokenSummary.totalTokens > 900000 ? 'critical' : tokenSummary.totalTokens > 700000 ? 'warning' : 'healthy'
     },
 
-    apiResponseTime: 145,
-    cacheHitRate: 87,
-    uptime: 99.87,
+    apiResponseTime: 0, // not instrumented yet
+    cacheHitRate,
+    uptime: uptimePct,
+    uptimeSeconds,
 
     costBreakdown: {
-      description: '87% Cost Reduction achieved through:',
+      description: `${tokenSummary.costSavingsPercent}% Cost Reduction achieved through:`,
       items: [
-        { method: 'Intelligent Caching', savings: 40, description: 'Cache common queries' },
-        { method: 'Request Batching', savings: 30, description: 'Batch multiple requests' },
-        { method: 'Model Routing', savings: 20, description: 'Route to optimal model' }
+        { method: 'Local / Simulated Routing', savings: tokenSummary.costSavingsPercent, description: 'Route to on-device or simulated models' },
+        { method: 'Model Routing', savings: 20, description: 'Route to optimal model by weight class' },
+        { method: 'Request Batching', savings: 10, description: 'Batch multiple requests' }
       ]
     },
     agents: {
@@ -1601,7 +1931,7 @@ app.get('/api/metrics', (req, res) => {
       pending,
       completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
       // Throughput windows so the dashboard can prove motion even when the
-      // pending count is at steady-state (14 agents × 2 pending = 28 always).
+      // pending count is at steady-state (roster size × 2 pending = steady state).
       completedLastMinute: gameStats.completedLastMinute,
       completedLastHour: gameStats.completedLastHour,
       completedLast24h: gameStats.completedLast24h,
@@ -1850,12 +2180,32 @@ app.get('/dashboard-static', (req, res) => {
 // Kafka shared producer + health endpoint. Promoted from dev-only to a
 // production wire in May 2026: chatAsAgent and addTask now best-effort-
 // publish events to model.responses, agent.tasks, agent.results.
-import { ensureSharedProducer as _ensureSharedKafka, isKafkaConnected as _kafkaConnected, getKafkaBrokers as _kafkaBrokers } from './integrations/kafka/shared';
+import { ensureSharedProducer as _ensureSharedKafka, isKafkaConnected as _kafkaConnected, getKafkaBrokers as _kafkaBrokers, bestEffortPublish } from './integrations/kafka/shared';
 import { startAuditConsumer as _startAudit, getCostState as _kafkaCost, readAuditTail as _kafkaAuditTail, isAuditConsumerRunning as _auditRunning } from './integrations/kafka/audit-consumer';
-_ensureSharedKafka().catch(() => { /* logged in shared module */ });
-// Boot the audit + cost consumer. Idempotent; if Kafka is offline it
-// logs a warning and stays dormant — next service restart re-attempts.
-_startAudit().catch(() => { /* logged in module */ });
+
+// If Kafka is not reachable on localhost:9092 and the user has not explicitly
+// enabled it, disable it automatically in development to avoid cascades of
+// ECONNREFUSED retry logs on lightweight machines.
+(async function maybeDisableKafkaInDev() {
+  if (process.env.KAFKA_DISABLED || process.env.KAFKA_BROKERS) return;
+  const net = require('net');
+  const reachable = await new Promise<boolean>(resolve => {
+    const socket = net.connect(9092, 'localhost');
+    socket.setTimeout(800);
+    socket.once('connect', () => { socket.destroy(); resolve(true); });
+    socket.once('error', () => { socket.destroy(); resolve(false); });
+    socket.once('timeout', () => { socket.destroy(); resolve(false); });
+  });
+  if (!reachable) {
+    process.env.KAFKA_DISABLED = '1';
+    logger.info('Kafka not reachable on localhost:9092 — auto-disabling in dev (set KAFKA_BROKERS or unset KAFKA_DISABLED=0 to override)');
+  }
+})().finally(() => {
+  _ensureSharedKafka().catch(() => { /* logged in shared module */ });
+  // Boot the audit + cost consumer. Idempotent; if Kafka is offline it
+  // logs a warning and stays dormant — next service restart re-attempts.
+  _startAudit().catch(() => { /* logged in module */ });
+});
 
 app.get('/api/kafka/health', (_req, res) => {
   res.json({
@@ -1894,6 +2244,37 @@ app.get('/api/kafka/cost', (_req, res) => {
 app.get('/api/kafka/audit', (req, res) => {
   const limit = Math.min(500, parseInt(String(req.query.limit || '50')) || 50);
   res.json({ success: true, count: limit, tail: _kafkaAuditTail(limit) });
+});
+
+// Demo network info — local IP + port-forward instructions
+function getLocalIp(): string {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
+app.get('/api/demo/network-info', (req, res) => {
+  const port = process.env.PORT || 3100;
+  const localIp = getLocalIp();
+  res.json({
+    success: true,
+    localIp,
+    port,
+    localUrl: `http://${localIp}:${port}`,
+    localhostUrl: `http://localhost:${port}`,
+    routerSteps: [
+      `Open your router admin page (usually http://192.168.1.1 or http://192.168.0.1).`,
+      `Find "Port Forwarding", "Virtual Servers", or "NAT/PAT".`,
+      `Add a rule: external TCP port ${port} → internal ${localIp}:${port}.`,
+      `Save/apply. Your colleague can now reach this demo at http://<your-public-ip>:${port}`,
+    ],
+  });
 });
 
 // Health check
@@ -1962,19 +2343,33 @@ app.get('/api/task-status', (req, res) => {
  * Initialize all system components
  */
 async function initialize() {
-  logger.info('🚀 Custom Paperclip starting...');
+  logger.info('🚀 VirtualPC starting...');
 
   // Initialize emergency kill switch (Ctrl-Q-Q to stop all automation)
   logger.info('🔴 OpenClaw Emergency Kill Switch active (Ctrl+Q+Q to stop)');
   killSwitch.initialize();
 
   try {
+    // 0. Load secrets first (Infisical, no .env) so every downstream component
+    //    sources credentials from the active SecretsManager. Returns null until
+    //    Infisical is provisioned — non-breaking (env fallback meanwhile).
+    const secrets = await loadSecrets();
+    setActiveSecrets(secrets);
+
     // 1. Initialize LightRAG (shared memory)
     logger.info('📊 Initializing LightRAG...');
+    const neo4jPassword = secretOrEnv('infra', 'NEO4J_PASSWORD');
+    if (!neo4jPassword) {
+      const msg = 'NEO4J_PASSWORD is not set.';
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(`${msg} Refusing to start with a default Neo4j password in production.`);
+      }
+      logger.warn(`⚠️  ${msg} Falling back to the insecure default 'password' (dev only).`);
+    }
     const lightrag = new LightRAGClient({
-      neo4j_url: process.env.NEO4J_URI || 'bolt://localhost:7687',
-      neo4j_username: process.env.NEO4J_USER || 'neo4j',
-      neo4j_password: process.env.NEO4J_PASSWORD || 'password'
+      neo4j_url: secretOrEnv('infra', 'NEO4J_URI') || 'bolt://localhost:7687',
+      neo4j_username: secretOrEnv('infra', 'NEO4J_USER') || 'neo4j',
+      neo4j_password: neo4jPassword || 'password'
     });
     await lightrag.connect();
     logger.info('✓ LightRAG connected');
@@ -2016,6 +2411,123 @@ async function initialize() {
       logger.warn(`governance-graph init failed: ${e.message}`);
     }
 
+    // 1c. Ingest the Familie knowledge graph — een aparte, verbergbare graaf
+    //     met personen / bedrijven / hardware / software / projecten. Zelfde
+    //     graceful-offline gedrag. De /api/family/* surface hieronder serveert
+    //     'm in 3D-force-graph formaat met een verberg-toggle.
+    try {
+      const fam = await import('./integrations/lightrag/family-graph');
+      const r = await fam.ingestFamilyGraph(lightrag);
+      if (r.offline) logger.warn('family-graph: LightRAG offline — skip ingest');
+      else logger.info(`✓ family-graph: ${r.entities} objecten, ${r.categories} categorieën, ${r.structuralEdges} structureel + ${r.semanticEdges} afgeleid + ${r.verifiedEdges} geverifieerd (hidden=${r.hidden})`);
+      // Chat-extractie delta (data/family-extract.json) — idempotent, getagd source='chat'.
+      const ex = await fam.ingestExtract(lightrag);
+      if (ex.missing) logger.info('family-graph: geen chat-extractie (run scripts/family-extract.py)');
+      else if (!ex.offline) logger.info(`✓ family-graph: chat-extractie — ${ex.entities} entiteiten, ${ex.chats} chats, ${ex.edges} randen`);
+      // Molgang-game delta (data/molgang-extract.json) — getagd source='molgang'.
+      const mg = await fam.ingestMolgang(lightrag);
+      if (mg.missing) logger.info('family-graph: geen molgang-extractie (run scripts/molgang-extract.py)');
+      else if (!mg.offline) logger.info(`✓ family-graph: molgang — ${mg.entities} entiteiten, ${mg.edges} randen`);
+      // Chemie/fysica staalslak-valorisatie (data/slag-chemistry.json) — source='chem'.
+      const ch = await fam.ingestChemistry(lightrag);
+      if (ch.missing) logger.info('family-graph: geen chemie-data (data/slag-chemistry.json ontbreekt)');
+      else if (!ch.offline) logger.info(`✓ family-graph: chemie — ${ch.entities} entiteiten, ${ch.edges} randen`);
+    } catch (e: any) {
+      logger.warn(`family-graph init failed: ${e.message}`);
+    }
+
+    // Familie-graaf endpoints. GET /graph → 3D node-link JSON (respecteert de
+    // verberg-toggle); GET/POST /visibility → toggle uitlezen/zetten.
+    const familyApi = await import('./integrations/lightrag/family-graph');
+    app.get('/api/family/graph', async (_req, res) => {
+      try { res.json({ success: true, lightrag_connected: lightrag.isConnected(), ...(await familyApi.getFamilyGraph3D(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/family/entities', async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.listFamilyEntities(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/family/visibility', (_req, res) => {
+      res.json({ success: true, ...familyApi.getFamilyVisibility() });
+    });
+    app.post('/api/family/visibility', async (req, res) => {
+      try {
+        const hidden = req.body?.hidden === true || req.body?.hidden === 'true';
+        res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, hidden)) });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Verberg-toggle als losse "flip" (geen body nodig).
+    app.post('/api/family/toggle', async (_req, res) => {
+      try {
+        const cur = familyApi.getFamilyVisibility();
+        res.json({ success: true, ...(await familyApi.setFamilyVisibility(lightrag, !cur.hidden)) });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Categorieën (voor de portal-dropdown).
+    app.get('/api/family/categories', (_req, res) => {
+      res.json({ success: true, categories: familyApi.getCategories() });
+    });
+    // i18n-woordenboek (NL/EN/CN) voor de taal-toggle in het portaal.
+    app.get('/api/family/i18n', (_req, res) => {
+      res.json({ success: true, ...familyApi.getI18n() });
+    });
+    // Localhost-only: het privé portal-token uitlezen (de eigenaar leest 'm
+    // lokaal en voert 'm één keer in op zijn Quest). Externe LAN-clients krijgen 403.
+    app.get('/api/family/portal-token', (req, res) => {
+      const ip = (req.socket.remoteAddress || '').replace('::ffff:', '');
+      if (ip !== '127.0.0.1' && ip !== '::1') { res.status(403).json({ success: false, error: 'alleen via localhost' }); return; }
+      res.json({ success: true, token: familyApi.getOrCreatePortalToken() });
+    });
+
+    // Privé schrijf-gate: alle update-endpoints vereisen het token
+    // (header x-family-token of ?token=). Zo is de graaf op het LAN te
+    // raadplegen maar alleen met token te wijzigen.
+    const requireFamilyToken: import('express').RequestHandler = (req, res, next) => {
+      const tok = (req.headers['x-family-token'] as string) || (req.query.token as string) || (req.body && req.body.token);
+      if (!familyApi.checkPortalToken(tok)) { res.status(401).json({ success: false, error: 'ongeldig of ontbrekend portal-token' }); return; }
+      next();
+    };
+    // Object toevoegen/bijwerken.
+    app.post('/api/family/node', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.upsertEntity(lightrag, { name: req.body?.name, cat: req.body?.cat, note: req.body?.note })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Object verwijderen.
+    app.delete('/api/family/node/:name', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.removeEntity(lightrag, req.params.name)) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Rand toevoegen.
+    app.post('/api/family/edge', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.upsertEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel, confidence: req.body?.confidence, evidence: req.body?.evidence })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Rand verwijderen.
+    app.post('/api/family/edge/delete', requireFamilyToken, async (req, res) => {
+      try { res.json({ success: true, ...(await familyApi.removeEdge(lightrag, { from: req.body?.from, to: req.body?.to, rel: req.body?.rel })) }); }
+      catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    // Chat-extractie opnieuw inladen (na het draaien van scripts/family-extract.py).
+    app.post('/api/family/ingest-extract', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestExtract(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Molgang-extractie opnieuw inladen (na scripts/molgang-extract.py).
+    app.post('/api/family/ingest-molgang', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestMolgang(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Chemie/fysica data opnieuw inladen (na bewerken van data/slag-chemistry.json).
+    app.post('/api/family/ingest-chemistry', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.ingestChemistry(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    // Forceer een snapshot-export + Drive-sync (los van de auto-trigger bij wijzigingen).
+    app.post('/api/family/export-sync', requireFamilyToken, async (_req, res) => {
+      try { res.json({ success: true, ...(await familyApi.exportAndSync(lightrag)) }); }
+      catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+
     // Asset query endpoints — read straight from the LightRAG graph so
     // designers (Mira, Luna) can ask "which 3D models from Roblox are not
     // yet ported to web?" without scanning the filesystem each time.
@@ -2050,7 +2562,7 @@ async function initialize() {
       try {
         const fs = require('fs');
         const path = require('path');
-        const REGISTRY_PATH = '/media/knight2/EDS2/projects/molgang-web/shared/asset-registry.json';
+        const REGISTRY_PATH = ASSET_REGISTRY_PATH;
         if (!fs.existsSync(REGISTRY_PATH)) { res.status(503).json({ success: false, error: 'registry not built' }); return; }
         const reg = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
         const asset = (reg.assets || []).find((a: any) => a.id === req.params.id);
@@ -2080,6 +2592,383 @@ async function initialize() {
     logger.info('📦 Initializing Agent API Wrapper...');
     const agentAPI = new AgentAPIWrapper(lightrag);
     logger.info('✓ Agent API Wrapper ready (caching + rate limiting)');
+
+    // 1c. Start P2P knowledge-graph sync — subscribes to lightrag.updates
+    //     Kafka topic and materialises remote graph events into local Neo4j.
+    //     Best-effort: if Kafka is offline the sync disables itself gracefully.
+    const kafkaBrokers = (secretOrEnv('infra', 'KAFKA_BROKERS') || 'localhost:9092').split(',');
+    const p2pSync = new P2PSync(kafkaBrokers, lightrag);
+    p2pSync.start().catch((e: any) => logger.warn(`P2PSync start error: ${e.message}`));
+    app.get('/api/lightrag/p2p', (_req, res) => res.json({ success: true, ...p2pSync.getStats() }));
+    logger.info('✓ P2P knowledge-graph sync started');
+
+    // Register full graph REST API (CRUD, traversal, visualization, export, ML, snapshot, query)
+    registerGraphRoutes(app, lightrag);
+    registerSnapshotRoutes(app, lightrag);
+    registerGraphQueryRoutes(app, lightrag);
+    registerProvenanceRoutes(app, lightrag);
+    registerNFCRoutes(app, lightrag);
+
+    // 1c-ii. Chain anchoring + OpenTimestamps + P2P news (whitepaper stack).
+    //   News flow: instant publish (unverified) → P2P gossip → anchor.
+    //   Anchors run dry-run until a signer/contract is configured via env.
+    const anchorService = new AnchorService(lightrag, defaultAnchorTargets());
+    if (process.env.ANCHOR_SCHEDULER === 'true') anchorService.start();
+    registerAnchorRoutes(app, anchorService);
+    const otsService = new OtsService(lightrag);
+    registerOtsRoutes(app, otsService);
+
+    // 1c-iii. Sovereign identity (self-certifying DIDs) + value chain
+    //   (capped supply 888 888 888, Bitcoin-style halving eras). Attention
+    //   events from REGISTERED identities mine value tokens (Tron BTT lesson:
+    //   pay for contribution — here: pay for validated knowledge).
+    const identityService = new SovereignIdentityService(lightrag);
+    registerIdentityRoutes(app, identityService);
+    const valueChain = new ValueChainService(lightrag, { identity: identityService });
+    registerValueRoutes(app, valueChain);
+
+    // Durability: restore ledger + identities from the last snapshot BEFORE any
+    // hooks are wired — replayed history must not re-trigger consensus or
+    // re-mint attention rewards. A corrupted snapshot fails the boot loudly.
+    const chainStore = new ChainStore(defaultSnapshotPath(), valueChain, identityService);
+    const restored = chainStore.load();
+    if (restored) {
+      logger.info(`💾 Chain restored from snapshot: ${restored.transfers} tx, ${restored.blocks} blocks, ${restored.identities} identities`);
+    }
+
+    const attentionService = new AttentionChainService(lightrag, {
+      onEvent: (e) => {
+        // Attention mining: a registered agent's contribution mints tokens at
+        // the current era rate. Unregistered agents earn nothing (sybil gate).
+        const did = identityService.didForHandle(e.agent);
+        if (did) valueChain.rewardAttention(did, e.kind, e.weight);
+      },
+    });
+    registerAttentionRoutes(app, attentionService);
+    // attentionService passed to NewsService so GET /api/news?orderBy=attention works
+    const newsService = new NewsService(lightrag, undefined, { attentionService });
+    registerNewsRoutes(app, newsService, async () => {
+      const pending = newsService.unanchoredIds();
+      let anchorId: string;
+      // Prefer free OTS aggregation; fall back to dry-run chain anchors
+      try {
+        const stamp = await otsService.stampCurrentRoot();
+        anchorId = stamp.status !== 'failed' ? stamp.id : '';
+      } catch { anchorId = ''; }
+      if (!anchorId) {
+        const records = await anchorService.anchorAll();
+        anchorId = records[0]?.id ?? `local_${Date.now()}`;
+      }
+      // Anchoring is the strongest attention signal — feed the attention chain
+      for (const id of pending) {
+        try { attentionService.record({ itemId: id, agent: 'anchor-service', kind: 'anchor' }); } catch { /* non-fatal */ }
+      }
+      return { anchorId };
+    });
+    logger.info('✓ News + Anchor + OTS + Attention stack ready (instant-publish → p2p → anchor)');
+
+    // 1c-iv. Sovereign identified voting — DID-bound sybil-resistant referenda;
+    //   results published as signed news claims and anchored with the graph.
+    const sovereignVoting = new SovereignVotingService(lightrag, {
+      identity: identityService,
+      valueChain,
+      news: newsService,
+    });
+    registerSovereignVotingRoutes(app, sovereignVoting);
+    logger.info('✓ Sovereign identity + value chain + voting ready (/api/identity, /api/value, /api/sovereign-votes)');
+
+    // 1c-v. BFT Consensus Engine — closes the finality gap in the threat model (§4.1).
+    //   Provides two-phase HotStuff consensus over the validator set so that
+    //   cross-node transfer history reaches Byzantine-fault-tolerant finality
+    //   rather than relying solely on external OTS/chain anchoring.
+    //   onFinalized → seal the corresponding value-chain block so pending txs
+    //   move from "pending" to "finalized" exactly when consensus agrees.
+    const consensusEngine = new ConsensusEngine(lightrag, identityService, {
+      blockTimeoutMs: parseInt(process.env.CONSENSUS_BLOCK_TIMEOUT_MS ?? '5000', 10),
+      onFinalized: (block) => {
+        // Seal value-chain block containing the finalized transfer set
+        const sealed = valueChain.sealBlock();
+        if (sealed) {
+          logger.info(`consensus→value-chain: sealed block #${sealed.height} with ${sealed.txIds.length} txs (consensus height=${block.proposal.payload.height})`);
+        }
+        chainStore.scheduleSave();
+      },
+    });
+    // Lazy delegate so the route handlers can propagate votes even though the
+    // ConsensusNetwork is created after the routes are registered.
+    let consensusNetwork: ConsensusNetwork | undefined;
+    registerConsensusRoutes(app, consensusEngine, {
+      deliverVote: (v) => consensusNetwork?.deliverVote(v) ?? Promise.resolve(null),
+    });
+    (app as any).locals.consensusEngine = consensusEngine;
+
+    // Every applied transfer: queue for consensus finality + snapshot to disk.
+    // Wired AFTER the restore above so replayed history is not re-queued.
+    valueChain.setOnTransfer((tx) => {
+      consensusEngine.queueTransfer(tx.id);
+      chainStore.scheduleSave();
+    });
+
+    // Self-validator bootstrap: a fresh node keypair makes single-node
+    // consensus work out of the box; multi-node deployments add the other
+    // validators via POST /api/consensus/validators.
+    {
+      const kp = nodeCrypto.generateKeyPairSync('ed25519', {
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      const nodeDid = didFromPublicKey(kp.publicKey);
+      consensusEngine.setSelf(nodeDid, kp.privateKey);
+      consensusEngine.addValidator({ did: nodeDid, stake: 0n, publicKeyPem: kp.publicKey });
+      logger.info(`✓ Consensus self-validator: ${nodeDid}`);
+    }
+
+    // Network driver: broadcast proposals/votes to CONSENSUS_PEERS and
+    // auto-propose when this node is the leader with pending transfers.
+    const consensusPeers = (process.env.CONSENSUS_PEERS ?? '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    consensusNetwork = new ConsensusNetwork(consensusEngine, consensusPeers, {
+      proposeIntervalMs: parseInt(process.env.CONSENSUS_PROPOSE_INTERVAL_MS ?? '2000', 10),
+    });
+    consensusNetwork.start();
+    (app as any).locals.consensusNetwork = consensusNetwork;
+    (app as any).locals.chainStore = chainStore;
+
+    // Flush the snapshot on shutdown so the last debounce window is not lost.
+    process.once('SIGTERM', () => chainStore.flush());
+    process.once('SIGINT', () => chainStore.flush());
+
+    // 1c-iv-b. User API + Feed API — wired AFTER consensus so node-status
+    //   can report consensus state; wired AFTER restore so sessions and
+    //   profiles reflect the recovered ledger.
+    const userApi = new UserApiService(identityService, valueChain, attentionService, newsService, sovereignVoting);
+    registerUserRoutes(app, userApi, consensusEngine, valueChain);
+
+    const feedService = new FeedService(newsService, attentionService, identityService, valueChain);
+    registerFeedRoutes(app, feedService);
+    logger.info('✓ User + Feed APIs ready (/api/users/*, /api/feed/*, /api/node/status)');
+
+    // 1c-iv-c. Post-quantum wallet layer — hash-based signatures (SHA-256
+    //   only: quantum-resistant) + AES-256-GCM encrypted vault export.
+    //   See docs/POST-QUANTUM-WALLET.md for the threat analysis.
+    const pqWallet = new PqWalletService(identityService, valueChain);
+    registerPqRoutes(app, pqWallet);
+    // Phase-2 hybrid transfers: a carried pqRoot must be the sender's
+    // enrolled key (POST-QUANTUM-WALLET.md §6, binding check).
+    valueChain.setPqRootResolver((did) => pqWallet.getEnrolledRoot(did));
+
+    // 1c-vi. Democratic elections — sovereign DID-bound ballots with Merkle-
+    //   certified results, D'Hondt seat allocation, optional PQ signatures,
+    //   and a full ISO 3166-1 country registry. See docs/README.md §P2P.
+    const democraticElections = new DemocraticElectionService(identityService);
+    registerElectionRoutes(app, democraticElections);
+    logger.info('✓ Democratic elections ready (/api/elections/*, 195 countries)');
+
+    // 1c-vii. Group voting + fact matrix + capability-routed fan-out.
+    //   The bus publishes through TransportAdapter only (threat model §3.8):
+    //   MQTT (opt-in via MQTT_BROKER_URL) is wrapped as a telemetry-only
+    //   adapter, so governance/ballot events are structurally excluded from
+    //   the broker; Kafka rides the shared best-effort producer (topic
+    //   group.events). The fact matrix is the unified 888 888 888-dimension
+    //   sparse coordinate space for transactions (price+volume), news, votes.
+    const mqttBridge = mqttClientFromEnv(`virtualpc-${process.pid}`);
+    if (mqttBridge) mqttBridge.connect();
+    const transports = mqttBridge ? [new MqttTelemetryAdapter(mqttBridge)] : [];
+    const groupEventBus = new GroupEventBus(transports);
+    const factMatrix = new FactMatrixService(groupEventBus);
+    registerFactMatrixRoutes(app, factMatrix);
+    const groupVoting = new GroupVotingService(identityService, {
+      valueChain,
+      events: groupEventBus,
+      matrix: factMatrix,
+    });
+    registerGroupVotingRoutes(app, groupVoting, groupEventBus);
+    // News publications mirror into the matrix (news region) automatically.
+    newsService.setOnPublish((item) => {
+      try {
+        factMatrix.ingestNews({
+          newsId: item.id, claimer: item.claimer, source: item.source,
+          semanticCoordinates: item.coordinates,
+        });
+      } catch { /* matrix full or invalid coords — news itself is unaffected */ }
+    });
+    process.once('SIGTERM', () => mqttBridge?.close());
+    process.once('SIGINT', () => mqttBridge?.close());
+    logger.info(`✓ Group voting + fact matrix ready (/api/groups/*, /api/matrix/*; MQTT ${mqttBridge ? 'on' : 'off'})`);
+
+    // 1c-viii. Contributor backlog — knowledge graph as hub, GitHub/GitLab sync.
+    const backlogService = new BacklogService(factMatrix, groupEventBus);
+    registerHubBacklogRoutes(app, backlogService);
+    const ghSync = gitHubSyncFromEnv(backlogService);
+    if (ghSync) {
+      registerGitHubSyncRoutes(app, ghSync);
+      logger.info('✓ GitHub Issues sync ready (/api/hub/sync/github, /api/hub/webhooks/github)');
+    }
+    const glSync = gitLabSyncFromEnv(backlogService);
+    if (glSync) {
+      registerGitLabSyncRoutes(app, glSync);
+      logger.info('✓ GitLab Issues sync ready (/api/hub/sync/gitlab, /api/hub/webhooks/gitlab)');
+    }
+    logger.info('✓ Contributor backlog hub ready (/api/hub/backlog/*)');
+    // Graph-as-hub bridge: closing a group proposal closes every backlog
+    // item that links it via graphRefs (kind 'proposal').
+    groupVoting.setOnClose((cert) => {
+      const closed = backlogService.closeByProposal(cert.proposalId);
+      if (closed.length > 0) {
+        logger.info(`backlog: proposal ${cert.proposalId} closed ${closed.length} linked item(s)`);
+      }
+    });
+
+    // 1c-ix. Lightning Network — off-chain payment channels.
+    //   Enables instant, high-volume micropayments between nodes without
+    //   touching the chain for every transfer. Network ID is embedded in
+    //   every commitment for fork-replay protection. See lightning.ts.
+    const lightning = lightningFromEnv(identityService, valueChain);
+    registerLightningRoutes(app, lightning);
+    logger.info('⚡ Lightning Network ready (/api/lightning/*)');
+
+    // 1c-x. Protocol versioning + fork registry.
+    //   Feature-flag bitvector (BOLT #9 pattern), ForkSpec registry,
+    //   peer capability negotiation, migration hooks. See protocol-version.ts.
+    registerProtocolRoutes(app, protocolService);
+    logger.info('✓ Protocol versioning ready (/api/protocol/*)');
+
+    // 1d. Fact-validation graph — P2P consensus layer over knowledge graph.
+    const factValidator = new FactValidator(lightrag);
+    p2pSync.setFactValidator(factValidator); // wire so remote votes are applied locally
+    app.get('/api/lightrag/facts', (_req, res) => res.json({ success: true, ...factValidator.getStats() }));
+    app.get('/api/lightrag/facts/list', (req, res) => {
+      const state = req.query.state as any;
+      res.json({ success: true, facts: factValidator.listFacts(state) });
+    });
+    app.post('/api/lightrag/facts/submit', async (req, res) => {
+      try {
+        const { agent, ...fact } = req.body;
+        const id = await factValidator.submit(agent, fact);
+        res.json({ success: true, factId: id });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    app.post('/api/lightrag/facts/:id/validate', async (req, res) => {
+      try {
+        const state = await factValidator.validate(req.body.agent, req.params.id);
+        res.json({ success: true, state });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    app.post('/api/lightrag/facts/:id/challenge', async (req, res) => {
+      try {
+        const state = await factValidator.challenge(req.body.agent, req.params.id, req.body.reason);
+        res.json({ success: true, state });
+      } catch (e: any) { res.status(400).json({ success: false, error: e.message }); }
+    });
+    logger.info('✓ P2P fact-validation graph ready');
+
+    // 1d-ii. Signed vote certificates — quorum results published as news
+    //   ("Stem resultaat als nieuws"). Ed25519 multi-sig today; the scheme
+    //   field reserves a drop-in slot for BLS12-381 aggregation.
+    const voteCertService = new VoteCertificateService(lightrag);
+    registerVoteCertRoutes(app, voteCertService, { factValidator, news: newsService });
+    logger.info('✓ Vote certificates ready (/api/votes/*)');
+
+    // 1e. Seed well-known quantum algorithms for quantum-information readiness.
+    try {
+      const seeded = await seedQuantumAlgorithms(lightrag);
+      logger.info(`✓ Quantum schema: ${seeded} algorithms seeded`);
+    } catch (e: any) {
+      logger.warn(`Quantum seed failed (non-fatal): ${e.message}`);
+    }
+
+    // 1f. P2P Gossip — HTTP fallback sync when Kafka is unavailable.
+    //     Swarm-managed: tit-for-tat choking, optimistic unchoke, rarest-first
+    //     replication, endgame fanout, PEX peer discovery, misbehavior bans
+    //     (BitTorrent / Bitcoin Core / gossipsub v1.1 lessons).
+    const gossipPeers = (secretOrEnv('infra', 'P2P_PEERS') || '').split(',').filter(Boolean);
+    const myUrl = secretOrEnv('infra', 'MY_URL') || `http://localhost:${process.env.PORT || 3100}`;
+    const swarm = new P2PSwarm({ myUrl });
+    registerSwarmRoutes(app, swarm);
+    const gossipAttentionThreshold = parseFloat(process.env.GOSSIP_ATTENTION_THRESHOLD ?? '0');
+    const gossip = new P2PGossip(lightrag, gossipPeers, myUrl, swarm, {
+      attentionService,
+      attentionThreshold: gossipAttentionThreshold,
+    });
+    gossip.registerExpressRoutes(app);
+    gossip.start();
+    logger.info(`✓ P2PGossip configured (${gossipPeers.length} peers, swarm-managed)`);
+
+    // 1f-micro. Micro-post P2P network — 2-line content, TTL chain anchors, DAO governance.
+    const microSnapshotPath = process.env.MICRO_POST_DATA_DIR
+      ? `${process.env.MICRO_POST_DATA_DIR}/micro-posts.json`
+      : './data/micro-posts.json';
+    const microPostStore = new MicroPostStore(undefined, { storage: microSnapshotPath });
+    const microRestored = microPostStore.load();
+    if (microRestored) logger.info(`✓ MicroPost store: restored ${microRestored.loaded} posts`);
+    const microPostDao = new DaoParamStore(microPostStore);
+    const microPostGossip = new MicroPostGossip(microPostStore, gossipPeers);
+    microPostStore.startGc();
+    microPostGossip.start();
+    registerMicroPostRoutes(app, microPostStore, microPostDao, microPostGossip);
+    logger.info('✓ MicroPost P2P network active');
+
+    // 1f-pulse. Pulse (PLS) economy — mined by knot validation, burned when idle 3 months.
+    const pulseWallets    = new PulseWalletStore();
+    const pulseKnots      = new KnotValidationStore();
+    const pulseEngine     = new PulseEngine(pulseWallets, pulseKnots);
+    pulseEngine.startGc();
+    registerPulseRoutes(app, pulseEngine, microPostStore);
+    const riskKnotStore = new RiskKnotStore();
+    registerRiskRoutes(app, riskKnotStore, pulseWallets);
+    logger.info('✓ Pulse economy active — mine PLS by validating knots, stake on risk knots');
+
+    // 1f-silk. Silk Net — free, open-source knitweb participation tier.
+    // Silk nodes are permissionless; posts propagate into the shared MicroPostStore
+    // and reach the full knitweb via bridge nodes. Not a testnet — data is real.
+    const silkRegistry = new SilkNodeRegistry();
+    const silkGossip   = new SilkGossip(silkRegistry, microPostStore, myUrl);
+    silkGossip.start();
+    registerSilkRoutes(app, silkRegistry, microPostStore, silkGossip, myUrl);
+    logger.info('✓ Silk Net active — permissionless knitweb tier ready');
+
+    // 1g. Agent Bridge — wires task completions/failures into the knowledge graph.
+    const agentBridge = new AgentBridge(agentAPI, factValidator);
+    app.get('/api/lightrag/bridge', (_req, res) => res.json({ success: true, ...agentBridge.getStats() }));
+    logger.info('✓ AgentBridge ready');
+
+    // 1h. Inference Engine — derives implicit facts every hour.
+    const inferenceEngine = new InferenceEngine(lightrag);
+    inferenceEngine.startScheduled(3_600_000);
+    app.post('/api/lightrag/inference/run', async (_req, res) => {
+      try {
+        const summary = await inferenceEngine.runAll();
+        // Publish inference results to Kafka so peers know which rules fired
+        if (summary.totalDerived > 0) {
+          bestEffortPublish(p => p.publishMemoryUpdate({
+            type: 'context',
+            content: `inference-run: ${summary.totalDerived} facts derived by ${summary.rulesRun} rules`,
+            agent: 'inference-engine',
+            metadata: summary as any,
+          }));
+        }
+        res.json({ success: true, ...summary });
+      } catch (e: any) { res.status(500).json({ success: false, error: e.message }); }
+    });
+    app.get('/api/lightrag/inference', (_req, res) => res.json({
+      success: true,
+      lastRunAt: inferenceEngine.getLastRunAt(),
+    }));
+    logger.info('✓ InferenceEngine scheduled (hourly)');
+
+    // P2P unified health monitor dashboard
+    registerMonitorRoutes(app, lightrag, { p2pSync, gossip, factValidator, inferenceEngine, agentBridge });
+
+    // Make agentBridge available to the task engine via app.locals
+    (app as any).locals.agentBridge = agentBridge;
+    (app as any).locals.inferenceEngine = inferenceEngine;
+    (app as any).locals.gossip = gossip;
+    (app as any).locals.newsService = newsService;
+    (app as any).locals.anchorService = anchorService;
+    (app as any).locals.attentionService = attentionService;
+    (app as any).locals.identityService = identityService;
+    (app as any).locals.valueChain = valueChain;
+    (app as any).locals.sovereignVoting = sovereignVoting;
 
     // 2. Initialize Kafka (message orchestration) - DISABLED for now
     logger.info('🔄 Kafka disabled (development mode) - running single-node');
@@ -2144,7 +3033,13 @@ async function initialize() {
 
     // 5c. Initialize Authentication System (employee auth + roles)
     logger.info('🔐 Initializing Authentication System...');
-    const authSystem = new AuthSystem();
+    // Field-encryption key sourced from the infra layer (secrets were loaded at
+    // the top of initialize()); falls back to AuthSystem's env behavior when
+    // Infisical isn't configured yet.
+    const authSystem = new AuthSystem({ fieldCrypto: secrets ? resolveFieldCrypto(secrets) : undefined });
+    // Expose the auth system to the module-level spend-approval routes so they
+    // can verify a Bearer session token + privileged role (see privilegedActor).
+    approverAuthSystem = authSystem;
     const authMiddleware = new AuthMiddleware(authSystem);
     const ceoAuditLogger = new CEOAuditLogger();
     const specialistDashboards = new SpecialistDashboards();
@@ -2153,8 +3048,9 @@ async function initialize() {
     // 5d. Setup API routes
     setupRoutes(app, { lightrag, agentAPI, kafka, modelRouter, metrics, taskScheduler, taskFacilitator, sessionManager, seasonalEvents, deploymentManager, collaborationManager, analytics, backupManager, authSystem, ceoAuditLogger, specialistDashboards, entityModel, dataFetcher, edbConfig });
 
-    // 5e. Setup authentication routes
-    setupAuthRoutes(app, authSystem, authMiddleware);
+    // 5e. Setup authentication routes (+ per-attempt login anomaly scoring)
+    const loginAnomalyMonitor = new LoginAnomalyMonitor();
+    setupAuthRoutes(app, authSystem, authMiddleware, { auditLogger: ceoAuditLogger, anomalyMonitor: loginAnomalyMonitor });
     setupAuditRoutes(app, ceoAuditLogger, authMiddleware);
     setupSpecialistRoutes(app, specialistDashboards, authMiddleware);
 
@@ -2184,6 +3080,9 @@ async function initialize() {
     // 5g. Security dashboard (CEO composite view of audit + auth signals)
     const securityDashboard = new SecurityDashboard(authSystem, ceoAuditLogger);
     setupSecurityRoutes(app, securityDashboard, authMiddleware);
+
+    // 5g-bis. OpenAPI spec + Swagger UI (public) for the auth/audit/dashboard/security API
+    setupOpenApiRoutes(app);
 
     // 5h. Quality dashboard (CEO view of QA gate reports — mirrors the
     // security dashboard pattern but reads <project>/build/qa/*.json
@@ -2227,16 +3126,33 @@ async function initialize() {
       selfRepair.start();
     }
     setupVitalsRoutes(app, vitals, inferenceAudit, selfRepair);
-    // setupGuardrailsRoutes(app); // TODO: implement guardrails agent module
+    registerExportRoutes(app);
+    setupContainmentRoutes(app);
+    console.log(`🛡️  ContainmentGuard MEGA active (mode: ${containmentGuard.mode}, ${containmentGuard.getPolicy().commandRules.length} command rules)`);
+    setupPlaytestRoutes(app);
 
-    // 7. Start server
-    server.listen(PORT, () => {
+    // 6c. Global JSON error handler — must be registered after every route.
+    // Without it, an error thrown (or forwarded via next(err)) in any handler
+    // falls through to Express's default handler, which returns an HTML page
+    // and leaks the stack trace, breaking the JSON API contract. Log the full
+    // error server-side; return a terse JSON 500 to the caller.
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (res.headersSent) return next(err);
+      logger.error(`Unhandled error on ${req.method} ${req.path}: ${err?.stack || err?.message || err}`);
+      res.status(err?.status || 500).json({
+        success: false,
+        error: err?.message || 'internal server error',
+      });
+    });
+
+    // 7. Start server — bind to HOST (loopback by default; see HOST above).
+    server.listen(PORT as number, HOST, () => {
       logger.info(`
 ╔════════════════════════════════════════════════╗
 ║  VirtualPC Ready                               ║
 ╠════════════════════════════════════════════════╣
 ║  Status: Running                               ║
-║  Port: ${PORT}                                 ║
+║  Bind: ${HOST}:${PORT}                         ║
 ║  Web UI: http://localhost:${PORT}             ║
 ║  Components: LightRAG, Kafka, Socket.io        ║
 ║  Agents: Ready to execute                      ║
@@ -3280,15 +4196,20 @@ function setupRoutes(app: express.Express, components: any) {
       // Policy (2026-06-03): every agent runs on Claude Sonnet as primary;
       // Athena (Principal Reviewer) is the lone Opus 4.8 PR gate. Derived
       // from the registry so the map can never drift from the roster.
-      const agents: Record<string, { primary: string; fallback: string }> = {};
+      // GPU-aware resolution: when the GPU is down, agents whose lead model is a
+      // local GPU model dynamically switch to a no-GPU flux fallback.
+      const gpuUp = getGpuAvailable();
+      const agents: Record<string, { primary: string; fallback: string; switched?: boolean }> = {};
       for (const meta of AGENT_META) {
-        const primary = meta.models[0] || 'claude-sonnet';
-        const fallback = meta.models.find(m => m !== primary) || 'claude-opus';
-        agents[meta.name.toLowerCase()] = { primary, fallback };
+        const lead = meta.models[0] || 'claude-sonnet';
+        const r = resolveModel(meta.models, gpuUp);
+        const fallback = meta.models.find(m => m !== lead) || 'claude-opus';
+        agents[meta.name.toLowerCase()] = { primary: r.model, fallback, ...(r.switched ? { switched: true } : {}) };
       }
       const config = {
         success: true,
-        policy: 'sonnet-everywhere; Athena=opus reviewer',
+        policy: 'sonnet-everywhere; Athena=opus reviewer' + (gpuUp ? '' : '; GPU DOWN — local-model agents on flux fallback'),
+        gpuAvailable: gpuUp,
         agents,
         tier1_models: ['qwen-27b', 'qwen-14b', 'qwen-7b', 'deepseek-r1-8b', 'phi-4-15b', 'mistral-7b'],
         tier3_models: ['claude-opus', 'claude-sonnet', 'claude-haiku'],
@@ -3417,8 +4338,12 @@ function setupRoutes(app: express.Express, components: any) {
   // OpenClaw command execution routes (no approval required)
   setupOpenClawRoutes(app);
 
+  // Hive Mind shared memory routes
+  setupHiveMindRoutes(app);
+
   logger.info('✓ Routes configured');
   logger.info('✓ OpenClaw autonomous command execution enabled');
+  logger.info('✓ Hive Mind shared memory enabled');
 }
 
 /**

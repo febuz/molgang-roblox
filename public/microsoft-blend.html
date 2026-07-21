@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirtualPC · Samenwerking met Microsoft Copilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050810; color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5,8,16,.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(96,165,250,.15); padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 1.2rem; color: #60a5fa; }
+
+  .hero {
+    padding: 72px 24px 40px; text-align: center;
+    background:
+      radial-gradient(circle at 20% 25%, rgba(96,165,250,.12) 0%, transparent 45%),
+      radial-gradient(circle at 80% 75%, rgba(34,197,94,.12) 0%, transparent 45%);
+  }
+  .eyebrow {
+    display: inline-block; font-size: .72rem; letter-spacing: .2em; text-transform: uppercase;
+    color: #93c5fd; border: 1px solid rgba(96,165,250,.3); border-radius: 999px;
+    padding: 6px 14px; margin-bottom: 20px;
+  }
+  h1 {
+    font-family: 'Orbitron', sans-serif; font-weight: 900;
+    font-size: clamp(1.9rem, 5vw, 3rem); line-height: 1.05;
+    background: linear-gradient(90deg, #60a5fa 0%, #22c55e 50%, #f0abfc 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 16px;
+  }
+  .hero p { color: #94a3b8; max-width: 760px; margin: 0 auto 28px; font-size: 1.08rem; }
+
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .92rem;
+    padding: 12px 20px; border-radius: 8px; transition: transform .12s;
+  }
+  .btn-primary { background: #2563eb; color: #fff; box-shadow: 0 4px 18px rgba(37,99,235,.35); }
+  .btn-primary:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-secondary { background: rgba(255,255,255,.06); color: #e6f0ff; border: 1px solid rgba(255,255,255,.12); }
+  .btn-secondary:hover { background: rgba(255,255,255,.10); text-decoration: none; }
+
+  section { padding: 56px 24px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h2 {
+    font-family: 'Orbitron', sans-serif; font-size: clamp(1.4rem, 3vw, 1.9rem); font-weight: 700;
+    margin-bottom: 12px; color: #f0f9ff;
+  }
+  .section-sub { color: #94a3b8; max-width: 680px; margin-bottom: 32px; }
+
+  .comparison { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin: 28px 0; }
+  .comp-card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px; padding: 22px;
+  }
+  .comp-card h3 { font-size: 1.05rem; color: #bfdbfe; margin-bottom: 10px; }
+  .comp-card p { font-size: .9rem; color: #94a3b8; }
+
+  .integrations { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+  .int-card {
+    background: rgba(255,255,255,.04); border-left: 4px solid #22c55e; border-radius: 8px; padding: 18px;
+  }
+  .int-card h4 { color: #bfdbfe; margin-bottom: 6px; }
+  .int-card p { font-size: .87rem; color: #94a3b8; }
+
+  .scenario {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 12px; padding: 22px; margin-bottom: 16px;
+  }
+  .scenario h3 { color: #bfdbfe; margin-bottom: 8px; font-size: 1rem; }
+  .scenario p { color: #94a3b8; font-size: .9rem; }
+
+  .code-block {
+    background: #0b1220; border: 1px solid rgba(96,165,250,.2); border-radius: 10px;
+    padding: 18px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .82rem;
+    overflow-x: auto; color: #cbd5e1; margin: 18px 0;
+  }
+  .code-block .comment { color: #64748b; }
+  .code-block .kw { color: #c084fc; }
+  .code-block .str { color: #22c55e; }
+
+  footer { text-align: center; padding: 40px 24px; color: #64748b; font-size: .85rem; border-top: 1px solid rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">VirtualPC</div>
+  <a href="index.html">← Terug naar overzicht</a>
+</header>
+
+<section class="hero">
+  <span class="eyebrow">Microsoft-ecosysteem</span>
+  <h1>VirtualPC + Microsoft Copilot</h1>
+  <p>VirtualPC vult Microsoft Copilot aan. Copilot helpt gebruikers met snelle antwoorden; VirtualPC voert achter de schermen complexe, autonome workflows uit met rollen, governance en audit.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="../docs/MICROSOFT-BLEND.md">Technische integratie</a>
+    <a class="btn btn-secondary" href="pricing.html">Pricing</a>
+    <a class="btn btn-secondary" href="roles.html">Agent roster</a>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Wie doet wat?</h2>
+    <p class="section-sub">Ze zijn geen concurrenten. Copilot zit aan de voorkant, VirtualPC aan de achterkant.</p>
+    <div class="comparison">
+      <div class="comp-card">
+        <h3>🟦 Microsoft Copilot</h3>
+        <p>Gebruikersgerichte AI in Office, Teams en Windows. Ideaal voor snelle antwoorden, samenvattingen, concepten en chat.</p>
+      </div>
+      <div class="comp-card">
+        <h3>🟪 VirtualPC</h3>
+        <p>Multi-agent operating system met eigen geheugen, takenmotor en governance. Voert processen end-to-end uit en houdt mensen in de lus.</p>
+      </div>
+      <div class="comp-card">
+        <h3>🤝 Samen</h3>
+        <p>Copilot vraagt iets, VirtualPC voert het uit. Resultaten komen terug in Teams, Outlook of SharePoint waar de gebruiker al werkt.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Integratiepunten</h2>
+    <p class="section-sub">VirtualPC praat via standaard protocollen met de Microsoft-stack.</p>
+    <div class="integrations">
+      <div class="int-card"><h4>Entra ID (Azure AD)</h4><p>SSO en rollen via SAML/OIDC. JWT-claims bepalen de VirtualPC-rol van de gebruiker.</p></div>
+      <div class="int-card"><h4>Microsoft Graph</h4><p>Lees Teams-berichten, SharePoint-bestanden, Outlook-mail en agenda. Schrijf resultaten terug.</p></div>
+      <div class="int-card"><h4>Azure OpenAI</h4><p>Gebruik GPT-4o of o-series als cloud-fallback in de LiteLLM-gateway, naast lokale Ollama-modellen.</p></div>
+      <div class="int-card"><h4>Copilot Studio</h4><p>Start VirtualPC-taken vanuit een Copilot-actie of custom topic. VirtualPC wordt zo een backend-skill.</p></div>
+      <div class="int-card"><h4>Power Automate</h4><p>Trigger workflows wanneer een SharePoint-item wijzigt of een Teams-bericht een bepaald keyword bevat.</p></div>
+      <div class="int-card"><h4>Azure DevOps / GitHub</h4><p>Agenten openen PR’s, reviewen code en updaten work items net als menselijke teamleden.</p></div>
+      <div class="int-card"><h4>SharePoint / OneDrive</h4><p>Datasets en rapporten leven in de bestaande documentenbibliotheken; Governor houdt lineage bij.</p></div>
+      <div class="int-card"><h4>Azure Monitor</h4><p>Stuur logs, metrics en agent-vitals naar Application Insights of Log Analytics.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Scenario’s</h2>
+    <div class="scenario">
+      <h3>📧 Verkooprapportage uit Outlook en CRM</h3>
+      <p>Een salesmanager vraagt in Teams: "Wat zijn onze top-5 kansen deze maand?" Copilot geeft een kort antwoord. VirtualPC start de Analyst-agent, die e-mails uit Outlook en deals uit Dynamics/SharePoint analyseert, Governor registreert de bronnen, en Pixel post een interactief dashboard terug in het Teams-kanaal.</p>
+    </div>
+    <div class="scenario">
+      <h3>📊 Compliance-scan op SharePoint</h3>
+      <p>Power Automate detecteert een nieuw gedeeld bestand. Governor scant het op PII en licenties, Analyst maakt een risico-rapport, en Athena keurt het goed voordat het in productie komt. Het resultaat komt terug als SharePoint-listitem.</p>
+    </div>
+    <div class="scenario">
+      <h3>💻 Software-architectuur na een Teams-meeting</h3>
+      <p>Na een meeting vraagt een productowner: "Kunnen we dit featureverzoek inschatten?" VirtualPC laadt de transcriptie via Graph, Kai en de dev-agents breken het op in subtaken, en de burndown verschijnt in Azure DevOps.</p>
+    </div>
+  </div>
+</section>
+
+<section style="background:rgba(255,255,255,.02);">
+  <div class="container">
+    <h2>Architectuur in één zin</h2>
+    <div class="code-block">
+<span class="comment"># Microsoft 365 / Teams / Outlook / SharePoint</span>
+            │
+            ▼
+  Microsoft Graph API  ←──→  VirtualPC API (Node.js)
+            │                   │
+            │    ┌──────────────┼──────────────┐
+            │    │              │              │
+            ▼    ▼              ▼              ▼
+      Copilot UI      Agent roster    LiteLLM gateway
+      (antwoorden)    (takenmotor)    (Azure OpenAI + Ollama)
+    </div>
+    <p class="section-sub">Gegevens blijven binnen je eigen tenant. VirtualPC kan draaien op een Azure VM, Vultr-instance of on-premise server.</p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <h2>Voordelen voor Microsoft-klanten</h2>
+    <div class="integrations">
+      <div class="int-card"><h4>Geen rip-and-replace</h4><p>Je huidige Microsoft-licenties blijven intact. VirtualPC is een extra laag achter Copilot.</p></div>
+      <div class="int-card"><h4>Data blijft in de tenant</h4><p>Lokale Ollama-modellen en Azure OpenAI binnen je eigen abonnement. Geen datalek naar externe SaaS.</p></div>
+      <div class="int-card"><h4>Schaalbaar team</h4><p>Voeg zoveel agents toe als je wilt zonder extra FTE. De taakmotor verdeelt het werk.</p></div>
+      <div class="int-card"><h4>Audit en governance</h4><p>Elke agent-actie wordt gelogd. Deliberation gates zorgen dat kritieke beslissingen altijd menselijke goedkeuring krijgen.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>VirtualPC + Microsoft · <a href="lineage.html">Lineage</a> · <a href="index.html">Overzicht</a> · <a href="pricing.html">Pricing</a> · <a href="https://github.com/knitweb/virtualpc">GitHub</a></p>
+</footer>
+
+</body>
+</html>

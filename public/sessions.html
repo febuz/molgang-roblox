@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VirtualPC — Session Management</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 1.5rem; max-width: 900px; }
+    h1 { font-size: 1.4rem; }
+    .bar { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    input { padding: .4rem .6rem; border: 1px solid #8884; border-radius: 6px; font: inherit; }
+    button { padding: .4rem .8rem; border: 0; border-radius: 6px; background: #2d6cdf; color: #fff; cursor: pointer; font: inherit; }
+    button.danger { background: #d23b3b; }
+    button:disabled { opacity: .5; cursor: default; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid #8883; font-size: .9rem; }
+    th { font-weight: 600; }
+    code { font-size: .8rem; }
+    #status { margin: .5rem 0; min-height: 1.2em; font-size: .9rem; }
+    .muted { opacity: .7; }
+  </style>
+</head>
+<body>
+  <h1>Session Management <span class="muted">(CEO)</span></h1>
+  <p class="muted">View active sessions and force-logout devices. Requires a CEO bearer token.</p>
+
+  <div class="bar">
+    <input id="token" type="password" placeholder="Bearer token (sessionId)" size="36" />
+    <button id="refresh">Load sessions</button>
+    <input id="revokeUser" placeholder="username" size="14" />
+    <button id="revokeUserBtn" class="danger">Revoke all for user</button>
+  </div>
+  <div id="status"></div>
+
+  <table>
+    <thead>
+      <tr><th>User</th><th>Role</th><th>Session</th><th>Issued</th><th>Expires</th><th></th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const tokenOf = () => $('token').value.trim();
+    const setStatus = (msg, ok) => { const s = $('status'); s.textContent = msg; s.style.color = ok ? '#2a8a2a' : '#d23b3b'; };
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: { 'Authorization': 'Bearer ' + tokenOf(), 'Content-Type': 'application/json', ...(opts.headers || {}) },
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body.success === false) throw new Error(body.error || ('HTTP ' + res.status));
+      return body;
+    }
+
+    function fmt(d) { try { return new Date(d).toLocaleString(); } catch { return d; } }
+
+    async function load() {
+      if (!tokenOf()) return setStatus('Enter a bearer token first.', false);
+      try {
+        const data = await api('/api/auth/sessions');
+        const rows = $('rows');
+        rows.innerHTML = '';
+        (data.active || []).forEach((s) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML =
+            `<td>${s.username}</td><td>${s.role}</td>` +
+            `<td><code>${s.sessionId}</code></td><td>${fmt(s.issuedAt)}</td><td>${fmt(s.expiresAt)}</td>` +
+            `<td><button class="danger" data-id="${s.sessionId}">Revoke</button></td>`;
+          rows.appendChild(tr);
+        });
+        setStatus(`${(data.active || []).length} active session(s).`, true);
+      } catch (e) { setStatus('Load failed: ' + e.message, false); }
+    }
+
+    async function revoke(sessionId) {
+      try {
+        await api('/api/auth/sessions/' + encodeURIComponent(sessionId), { method: 'DELETE' });
+        setStatus('Revoked ' + sessionId, true);
+        load();
+      } catch (e) { setStatus('Revoke failed: ' + e.message, false); }
+    }
+
+    async function revokeUser() {
+      const u = $('revokeUser').value.trim();
+      if (!u) return setStatus('Enter a username to revoke.', false);
+      try {
+        const r = await api('/api/auth/sessions/revoke-user', { method: 'POST', body: JSON.stringify({ username: u }) });
+        setStatus(`Revoked ${r.revoked} session(s) for ${u}.`, true);
+        load();
+      } catch (e) { setStatus('Revoke-user failed: ' + e.message, false); }
+    }
+
+    $('refresh').addEventListener('click', load);
+    $('revokeUserBtn').addEventListener('click', revokeUser);
+    $('rows').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-id]');
+      if (btn) revoke(btn.getAttribute('data-id'));
+    });
+  </script>
+</body>
+</html>

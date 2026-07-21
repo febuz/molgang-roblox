@@ -154,12 +154,21 @@ export class CEOAuditLogger {
   }
 
   /**
+   * Clamp a caller-supplied limit to a safe [1, maxEvents] integer. Guards the
+   * slice(-limit) accessors against negative/NaN/oversized limits — a negative
+   * limit would otherwise turn slice(-limit) into slice(+n) and bypass the cap.
+   */
+  private clampLimit(limit: number): number {
+    return Math.max(1, Math.min(Math.floor(limit) || 1, this.maxEvents));
+  }
+
+  /**
    * Get events by user
    */
   getEventsByUser(username: string, limit: number = 100): AuditEvent[] {
     return this.events
       .filter(e => e.username === username)
-      .slice(-limit);
+      .slice(-this.clampLimit(limit));
   }
 
   /**
@@ -168,7 +177,7 @@ export class CEOAuditLogger {
   getEventsByType(eventType: AuditEventType, limit: number = 100): AuditEvent[] {
     return this.events
       .filter(e => e.eventType === eventType)
-      .slice(-limit);
+      .slice(-this.clampLimit(limit));
   }
 
   /**
@@ -177,7 +186,7 @@ export class CEOAuditLogger {
   getEventsBySeverity(severity: AuditEventSeverity, limit: number = 100): AuditEvent[] {
     return this.events
       .filter(e => e.severity === severity)
-      .slice(-limit);
+      .slice(-this.clampLimit(limit));
   }
 
   /**
@@ -186,7 +195,7 @@ export class CEOAuditLogger {
   getEventsByTimeRange(startTime: Date, endTime: Date, limit: number = 1000): AuditEvent[] {
     return this.events
       .filter(e => e.timestamp >= startTime && e.timestamp <= endTime)
-      .slice(-limit);
+      .slice(-this.clampLimit(limit));
   }
 
   /**
@@ -195,14 +204,47 @@ export class CEOAuditLogger {
   getEventsByIP(ipAddress: string, limit: number = 100): AuditEvent[] {
     return this.events
       .filter(e => e.ipAddress === ipAddress)
-      .slice(-limit);
+      .slice(-this.clampLimit(limit));
   }
 
   /**
    * Get all events
    */
   getAllEvents(limit: number = 100): AuditEvent[] {
-    return this.events.slice(-limit);
+    return this.events.slice(-this.clampLimit(limit));
+  }
+
+  /**
+   * Combined audit search: filter by any subset of criteria (AND semantics),
+   * returning the most recent `limit` matches. Powers the CEO audit search UI
+   * (username / IP / action / type / severity / outcome + date range).
+   */
+  search(
+    filter: {
+      username?: string;
+      ipAddress?: string;
+      eventType?: AuditEventType;
+      severity?: AuditEventSeverity;
+      outcome?: 'success' | 'failure';
+      action?: string;
+      startTime?: Date;
+      endTime?: Date;
+    } = {},
+    limit: number = 100
+  ): AuditEvent[] {
+    return this.events
+      .filter(e => {
+        if (filter.username && e.username !== filter.username) return false;
+        if (filter.ipAddress && e.ipAddress !== filter.ipAddress) return false;
+        if (filter.eventType && e.eventType !== filter.eventType) return false;
+        if (filter.severity && e.severity !== filter.severity) return false;
+        if (filter.outcome && e.outcome !== filter.outcome) return false;
+        if (filter.action && e.action !== filter.action) return false;
+        if (filter.startTime && e.timestamp < filter.startTime) return false;
+        if (filter.endTime && e.timestamp > filter.endTime) return false;
+        return true;
+      })
+      .slice(-this.clampLimit(limit));
   }
 
   /**

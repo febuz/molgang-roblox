@@ -13,8 +13,9 @@
  * - Prevents new Claude Code instances (max 2 only)
  */
 
-import { exec, execSync } from 'child_process';
+import { exec, execSync, execFileSync } from 'child_process';
 import * as os from 'os';
+import { containmentGuard, ContainmentError } from './containment';
 // Note: Keyboard and mouse automation handled via system commands (xdotool, powershell)
 
 interface TerminalConfig {
@@ -398,20 +399,38 @@ export class OpenClawTerminalController {
    * Execute command in specific terminal
    */
   public async executeInTerminal(terminalId: string, command: string): Promise<string> {
+    // ── ContainmentGuard MEGA chokepoint ──────────────────────────────────
+    // Every command an agent runs through a terminal is evaluated against
+    // policy BEFORE execution. In enforce mode a denied command throws and is
+    // never run; in monitor mode the breach is logged and execution proceeds.
+    const agent = terminalId === 'primary' ? 'VirtualPC' : 'GameDev';
     try {
-      // Build tmux/screen command
+      containmentGuard.assertAllowed({ kind: 'command', agent, command });
+    } catch (e) {
+      if (e instanceof ContainmentError) {
+        console.error(`⛔ ContainmentGuard blocked command in ${terminalId}: ${e.message}`);
+        return '';
+      }
+      throw e;
+    }
+
+    try {
+      // SECURITY: never build a shell string from `command` — that allowed
+      // shell-metacharacter injection (e.g. `"; rm -rf ~ #`). Pass the command
+      // as a single argv element via execFile so no shell parses it.
       const platform = os.platform();
-      let execCommand: string;
 
       if (platform === 'linux' || platform === 'darwin') {
-        execCommand = `tmux send-keys -t ${terminalId === 'primary' ? 'claude-code-a' : 'claude-code-b'} "${command}" Enter`;
-      } else {
-        // Windows fallback
-        execCommand = `powershell -Command "${command}"`;
+        // tmux send-keys takes the command as one literal argument and types it
+        // verbatim into the target session — metacharacters are not interpreted.
+        const target = terminalId === 'primary' ? 'claude-code-a' : 'claude-code-b';
+        return execFileSync('tmux', ['send-keys', '-t', target, command, 'Enter'], {
+          encoding: 'utf-8',
+        });
       }
-
-      const result = execSync(execCommand, { encoding: 'utf-8' });
-      return result;
+      // Windows: hand the command to PowerShell as a single argument instead of
+      // interpolating it into a cmd.exe shell string.
+      return execFileSync('powershell', ['-Command', command], { encoding: 'utf-8' });
     } catch (error: any) {
       console.error(`Failed to execute in ${terminalId} terminal:`, error.message);
       return '';

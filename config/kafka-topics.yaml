@@ -126,9 +126,9 @@ topics:
           type: string
           format: date-time
 
-  # LightRAG Memory Updates
+  # LightRAG Memory Updates (node events + edge events + fact-vote events)
   - name: lightrag.updates
-    description: New facts, decisions, and insights to store in shared memory
+    description: Graph node writes, edge writes, and fact-vote events for P2P sync
     partitions: 5
     replicationFactor: 3
     config:
@@ -141,13 +141,16 @@ topics:
           type: string
         type:
           type: string
-          enum: [decision, risk, precedent, context]
+          enum: [decision, risk, precedent, context, edge, claim]
         content:
           type: string
         agent:
           type: string
         metadata:
           type: object
+          description: >
+            For edge events: {edge: {fromId, toId, relType, props}}.
+            For fact-vote events: {factVote: {factId, voter, vote, reason, ts}}.
         affects:
           type: array
           items:
@@ -155,6 +158,54 @@ topics:
         created_at:
           type: string
           format: date-time
+
+  # P2P Fact Validation — quorum vote events
+  - name: fact.votes
+    description: Validate/challenge votes for P2P fact quorum consensus
+    partitions: 5
+    replicationFactor: 3
+    config:
+      retention.ms: 2592000000  # 30 days
+      compression.type: snappy
+    schema:
+      type: object
+      properties:
+        factId:
+          type: string
+        voter:
+          type: string
+        vote:
+          type: string
+          enum: [validate, challenge]
+        reason:
+          type: string
+        ts:
+          type: string
+          format: date-time
+
+  # Graph Inference Events — derived facts and relationships
+  - name: graph.inference
+    description: Facts and relationships derived by the inference engine (R1-R6)
+    partitions: 3
+    replicationFactor: 3
+    config:
+      retention.ms: 2592000000  # 30 days
+      compression.type: snappy
+    schema:
+      type: object
+      properties:
+        rule:
+          type: string
+          description: Inference rule identifier (R1-R6)
+        derived:
+          type: integer
+        ranAt:
+          type: string
+          format: date-time
+        results:
+          type: array
+          items:
+            type: object
 
   # Cost Tracking
   - name: cost.tracking
@@ -225,10 +276,18 @@ consumerGroups:
     rebalanceTimeout: 60000
 
   - name: memory-sync
-    description: Service syncing results and decisions to LightRAG
+    description: P2P knowledge graph sync consumer (nodes, edges, votes)
     topics:
       - agent.results
       - lightrag.updates
+      - fact.votes
+    sessionTimeout: 30000
+    rebalanceTimeout: 60000
+
+  - name: inference-events
+    description: Inference engine output consumer
+    topics:
+      - graph.inference
     sessionTimeout: 30000
     rebalanceTimeout: 60000
 
@@ -240,6 +299,8 @@ consumerGroups:
       - model.requests
       - model.responses
       - lightrag.updates
+      - fact.votes
+      - graph.inference
       - cost.tracking
       - system.health
     sessionTimeout: 60000

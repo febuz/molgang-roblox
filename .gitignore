@@ -2,13 +2,20 @@
 .env
 .env.local
 .env.*.local
-.DS_Store
+credentials.json
 
 # Dependencies
 node_modules/
+*.egg-info/
+
+# Build outputs
 dist/
 build/
-*.egg-info/
+coverage/
+
+# Runtime artifacts
+*.pid
+.service.pid
 
 # Logs
 *.log
@@ -24,17 +31,26 @@ lerna-debug.log*
 *~
 
 # OS
-Thumbs.db
 .DS_Store
+Thumbs.db
 
-# Sensitive Data - DO NOT COMMIT
+# Local data - DO NOT COMMIT
 /data/backlog/*.json
 /data/tasks/*.json
 /data/issues/*.json
+/data/chain-snapshot.json
+/data/demo-screenshot-*.png
+/data/verify-demo-dashboard.png
+/data/external/
 /backlog/
 /backlog-data/
 mock-data/
 test-data/
+test-results/
+tests/e2e/screenshots/*.png
+.venv-mlx/
+.virtualpc-state/
+data-agents-sidecar/
 
 # Agent-specific files
 /agent-configs/
@@ -53,14 +69,20 @@ temp/
 *.db
 *.sqlite
 
-# Build outputs
-dist/
-build/
-
 # Keep safe files
 !.gitkeep
-test-results/
-credentials.json
 
 # Tesseract language models (auto-downloaded on first use, 5-22 MB each)
 *.traineddata
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Deliberation gate runtime artifacts
+.ai/tasks/*/T-*.md
+.ai/tasks/*/index.json
+.ai/deliberation/**/*.json
+.ai/deliberation/**/*.md

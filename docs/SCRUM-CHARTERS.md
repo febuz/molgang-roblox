@@ -215,7 +215,7 @@ gap threads on the scrum-web forum are the source-of-truth for the
 recommendations; tasks reference those thread ids so the trace from
 "playtest finding" → "feature work" stays auditable.
 
-Ship cadence: **measured in days, not quarters.** 31 agents working in
+Ship cadence: **measured in days, not quarters.** the roster working in
 parallel ship more in a weekend than a 30-person human team would —
 each on a 4-minute tick rate, no meetings, no context-switching cost,
 no sleep. Re-score by GP testers at end-of-sprint via fresh forum

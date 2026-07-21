@@ -5,7 +5,7 @@
 # in real workflows.
 #
 # Usage:
-#   ./scripts/agents-benchmark.sh                # all 14 agents
+#   ./scripts/agents-benchmark.sh                # full roster
 #   ./scripts/agents-benchmark.sh Kai Mira Atlas # subset
 #   AGENTS_URL=http://other:3100 ./scripts/agents-benchmark.sh
 set -eu

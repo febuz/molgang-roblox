@@ -17,6 +17,7 @@ interface AgentCommand {
 export class OpenClawHandler {
   private commandQueue: AgentCommand[] = [];
   private executedCommands: AgentCommand[] = [];
+  private continuousExecution = false;
 
   /**
    * Queue command for execution (no approval required)
@@ -51,6 +52,12 @@ export class OpenClawHandler {
         cmd.error = error.message;
         cmd.status = 'failed';
       }
+
+      // Move the command OUT of the active queue into history. Previously it
+      // was left in commandQueue too, so completed commands were double-counted
+      // in getStats()/getCommandHistory() and the queue grew without bound.
+      const qi = this.commandQueue.indexOf(cmd);
+      if (qi !== -1) this.commandQueue.splice(qi, 1);
 
       this.executedCommands.push(cmd);
       if (this.executedCommands.length > 1000) {
@@ -193,6 +200,17 @@ export class OpenClawHandler {
     this.commandQueue = [];
     this.executedCommands = [];
   }
+
+  getTerminalStatus() {
+    return { A: this.getTerminalInfo('A'), B: this.getTerminalInfo('B') };
+  }
+
+  getTerminalInfo(id: 'A' | 'B') {
+    return { id, status: 'available', queuedCommands: this.commandQueue.length, continuousExecution: this.continuousExecution };
+  }
+
+  setContinuousExecution(enabled: boolean): void { this.continuousExecution = enabled; }
+  isContinuousExecutionEnabled(): boolean { return this.continuousExecution; }
 }
 
 export default OpenClawHandler;

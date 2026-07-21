@@ -74,11 +74,24 @@ model_list:
   # don't break LiteLLM startup.
   - model_name: claude-sonnet
     litellm_params:
-      model: anthropic/claude-sonnet-4-5
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+  # Athena (Principal Reviewer) runs on Opus 4.8 max — the single PR gate.
+  - model_name: claude-opus
+    litellm_params:
+      model: anthropic/claude-opus-4-8
       api_key: os.environ/ANTHROPIC_API_KEY
   - model_name: gpt-4o-mini
     litellm_params:
       model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+  # GPT-5.5 (premium, tier-3). Engages the moment OPENAI_API_KEY is set. Note: a
+  # chatgpt.com *subscription* does NOT provide this key — it needs a separate
+  # platform.openai.com API key with its own usage billing. Confirm the exact
+  # model id against `curl https://api.openai.com/v1/models` before relying on it.
+  - model_name: gpt-5.5
+    litellm_params:
+      model: openai/gpt-5.5
       api_key: os.environ/OPENAI_API_KEY
   - model_name: grok
     litellm_params:
@@ -101,6 +114,19 @@ model_list:
     litellm_params:
       model: mistral/mistral-large-latest
       api_key: os.environ/MISTRAL_API_KEY
+  # Z.AI GLM Coding Plan (yearly subscription). Use the /api/coding/paas/v4
+  # endpoint; the generic /api/paas/v4 endpoint bills pay-as-you-go and may
+  # return error 1113 under a Coding Plan.
+  - model_name: zai-glm-5.2
+    litellm_params:
+      model: openai/glm-5.2
+      api_base: https://api.z.ai/api/coding/paas/v4
+      api_key: os.environ/ZAI_API_KEY
+  - model_name: zai-glm-4.6v
+    litellm_params:
+      model: openai/glm-4.6v
+      api_base: https://api.z.ai/api/coding/paas/v4
+      api_key: os.environ/ZAI_API_KEY
   - model_name: gemini
     litellm_params:
       model: gemini/gemini-1.5-pro

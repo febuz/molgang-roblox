@@ -28,8 +28,10 @@ import * as scrum from '../scrum';
 import * as forum from '../forum';
 import * as kami from '../kami';
 import * as corpus from '../corpus';
+import * as molgang from '../molgang/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ASSET_REGISTRY_PATH } from '../../config/paths';
 import logger from '../../utils/logger';
 
 // __dirname at runtime resolves to dist/integrations/mcp/, so three levels
@@ -181,7 +183,7 @@ const TOOLS: ToolDefinition[] = [
       required: ['q'],
     },
     handler: async ({ q }: { q: string }) => {
-      const REGISTRY_PATH = '/media/knight2/EDS2/projects/molgang-web/shared/asset-registry.json';
+      const REGISTRY_PATH = ASSET_REGISTRY_PATH;
       if (!fs.existsSync(REGISTRY_PATH)) return { entries: [], note: 'registry not yet built — run scripts/build-asset-registry.js' };
       try {
         const raw = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
@@ -414,6 +416,85 @@ const TOOLS: ToolDefinition[] = [
       const b = kami.setStatus(a.id, a.status, a.notes);
       return b ? { brief: b } : { error: `unknown brief: ${a.id}` };
     },
+  },
+
+  // ─── molgang.* — play the Molgang chemistry game on 5mart.ml/molgang ─────
+  {
+    name: 'molgang.join',
+    description: 'Join the Molgang bar as a new player (returns sid, wallet, faucet).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Player display name' },
+        avatar: { type: 'string', description: 'Avatar slug (optional)' },
+        device: { type: 'string', description: 'Stable device fingerprint (optional)' },
+      },
+      required: ['name'],
+    },
+    handler: async (a: { name: string; avatar?: string; device?: string }) => molgang.join(a.name, a.avatar, a.device),
+  },
+  {
+    name: 'molgang.sit',
+    description: 'Sit at a Molgang table (Periodic Bar, Organic Lounge, Noble Corner).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sid: { type: 'string', description: 'Session id from molgang.join' },
+        table: { type: 'string', description: 'Table id or name' },
+      },
+      required: ['sid', 'table'],
+    },
+    handler: async (a: { sid: string; table: string }) => molgang.sit(a.sid, a.table),
+  },
+  {
+    name: 'molgang.propose',
+    description: 'Propose a chemistry term / knit (costs 1 silk).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sid: { type: 'string', description: 'Session id' },
+        term: { type: 'string', description: 'Term or formula to propose, e.g. H2O' },
+      },
+      required: ['sid', 'term'],
+    },
+    handler: async (a: { sid: string; term: string }) => molgang.propose(a.sid, a.term),
+  },
+  {
+    name: 'molgang.vote',
+    description: 'Vote confirm or reject on a Molgang proposal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sid: { type: 'string', description: 'Session id' },
+        pid: { type: 'string', description: 'Proposal id' },
+        verdict: { type: 'string', enum: ['confirm', 'reject'], description: 'Vote verdict' },
+      },
+      required: ['sid', 'pid'],
+    },
+    handler: async (a: { sid: string; pid: string; verdict?: 'confirm' | 'reject' }) => molgang.vote(a.sid, a.pid, a.verdict),
+  },
+  {
+    name: 'molgang.state',
+    description: 'Read the current Molgang bar state (optionally for a session).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sid: { type: 'string', description: 'Session id (optional)' },
+      },
+    },
+    handler: async (a: { sid?: string }) => molgang.state(a.sid),
+  },
+  {
+    name: 'molgang.web',
+    description: 'Fetch the woven Molgang web (nodes + links).',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async () => molgang.web(),
+  },
+  {
+    name: 'molgang.suggested',
+    description: 'Get suggested chemistry terms from Molgang.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async () => molgang.suggested(),
   },
 ];
 

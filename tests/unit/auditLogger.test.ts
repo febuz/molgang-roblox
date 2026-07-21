@@ -285,4 +285,77 @@ describe('CEOAuditLogger', () => {
       expect(audit.getSecurityScore()).toBe(30); // 100 -30 -30 -10, clamped components
     });
   });
+
+  describe('search', () => {
+    beforeEach(() => {
+      log(audit, { username: 'alice', eventType: 'login', outcome: 'success', ip: '1.1.1.1' });
+      log(audit, { username: 'alice', eventType: 'logout', outcome: 'success', ip: '1.1.1.1' });
+      log(audit, { username: 'bob', eventType: 'login', outcome: 'failure', ip: '2.2.2.2' });
+      log(audit, { username: 'bob', eventType: 'data_access', outcome: 'success', ip: '2.2.2.2',
+        options: { action: 'read_treasury' } });
+    });
+
+    it('returns all events with an empty filter', () => {
+      expect(audit.search()).toHaveLength(4);
+    });
+
+    it('filters by a single criterion', () => {
+      expect(audit.search({ username: 'alice' })).toHaveLength(2);
+      expect(audit.search({ ipAddress: '2.2.2.2' })).toHaveLength(2);
+      expect(audit.search({ eventType: 'login' })).toHaveLength(2);
+      expect(audit.search({ outcome: 'failure' })).toHaveLength(1);
+      expect(audit.search({ action: 'read_treasury' })).toHaveLength(1);
+    });
+
+    it('combines criteria with AND semantics', () => {
+      expect(audit.search({ username: 'bob', outcome: 'success' })).toHaveLength(1);
+      expect(audit.search({ username: 'bob', eventType: 'login' })).toHaveLength(1);
+      expect(audit.search({ username: 'alice', outcome: 'failure' })).toHaveLength(0);
+    });
+
+    it('filters by date range', () => {
+      const events = audit.getAllEvents();
+      events[0].timestamp = new Date('2000-01-01T00:00:00Z'); // backdate alice's login
+      const recent = audit.search({ startTime: new Date('2020-01-01T00:00:00Z') });
+      expect(recent).toHaveLength(3);
+      const old = audit.search({ endTime: new Date('2001-01-01T00:00:00Z') });
+      expect(old).toHaveLength(1);
+    });
+
+    it('respects the limit (most recent slice)', () => {
+      const last = audit.search({}, 1);
+      expect(last).toHaveLength(1);
+      expect(last[0].username).toBe('bob');
+      expect(last[0].eventType).toBe('data_access');
+    });
+
+    it('does NOT let a negative limit bypass the cap (clamped to 1)', () => {
+      // Pre-fix, slice(-(-2)) === slice(2) leaked far more than intended.
+      const res = audit.search({}, -5000);
+      expect(res.length).toBeLessThanOrEqual(1);
+    });
+
+    it('treats NaN / zero limits as a safe minimum (1)', () => {
+      expect(audit.search({}, NaN).length).toBeLessThanOrEqual(1);
+      expect(audit.search({}, 0).length).toBeLessThanOrEqual(1);
+    });
+
+    it('an oversized limit returns at most every event (no error, no bypass)', () => {
+      const res = audit.search({}, 10 ** 9);
+      expect(res).toHaveLength(4); // all seeded events, not more
+    });
+  });
+
+  describe('limit clamping across accessors', () => {
+    beforeEach(() => {
+      for (let i = 0; i < 5; i++) log(audit, { username: `u${i}`, ip: '5.5.5.5' });
+    });
+
+    it('clamps negative limits on every slice(-limit) accessor', () => {
+      expect(audit.getAllEvents(-5000).length).toBeLessThanOrEqual(1);
+      expect(audit.getEventsByUser('u0', -5000).length).toBeLessThanOrEqual(1);
+      expect(audit.getEventsByIP('5.5.5.5', -5000).length).toBeLessThanOrEqual(1);
+      expect(audit.getEventsByType('login', -5000).length).toBeLessThanOrEqual(1);
+    });
+  });
 });

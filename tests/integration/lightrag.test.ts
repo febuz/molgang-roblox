@@ -20,9 +20,9 @@ describe('LightRAG Agent Integration', () => {
   beforeAll(async () => {
     // Initialize client (mock or real depending on test environment)
     client = new LightRAGClient({
-      uri: process.env.NEO4J_URI || 'bolt://localhost:7687',
-      user: process.env.NEO4J_USER || 'neo4j',
-      password: process.env.NEO4J_PASSWORD || 'password',
+      neo4j_url: process.env.NEO4J_URI || 'bolt://localhost:7687',
+      neo4j_username: process.env.NEO4J_USER || 'neo4j',
+      neo4j_password: process.env.NEO4J_PASSWORD || 'password',
     });
 
     api = new AgentAPIWrapper(client);

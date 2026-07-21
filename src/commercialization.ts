@@ -20,6 +20,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { randomBytes } from 'crypto';
+import { secretOrEnv } from './security/secretsBootstrap';
+import { STATE_DIR as DEFAULT_STATE_DIR } from './config/paths';
 
 // Lazy-required so the module loads on a build that skipped `npm install`
 // or in an environment that explicitly sets PROMO_REAL_MONEY=0 and never
@@ -32,14 +34,14 @@ function getStripe(): any | null {
   if (!_stripeModule) {
     try { _stripeModule = require('stripe'); } catch { return null; }
   }
-  const key = process.env.STRIPE_API_KEY;
+  const key = secretOrEnv('money', 'STRIPE_API_KEY');
   if (!key) return null;
   // typescript: _stripeModule is the constructor, called with the secret key.
   _stripeClient = _stripeModule(key, { apiVersion: '2024-06-20' as any, telemetry: false });
   return _stripeClient;
 }
 
-const STATE_DIR = process.env.PROMO_STATE_DIR || '/media/knight2/EDS2/virtualpc-state';
+const STATE_DIR = process.env.PROMO_STATE_DIR || DEFAULT_STATE_DIR;
 const STATE_FILE = path.join(STATE_DIR, 'promotions.json');
 
 const PER_PROPOSAL_CAP_USD = Number(process.env.PROMO_PER_PROPOSAL_CAP || 5);
@@ -50,9 +52,13 @@ const REAL_MONEY = process.env.PROMO_REAL_MONEY === '1';
 // land in git. STRIPE_CUSTOMER_ID is the Stripe customer (cus_...) and
 // STRIPE_PAYMENT_METHOD_ID is the saved card (pm_...). Both are required
 // when REAL_MONEY=1.
-const STRIPE_CUSTOMER_ID = process.env.STRIPE_CUSTOMER_ID || '';
-const STRIPE_PAYMENT_METHOD_ID = process.env.STRIPE_PAYMENT_METHOD_ID || '';
-const STRIPE_STATEMENT_DESCRIPTOR = (process.env.STRIPE_STATEMENT_DESCRIPTOR || 'VIRTUALV PROMO').slice(0, 22);
+// Lazy getters (not top-level consts): secrets are loaded into the active
+// SecretsManager at startup, AFTER this module is imported, so reads must defer
+// to call time. Source from the money layer (Infisical) with env fallback.
+const stripeCustomerId = (): string => secretOrEnv('money', 'STRIPE_CUSTOMER_ID') || '';
+const stripePaymentMethodId = (): string => secretOrEnv('money', 'STRIPE_PAYMENT_METHOD_ID') || '';
+const stripeStatementDescriptor = (): string =>
+  (secretOrEnv('money', 'STRIPE_STATEMENT_DESCRIPTOR') || 'VIRTUALV PROMO').slice(0, 22);
 
 export type PromoChannel =
   | 'sponsored-channel-1'
@@ -251,9 +257,9 @@ export async function execute(id: string): Promise<ExecuteResult> {
     writeState(s);
     return { ok: false, mode: 'real', proposal: p, error: p.failure_reason };
   }
-  if (!STRIPE_CUSTOMER_ID || !STRIPE_PAYMENT_METHOD_ID) {
+  if (!stripeCustomerId() || !stripePaymentMethodId()) {
     p.status = 'failed';
-    p.failure_reason = 'STRIPE_CUSTOMER_ID and STRIPE_PAYMENT_METHOD_ID env vars are required for real-money execution';
+    p.failure_reason = 'STRIPE_CUSTOMER_ID and STRIPE_PAYMENT_METHOD_ID (money-layer secrets) are required for real-money execution';
     p.executed_at = new Date().toISOString();
     writeState(s);
     return { ok: false, mode: 'real', proposal: p, error: p.failure_reason };
@@ -263,11 +269,11 @@ export async function execute(id: string): Promise<ExecuteResult> {
     const intent = await stripe.paymentIntents.create({
       amount: Math.round(p.budget_usd * 100),  // Stripe takes integer cents
       currency: 'usd',
-      customer: STRIPE_CUSTOMER_ID,
-      payment_method: STRIPE_PAYMENT_METHOD_ID,
+      customer: stripeCustomerId(),
+      payment_method: stripePaymentMethodId(),
       off_session: true,
       confirm: true,
-      statement_descriptor: STRIPE_STATEMENT_DESCRIPTOR,
+      statement_descriptor: stripeStatementDescriptor(),
       description: `the project promo ${p.id} · ${p.channel} · ${p.duration_hours}h`,
       metadata: {
         proposal_id: p.id,

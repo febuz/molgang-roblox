@@ -15,8 +15,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { AGENT_NAMES } from './agent-registry';
+import { STATE_DIR as DEFAULT_STATE_DIR } from './config/paths';
 
-const STATE_DIR = process.env.AUDIT_STATE_DIR || '/media/knight2/EDS2/virtualpc-state';
+const STATE_DIR = process.env.AUDIT_STATE_DIR || DEFAULT_STATE_DIR;
 const AUDIT_FILE = path.join(STATE_DIR, 'commit-audit.jsonl');
 const REPO_PATH = path.resolve(__dirname, '..');
 

@@ -39,7 +39,7 @@ jobs:
 
         grep -q "agent-card" public/dashboard.html && echo "  ✓ Agent cards" || echo "  ✗ Agent cards missing"
         grep -q "leaderboard" public/dashboard.html && echo "  ✓ Leaderboard" || echo "  ✗ Leaderboard missing"
-        grep -q "paperclip" public/dashboard.html && echo "  ✓ Paperclip assistant" || echo "  ✗ Paperclip missing"
+        grep -q "virtualpc" public/dashboard.html && echo "  ✓ VirtualPC assistant" || echo "  ✗ VirtualPC missing"
         grep -q "progress-bar" public/dashboard.html && echo "  ✓ Progress bars" || echo "  ✗ Progress bars missing"
         grep -q "sidebar" public/dashboard.html && echo "  ✓ Sidebar navigation" || echo "  ✗ Sidebar missing"
 

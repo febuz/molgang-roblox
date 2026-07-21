@@ -24,6 +24,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../../utils/logger';
 import type { LightRAGClient } from './client';
+import { ASSET_REGISTRY_PATH } from '../../config/paths';
 
 const REGISTRY_PATH = path.resolve(__dirname, '..', '..', '..', '..', 'molgang-web/shared/asset-registry.json')
   // Fallback — molgang-web checkout might live elsewhere via env override.
@@ -44,7 +45,7 @@ function readRegistry(): Asset[] {
   const candidates = [
     REGISTRY_OVERRIDE,
     REGISTRY_PATH,
-    path.resolve('/media/knight2/EDS2/projects/molgang-web/shared/asset-registry.json'),
+    ASSET_REGISTRY_PATH,
   ].filter(Boolean) as string[];
   for (const p of candidates) {
     try {

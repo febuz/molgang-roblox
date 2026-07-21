@@ -1,7 +1,7 @@
 # VirtualPC — Architecture
 
 **Status:** Production
-**Repo:** `github.com/febuz/virtualpc`
+**Repo:** `github.com/knitweb/virtualpc`
 **Last refresh:** 2026-05-04
 
 VirtualPC is a project-agnostic multi-agent orchestration backend. It is
@@ -483,7 +483,121 @@ report" duty and every Hermes has the daily-digest duty.
 
 ---
 
-## 12. HTTP surface (key)
+## 12. Development & review pipeline — competing branches + Opus gate
+
+How a backlog item goes from "picked up" to "released". Three roles, two model
+tiers, *more than one* attempt per feature, and a reviewer who reviews like the
+most-senior PhD engineer on the team.
+
+### 12.1 Roles
+
+| Role | Who | Model | Job |
+|---|---|---|---|
+| **Product Owner** | Claude Coordinator | — | Owns the backlog + product catalog ([PRODUCTS.md](PRODUCTS.md)), grooms priorities, **balances who builds what** (§12.5), and **completes the winning branch**. |
+| **Principal Reviewer** | **Athena** 🦉 | **Claude Opus 4.8** (the *only* agent on Opus) | The PR gate. Reviews as a senior PhD-level engineer — spots any coding mistake, owns [CODING-STANDARDS.md](CODING-STANDARDS.md) and enforces adherence, relays working parts between competing branches, approves only what works with a clean suite. |
+| **Engineers (workers)** | Kai, Zip, Pixel, Luna, Atlas, … | **a spread of advanced coding models** (§12.4) | Implement the feature on a branch + ship unit + regression tests; improve from Athena's feedback. |
+
+The split is deliberate: **one strong reviewer, many fast workers.** Opus is
+spent in the one place depth pays off — review — while the workers do the volume
+of building.
+
+### 12.2 The competitive loop
+
+For each non-trivial backlog item, **at least two engineers build the same
+feature independently, each on their own branch**, using **different** advanced
+coding models (§12.4). They do not share code while building — divergent attempts
+surface more of the design space than one attempt iterated.
+
+```
+                       backlog item (one spec)
+                        │                 │
+            ┌───────────┘                 └───────────┐
+       Engineer A (e.g. Sonnet)                  Engineer B (e.g. Qwen-Coder-32B)
+       feat/<item>-A  + tests                    feat/<item>-B  + tests
+            │  PR A                                    │  PR B
+            └──────────────┐         ┌─────────────────┘
+                           ▼         ▼
+                ┌──────────────────────────────────┐
+                │  Athena (Opus 4.8) reviews BOTH   │
+                │  • senior-PhD-engineer scrutiny   │
+                │  • runs the WHOLE suite on each   │
+                │  • enforces CODING-STANDARDS.md   │
+                │  • feedback on A and on B         │
+                │  • RELAYS the working part of A   │
+                │    to B and vice-versa            │
+                │  • approves whatever passes       │
+                └──────────────────────────────────┘
+                           │
+            approved branch(es) ──▶ Product Owner completes the one
+                                    they like most (or the only one that
+                                    works). Loser closed — its good ideas
+                                    were already relayed into the winner.
+```
+
+1. **Build.** ≥2 engineers each implement the item on `feat/<item>-<who>`, each
+   shipping unit + regression tests for it.
+2. **PRs.** Each opens a PR against the same release line.
+3. **Review (Opus).** Athena reviews *every* branch as a senior PhD engineer:
+   runs the whole jest suite against each (unit + regression on the whole),
+   spots any coding mistake, checks every item of CODING-STANDARDS.md, writes
+   feedback on each, and — crucially — **relays the working part of one branch
+   into the feedback for the other** ("B's persistence layer is solid, A should
+   adopt it; A's API shape is cleaner, B should take it"). Workers improve with
+   their own feedback *and* the cross-relayed wins from the sibling branch.
+4. **Approve.** Athena approves a branch **only** when the feature works, the unit
+   + regression suite is clean on the whole (offline-infra integration failures
+   are environmental, never a failing unit suite), **and** it adheres to the
+   coding standards (`standardsAdhered=false` blocks). Pure, unit-tested logic:
+   `src/review/athena-gate.ts` (`decideGate`).
+5. **Complete (PO).** Among the approved branches the **Product Owner completes
+   the one they prefer**; the engineer who built it owns the completion. If only
+   one works, that one ships. Losers are closed; their strengths already live in
+   the winner via step 3's relay.
+
+### 12.3 Why two builders, not one
+
+- **Coverage** — two independent attempts explore more of the solution space.
+- **Cross-pollination** — the reviewer is a *router of good ideas*; the working
+  half of a "losing" branch still ships, grafted into the winner.
+- **Model diversity** — different coding models make genuinely different design
+  choices, so the two branches are not near-duplicates (§12.4).
+- **A real choice for the PO** — completion is a selection among working options.
+
+### 12.4 Worker model diversity — slightly different, all advanced
+
+Workers do **not** all run the same model. Each engineer leads on a distinct,
+advanced coding model so competing branches diverge by construction. Athena (the
+reviewer) stays on Opus 4.8; every non-engineer agent stays on Sonnet.
+
+| Engineer | Lead model | Notes |
+|---|---|---|
+| Kai (CTO) | `claude-sonnet` | flagship — infra / cross-team |
+| Zip (Dev) | `claude-sonnet` | flagship — web app |
+| Pixel (Web Dev) | `qwen-coder-32b` | strong OSS coder |
+| Luna (Tech Artist) | `devstral` | Mistral coding model |
+| Atlas (CAD/sim) | `deepseek-r1` | reasoning-heavy sim work |
+
+Source of truth: `src/agent-registry.ts` (`models[0]` is the lead). The live map
+is at `/api/models/config`; pairings for a feature should put two *different*
+models head-to-head.
+
+### 12.5 Balanced workload + delivery overview
+
+The PO keeps assignment **balanced** — no worker starved or overloaded — and
+tracks **how many features each worker delivers**.
+
+- Scoreboard logic (pure, tested): `src/review/delivery-scoreboard.ts`
+  (`tallyDeliveries`, `balanceReport`) + `tests/unit/deliveryScoreboard.test.ts`.
+- Overview runner: `scripts/worker-delivery-overview.ts` — reads merged
+  `feat/<item>-<who>` branches, prints per-worker delivery counts, a balance
+  report (mean / spread / most- & least-loaded), and the **suggested next
+  assignee** (the least-loaded eligible worker).
+- The PO assigns the next item to the suggested assignee to keep load even; the
+  delivery counts feed the promotion-portfolio model.
+
+---
+
+## 13. HTTP surface (key)
 
 ```
 # Core
@@ -530,7 +644,7 @@ POST /api/selfheal/audit         GET  /api/selfheal/audit
 
 ---
 
-## 13. Persistence
+## 14. Persistence
 
 | Store                          | Role                                          |
 |--------------------------------|-----------------------------------------------|
@@ -553,7 +667,7 @@ SIGTERM loses ≤ 5 s of work.
 
 ---
 
-## 14. Backups
+## 15. Backups
 
 `molgang-backup.timer` (Sun 02:30 local, `Persistent=true`) drives
 `scripts/backup-eds2-assets.sh` — rsync with `--link-dest` for hardlink
@@ -563,7 +677,7 @@ install + restore drill.
 
 ---
 
-## 15. Auth & audit
+## 16. Auth & audit
 
 - `src/auth/` — login, sessions, role-based dashboards. Roles: `ceo`,
   `cto`, `economy`, `creative`, `developer`, `viewer`.
@@ -575,7 +689,7 @@ install + restore drill.
 
 ---
 
-## 16. Auto-update + self-heal
+## 17. Auto-update + self-heal
 
 `scripts/auto-update.sh` is the systemd timer payload. Every 15 min:
 
@@ -593,7 +707,7 @@ no external services. POST `/api/selfheal/audit` to run; results at
 
 ---
 
-## 17. Adding a new agent
+## 18. Adding a new agent
 
 1. Append to `AGENT_META` in `src/agent-registry.ts` (name, role,
    avatar, color, kind, models, teams, tools).
@@ -610,7 +724,7 @@ No other files need editing.
 
 ---
 
-## 18. Adding a new MCP tool
+## 19. Adding a new MCP tool
 
 1. Implement the handler in the right `src/integrations/<area>/` module.
 2. Add a `ToolDefinition` to `TOOLS[]` in
@@ -621,7 +735,7 @@ No other files need editing.
 
 ---
 
-## 19. Adding a new dashboard route
+## 20. Adding a new dashboard route
 
 All dashboard pages are static HTML in `public/`, served by Express
 static. Sections toggle `.content-section.active` — no SPA framework,

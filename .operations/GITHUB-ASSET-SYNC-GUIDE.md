@@ -95,7 +95,7 @@ virtualpc/
 ```bash
 # Add shared assets as submodule in Web version
 cd $PROJECT_DIR
-git submodule add https://github.com/febuz/the-project.git shared/the-project
+git submodule add https://github.com/knitweb/the-project.git shared/the-project
 git submodule update --recursive
 
 # Now access shared assets:
@@ -420,7 +420,7 @@ jobs:
 ### Task 2.2: Add Steel Factory Graphics
 - **Assignee**: Mira (Artist)
 - **Status**: In Progress
-- **GitHub PR**: https://github.com/febuz/the-project/pull/42
+- **GitHub PR**: https://github.com/knitweb/the-project/pull/42
 - **Assets**: assets/graphics/<project>/steel-factory/*
 - **Subtasks**:
   - [x] Design factory building

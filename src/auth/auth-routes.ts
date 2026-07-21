@@ -7,9 +7,117 @@ import express from 'express';
 import AuthSystem from './auth-system';
 import AuthMiddleware, { AuthRequest } from './auth-middleware';
 import { AdvancedRateLimiter } from '../security/rateLimiter';
+import CEOAuditLogger from './audit-logger';
+import { LoginAnomalyMonitor, LoginRiskAssessment } from '../security/loginAnomalyMonitor';
 import logger from '../utils/logger';
 
-export function setupAuthRoutes(app: express.Express, authSystem: AuthSystem, authMiddleware: AuthMiddleware) {
+export interface AuthRouteDeps {
+  /** When provided, anomalous logins are written to the audit trail. */
+  auditLogger?: CEOAuditLogger;
+  /** When provided, each login attempt is scored for anomalies. */
+  anomalyMonitor?: LoginAnomalyMonitor;
+}
+
+/**
+ * Score a login attempt for anomalies, record it into the monitor's history,
+ * and — when the risk is medium/high — write an audit event. Pure and
+ * dependency-injected so it can be unit-tested without an HTTP server.
+ *
+ * Returns the assessment, or null if no monitor was wired.
+ */
+export function processLoginAttempt(
+  attempt: {
+    username: string;
+    ipAddress: string;
+    deviceId: string;
+    location?: string;
+    outcome: 'success' | 'failure';
+    /** Which auth step this attempt is — distinguishes login vs 2FA in the audit trail. */
+    stage?: 'login' | '2fa';
+  },
+  deps: AuthRouteDeps
+): LoginRiskAssessment | null {
+  const { anomalyMonitor, auditLogger } = deps;
+  if (!anomalyMonitor) return null;
+
+  // Best-effort by contract: anomaly scoring / audit logging must NEVER break
+  // the authentication flow. Any failure here is swallowed (and logged).
+  try {
+    const assessment = anomalyMonitor.assess({
+      username: attempt.username,
+      ipAddress: attempt.ipAddress,
+      deviceId: attempt.deviceId,
+      outcome: attempt.outcome,
+    });
+
+    if (auditLogger && assessment.level !== 'low') {
+      auditLogger.logEvent(
+        attempt.username,
+        attempt.username,
+        'unknown',
+        'invalid_access',
+        attempt.ipAddress,
+        attempt.deviceId,
+        attempt.location || 'unknown-location',
+        `Anomalous ${attempt.stage || 'login'} (${assessment.level} risk): ${assessment.flags.join(', ') || 'no flags'}`,
+        attempt.outcome,
+        {
+          severity: assessment.level === 'high' ? 'critical' : 'warning',
+          action: `${attempt.stage || 'login'}_anomaly`,
+          details: { score: assessment.score, flags: assessment.flags, stage: attempt.stage || 'login' },
+        }
+      );
+    }
+
+    return assessment;
+  } catch (error) {
+    logger.error('processLoginAttempt: anomaly scoring failed (login unaffected)', error);
+    return null;
+  }
+}
+
+/** Result of a route-level guard check. */
+export interface GuardResult {
+  allowed: boolean;
+  status?: number;
+  error?: string;
+}
+
+/**
+ * Guard for DELETE /api/auth/sessions/:sessionId — a CEO must not revoke the
+ * session backing the current request (that's self-lockout; use logout).
+ */
+export function checkSessionRevocation(targetSessionId: string, currentSessionId?: string): GuardResult {
+  if (targetSessionId === currentSessionId) {
+    return { allowed: false, status: 403, error: 'Cannot revoke your own active session (use logout)' };
+  }
+  return { allowed: true };
+}
+
+/**
+ * Guard for POST /api/auth/sessions/revoke-user — validate the username,
+ * require the user to exist (consistent 404, no silent enumeration), and block
+ * a CEO from revoking ALL of their own sessions (self-lockout).
+ */
+export function checkRevokeUser(username: unknown, currentUsername: string, userExists: boolean): GuardResult {
+  if (!username || typeof username !== 'string') {
+    return { allowed: false, status: 400, error: 'username is required' };
+  }
+  if (!userExists) {
+    return { allowed: false, status: 404, error: 'User not found' };
+  }
+  if (username === currentUsername) {
+    return { allowed: false, status: 403, error: 'Cannot revoke all of your own sessions (use logout)' };
+  }
+  return { allowed: true };
+}
+
+export function setupAuthRoutes(
+  app: express.Express,
+  authSystem: AuthSystem,
+  authMiddleware: AuthMiddleware,
+  deps: AuthRouteDeps = {}
+) {
   // Rate limiting (one shared store across all auth routes)
   const limiter = new AdvancedRateLimiter();
 
@@ -49,6 +157,15 @@ export function setupAuthRoutes(app: express.Express, authSystem: AuthSystem, au
         location
       });
 
+      // Score this attempt for anomalies (new device/IP, burst, velocity) and
+      // audit-log it when risky. Best-effort: never blocks the login outcome.
+      if (deps.anomalyMonitor && username) {
+        processLoginAttempt(
+          { username, ipAddress, deviceId, location, outcome: result.success ? 'success' : 'failure' },
+          deps
+        );
+      }
+
       if (!result.success) {
         if (result.requires2fa && result.challengeId) {
           return res.status(200).json({
@@ -81,6 +198,23 @@ export function setupAuthRoutes(app: express.Express, authSystem: AuthSystem, au
     try {
       const { challengeId, code } = req.body;
       const result = authSystem.verifyTwoFactor(challengeId, code);
+
+      // Score the 2FA step too — TOTP codes are only 6 digits, so rapid-fire
+      // verification attempts must feed the velocity/burst anomaly checks.
+      if (deps.anomalyMonitor && result.username) {
+        processLoginAttempt(
+          {
+            username: result.username,
+            ipAddress: req.ip || 'unknown',
+            deviceId: (req.headers['x-device-id'] as string) || 'unknown-device',
+            location: (req.headers['x-location'] as string) || 'unknown-location',
+            outcome: result.success ? 'success' : 'failure',
+            stage: '2fa',
+          },
+          deps
+        );
+      }
+
       if (!result.success) {
         return res.status(401).json({ success: false, error: result.error });
       }
@@ -263,16 +397,115 @@ export function setupAuthRoutes(app: express.Express, authSystem: AuthSystem, au
   });
 
   /**
+   * Change a user's status (CEO only): active | inactive | suspended.
+   * Enforces role hierarchy + last-CEO lockout; deactivation revokes sessions.
+   */
+  app.post(
+    '/api/auth/users/:userId/status',
+    mutationLimiter,
+    authMiddleware.requireRole('ceo'),
+    (req: AuthRequest, res: express.Response) => {
+      try {
+        const { status } = req.body || {};
+        if (!['active', 'inactive', 'suspended'].includes(status)) {
+          return res.status(400).json({ success: false, error: 'status must be active|inactive|suspended' });
+        }
+        const result = authSystem.setUserStatus(req.user!.role, req.params.userId, status);
+        if (!result.success) {
+          const code = result.error === 'User not found' ? 404 : 403;
+          return res.status(code).json({ success: false, error: result.error });
+        }
+        return res.json({ success: true, status });
+      } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  /**
+   * Delete a user (CEO only). Enforces role hierarchy + last-CEO lockout;
+   * revokes the user's sessions.
+   */
+  app.delete(
+    '/api/auth/users/:userId',
+    mutationLimiter,
+    authMiddleware.requireRole('ceo'),
+    (req: AuthRequest, res: express.Response) => {
+      try {
+        const result = authSystem.deleteUser(req.user!.role, req.params.userId);
+        if (!result.success) {
+          const code = result.error === 'User not found' ? 404 : 403;
+          return res.status(code).json({ success: false, error: result.error });
+        }
+        return res.json({ success: true });
+      } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  /**
    * Get session statistics (CEO & CTO only)
    */
   app.get('/api/auth/sessions', authMiddleware.requireRole('ceo', 'cto'), (req: AuthRequest, res: express.Response) => {
     try {
       const stats = authSystem.getSessionStats();
-      return res.json({ success: true, ...stats });
+      // Additive: include the active-session detail list for the management UI.
+      return res.json({ success: true, ...stats, active: authSystem.getActiveSessions() });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
     }
   });
+
+  /**
+   * Revoke a specific session by id (CEO only). Used by the session-management
+   * UI to force-logout a device.
+   */
+  app.delete(
+    '/api/auth/sessions/:sessionId',
+    mutationLimiter,
+    authMiddleware.requireRole('ceo'),
+    (req: AuthRequest, res: express.Response) => {
+      try {
+        const guard = checkSessionRevocation(req.params.sessionId, req.user?.sessionId);
+        if (!guard.allowed) {
+          return res.status(guard.status!).json({ success: false, error: guard.error });
+        }
+        const revoked = authSystem.revokeSession(req.params.sessionId);
+        if (!revoked) {
+          return res.status(404).json({ success: false, error: 'Session not found' });
+        }
+        return res.json({ success: true, revoked: 1 });
+      } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
+
+  /**
+   * Revoke ALL active sessions for a user (CEO only) — e.g. on account
+   * compromise. Body: { username }.
+   */
+  app.post(
+    '/api/auth/sessions/revoke-user',
+    mutationLimiter,
+    authMiddleware.requireRole('ceo'),
+    (req: AuthRequest, res: express.Response) => {
+      try {
+        const { username } = req.body || {};
+        const userExists =
+          typeof username === 'string' && authSystem.getAllUsers().some(u => u.username === username);
+        const guard = checkRevokeUser(username, req.user?.username || '', userExists);
+        if (!guard.allowed) {
+          return res.status(guard.status!).json({ success: false, error: guard.error });
+        }
+        const revoked = authSystem.revokeUserSessions(username);
+        return res.json({ success: true, revoked });
+      } catch (error: any) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+    }
+  );
 
   logger.info('✓ Auth routes configured');
 }

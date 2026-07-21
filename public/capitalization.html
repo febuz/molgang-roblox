@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VirtualPC — Capitalization & ROI</title>
+<style>
+  :root{--bg:#0b1020;--panel:#141a2e;--line:#26304d;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;--text:#e5ecff;--muted:#90a0c8;--primary:#60a5fa}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;padding:22px 26px}
+  h1{font-size:19px} .sub{color:var(--muted);font-size:12.5px;margin:4px 0 18px}
+  .summary{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:150px}
+  .kpi .n{font-size:23px;font-weight:700} .kpi .l{color:var(--muted);font-size:11.5px}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);font-size:12.5px}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{font-size:10.5px;padding:1px 7px;border-radius:20px;border:1px solid var(--line)}
+  .build{color:var(--ok);border-color:var(--ok)} .skip{color:var(--danger);border-color:var(--danger)} .marginal{color:var(--warn);border-color:var(--warn)}
+  .muted{color:var(--muted)}
+</style></head>
+<body>
+<h1>💎 Capitalization & ROI — features as immateriële activa</h1>
+<div class="sub">Real effort from git → labor cost → capitalized intangible assets (IAS 38 / RJ 210). ROI uses business values you enter (never fabricated). See FEATURE-CAPITALIZATION.md.</div>
+<div class="summary" id="summary"></div>
+<table><thead><tr><th>Feature</th><th>Phase</th><th class="num">Hours</th><th class="num">Cost €</th><th class="num">Capitalized €</th><th class="num">Net book €</th><th class="num">ROI</th><th>Verdict</th></tr></thead><tbody id="rows"></tbody></table>
+<script>
+const eur=n=>'€'+(n||0).toLocaleString(undefined,{maximumFractionDigits:0});
+async function load(){
+  const d=await fetch('/api/finance/capitalization').then(r=>r.json());
+  if(!d.success){document.body.innerHTML+='<p class="muted">'+(d.error||'error')+'</p>';return;}
+  const bs=d.balanceSheet,roi=d.roi;
+  document.getElementById('summary').innerHTML=`
+    <div class="kpi"><div class="n" style="color:#60a5fa">${eur(bs.netIntangibleAssets)}</div><div class="l">net immateriële activa</div></div>
+    <div class="kpi"><div class="n">${eur(bs.totalCapitalized)}</div><div class="l">gross capitalized</div></div>
+    <div class="kpi"><div class="n">${eur(bs.totalAmortization)}</div><div class="l">accumulated amortization</div></div>
+    <div class="kpi"><div class="n">${eur(bs.totalExpensed)}</div><div class="l">expensed to P&L</div></div>
+    <div class="kpi"><div class="n">${bs.totalLaborHours}</div><div class="l">labor hours (${d.generatedFrom.developmentFeatures} dev features)</div></div>`;
+  const byId=Object.fromEntries(roi.map(r=>[r.id,r]));
+  document.getElementById('rows').innerHTML=bs.perFeature.sort((a,b)=>b.capitalizedValue-a.capitalizedValue).map(f=>{
+    const r=byId[f.id]||{};
+    return `<tr>
+      <td><b>${f.title.slice(0,52)}</b> <span class="muted">${f.id}</span></td>
+      <td><span class="pill">${f.phase}</span></td>
+      <td class="num">${f.laborHours}</td><td class="num">${eur(f.laborCost)}</td>
+      <td class="num">${eur(f.capitalizedValue)}</td><td class="num">${eur(f.netBookValue)}</td>
+      <td class="num">${r.roi===undefined?'—':(r.value?r.roi:'—')}</td>
+      <td>${r.verdict?`<span class="pill ${r.verdict}">${r.verdict}</span>`:'—'}</td>
+    </tr>`;}).join('');
+}
+load();
+</script>
+</body></html>

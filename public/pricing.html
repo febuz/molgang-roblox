@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirtualPC · Pricing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #050810; color: #e6f0ff;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(5,8,16,.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(96,165,250,.15); padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 1.2rem; color: #60a5fa; }
+
+  .hero { padding: 60px 24px 30px; text-align: center; }
+  h1 {
+    font-family: 'Orbitron', sans-serif; font-weight: 800;
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    background: linear-gradient(90deg, #60a5fa 0%, #f0abfc 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 10px;
+  }
+  .hero p { color: #94a3b8; max-width: 620px; margin: 0 auto; }
+
+  .toggle { display: flex; justify-content: center; gap: 8px; margin: 28px 0; }
+  .toggle button {
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10);
+    color: #cbd5e1; padding: 8px 16px; border-radius: 6px; cursor: pointer;
+  }
+  .toggle button.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; padding: 0 24px 60px; }
+  .card {
+    background: rgba(255,255,255,.04); border: 1px solid rgba(96,165,250,.15); border-radius: 16px;
+    padding: 28px; position: relative;
+  }
+  .card.popular { border-color: #2563eb; box-shadow: 0 0 40px rgba(37,99,235,.15); }
+  .badge-pop {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: #2563eb; color: #fff; font-size: .7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em; padding: 4px 12px; border-radius: 999px;
+  }
+  .plan { font-size: 1.1rem; font-weight: 700; color: #f0f9ff; margin-bottom: 6px; }
+  .price { font-size: 2.4rem; font-weight: 800; color: #f0f9ff; margin-bottom: 6px; }
+  .price span { font-size: .9rem; font-weight: 400; color: #94a3b8; }
+  .desc { color: #94a3b8; font-size: .9rem; margin-bottom: 20px; min-height: 44px; }
+  .features { list-style: none; margin-bottom: 24px; }
+  .features li { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.05); color: #cbd5e1; font-size: .9rem; }
+  .features li::before { content: '✓ '; color: #22c55e; font-weight: 700; margin-right: 6px; }
+  .btn {
+    display: block; text-align: center; font-weight: 600; padding: 12px; border-radius: 8px;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: #e6f0ff;
+  }
+  .btn.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+  .faq { max-width: 800px; margin: 0 auto; padding: 0 24px 60px; }
+  .faq h2 { font-family: 'Orbitron', sans-serif; font-size: 1.4rem; margin-bottom: 20px; }
+  .q { font-weight: 700; color: #bfdbfe; margin-bottom: 6px; }
+  .a { color: #94a3b8; margin-bottom: 18px; }
+
+  footer { text-align: center; padding: 30px 24px; color: #64748b; font-size: .85rem; border-top: 1px solid rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">VirtualPC</div>
+  <a href="index.html">← Back to overview</a>
+</header>
+
+<section class="hero">
+  <h1>Simple pricing</h1>
+  <p>Pay for your own infrastructure, not per agent or per token. VirtualPC is open source; commercial support and managed tiers are optional.</p>
+</section>
+
+<div class="toggle">
+  <button class="active" id="selfBtn">Self-hosted</button>
+  <button id="managedBtn">Managed by us</button>
+</div>
+
+<section id="self-hosted" class="grid">
+  <div class="card">
+    <div class="plan">Solo</div>
+    <div class="price">€0 <span>/ forever</span></div>
+    <div class="desc">Run on your laptop or home server with Ollama. Perfect for experiments.</div>
+    <ul class="features">
+      <li>Full agent roster</li>
+      <li>LiteLLM gateway</li>
+      <li>Dashboard + auth</li>
+      <li>Community support</li>
+    </ul>
+    <a class="btn" href="https://github.com/knitweb/virtualpc" target="_blank">Clone on GitHub</a>
+  </div>
+
+  <div class="card popular">
+    <div class="badge-pop">Most popular</div>
+    <div class="plan">Team</div>
+    <div class="price">€49 <span>/ seat / year</span></div>
+    <div class="desc">Deploy on Vultr or your own VM with support and priority updates.</div>
+    <ul class="features">
+      <li>Everything in Solo</li>
+      <li>Commercial support (email/Slack)</li>
+      <li>Priority security patches</li>
+      <li>Data-science starter pack</li>
+    </ul>
+    <a class="btn primary" href="mailto:sales@virtualpc.dev?subject=VirtualPC Team plan">Contact sales</a>
+  </div>
+
+  <div class="card">
+    <div class="plan">Enterprise</div>
+    <div class="price">Custom</div>
+    <div class="desc">On-premise, SSO, custom agents and dedicated infrastructure review.</div>
+    <ul class="features">
+      <li>On-premise / air-gapped</li>
+      <li>SSO + audit logging</li>
+      <li>Custom agent development</li>
+      <li>SLA & dedicated channel</li>
+    </ul>
+    <a class="btn" href="mailto:sales@virtualpc.dev?subject=VirtualPC Enterprise">Contact sales</a>
+  </div>
+</section>
+
+<section id="managed" class="grid" style="display:none;">
+  <div class="card">
+    <div class="plan">Starter Managed</div>
+    <div class="price">€199 <span>/ month</span></div>
+    <div class="desc">We host a production-ready VirtualPC instance on Vultr for your team.</div>
+    <ul class="features">
+      <li>Managed Vultr instance</li>
+      <li>HTTPS + backups</li>
+      <li>Up to 5 team members</li>
+      <li>Email support</li>
+    </ul>
+    <a class="btn" href="mailto:sales@virtualpc.dev?subject=VirtualPC Starter Managed">Contact sales</a>
+  </div>
+
+  <div class="card popular">
+    <div class="badge-pop">Best value</div>
+    <div class="plan">Scale Managed</div>
+    <div class="price">€599 <span>/ month</span></div>
+    <div class="desc">Multi-agent workloads with GPU inference, monitoring and custom integrations.</div>
+    <ul class="features">
+      <li>GPU-backed inference</li>
+      <li>Unlimited team members</li>
+      <li>Custom agents + DS notebooks</li>
+      <li>Slack support + SLA</li>
+    </ul>
+    <a class="btn primary" href="mailto:sales@virtualpc.dev?subject=VirtualPC Scale Managed">Contact sales</a>
+  </div>
+
+  <div class="card">
+    <div class="plan">White-label</div>
+    <div class="price">Custom</div>
+    <div class="desc">Rebrand VirtualPC for your own clients or internal platform.</div>
+    <ul class="features">
+      <li>Custom branding</li>
+      <li>Reseller terms</li>
+      <li>Dedicated support</li>
+      <li>Custom roadmap</li>
+    </ul>
+    <a class="btn" href="mailto:sales@virtualpc.dev?subject=VirtualPC White-label">Contact sales</a>
+  </div>
+</section>
+
+<section class="faq">
+  <h2>Frequently asked questions</h2>
+  <div class="q">Do I need a GPU?</div>
+  <div class="a">No. The open-source version works fine on CPU with smaller Ollama models. For fast local inference, any CUDA GPU with 16 GB+ VRAM is recommended.</div>
+
+  <div class="q">Is there a per-token fee?</div>
+  <div class="a">No. You bring your own API keys or run local models. VirtualPC itself does not mark up LLM usage.</div>
+
+  <div class="q">Can I add my own agents?</div>
+  <div class="a">Yes. Add an entry to <code>src/agent-registry.ts</code>, and every dashboard picks it up automatically.</div>
+
+  <div class="q">What is the commercialization module?</div>
+  <div class="a">Croesus drafts promotion proposals with bounded budgets. Real spending requires <code>PROMO_REAL_MONEY=1</code> plus human approval.</div>
+</section>
+
+<footer>
+  <p>VirtualPC · <a href="demo-dashboard.html">Demo Dashboard</a> · <a href="microsoft-blend.html">Microsoft Copilot</a> · <a href="lineage.html">Lineage</a> · <a href="knitnet.html">KnitNet</a> · <a href="https://github.com/knitweb/virtualpc">GitHub</a> · <a href="index.html">Overview</a></p>
+</footer>
+
+<script>
+const selfBtn = document.getElementById('selfBtn');
+const managedBtn = document.getElementById('managedBtn');
+const selfSec = document.getElementById('self-hosted');
+const managedSec = document.getElementById('managed');
+
+selfBtn.addEventListener('click', () => {
+  selfBtn.classList.add('active'); managedBtn.classList.remove('active');
+  selfSec.style.display = 'grid'; managedSec.style.display = 'none';
+});
+managedBtn.addEventListener('click', () => {
+  managedBtn.classList.add('active'); selfBtn.classList.remove('active');
+  managedSec.style.display = 'grid'; selfSec.style.display = 'none';
+});
+</script>
+
+</body>
+</html>
