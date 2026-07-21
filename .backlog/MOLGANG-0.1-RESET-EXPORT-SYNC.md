@@ -21,6 +21,14 @@
 - Hive Mind, bot utility and Agent Notes Vault features merged from GitHub.
 - Broken upstream orchestrator/OpenClaw compatibility restored so TypeScript builds.
 
+## Parity audit 2026-07-21
+
+- Local `HEAD`: `ba0f9fbb`; `knitweb/master`: `ba0f9fbb`.
+- No open GitHub PRs remain.
+- Merged PRs 25, 26 and 27 are present locally and live on port 3100.
+- Closed/unmerged branches such as `feat/virtuanalytica-demo` remain review-only;
+  they are not copied into production runtime without a validated diff.
+
 ## Acceptance checks
 
 - [x] `npm run build`
