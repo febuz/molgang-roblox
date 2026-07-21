@@ -1876,6 +1876,12 @@ app.get('/api/metrics', (req, res) => {
   const pending = allItems.filter((i: any) => i.status === 'pending').length;
   const errored = allItems.filter((i: any) => i.status === 'error').length;
   const total = allItems.length;
+  const activeAgents = new Set(
+    allItems
+      .filter((i: any) => i.status === 'in_progress' || i.status === 'in-progress')
+      .map((i: any) => i.assigned_to)
+      .filter(Boolean),
+  ).size;
 
   const tokenReport = tokenTracker.getAgentSummary();
   const tokenSummary = tokenReport.combined;
@@ -1891,7 +1897,7 @@ app.get('/api/metrics', (req, res) => {
   const metrics = {
     version: process.env.VIRTUALPC_VERSION || '0.1',
     timestamp: new Date().toISOString(),
-    totalTasks: gameStats.tasksCompleted + gameStats.tasksInProgress,
+    totalTasks: total,
     completed: gameStats.tasksCompleted,
     inProgress: gameStats.tasksInProgress,
     pending,
@@ -1921,12 +1927,12 @@ app.get('/api/metrics', (req, res) => {
     },
     agents: {
       total: gameStats.agentCount,
-      active: gameStats.tasksInProgress,
-      busy: gameStats.tasksInProgress >= gameStats.agentCount ? gameStats.agentCount : gameStats.tasksInProgress,
-      idle: Math.max(0, gameStats.agentCount - gameStats.tasksInProgress),
+      active: activeAgents,
+      busy: activeAgents,
+      idle: Math.max(0, gameStats.agentCount - activeAgents),
     },
     tasks: {
-      total: gameStats.tasksCompleted + gameStats.tasksInProgress,
+      total,
       completed: gameStats.tasksCompleted,
       inProgress: gameStats.tasksInProgress,
       pending,
