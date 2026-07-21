@@ -33,9 +33,12 @@
 
 - [x] `npm run build`
 - [x] `GET /api/health` returns version `0.1`.
-- [x] `GET /api/metrics` returns zeroed new-baseline counters.
+- [x] `GET /api/metrics` returns zeroed new-baseline counters and reports
+  whether autonomous synthetic ticks are explicitly enabled.
 - [x] JSON, CSV and Markdown export routes return successfully.
 - [x] One-shot reset flag removed after the reset; subsequent restarts preserve the new state.
+- [x] Autonomous synthetic ticks are disabled by default; fresh 0.1 tasks remain
+  reviewable without fabricated completions.
 - [ ] Add automated API tests for export schema and content-disposition headers.
 - [ ] Add a scheduled GitHub/local parity audit and report drift in VirtualPC.
 - [ ] Implement the four-tier polyglot contract tests before adding gRPC,

@@ -348,6 +348,10 @@ const tasks: Task[] = [];
 
 const STATE_PATH = path.join(STATE_DIR, 'task-state.json');
 const NEW_RESET = process.env.VIRTUALPC_NEW_RESET === '1';
+// Synthetic progress is useful only for an explicitly requested dashboard
+// simulation. It must not silently change the fresh 0.1 metrics. Real task
+// mutations through the public API remain available when this is disabled.
+const AUTONOMOUS_TICKS = process.env.VIRTUALPC_AUTONOMOUS_TICKS === '1';
 let dirty = false;
 
 interface PersistedState {
@@ -454,6 +458,9 @@ if (NEW_RESET) {
   sprintCounter = 1;
   taskIdCounter = 100;
   (globalThis as any).__virtualpcPersistedWorkLog = [];
+  // Keep the fresh baseline useful for review: create untouched work items,
+  // but do not mark anything complete or advance them automatically.
+  seedInitialTasks();
   dirty = true;
   logger.info('task-engine: fresh 0.1 baseline requested; historical state ignored');
 } else if (loadState()) {
@@ -1558,9 +1565,15 @@ export function getAgentSocialFeed(agent: string, limit = 20) {
   };
 }
 
-// Tick every 10 seconds
-setInterval(tickEngine, 10000);
-tickEngine();
+// Tick every 10 seconds only for an explicitly requested simulation. The
+// default 0.1 demo is a stable baseline: seeded work remains visible but no
+// completion, work-log or milestone statistic is fabricated by a timer.
+if (AUTONOMOUS_TICKS) {
+  setInterval(tickEngine, 10000);
+  tickEngine();
+} else {
+  logger.info('task-engine: autonomous ticks disabled; waiting for real task mutations');
+}
 
 // Persist state every 5s (only writes if dirty). Was 30s — reduced after
 // the May-3 roadmap-delegation push was wiped by a systemd restart that

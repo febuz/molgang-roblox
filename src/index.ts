@@ -1942,6 +1942,10 @@ app.get('/api/metrics', (req, res) => {
       neo4j: { status: 'not_configured' },
       redis: { status: 'not_configured' },
       auth: { status: 'operational', users: 0 }
+    },
+    taskEngine: {
+      autonomousTicks: process.env.VIRTUALPC_AUTONOMOUS_TICKS === '1',
+      metricsSource: 'task-engine work-log and canonical task store',
     }
   };
 
