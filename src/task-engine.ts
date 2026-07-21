@@ -347,6 +347,7 @@ const tasks: Task[] = [];
 // Survives server restarts, TypeScript rebuilds, and hook-triggered restarts.
 
 const STATE_PATH = path.join(STATE_DIR, 'task-state.json');
+const NEW_RESET = process.env.VIRTUALPC_NEW_RESET === '1';
 let dirty = false;
 
 interface PersistedState {
@@ -447,7 +448,15 @@ function seedInitialTasks() {
 // Restore from disk if available; otherwise seed fresh.
 // If restored, also ensure every currently-active agent has at least 4 tasks
 // (covers the case where a new agent was added after the state file was saved).
-if (loadState()) {
+if (NEW_RESET) {
+  tasks.length = 0;
+  for (const agent of AGENT_NAMES) poolIndex[agent] = 0;
+  sprintCounter = 1;
+  taskIdCounter = 100;
+  (globalThis as any).__virtualpcPersistedWorkLog = [];
+  dirty = true;
+  logger.info('task-engine: fresh 0.1 baseline requested; historical state ignored');
+} else if (loadState()) {
   const currentAgents = AGENT_NAMES;
   for (const agent of currentAgents) {
     const agentTasks = tasks.filter(t => t.assigned_to === agent && (t.status === 'in-progress' || t.status === 'pending'));

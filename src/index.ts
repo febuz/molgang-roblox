@@ -284,7 +284,9 @@ function serveSPAFile(_req: express.Request, res: express.Response) {
   res.type('html').sendFile(dashPath, (err: any) => {
     if (err) {
       logger.error('Error serving dashboard.html:', err);
-      res.status(500).send('Error loading dashboard');
+      if (!res.headersSent && !res.writableEnded && !res.destroyed) {
+        res.status(500).send('Error loading dashboard');
+      }
     }
   });
 }
@@ -1875,7 +1877,10 @@ app.get('/api/metrics', (req, res) => {
   const errored = allItems.filter((i: any) => i.status === 'error').length;
   const total = allItems.length;
 
-  const tokenSummary = tokenTracker.getAgentSummary().combined;
+  const tokenReport = tokenTracker.getAgentSummary();
+  const tokenSummary = tokenReport.combined;
+  const qwenTokensUsed = Object.values(tokenReport.agents).reduce((sum: number, agent: any) => sum + Number(agent.modelBreakdown?.['qwen3.5-27b'] || 0), 0);
+  const qwenDailyBudget = Number(process.env.QWEN_DAILY_BUDGET || 0);
   const uptimeSeconds = Math.floor((Date.now() - SERVER_START_TIME) / 1000);
   const uptimePct = uptimeSeconds > 0 ? 100 : 0; // since last server start
   // Cache hit rate = ratio of tier-1 (free local / simulated) calls vs total.
@@ -1884,7 +1889,7 @@ app.get('/api/metrics', (req, res) => {
     : 100;
 
   const metrics = {
-    version: process.env.npm_package_version || '1.0.0',
+    version: process.env.VIRTUALPC_VERSION || '0.1',
     timestamp: new Date().toISOString(),
     totalTasks: gameStats.tasksCompleted + gameStats.tasksInProgress,
     completed: gameStats.tasksCompleted,
@@ -1893,34 +1898,30 @@ app.get('/api/metrics', (req, res) => {
     errored,
     costSavings: `${tokenSummary.costSavingsPercent}%`,
 
-    dailyUpdates: gameStats.completedLastHour + gameStats.completedLastMinute,
+    dailyUpdates: gameStats.completedLast24h,
     dailyActiveUsers: 0, // not tracked; reserved for future auth/session layer
     studentCapacity: 0,  // not tracked; removed from dashboard
 
     qwenTokens: {
-      dailyBudget: 1000000,
-      consumed: tokenSummary.totalTokens,
-      remaining: Math.max(0, 1000000 - tokenSummary.totalTokens),
-      percentUsed: Math.min(100, Math.round((tokenSummary.totalTokens / 1000000) * 100)),
-      status: tokenSummary.totalTokens > 900000 ? 'critical' : tokenSummary.totalTokens > 700000 ? 'warning' : 'healthy'
+      dailyBudget: qwenDailyBudget,
+      consumed: qwenTokensUsed,
+      remaining: Math.max(0, qwenDailyBudget - qwenTokensUsed),
+      percentUsed: qwenDailyBudget > 0 ? Math.round((qwenTokensUsed / qwenDailyBudget) * 100) : 0,
+      status: qwenTokensUsed > 0 ? 'active' : 'idle'
     },
 
     apiResponseTime: 0, // not instrumented yet
     cacheHitRate,
-    uptime: uptimePct,
+    uptime: uptimeSeconds,
     uptimeSeconds,
 
     costBreakdown: {
       description: `${tokenSummary.costSavingsPercent}% Cost Reduction achieved through:`,
-      items: [
-        { method: 'Local / Simulated Routing', savings: tokenSummary.costSavingsPercent, description: 'Route to on-device or simulated models' },
-        { method: 'Model Routing', savings: 20, description: 'Route to optimal model by weight class' },
-        { method: 'Request Batching', savings: 10, description: 'Batch multiple requests' }
-      ]
+      items: []
     },
     agents: {
       total: gameStats.agentCount,
-      active: gameStats.agentCount,
+      active: gameStats.tasksInProgress,
       busy: gameStats.tasksInProgress >= gameStats.agentCount ? gameStats.agentCount : gameStats.tasksInProgress,
       idle: Math.max(0, gameStats.agentCount - gameStats.tasksInProgress),
     },
@@ -1938,10 +1939,9 @@ app.get('/api/metrics', (req, res) => {
       lastCompletionTs: gameStats.lastCompletionTs,
     },
     systems: {
-      neo4j: { status: 'operational', uptime: '99.9%' },
-      redis: { status: 'operational', uptime: '99.8%' },
-      
-      auth: { status: 'operational', users: 5 }
+      neo4j: { status: 'not_configured' },
+      redis: { status: 'not_configured' },
+      auth: { status: 'operational', users: 0 }
     }
   };
 
@@ -2282,7 +2282,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
+    version: process.env.VIRTUALPC_VERSION || '0.1',
     components: {
       api: 'operational',
       lightrag: 'checking...',
@@ -2316,7 +2316,7 @@ app.get('/api/health', async (_req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
+    version: process.env.VIRTUALPC_VERSION || '0.1',
     uptime_sec: uptimeSec,
     memory_mb: { rss: Math.round(mem.rss / 1024 / 1024), heap: Math.round(mem.heapUsed / 1024 / 1024) },
     services: {
