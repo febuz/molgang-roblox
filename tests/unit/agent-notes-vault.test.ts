@@ -44,13 +44,11 @@ describe('Agent Notes Vault', () => {
     });
 
     it('should sanitize path traversal attempts', () => {
-      // These should not throw, but should be sanitized
-      vault.writeNote('../../../etc/passwd', 'safe - traversal stripped');
-      vault.writeNote('../../outside', 'safe - traversal stripped');
-
-      // The files should be written to safe locations
-      const notes = vault.listNotes();
-      expect(notes.length).toBeGreaterThan(0);
+      // Traversal is rejected before filesystem access; do not silently
+      // rewrite an attacker-controlled path into an unrelated note.
+      expect(() => vault.writeNote('../../../etc/passwd', 'blocked')).toThrow();
+      expect(() => vault.writeNote('../../outside', 'blocked')).toThrow();
+      expect(vault.listNotes()).toEqual([]);
     });
   });
 
