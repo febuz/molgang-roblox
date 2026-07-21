@@ -38,3 +38,5 @@
 - [x] One-shot reset flag removed after the reset; subsequent restarts preserve the new state.
 - [ ] Add automated API tests for export schema and content-disposition headers.
 - [ ] Add a scheduled GitHub/local parity audit and report drift in VirtualPC.
+- [ ] Implement the four-tier polyglot contract tests before adding gRPC,
+  PostgreSQL, Redis or vector persistence to the 0.1 runtime.
