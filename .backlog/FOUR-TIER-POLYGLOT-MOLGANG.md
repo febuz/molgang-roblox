@@ -105,7 +105,9 @@ tests, gas limits, wallet/network configuration and an external security review.
   explicit local fallback.
 - [ ] A failure in one tier produces a visible degraded status, not fabricated
   success.
-- [ ] Data-role ownership is recorded for schema, lineage, retention and export.
+- [x] Data-role ownership is recorded for schema, lineage, retention and export
+  in MOLGANG `shared/agent-review-contracts.json` and covered by the
+  four-tier contract test.
 - [ ] Ethereum adapter tests cover chain id, nonce/replay handling, receipt
   confirmation, event decoding and explicit `local`/`signed`/`on_chain` status.
 - [ ] An L2 testnet demo anchors one export or game event by digest; no gameplay

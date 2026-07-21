@@ -39,7 +39,9 @@
 - [x] One-shot reset flag removed after the reset; subsequent restarts preserve the new state.
 - [x] Autonomous synthetic ticks are disabled by default; fresh 0.1 tasks remain
   reviewable without fabricated completions.
-- [ ] Add automated API tests for export schema and content-disposition headers.
+- [x] Add automated API tests for export schema and content-disposition headers
+  (`tests/unit/exportRoute.test.ts`).
 - [ ] Add a scheduled GitHub/local parity audit and report drift in VirtualPC.
-- [ ] Implement the four-tier polyglot contract tests before adding gRPC,
-  PostgreSQL, Redis or vector persistence to the 0.1 runtime.
+- [x] Implement four-tier polyglot contract tests before adding gRPC,
+  PostgreSQL, Redis or vector persistence to the 0.1 runtime
+  (`tests/unit/fourTierContracts.test.ts`).
