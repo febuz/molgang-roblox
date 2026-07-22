@@ -38,6 +38,10 @@
 			"$path": "src/StarterGui"
 		},
 
+		"CoreGui": {
+			"$className": "CoreGui"
+		},
+
 		"ReplicatedStorage": {
 			"$className": "ReplicatedStorage",
 			"Data": {

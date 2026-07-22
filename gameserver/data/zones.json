@@ -1,0 +1,75 @@
+[
+  {
+    "id": "PeriodicBiome",
+    "name": "Periodic Table Biome",
+    "theme": "noord",
+    "description": "Floating islands shaped like the periodic table. Most common atom spawns.",
+    "centerX": 0, "centerY": 15, "centerZ": 2000,
+    "radius": 800,
+    "spawnWeight": 0.40,
+    "slagBoost": false,
+    "quantumBoost": false,
+    "spawnRatePerMin": 5
+  },
+  {
+    "id": "NexusHub",
+    "name": "Molgang Nexus Hub",
+    "theme": "centrum",
+    "description": "Central spawn area with the main hub tower and marketplace.",
+    "centerX": 0, "centerY": 15, "centerZ": 0,
+    "radius": 300,
+    "spawnWeight": 0.15,
+    "slagBoost": false,
+    "quantumBoost": false,
+    "spawnRatePerMin": 5
+  },
+  {
+    "id": "QuantumLab",
+    "name": "Quantum Lab",
+    "theme": "oost",
+    "description": "Futuristic lab where rare and legendary elements appear more frequently.",
+    "centerX": 2000, "centerY": 35, "centerZ": 0,
+    "radius": 300,
+    "spawnWeight": 0.15,
+    "slagBoost": false,
+    "quantumBoost": true,
+    "spawnRatePerMin": 5
+  },
+  {
+    "id": "Slakkenspoor",
+    "name": "Slakkenspoor Fabriek",
+    "theme": "west",
+    "description": "Industrial steel slag processing plant. V, Fe, Ti, Si, Ca, Mn spawn at 5x rate.",
+    "centerX": -2000, "centerY": 10, "centerZ": 0,
+    "radius": 400,
+    "spawnWeight": 0.15,
+    "slagBoost": true,
+    "quantumBoost": false,
+    "slagElements": [23, 26, 22, 14, 20, 25, 24, 12, 13, 8],
+    "spawnRatePerMin": 5
+  },
+  {
+    "id": "MolChainTower",
+    "name": "MolChain Registry Tower",
+    "theme": "centrum-oost",
+    "description": "XRPL chain registry tower. Record your molecules on the simulated blockchain.",
+    "centerX": 500, "centerY": 15, "centerZ": 0,
+    "radius": 150,
+    "spawnWeight": 0.075,
+    "slagBoost": false,
+    "quantumBoost": false,
+    "spawnRatePerMin": 5
+  },
+  {
+    "id": "ANKHub",
+    "name": "ANK Kredietunie",
+    "theme": "centrum-west",
+    "description": "Cooperative credit union. Lend and borrow MolCoins with 120% collateral.",
+    "centerX": -500, "centerY": 15, "centerZ": 0,
+    "radius": 150,
+    "spawnWeight": 0.075,
+    "slagBoost": false,
+    "quantumBoost": false,
+    "spawnRatePerMin": 5
+  }
+]

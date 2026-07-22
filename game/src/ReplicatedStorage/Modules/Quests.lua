@@ -1,0 +1,267 @@
+--[[
+	Quests.lua
+	MOLGANG Quest System
+
+	Provides guided progression:
+	- Starter quests (collect 10 atoms, build mine)
+	- Intermediate quests (build factory, create molecule)
+	- Advanced quests (earn 5K coins, craft 10 molecules)
+	- Repeatable daily quests (collect 50 atoms, earn 1K coins)
+]]
+
+local Quests = {}
+
+-- ═══════════════════════════════════════════════
+-- QUEST DEFINITIONS
+-- ═══════════════════════════════════════════════
+
+Quests.AllQuests = {
+	-- STARTER QUESTS
+	collect_atoms = {
+		id = "collect_atoms",
+		name = "Atom Collector",
+		description = "Collect 10 atoms from around the world",
+		category = "starter",
+		reward = {molCoins = 200},
+		condition = {type = "atomsCollected", target = 10},
+		order = 1,
+	},
+
+	build_first_mine = {
+		id = "build_first_mine",
+		name = "Build Your First Mine",
+		description = "Construct a mine to start production",
+		category = "starter",
+		reward = {molCoins = 300},
+		condition = {type = "facilitiesBuilt", target = 1},
+		order = 2,
+		requires = "collect_atoms",  -- Must complete collect_atoms first
+	},
+
+	collect_more_atoms = {
+		id = "collect_more_atoms",
+		name = "Expand Your Atom Collection",
+		description = "Collect 50 atoms total",
+		category = "starter",
+		reward = {molCoins = 400},
+		condition = {type = "atomsCollected", target = 50},
+		order = 3,
+		requires = "collect_atoms",
+	},
+
+	-- INTERMEDIATE QUESTS
+	build_factory = {
+		id = "build_factory",
+		name = "Build a Factory",
+		description = "Construct a factory to process atoms into molecules",
+		category = "intermediate",
+		reward = {molCoins = 500},
+		condition = {type = "facilitiesBuilt", target = 2},
+		order = 4,
+		requires = "build_first_mine",
+	},
+
+	craft_molecule = {
+		id = "craft_molecule",
+		name = "Create Your First Molecule",
+		description = "Combine atoms to craft a molecule",
+		category = "intermediate",
+		reward = {molCoins = 350, badge = "Alchemist"},
+		condition = {type = "moleculesBuilt", target = 1},
+		order = 5,
+		requires = "build_factory",
+	},
+
+	craft_five_molecules = {
+		id = "craft_five_molecules",
+		name = "Molecular Mastery",
+		description = "Craft 5 different molecules",
+		category = "intermediate",
+		reward = {molCoins = 750},
+		condition = {type = "moleculesBuilt", target = 5},
+		order = 6,
+		requires = "craft_molecule",
+	},
+
+	-- ADVANCED QUESTS
+	earn_wealth = {
+		id = "earn_wealth",
+		name = "Build Your Wealth",
+		description = "Earn 5,000 MolCoins through trading and production",
+		category = "advanced",
+		reward = {molCoins = 1000},
+		condition = {type = "molCoinsEarned", target = 5000},
+		order = 7,
+		requires = "craft_molecule",
+	},
+
+	build_three_facilities = {
+		id = "build_three_facilities",
+		name = "Industrial Complex",
+		description = "Build 3 different facilities",
+		category = "advanced",
+		reward = {molCoins = 800},
+		condition = {type = "facilitiesBuilt", target = 3},
+		order = 8,
+		requires = "build_factory",
+	},
+
+	-- DAILY QUESTS (repeatable)
+	daily_collect = {
+		id = "daily_collect",
+		name = "Daily Gathering",
+		description = "Collect 50 atoms today",
+		category = "daily",
+		reward = {molCoins = 300},
+		condition = {type = "atomsCollected", target = 50, daily = true},
+		order = 100,
+		repeatable = true,
+	},
+
+	daily_earn = {
+		id = "daily_earn",
+		name = "Daily Profits",
+		description = "Earn 1,000 MolCoins today",
+		category = "daily",
+		reward = {molCoins = 200},
+		condition = {type = "molCoinsEarned", target = 1000, daily = true},
+		order = 101,
+		repeatable = true,
+	},
+
+	daily_craft = {
+		id = "daily_craft",
+		name = "Daily Creation",
+		description = "Craft 3 molecules today",
+		category = "daily",
+		reward = {molCoins = 250},
+		condition = {type = "moleculesBuilt", target = 3, daily = true},
+		order = 102,
+		repeatable = true,
+	},
+}
+
+-- ═══════════════════════════════════════════════
+-- QUEST TRACKING
+-- ═══════════════════════════════════════════════
+
+function Quests.CreateQuestProgress()
+	return {
+		active = {},        -- Currently active quests
+		completed = {},     -- {questId = true}
+		inProgress = {},    -- {questId = {progress}}
+		lastDaily = {},     -- {questId = os.date("%Y-%m-%d")}
+	}
+end
+
+function Quests.GetQuest(questId)
+	return Quests.AllQuests[questId]
+end
+
+function Quests.GetQuestsByCategory(category)
+	local quests = {}
+	for _, quest in pairs(Quests.AllQuests) do
+		if quest.category == category then
+			table.insert(quests, quest)
+		end
+	end
+	table.sort(quests, function(a, b) return a.order < b.order end)
+	return quests
+end
+
+function Quests.GetActiveQuests(progress)
+	local active = {}
+	for questId in pairs(progress.active) do
+		local quest = Quests.GetQuest(questId)
+		if quest then
+			table.insert(active, quest)
+		end
+	end
+	table.sort(active, function(a, b) return a.order < b.order end)
+	return active
+end
+
+function Quests.GetAvailableQuests(progress)
+	local available = {}
+	for questId, quest in pairs(Quests.AllQuests) do
+		-- Skip if already completed (non-repeatable)
+		if not quest.repeatable and progress.completed[questId] then
+			goto continue
+		end
+
+		-- Skip if requires a prerequisite
+		if quest.requires and not progress.completed[quest.requires] then
+			goto continue
+		end
+
+		-- Check if already active
+		if progress.active[questId] then
+			goto continue
+		end
+
+		table.insert(available, quest)
+		::continue::
+	end
+	table.sort(available, function(a, b) return a.order < b.order end)
+	return available
+end
+
+function Quests.AcceptQuest(progress, questId)
+	local quest = Quests.GetQuest(questId)
+	if not quest then return false end
+
+	progress.active[questId] = true
+	progress.inProgress[questId] = {progress = 0, target = quest.condition.target}
+	return true
+end
+
+function Quests.CompleteQuest(progress, questId)
+	local quest = Quests.GetQuest(questId)
+	if not quest then return false end
+
+	progress.active[questId] = nil
+	progress.completed[questId] = true
+	if quest.repeatable then
+		progress.lastDaily[questId] = os.date("%Y-%m-%d")
+	end
+	return true
+end
+
+function Quests.CheckProgress(playerData, quest)
+	if not quest or not quest.condition then return 0 end
+
+	local condType = quest.condition.type
+	local target = quest.condition.target
+
+	if condType == "atomsCollected" then
+		local count = 0
+		if playerData.atoms then
+			for _, c in pairs(playerData.atoms) do count = count + c end
+		end
+		return math.min(count, target)
+
+	elseif condType == "facilitiesBuilt" then
+		local count = 0
+		if playerData.facilities then
+			count = (playerData.facilities.mines or 0) +
+					(playerData.facilities.factories or 0) +
+					(playerData.facilities.researchLabs or 0) +
+					(playerData.facilities.offices or 0)
+		end
+		return math.min(count, target)
+
+	elseif condType == "moleculesBuilt" then
+		return math.min(playerData.totalMoleculesBuilt or 0, target)
+
+	elseif condType == "molCoinsEarned" then
+		return math.min(playerData.totalMolCoinsEarned or 0, target)
+	end
+
+	return 0
+end
+
+function Quests.IsQuestComplete(playerData, quest)
+	return Quests.CheckProgress(playerData, quest) >= quest.condition.target
+end
+
+return Quests

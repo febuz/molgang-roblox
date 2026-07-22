@@ -1,125 +1,172 @@
 --[[
 	MarketDynamics.server.lua
-	MOLGANG Dynamic Pricing System
+	MOLGANG Market Price Fluctuation System
 
-	Implements real-time market with supply/demand-based pricing
-	- Tracks buy/sell orders
-	- Calculates prices dynamically
-	- Broadcasts updates to clients
+	Prices adjust based on:
+	- Supply (how much players have)
+	- Demand (how much players want to buy)
+	- Global market transactions
+	- Rarity tiers
+	- Time-based oscillation
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-
+local DataStoreService = game:GetService("DataStoreService")
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
--- ══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════
 -- MARKET STATE
--- ══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════
 
-local marketState = {
-	-- Key commodities (element symbols + molecule names)
-	commodities = {"H", "O", "C", "N", "Fe", "H2O", "CO2", "H2SO4"},
+local marketStore = DataStoreService:GetDataStore("MOLGANG_Market_v1")
 
-	-- Price tracking: {symbol = {basePrice, currentPrice, history={}}}
-	prices = {},
-
-	-- Order books: {symbol = {buyOrders={}, sellOrders={}}}
-	orders = {},
-
-	-- Supply/demand trackers
-	supplyDemand = {},  -- {symbol = {buyers, sellers}}
+-- Base prices for commodities
+local BASE_PRICES = {
+	Iron = 100,
+	Copper = 150,
+	Gold = 500,
+	Vanadium = 300,
+	Tungsten = 400,
+	Aluminum = 80,
+	Carbon = 60,
+	Nitrogen = 70,
 }
 
--- Initialize commodities
-for _, symbol in ipairs(marketState.commodities) do
-	marketState.prices[symbol] = {
-		base = 100,
-		current = 100,
-		history = {},
-		lastUpdate = os.time(),
-	}
-	marketState.orders[symbol] = {buyOrders = {}, sellOrders = {}}
-	marketState.supplyDemand[symbol] = {buyers = 0, sellers = 0}
+-- Market state tracking
+local marketState = {
+	-- Price history: {commodity = {prices}}
+	priceHistory = {},
+	-- Supply/demand: {commodity = {bought=N, sold=N}}
+	transactions = {},
+	-- Last update timestamp
+	lastUpdate = os.time(),
+}
+
+-- Initialize market state
+for commodity, basePrice in pairs(BASE_PRICES) do
+	marketState.priceHistory[commodity] = {basePrice}
+	marketState.transactions[commodity] = {bought = 0, sold = 0}
 end
 
--- ══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════
 -- PRICE CALCULATION
--- ══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════
 
-local function calculatePrice(symbol)
-	local basePrice = marketState.prices[symbol].base
-	local sd = marketState.supplyDemand[symbol]
+local function calculatePrice(commodity, time)
+	if not marketState.priceHistory[commodity] then return BASE_PRICES[commodity] end
 
-	-- Supply/demand factor: if many buyers and few sellers, price rises
-	-- Formula: (buyers - sellers) / 100 creates normalized factor
-	local sdFactor = 1.0 + ((sd.buyers - sd.sellers) / 100)
-	sdFactor = math.max(0.5, math.min(2.0, sdFactor))  -- Clamp 0.5x to 2.0x
+	local basePrice = BASE_PRICES[commodity]
+	local priceHistory = marketState.priceHistory[commodity]
+	local currentPrice = priceHistory[#priceHistory] or basePrice
 
-	-- Time oscillation for daily cycles (sin wave over 10 minutes)
-	local timeOscillation = 1.0 + (math.sin(os.time() / 600) * 0.15)
+	-- Get transaction data
+	local txn = marketState.transactions[commodity] or {bought = 0, sold = 0}
 
-	-- Random noise (±5%)
-	local noise = 1.0 + (math.random() * 0.1 - 0.05)
+	-- Demand factor: if more people buying, price goes up
+	local demandFactor = 1 + (txn.bought - txn.sold) / 100
 
-	local finalPrice = basePrice * sdFactor * timeOscillation * noise
+	-- Supply factor: natural oscillation based on time
+	local timeOscillation = 1 + math.sin(time / 60) * 0.1
 
-	-- Clamp to reasonable bounds
-	finalPrice = math.max(basePrice * 0.5, math.min(basePrice * 2.0, finalPrice))
+	-- Random fluctuation (market noise)
+	local noise = 1 + (math.random() - 0.5) * 0.05
 
-	return math.floor(finalPrice)
+	-- Calculate new price
+	local newPrice = currentPrice * demandFactor * timeOscillation * noise
+
+	-- Clamp price: 50% - 200% of base price
+	newPrice = math.max(basePrice * 0.5, math.min(basePrice * 2, newPrice))
+
+	return math.floor(newPrice)
 end
 
-local function updateAllPrices()
-	for _, symbol in ipairs(marketState.commodities) do
-		local newPrice = calculatePrice(symbol)
-		marketState.prices[symbol].current = newPrice
-		table.insert(marketState.prices[symbol].history, newPrice)
-
-		-- Keep last 30 entries for history
-		if #marketState.prices[symbol].history > 30 then
-			table.remove(marketState.prices[symbol].history, 1)
-		end
-
-		marketState.prices[symbol].lastUpdate = os.time()
-	end
-
-	-- Broadcast to all clients
-	local priceData = {}
-	for _, symbol in ipairs(marketState.commodities) do
-		priceData[symbol] = {
-			current = marketState.prices[symbol].current,
-			base = marketState.prices[symbol].base,
-			history = marketState.prices[symbol].history,
-		}
-	end
-	Remotes.FireAllClients("MarketPricesUpdated", priceData)
-end
-
--- ══════════════════════════════════════════════
--- TRADE EXECUTION
--- ══════════════════════════════════════════════
-
--- This will be called from requests
--- For now, just stub it - actual trade matching would be here
-local function executeTrade(player, side, symbol, quantity, pricePerUnit)
-	print("[MarketDynamics]", player.Name, "trade request:", side, symbol, "x" .. quantity, "@", pricePerUnit)
-	-- TODO: Implement order matching + inventory transfers
-end
-
--- ══════════════════════════════════════════════
--- MARKET UPDATES (periodic)
--- ══════════════════════════════════════════════
+-- ═══════════════════════════════════════════════
+-- MARKET UPDATE LOOP
+-- ═══════════════════════════════════════════════
 
 task.spawn(function()
 	while true do
 		task.wait(30)  -- Update prices every 30 seconds
-		updateAllPrices()
+
+		local now = os.time()
+
+		-- Update all commodity prices
+		for commodity, basePrice in pairs(BASE_PRICES) do
+			local newPrice = calculatePrice(commodity, now)
+
+			-- Record in history
+			table.insert(marketState.priceHistory[commodity], newPrice)
+
+			-- Keep only last 30 price points (10 minutes history)
+			if #marketState.priceHistory[commodity] > 30 then
+				table.remove(marketState.priceHistory[commodity], 1)
+			end
+
+			-- Reset daily transaction counts every hour
+			if (now - (marketState.lastUpdate or now)) >= 3600 then
+				marketState.transactions[commodity].bought = 0
+				marketState.transactions[commodity].sold = 0
+			end
+		end
+
+		marketState.lastUpdate = now
+
+		-- Announce price changes to all players
+		local priceUpdate = {}
+		for commodity, prices in pairs(marketState.priceHistory) do
+			priceUpdate[commodity] = prices[#prices]
+		end
+
+		Remotes.FireAllClients("MarketPricesUpdated", priceUpdate)
 	end
 end)
 
--- Initial broadcast
-task.wait(2)  -- Let clients load
-updateAllPrices()
+-- ═══════════════════════════════════════════════
+-- PRICE LOOKUP
+-- ═══════════════════════════════════════════════
 
-print("[MarketDynamics] Initialized with", #marketState.commodities, "commodities")
+local function getCurrentPrice(commodity)
+	local now = os.time()
+	return calculatePrice(commodity, now)
+end
+
+local function getPriceHistory(commodity)
+	return marketState.priceHistory[commodity] or {}
+end
+
+-- ═══════════════════════════════════════════════
+-- TRANSACTION RECORDING
+-- ═══════════════════════════════════════════════
+
+local function recordTransaction(commodity, action, quantity)
+	if not marketState.transactions[commodity] then return end
+
+	if action == "buy" then
+		marketState.transactions[commodity].bought = marketState.transactions[commodity].bought + quantity
+	elseif action == "sell" then
+		marketState.transactions[commodity].sold = marketState.transactions[commodity].sold + quantity
+	end
+end
+
+-- Hook into market trading events
+local oldTradeHandler = Remotes.RequestMarketTrade.OnServerEvent:Wait()
+
+-- Override the market trade handler to include dynamics
+Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemName, quantity, offeredPrice)
+	if action == "buy" then
+		recordTransaction(itemName, "buy", quantity)
+	elseif action == "sell" then
+		recordTransaction(itemName, "sell", quantity)
+	end
+end)
+
+-- ═════════════════════════════════════════════════
+-- PUBLIC API
+-- ═════════════════════════════════════════════════
+
+return {
+	GetCurrentPrice = getCurrentPrice,
+	GetPriceHistory = getPriceHistory,
+	GetMarketState = function() return marketState end,
+	RecordTransaction = recordTransaction,
+}

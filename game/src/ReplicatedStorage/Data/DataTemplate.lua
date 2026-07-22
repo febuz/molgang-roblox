@@ -14,6 +14,27 @@ return {
 	chainTokens = 0,
 	quantumDots = {},   -- { {sym='Og', count=1}, ... }
 
+	-- Game progression
+	day = 1,            -- Current day counter
+
+	-- Facilities
+	facilities = {
+		mines = 0,
+		factories = 0,
+		researchLabs = 0,
+		offices = 0,
+	},
+
+	-- Quests & Achievements
+	questProgress = {
+		active = {},
+		completed = {},
+		inProgress = {},
+		lastDaily = {},
+	},
+	unlockedAchievements = {},
+	mahjongWins = 0,
+
 	-- ANK Lending
 	ankLoans = {},      -- { {id, borrower, lender, amount, collateral, due, interest}, ... }
 	stakedCollateral = 0,
