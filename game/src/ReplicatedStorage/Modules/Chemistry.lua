@@ -93,6 +93,18 @@ end
 -- Probeer een molecuul te bouwen vanuit atoomcounts
 -- Returns: moleculeName, recipe OF nil
 function Chemistry.TryBuildMolecule(atomCounts)
+	if type(atomCounts) ~= "table" then return nil, nil end
+	for sym, count in pairs(atomCounts) do
+		if type(sym) ~= "string"
+			or type(count) ~= "number"
+			or count ~= count
+			or count == math.huge
+			or count == -math.huge
+			or count < 0
+			or count ~= math.floor(count) then
+			return nil, nil
+		end
+	end
 	for molName, recipe in pairs(Chemistry.Molecules) do
 		local match = true
 		-- Check of alle benodigde atomen aanwezig zijn

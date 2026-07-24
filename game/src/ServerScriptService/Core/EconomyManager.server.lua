@@ -260,7 +260,16 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	-- Validate and sanitize
 	local atomCounts = {}
 	for sym, count in pairs(atomList) do
-		if type(sym) ~= "string" or type(count) ~= "number" then return end
+		if type(sym) ~= "string"
+			or type(count) ~= "number"
+			or count ~= count
+			or count == math.huge
+			or count == -math.huge
+			or count < 0
+			or count ~= math.floor(count)
+			or count > 1000 then
+			return
+		end
 		atomCounts[sym] = math.floor(count)
 	end
 
