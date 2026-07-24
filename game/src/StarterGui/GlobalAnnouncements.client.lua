@@ -178,7 +178,11 @@ local function formatWorldModifiers(effects)
 		leachingEfficiencyMult = "leach efficiency",
 		cropYieldMult = "crop yield",
 		researchSpeedMult = "research speed",
+		fertilizerDemandMult = "fertilizer demand",
 		factoryOpCostMult = "factory costs",
+		processWaterCostMult = "process-water costs",
+		carbonCreditMult = "carbon credits",
+		tradeTaxMult = "trade tax",
 		moleculeBonusMultiplier = "molecule rewards",
 	}
 	for key, label in pairs(labels) do
@@ -186,6 +190,10 @@ local function formatWorldModifiers(effects)
 		if type(value) == "number" and value ~= 1 then
 			table.insert(modifiers, label .. " x" .. string.format("%.2f", value))
 		end
+	end
+	local carbonTax = effects and effects.carbonTaxPerKW
+	if type(carbonTax) == "number" and carbonTax > 0 then
+		table.insert(modifiers, string.format("carbon tax %.2f/kW/min", carbonTax))
 	end
 	table.sort(modifiers)
 	return #modifiers > 0 and (" | " .. table.concat(modifiers, ", ")) or ""
