@@ -301,6 +301,7 @@ versionLabel.Parent = widget
 -- ═══════════════════════════════════════════════
 
 local playerData = nil
+local activeWorldEffects = {}
 
 local function countTable(t)
 	local n = 0
@@ -363,8 +364,12 @@ local function refreshHUD()
 		local fac = playerData.facilities
 		local totalFac = (fac.mines or 0) + (fac.factories or 0) + (fac.researchLabs or 0) + (fac.offices or 0)
 		if totalFac > 0 then
-			local atomsPerCycle = (fac.mines or 0) * 10 + 3  -- +3 for starter bench
-			prodLabel.Text = "Prod: " .. atomsPerCycle .. " atoms/min"
+			local baseOutdoorAtoms = (fac.starterBenches or 0) * 3 + (fac.mines or 0) * 10
+			local weatherPenalty = math.clamp(tonumber(player:GetAttribute("OutdoorPenalty")) or 1, 0, 1)
+			local speedMultiplier = math.max(0, tonumber(activeWorldEffects.productionSpeedMult) or 1)
+			local outdoorAtoms = baseOutdoorAtoms * weatherPenalty * speedMultiplier
+			local factoryMolecules = (fac.factories or 0) * 5 * speedMultiplier
+			prodLabel.Text = string.format("Prod: %.1f atoms/min | %.1f mol/120s", outdoorAtoms, factoryMolecules)
 			prodLabel.TextColor3 = COLORS.accent
 		else
 			prodLabel.Text = "Production: Buy a Starter Bench!"
@@ -487,5 +492,14 @@ player:GetAttributeChangedSignal("CurrentZone"):Connect(function()
 	}
 	zoneBadge.Text = zoneNames[zone] or zone
 end)
+
+player:GetAttributeChangedSignal("OutdoorPenalty"):Connect(refreshHUD)
+
+if Remotes:FindFirstChild("WorldEffectsUpdate") then
+	Remotes.WorldEffectsUpdate.OnClientEvent:Connect(function(data)
+		activeWorldEffects = (data and data.effects) or {}
+		refreshHUD()
+	end)
+end
 
 print("[MOLGANG] HUD Widget loaded — real-time stats active")
