@@ -1266,16 +1266,15 @@ local function setupTrustHooks()
 	Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, answer)
 		-- The QuizSystem handles the actual quiz logic and rewards
 		-- Here we only handle trust changes
-		-- We check if the answer was correct by checking the reward attribute
+		-- Consume the server-only result produced by QuizSystem. Do not infer
+		-- correctness from generic reward attributes: atom or quest rewards may
+		-- otherwise make an incorrect quiz answer look correct.
 		task.delay(0.5, function()
-			local reward = player:GetAttribute("LastCollectReward")
-			local timestamp = player:GetAttribute("CollectTimestamp")
-			if reward and timestamp and (tick() - timestamp) < 2 then
-				if reward > 0 then
-					-- Correct answer: increase trust with Femke and quiz
-					modifyTrust(player, "femke", TRUST_INCREMENT)
-					modifyTrust(player, "quiz", TRUST_INCREMENT)
-				end
+			local correct = PlayerDataBridge.ConsumeQuizAnswer(player.UserId)
+			if correct then
+				-- Correct answer: increase trust with Femke and quiz
+				modifyTrust(player, "femke", TRUST_INCREMENT)
+				modifyTrust(player, "quiz", TRUST_INCREMENT)
 			end
 		end)
 	end)

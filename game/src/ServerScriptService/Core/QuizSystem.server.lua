@@ -298,7 +298,9 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 		session.currentIndex = session.currentIndex + 1
 	else
 		-- Check answer
-		if answer == current.correct then
+		local correct = answer == current.correct
+		PlayerDataBridge.RecordQuizAnswer(userId, correct)
+		if correct then
 			session.score = session.score + 1
 			-- Award MolCoins, boosted by an active quizHint drink buff
 			local reward = math.floor(10 * getQuizRewardMultiplier(userId))

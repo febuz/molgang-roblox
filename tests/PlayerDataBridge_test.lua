@@ -22,6 +22,12 @@ assert(economy.totalMolCoinsSpent == 5, "spending should update lifetime expense
 assert(not PlayerDataBridge.SpendMolCoins(43, -1), "negative spending must be rejected")
 assert(not PlayerDataBridge.SpendMolCoins(43, math.huge), "infinite spending must be rejected")
 
+assert(PlayerDataBridge.RecordQuizAnswer(46, false), "quiz result should accept false answers")
+assert(PlayerDataBridge.RecordQuizAnswer(46, true), "quiz result should accept true answers")
+assert(PlayerDataBridge.ConsumeQuizAnswer(46) == false, "quiz results must preserve FIFO order")
+assert(PlayerDataBridge.ConsumeQuizAnswer(46) == true, "quiz results must preserve correctness")
+assert(PlayerDataBridge.ConsumeQuizAnswer(46) == nil, "empty quiz result queue must return nil")
+
 local capped = {
 	molCoins = 0,
 	totalMolCoinsEarned = 0,
@@ -41,4 +47,4 @@ local reloaded = {molCoins = 3}
 PlayerDataBridge.SetEconomyData(44, reloaded)
 assert(reloaded.molCoins == 10, "queued balance adjustments should apply on load")
 
-print("PlayerDataBridge Tests: 18 passed, 0 failed")
+print("PlayerDataBridge Tests: 23 passed, 0 failed")

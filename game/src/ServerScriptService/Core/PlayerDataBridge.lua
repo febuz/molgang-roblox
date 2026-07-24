@@ -22,6 +22,7 @@ local playerEconomy = {}      -- {userId = {molCoins, atoms, molecules, ...}}
 local pendingBalanceAdjustments = {} -- {userId = MolCoins to apply on next load}
 local drinkPurchaseCounts = {} -- {userId = count}
 local atomCollectedCounts = {} -- {userId = count}
+local quizAnswerResults = {} -- {userId = {true|false, ...}}
 local MAX_DAILY_REWARD = 2000
 
 -- ══════════════════════════════════════════════
@@ -206,12 +207,28 @@ function PlayerDataBridge.GetAtomCollectedCount(userId)
 	return atomCollectedCounts[userId] or 0
 end
 
+function PlayerDataBridge.RecordQuizAnswer(userId, correct)
+	if type(correct) ~= "boolean" then return false end
+	if not quizAnswerResults[userId] then quizAnswerResults[userId] = {} end
+	table.insert(quizAnswerResults[userId], correct)
+	return true
+end
+
+function PlayerDataBridge.ConsumeQuizAnswer(userId)
+	local queue = quizAnswerResults[userId]
+	if not queue or #queue == 0 then return nil end
+	local result = table.remove(queue, 1)
+	if #queue == 0 then quizAnswerResults[userId] = nil end
+	return result
+end
+
 function PlayerDataBridge.Cleanup(userId)
 	pendingCollections[userId] = nil
 	pendingBuilds[userId] = nil
 	playerEconomy[userId] = nil
 	drinkPurchaseCounts[userId] = nil
 	atomCollectedCounts[userId] = nil
+	quizAnswerResults[userId] = nil
 end
 
 return PlayerDataBridge
