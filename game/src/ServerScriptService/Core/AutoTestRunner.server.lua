@@ -369,6 +369,11 @@ if remoteFolder then
 	for _, name in ipairs(requiredInteractiveRemotes) do
 		test("Interactive remote " .. name, remoteFolder:FindFirstChild(name) ~= nil)
 	end
+	local requiredRemoteFunctions = {"GetPlayerData", "GetBuildable", "GetElementInfo", "GetChainPage", "GetLeaderboard"}
+	for _, name in ipairs(requiredRemoteFunctions) do
+		local remote = remoteFolder:FindFirstChild(name)
+		test("RemoteFunction " .. name, remote and remote:IsA("RemoteFunction"))
+	end
 end
 
 -- ═══════════════════════════════════════════════
