@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOLGANG · Snap AR (Camera Kit) — template</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0d1017; color: #eef4fb;
+               font: 15px/1.6 system-ui, sans-serif; }
+  #gate { max-width: 640px; margin: 8vh auto; padding: 0 20px; }
+  h1 { font-size: 20px; } code { background: #1b2330; padding: 1px 6px; border-radius: 5px; }
+  .warn { border: 1px solid #7a5; background: rgba(60,90,60,.15); border-radius: 10px; padding: 14px 16px; }
+  a { color: #7fd0ff; }
+  ol { line-height: 1.9; }
+  canvas { width: 100vw; height: 100vh; display: none; }
+</style>
+</head>
+<body>
+<div id="gate">
+  <h1>MOLGANG · Snap AR (Camera Kit Web)</h1>
+  <div class="warn" id="msg">Checking <code>snap_config.json</code>…</div>
+  <p>This is a <b>template</b>, not a live connection. Snap's Camera Kit Web SDK
+  (<code>@snap/camera-kit</code>) needs credentials that only you can issue:</p>
+  <ol>
+    <li>Create an app + <b>API token</b> at <a href="https://kit.snapchat.com">kit.snapchat.com</a> (Snap Developer Portal).</li>
+    <li>Build a Lens in <b>Lens Studio</b> and note its <b>lens ID</b> + <b>lens group ID</b>.</li>
+    <li>Put them in <code>snap_config.json</code>, then reload — this page will boot Camera Kit
+        against your webcam and apply the Lens.</li>
+  </ol>
+  <p>See <code>../PLATFORMS.md</code> for how the world's AR overlay (labels + JEPA
+     trajectories) feeds a Snap Lens. This is <b>not</b> the QuestCameraKit repo (that's Meta Quest).</p>
+</div>
+<canvas id="cam"></canvas>
+
+<script type="module">
+// Honest gate: only attempt to load the (external, credential-gated) Camera Kit
+// SDK when a token is actually present. Without one we show instructions and
+// never pretend to connect.
+const msg = document.getElementById('msg');
+let cfg = {};
+try { cfg = await (await fetch('./snap_config.json', { cache: 'no-cache' })).json(); } catch (e) {}
+
+if (!cfg.apiToken || !cfg.lensId) {
+  msg.innerHTML = '⚠️ No Snap credentials yet — add your <code>apiToken</code> and '
+    + '<code>lensId</code> to <code>snap_config.json</code>. (This template does nothing until then.)';
+} else {
+  msg.textContent = 'Credentials found — booting Camera Kit…';
+  try {
+    // Documented Camera Kit Web usage. Requires the @snap/camera-kit SDK to be
+    // reachable (bundle it or import Snap's ESM build) and a valid token.
+    const { bootstrapCameraKit, createMediaStreamSource } = await import('@snap/camera-kit');
+    const cameraKit = await bootstrapCameraKit({ apiToken: cfg.apiToken });
+    const canvas = document.getElementById('cam');
+    const session = await cameraKit.createSession({ liveRenderTarget: canvas });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    await session.setSource(createMediaStreamSource(stream));
+    const lens = await cameraKit.lensRepository.loadLens(cfg.lensId, cfg.lensGroupId);
+    await session.applyLens(lens);
+    await session.play();
+    document.getElementById('gate').style.display = 'none';
+    canvas.style.display = 'block';
+  } catch (e) {
+    msg.innerHTML = '❌ Camera Kit failed to start: ' + e.message
+      + '<br>Make sure the <code>@snap/camera-kit</code> SDK is bundled/served and the token is valid.';
+  }
+}
+</script>
+</body>
+</html>

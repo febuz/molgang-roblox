@@ -1,0 +1,6 @@
+{
+  "_comment": "Snap Camera Kit Web credentials — get these from kit.snapchat.com (Snap Developer Portal) + Lens Studio. This file is a template; nothing here works until you fill it in.",
+  "apiToken": "",
+  "lensId": "",
+  "lensGroupId": ""
+}
