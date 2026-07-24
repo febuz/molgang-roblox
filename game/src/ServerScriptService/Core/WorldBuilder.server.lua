@@ -375,7 +375,10 @@ local function createPlatform(parent: Instance, config: {
 		Position = config.Position - Vector3.new(0, size.Y / 2 + 0.3, 0),
 		Color = config.GlowColor or CONFIG.NEON_GREEN,
 		Material = Enum.Material.Neon,
-		Transparency = 0.3,
+		-- Keep the floating-island cue visible without washing the entire
+		-- industrial deck in cyan. Emissive accents should guide navigation,
+		-- not replace the platform's metal/concrete material read.
+		Transparency = 0.65,
 		CanCollide = false,
 	})
 
