@@ -156,7 +156,7 @@ local function spendMolCoins(player, amount, reason)
 	end
 
 	data.molCoins = data.molCoins - amount
-	data.totalMolCoinsSpent = data.totalMolCoinsSpent + amount
+	data.totalMolCoinsSpent = (data.totalMolCoinsSpent or 0) + amount
 
 	return true
 end
