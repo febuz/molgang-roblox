@@ -37,7 +37,7 @@ local function completeReadyQuests(player, data, progress)
 			Quests.CompleteQuest(progress, questId)
 			local reward = quest.reward or {}
 			if reward.molCoins and reward.molCoins > 0 then
-				PlayerDataBridge.AddEarnedMolCoins(player.UserId, reward.molCoins)
+				PlayerDataBridge.AddRewardMolCoins(player.UserId, reward.molCoins)
 			end
 			if reward.badge then
 				data.badges = data.badges or {}

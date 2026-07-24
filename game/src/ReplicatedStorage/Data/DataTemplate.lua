@@ -129,6 +129,7 @@ return {
 		atomsCollected = 0,
 		moleculesBuilt = 0,
 		molCoinsEarned = 0,
+		molCoinsRewards = 0,
 	},
 	totalChainEntries = 0,
 	totalQuizCorrect = 0,

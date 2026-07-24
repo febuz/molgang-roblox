@@ -22,6 +22,7 @@ local playerEconomy = {}      -- {userId = {molCoins, atoms, molecules, ...}}
 local pendingBalanceAdjustments = {} -- {userId = MolCoins to apply on next load}
 local drinkPurchaseCounts = {} -- {userId = count}
 local atomCollectedCounts = {} -- {userId = count}
+local MAX_DAILY_REWARD = 2000
 
 -- ══════════════════════════════════════════════
 -- ATOM COLLECTION (AtomSpawner → EconomyManager)
@@ -134,6 +135,32 @@ function PlayerDataBridge.AddEarnedMolCoins(userId, amount)
 		DailyStats.Increment(data, "molCoinsEarned", earnedAmount)
 	end
 	return success, balance
+end
+
+-- Reward income is capped separately from genuine market revenue. This keeps
+-- quests/minigames/achievements from becoming an infinite coin faucet while
+-- preserving full settlement for player sales and transfers.
+function PlayerDataBridge.AddRewardMolCoins(userId, amount)
+	if not playerEconomy[userId] or type(amount) ~= "number" or amount < 0
+		or amount ~= amount or amount == math.huge then
+		return false, 0, 0
+	end
+	local data = playerEconomy[userId]
+	local multiplier = 1.0
+	if _G.GetPlayerBuff then
+		multiplier = _G.GetPlayerBuff(userId, "coinBonus")
+	end
+	local requested = math.floor(amount * multiplier)
+	local stats = DailyStats.Ensure(data)
+	local remaining = math.max(0, MAX_DAILY_REWARD - (stats.molCoinsRewards or 0))
+	local paid = math.min(requested, remaining)
+	if paid <= 0 then return false, data.molCoins or 0, 0 end
+
+	local success, balance = PlayerDataBridge.AddMolCoins(userId, paid)
+	if not success then return false, balance, 0 end
+	data.totalMolCoinsEarned = (data.totalMolCoinsEarned or 0) + paid
+	DailyStats.Increment(data, "molCoinsRewards", paid)
+	return true, balance, paid
 end
 
 function PlayerDataBridge.SpendMolCoins(userId, amount)

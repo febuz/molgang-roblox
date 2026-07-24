@@ -16,6 +16,7 @@ function DailyStats.Ensure(data, now)
 		stats.atomsCollected = 0
 		stats.moleculesBuilt = 0
 		stats.molCoinsEarned = 0
+		stats.molCoinsRewards = 0
 	end
 	return stats
 end

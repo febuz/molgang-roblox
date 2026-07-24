@@ -380,7 +380,7 @@ local function onRequestCollect(player, atomName)
 	local previousCollectedCount = PlayerDataBridge.GetAtomCollectedCount(player.UserId)
 	local newCollectedCount = PlayerDataBridge.RecordAtomCollected(player.UserId)
 	for _, milestone in ipairs(MiningMilestones.CheckNewlyUnlocked(previousCollectedCount, newCollectedCount)) do
-		PlayerDataBridge.AddEarnedMolCoins(player.UserId, milestone.molCoinsReward)
+		PlayerDataBridge.AddRewardMolCoins(player.UserId, milestone.molCoinsReward)
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Milestone unlocked: " .. milestone.name .. "! +" .. milestone.molCoinsReward .. " MolCoins",
 			rarity = "rare",

@@ -379,7 +379,7 @@ Remotes.RequestBuyDrink.OnServerEvent:Connect(function(player, drinkId)
 	local previousPurchaseCount = PlayerDataBridge.GetDrinkPurchaseCount(userId)
 	local newPurchaseCount = PlayerDataBridge.RecordDrinkPurchase(userId)
 	for _, badge in ipairs(Achievements.CheckNewlyUnlocked(previousPurchaseCount, newPurchaseCount)) do
-		PlayerDataBridge.AddEarnedMolCoins(userId, badge.molCoinsReward)
+		PlayerDataBridge.AddRewardMolCoins(userId, badge.molCoinsReward)
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Achievement unlocked: " .. badge.name .. "! +" .. badge.molCoinsReward .. " MolCoins",
 			rarity = "rare",

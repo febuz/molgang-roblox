@@ -286,7 +286,8 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 			session.score = session.score + 1
 			-- Award MolCoins, boosted by an active quizHint drink buff
 			local reward = math.floor(10 * getQuizRewardMultiplier(userId))
-			PlayerDataBridge.AddEarnedMolCoins(userId, reward)
+			local _, _, paidReward = PlayerDataBridge.AddRewardMolCoins(userId, reward)
+			reward = paidReward
 			player:SetAttribute("LastCollectReward", reward)
 			player:SetAttribute("CollectTimestamp", tick())
 
@@ -312,7 +313,8 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 		if totalScore == 3 then
 			-- Perfect score bonus, also boosted by an active quizHint buff
 			local bonus = math.floor(25 * getQuizRewardMultiplier(userId))
-			PlayerDataBridge.AddEarnedMolCoins(userId, bonus)
+			local _, _, paidBonus = PlayerDataBridge.AddRewardMolCoins(userId, bonus)
+			bonus = paidBonus
 			player:SetAttribute("LastCollectReward", bonus)
 			player:SetAttribute("CollectTimestamp", tick())
 

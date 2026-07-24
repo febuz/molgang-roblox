@@ -558,7 +558,7 @@ local function checkQuestProgress(player, userId)
 
 			-- Award reward
 			if quest.reward.molCoins then
-				PlayerDataBridge.AddEarnedMolCoins(userId, quest.reward.molCoins)
+				PlayerDataBridge.AddRewardMolCoins(userId, quest.reward.molCoins)
 			end
 
 			-- Update act

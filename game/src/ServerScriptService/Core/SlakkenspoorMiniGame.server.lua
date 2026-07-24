@@ -540,12 +540,8 @@ finalizeGame = function(session, phBonusCoins)
 	end
 
 	-- Award MolCoins via PlayerDataBridge
-	local coinSuccess, newBalance = PlayerDataBridge.AddEarnedMolCoins(userId, totalCoins)
-	if not coinSuccess then
-		-- Fallback: try recording as pending collect so EconomyManager picks it up
-		-- Use V (Z=23) as symbolic element for slag mini-game reward
-		PlayerDataBridge.RecordAtomCollect(userId, 23, "V", totalCoins)
-	end
+	local _, _, paidCoins = PlayerDataBridge.AddRewardMolCoins(userId, totalCoins)
+	totalCoins = paidCoins
 
 	-- Award rare V atom for Expert tier
 	if giveRareV then

@@ -22,9 +22,23 @@ assert(economy.totalMolCoinsSpent == 5, "spending should update lifetime expense
 assert(not PlayerDataBridge.SpendMolCoins(43, -1), "negative spending must be rejected")
 assert(not PlayerDataBridge.SpendMolCoins(43, math.huge), "infinite spending must be rejected")
 
+local capped = {
+	molCoins = 0,
+	totalMolCoinsEarned = 0,
+	dailyStats = {date = os.date("%Y-%m-%d"), molCoinsEarned = 9000, molCoinsRewards = 1990},
+}
+PlayerDataBridge.SetEconomyData(45, capped)
+local saleOk = PlayerDataBridge.AddEarnedMolCoins(45, 100)
+assert(saleOk and capped.dailyStats.molCoinsEarned == 9100 and capped.dailyStats.molCoinsRewards == 1990,
+	"market income must not consume reward-cap room")
+local rewardOk, _, rewardPaid = PlayerDataBridge.AddRewardMolCoins(45, 50)
+assert(rewardOk and rewardPaid == 10, "reward cap should pay only the remaining daily room")
+local rewardAgain, _, rewardPaidAgain = PlayerDataBridge.AddRewardMolCoins(45, 1)
+assert(not rewardAgain and rewardPaidAgain == 0, "reward cap should reject rewards after exhaustion")
+
 assert(PlayerDataBridge.AddMolCoins(44, 7), "offline balance adjustments should be queued")
 local reloaded = {molCoins = 3}
 PlayerDataBridge.SetEconomyData(44, reloaded)
 assert(reloaded.molCoins == 10, "queued balance adjustments should apply on load")
 
-print("PlayerDataBridge Tests: 14 passed, 0 failed")
+print("PlayerDataBridge Tests: 18 passed, 0 failed")

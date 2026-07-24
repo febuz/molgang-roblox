@@ -234,7 +234,7 @@ function endRace(player, userId, reachedFinish)
 	local reward = reachedFinish and Commissioning.GetReward(track, score) or 0
 
 	if reward > 0 then
-		PlayerDataBridge.AddEarnedMolCoins(userId, reward)
+		PlayerDataBridge.AddRewardMolCoins(userId, reward)
 	end
 
 	-- Cleanup tunnel
