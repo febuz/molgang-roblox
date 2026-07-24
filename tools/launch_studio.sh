@@ -42,9 +42,22 @@ echo "      Copied to: $WINE_DOCS/MOLGANG_OTAP_Test.rbxl"
 
 # Step 3: Start Rojo serve
 echo "[3/4] Starting Rojo serve (live sync)..."
+# A timed-out launcher can leave the project-specific Rojo child alive. Clean
+# only that exact project server so port 34872 cannot produce a false-positive
+# "live sync" status on the next launch.
+while read -r stale_pid; do
+  [ -z "$stale_pid" ] && continue
+  kill "$stale_pid" 2>/dev/null || true
+done < <(pgrep -f "[r]ojo serve $PROJECT" || true)
+sleep 1
 "$ROJO" serve "$PROJECT" &
 ROJO_PID=$!
 sleep 2
+if ! curl -fsS http://127.0.0.1:34872/ >/dev/null 2>&1; then
+  echo "      WARNING: Rojo did not bind localhost:34872"
+  kill "$ROJO_PID" 2>/dev/null || true
+  exit 1
+fi
 echo "      Rojo serve running on localhost:34872 (PID: $ROJO_PID)"
 
 # Step 4: Launch Studio
