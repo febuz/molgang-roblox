@@ -237,6 +237,19 @@ if Remotes.WorldNewsItem then
 	end)
 end
 
+if Remotes.WorldNewsFeed then
+	Remotes.WorldNewsFeed.OnClientEvent:Connect(function(data)
+		local latest = data and data.feed and data.feed[1]
+		if type(latest) == "table" and type(latest.message) == "string" then
+			queueAnnouncement({
+				icon = "🗞️",
+				message = "Latest world news: " .. latest.message,
+				color = COLORS.rare,
+			})
+		end
+	end)
+end
+
 -- Production complete
 Remotes.ProductionCycleComplete.OnClientEvent:Connect(function(data)
 	local msg = "Production: "
