@@ -202,9 +202,17 @@ end
 
 function SiliconPurification.CanBuildQuantumComputer(playerData)
 	local qc = SiliconPurification.QuantumComputer
+	local siliconProducts = playerData.siliconPurification and playerData.siliconPurification.products
+		or playerData.siliconProducts
+	local molecules = playerData.molecules or {}
 	for _, req in ipairs(qc.requirements) do
 		if req.item and req.quantity then
-			local has = (playerData.siliconProducts and playerData.siliconProducts[req.item]) or 0
+			local has
+			if req.item == "V2O5" then
+				has = molecules[req.item] or 0
+			else
+				has = siliconProducts and siliconProducts[req.item] or 0
+			end
 			if has < req.quantity then return false, req.description end
 		end
 	end
