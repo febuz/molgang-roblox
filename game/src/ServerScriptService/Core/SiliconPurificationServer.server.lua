@@ -97,8 +97,14 @@ Remotes.RequestStartSiliconStage.OnServerEvent:Connect(function(player, stageId)
 		rarity = "epic",
 	})
 
-	-- Timer for completion
-	local realSeconds = stage.duration / 120 -- 1 game minute = 0.5 real seconds for testing
+	-- Timer for completion, shortened by an active "production" drink buff
+	-- (Brown Sugar Pearl, +40% by default — a speed multiplier, so duration
+	-- divides by it, same convention as the "speed" buff on WalkSpeed).
+	local productionMultiplier = 1.0
+	if _G.GetPlayerBuff then
+		productionMultiplier = _G.GetPlayerBuff(userId, "production")
+	end
+	local realSeconds = (stage.duration / 120) / productionMultiplier -- 1 game minute = 0.5 real seconds for testing
 	task.delay(realSeconds, function()
 		local d = playerSilicon[userId]
 		if d and d.activeStage == stageId then
