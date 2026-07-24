@@ -467,7 +467,10 @@ end)
 -- FADE OUT (button click or auto after 20s)
 -- ═══════════════════════════════════════════════
 
+local didFadeOut = false
 local function fadeOutAndDestroy()
+	if didFadeOut then return end
+	didFadeOut = true
 	-- Disconnect electron animation
 	if animConnection then
 		animConnection:Disconnect()
@@ -504,5 +507,12 @@ end
 
 -- Activated works consistently for mouse, touch and gamepad in Studio.
 playBtn.Activated:Connect(fadeOutAndDestroy)
+-- MouseButton1Click is retained as a desktop fallback for Wine/Studio input
+-- paths where Activated can be swallowed by the embedded game surface.
+playBtn.MouseButton1Click:Connect(fadeOutAndDestroy)
+
+-- Never strand a player on the intro if input focus is lost. The button is
+-- still shown and clickable, but the session gate always releases eventually.
+task.delay(20, fadeOutAndDestroy)
 
 print("[MOLGANG] OTAP test loading screen displayed")
