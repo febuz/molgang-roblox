@@ -13,6 +13,7 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local ProductMarket = require(ReplicatedStorage.Modules.ProductMarket)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 -- Active bids
 local activeBids = {} -- {bidId = {playerId, playerName, productId, price, quantity, timestamp}}
@@ -21,6 +22,12 @@ local bidCounter = 0
 local MIN_BID = 10
 local MAX_BIDS_PER_PLAYER = 5
 local ORDER_EXPIRY_SECONDS = 1800
+
+local function hasRequiredResearch(playerData, product)
+	if not product.requiresResearch then return true end
+	local research = playerData.research or {}
+	return (research.unlocked or {})[product.requiresResearch] == true
+end
 
 -- ═══════════════════════════════════════════════
 -- PLACE BID
@@ -43,6 +50,15 @@ Remotes.RequestPlaceBid.OnServerEvent:Connect(function(player, productId, bidPri
 	if not ProductMarket.GetProduct(productId) then
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Unknown product: bid rejected.",
+			rarity = "common",
+		})
+		return
+	end
+	local product = ProductMarket.GetProduct(productId)
+	local bidderData = PlayerDataBridge.GetPlayerData(userId)
+	if not bidderData or not hasRequiredResearch(bidderData, product) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Bid rejected: required research is not unlocked.",
 			rarity = "common",
 		})
 		return
@@ -116,6 +132,13 @@ Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPr
 	if not pData then return end
 	local product = ProductMarket.GetProduct(productId)
 	if not product then return end
+	if not hasRequiredResearch(pData, product) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Sell order rejected: required research is not unlocked.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Open sell orders reserve the same underlying atoms. Without this check a
 	-- player could list the same inventory repeatedly and create orders that
@@ -132,6 +155,23 @@ Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPr
 		if available < needed then
 			Remotes.FireClient("ServerAnnounce", player, {
 				message = "Not enough unreserved " .. atom .. " for this sell order.",
+				rarity = "common",
+			})
+			return
+		end
+	end
+	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+		local reserved = 0
+		for _, existingSell in pairs(activeSells) do
+			if existingSell.playerId == userId and existingSell.productId == productId then
+				reserved = reserved + existingSell.quantity * countPerUnit
+			end
+		end
+		local needed = countPerUnit * quantity
+		local available = (pData.slagInventory and pData.slagInventory[residue] or 0) - reserved
+		if available < needed then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Not enough unreserved slag " .. residue .. " for this sell order.",
 				rarity = "common",
 			})
 			return
@@ -171,9 +211,23 @@ local function transferProduct(productId, sellerId, buyerId, quantity)
 	if not product or not sellerData or not buyerData then return false end
 	sellerData.atoms = sellerData.atoms or {}
 	buyerData.atoms = buyerData.atoms or {}
+	sellerData.slagInventory = sellerData.slagInventory or {}
+	buyerData.slagInventory = buyerData.slagInventory or {}
+	if not hasRequiredResearch(sellerData, product) or not hasRequiredResearch(buyerData, product) then return false end
+
+	local atomTransferCount = 0
 
 	for atom, countPerUnit in pairs(product.requiredAtoms) do
+		atomTransferCount = atomTransferCount + countPerUnit * quantity
 		if (sellerData.atoms[atom] or 0) < countPerUnit * quantity then
+			return false
+		end
+	end
+	if not InventoryLimits.CanAddAtoms(buyerData.atoms, buyerData.facilities, atomTransferCount) then
+		return false
+	end
+	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+		if (sellerData.slagInventory[residue] or 0) < countPerUnit * quantity then
 			return false
 		end
 	end
@@ -182,6 +236,11 @@ local function transferProduct(productId, sellerId, buyerId, quantity)
 		sellerData.atoms[atom] = sellerData.atoms[atom] - amount
 		if sellerData.atoms[atom] <= 0 then sellerData.atoms[atom] = nil end
 		buyerData.atoms[atom] = (buyerData.atoms[atom] or 0) + amount
+	end
+	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+		local amount = countPerUnit * quantity
+		sellerData.slagInventory[residue] = sellerData.slagInventory[residue] - amount
+		buyerData.slagInventory[residue] = (buyerData.slagInventory[residue] or 0) + amount
 	end
 	return true
 end
