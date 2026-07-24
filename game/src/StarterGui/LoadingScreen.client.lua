@@ -19,9 +19,12 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- StarterGui can recreate LocalScripts after a character reset. The intro is
 -- a session gate, not a respawn screen, so never show it a second time.
-if player:GetAttribute("MOLGANGIntroShown") then
+if _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown") then
 	return
 end
+-- Player attributes can be reset/recreated with the character under Studio
+-- playtest. _G is client-session scoped and survives those LocalScript clones.
+_G.MOLGANGIntroShown = true
 player:SetAttribute("MOLGANGIntroShown", true)
 
 -- COLOR PALETTE
