@@ -16,6 +16,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -238,14 +239,35 @@ local function createQuickBtn(text, color, guiTarget)
 	btn.Text = text
 	btn.Font = Enum.Font.GothamBold
 	btn.TextScaled = true
+	btn.Active = true
+	btn.Selectable = true
+	btn.ZIndex = 20
 	btn.Parent = btnFrame
 	local bCorner = Instance.new("UICorner")
 	bCorner.CornerRadius = UDim.new(0, 4)
 	bCorner.Parent = btn
-	btn.Activated:Connect(function()
+	local lastToggle = 0
+	local function toggleTarget()
+		local now = os.clock()
+		if now - lastToggle < 0.15 then return end
+		lastToggle = now
 		local gui = playerGui:FindFirstChild(guiTarget)
 		if gui then
 			gui.Enabled = not gui.Enabled
+		end
+	end
+	btn.Activated:Connect(toggleTarget)
+	-- Wine/Studio embedded surfaces can swallow GuiButton.Activated while
+	-- still delivering UserInputService events. Hit-test the visible control
+	-- explicitly so the HUD remains mouse-usable.
+	UserInputService.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+		local point = input.Position
+		local topLeft = btn.AbsolutePosition
+		local bottomRight = topLeft + btn.AbsoluteSize
+		if point.X >= topLeft.X and point.X <= bottomRight.X
+			and point.Y >= topLeft.Y and point.Y <= bottomRight.Y then
+			toggleTarget()
 		end
 	end)
 	return btn
