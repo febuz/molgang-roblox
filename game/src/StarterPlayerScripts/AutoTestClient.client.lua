@@ -126,8 +126,28 @@ if slagGui then
 			check("Free Hammer responds", false, "HammerBtn not found")
 		end
 		slagGui.Enabled = false
-	else
-		check("Free Hammer responds", false, "SlagProcessingGui not found")
+else
+	check("Free Hammer responds", false, "SlagProcessingGui not found")
+end
+
+-- Exercise the modal coordinator itself. This catches the regression where a
+-- second menu remained enabled above the first menu and swallowed input.
+local modalDashboard = findScreenGui("DashboardGui")
+local modalQuiz = findScreenGui("QuizGui")
+if modalDashboard and modalQuiz then
+	modalDashboard.Enabled = false
+	modalQuiz.Enabled = false
+	task.wait(0.1)
+	modalDashboard.Enabled = true
+	task.wait(0.1)
+	modalQuiz.Enabled = true
+	task.wait(0.1)
+	check("Modal menus are mutually exclusive",
+		modalDashboard.Enabled == false and modalQuiz.Enabled == true,
+		"Dashboard and Quiz were enabled at the same time")
+	modalQuiz.Enabled = false
+else
+	check("Modal menus are mutually exclusive", false, "DashboardGui or QuizGui is missing")
 end
 
 local result = string.format("%d/%d passed", passCount, passCount + failCount)
