@@ -187,7 +187,7 @@ for i, tab in ipairs(tabs) do
 	tabPanels[tab.key] = tabPanel
 
 	-- TAB BUTTON CLICK
-	tabButton.MouseButton1Click:Connect(function()
+	tabButton.Activated:Connect(function()
 		-- Hide all panels
 		for _, panel in pairs(tabPanels) do
 			panel.Visible = false
@@ -302,7 +302,7 @@ quizBtn.Font = Enum.Font.GothamBold
 quizBtn.Parent = dashboardPanel
 createCorner(quizBtn, 6)
 
-quizBtn.MouseButton1Click:Connect(function()
+quizBtn.Activated:Connect(function()
 	local r = Remotes:FindFirstChild("RequestQuizStart")
 	if r then
 		r:FireServer("any")
@@ -417,7 +417,7 @@ for facilityName, facilityData in pairs(facilityTypes) do
 	createCorner(buyBtn, 6)
 
 	-- Build button click handler
-	buyBtn.MouseButton1Click:Connect(function()
+	buyBtn.Activated:Connect(function()
 		print("[DashboardGui] Building:", facilityName, "Cost:", facilityData.cost)
 		if playerData and playerData.molCoins < facilityData.cost then
 			print("[DashboardGui] Insufficient funds!")
@@ -515,7 +515,7 @@ for _, item in ipairs(marketItems) do
 	buyBtn.Parent = itemFrame
 	createCorner(buyBtn, 6)
 
-	buyBtn.MouseButton1Click:Connect(function()
+	buyBtn.Activated:Connect(function()
 		print("[DashboardGui] Buy clicked:", item.name, "Price:", currentPrice)
 		if playerData and playerData.molCoins < currentPrice then
 			print("[DashboardGui] Insufficient funds!")
@@ -539,7 +539,7 @@ for _, item in ipairs(marketItems) do
 	sellBtn.Parent = itemFrame
 	createCorner(sellBtn, 6)
 
-	sellBtn.MouseButton1Click:Connect(function()
+	sellBtn.Activated:Connect(function()
 		print("[DashboardGui] Sell clicked:", item.name, "Price:", currentPrice)
 		RequestMarketTrade:FireServer("sell", item.name, 1, currentPrice)
 	end)
@@ -627,7 +627,7 @@ for _, preset in ipairs(loanPresets) do
 	borrowBtn.Parent = loanFrame
 	createCorner(borrowBtn, 6)
 
-	borrowBtn.MouseButton1Click:Connect(function()
+	borrowBtn.Activated:Connect(function()
 		print("[DashboardGui] Borrow clicked:", preset.name, "Amount:", preset.amount)
 		if playerData then
 			local canBorrow, shortfall = ANKLending.CanBorrow(playerData, preset.amount)
@@ -693,7 +693,7 @@ playMahjongBtn.TextScaled = true
 playMahjongBtn.Parent = mahjongPanel
 createCorner(playMahjongBtn, 10)
 
-playMahjongBtn.MouseButton1Click:Connect(function()
+playMahjongBtn.Activated:Connect(function()
 	print("[DashboardGui] Play Mahjong clicked")
 	-- Close dashboard and start Mahjong game
 	screenGui.Enabled = false

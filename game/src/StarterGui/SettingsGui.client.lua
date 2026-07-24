@@ -205,7 +205,7 @@ for _, infoText in ipairs(gameInfoTexts) do
 end
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 

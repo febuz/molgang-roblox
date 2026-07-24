@@ -101,7 +101,7 @@ xBtn.TextScaled = true
 xBtn.Font = Enum.Font.GothamBold
 xBtn.Parent = hdr
 corner(xBtn, 6)
-xBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+xBtn.Activated:Connect(function() gui.Enabled = false end)
 
 -- ══════════════════════════════════════════════
 -- TABS
@@ -149,7 +149,7 @@ for i, name in ipairs(TABS) do
 	tFrames[name] = f
 	local ly = Instance.new("UIListLayout"); ly.Padding = UDim.new(0, 6); ly.Parent = f
 
-	b.MouseButton1Click:Connect(function()
+	b.Activated:Connect(function()
 		for n, fr in pairs(tFrames) do fr.Visible = (n == name) end
 		for n, bt in pairs(tBtns) do bt.TextColor3 = (n == name) and C.accent or C.dim end
 	end)
@@ -193,7 +193,7 @@ claim.TextScaled = true
 claim.Font = Enum.Font.GothamBold
 claim.Parent = bf
 corner(claim, 6)
-claim.MouseButton1Click:Connect(function()
+claim.Activated:Connect(function()
 	Remotes.FireServer("RequestDailyClaim")
 end)
 
@@ -233,7 +233,7 @@ sbtn.TextScaled = true
 sbtn.Font = Enum.Font.GothamBold
 sbtn.Parent = sr
 corner(sbtn, 4)
-sbtn.MouseButton1Click:Connect(function()
+sbtn.Activated:Connect(function()
 	if sb.Text ~= "" then Remotes.FireServer("RequestChainQuery", sb.Text) end
 end)
 

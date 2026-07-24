@@ -127,7 +127,7 @@ for si, sortMode in ipairs({"name", "quantity", "rarity"}) do
 	sb.Font = Enum.Font.GothamBold
 	sb.Parent = sortFrame
 	createCorner(sb, 4)
-	sb.MouseButton1Click:Connect(function()
+	sb.Activated:Connect(function()
 		currentSort = sortMode
 		-- Update button colors
 		for _, child in sortFrame:GetChildren() do
@@ -324,7 +324,7 @@ Remotes.AtomCollected.OnClientEvent:Connect(function(data)
 end)
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 

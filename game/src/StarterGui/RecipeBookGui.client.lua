@@ -225,7 +225,7 @@ for _, mol in ipairs(molList) do
 	createCorner(craftBtn, 4)
 	table.insert(craftEntries, {recipe = recipe, button = craftBtn})
 
-	craftBtn.MouseButton1Click:Connect(function()
+	craftBtn.Activated:Connect(function()
 		print("[RecipeBook] Craft requested:", molName)
 		-- Send craft request to server via RequestBuildMolecule
 		Remotes.RequestBuildMolecule:FireServer(recipe.atoms)
@@ -247,7 +247,7 @@ screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 end)
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 
