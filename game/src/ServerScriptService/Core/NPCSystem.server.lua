@@ -83,10 +83,29 @@ local ZONE_POSITIONS = {
 
 local trustData = {} -- { [userId] = { [npcId] = trustFloat } }
 
+local function persistTrust(player)
+	local playerData = PlayerDataBridge.GetPlayerData(player.UserId)
+	local current = trustData[player.UserId]
+	if not playerData or not current then return end
+	playerData.npcTrust = {}
+	for npcId, value in pairs(current) do
+		playerData.npcTrust[npcId] = math.clamp(value, TRUST_MIN, TRUST_MAX)
+	end
+end
+
 local function getTrust(player, npcId)
 	local userId = player.UserId
 	if not trustData[userId] then
+		local playerData = PlayerDataBridge.GetPlayerData(userId)
+		local saved = playerData and playerData.npcTrust
 		trustData[userId] = {}
+		if saved then
+			for savedNpcId, savedValue in pairs(saved) do
+				if type(savedValue) == "number" then
+					trustData[userId][savedNpcId] = math.clamp(savedValue, TRUST_MIN, TRUST_MAX)
+				end
+			end
+		end
 	end
 	if not trustData[userId][npcId] then
 		trustData[userId][npcId] = TRUST_DEFAULT
@@ -105,6 +124,7 @@ end
 local function modifyTrust(player, npcId, delta)
 	local current = getTrust(player, npcId)
 	setTrust(player, npcId, current + delta)
+	persistTrust(player)
 	return getTrust(player, npcId)
 end
 
@@ -1266,7 +1286,8 @@ local function setupTrustHooks()
 	Players.PlayerAdded:Connect(function(player)
 		-- Initialize trust data
 		local userId = player.UserId
-		trustData[userId] = trustData[userId] or {}
+		trustData[userId] = nil
+		getTrust(player, "femke")
 
 		-- Watch for attribute changes that indicate game events
 		player.AttributeChanged:Connect(function(attributeName)
@@ -1426,9 +1447,8 @@ end
 -- ══════════════════════════════════════════════
 
 Players.PlayerRemoving:Connect(function(player)
-	-- Note: in a production system, trust data would be saved to DataStore
-	-- For now, we persist it only during the session
-	-- trustData[player.UserId] = nil  -- uncomment to clear on leave
+	persistTrust(player)
+	trustData[player.UserId] = nil
 
 	-- Clean up cooldowns
 	for key, _ in pairs(npcCooldowns) do

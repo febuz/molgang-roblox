@@ -63,6 +63,9 @@ return {
 		startTime = nil,
 	},
 
+	-- Persistent relationship state for the walking NPC cast
+	npcTrust = {},
+
 	-- Quests & Achievements
 	questProgress = {
 		active = {},
