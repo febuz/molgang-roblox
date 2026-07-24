@@ -17,6 +17,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
+local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
 
 -- COLOR PALETTE
 local COLORS = {
@@ -102,8 +103,31 @@ layout.Parent = scroll
 
 local playerData = nil
 
+local craftEntries = {}
+
+local function canCraftRecipe(recipe)
+	if not playerData or type(playerData.atoms) ~= "table" then return false end
+	for sym, count in pairs(recipe.atoms) do
+		if (playerData.atoms[sym] or 0) < count then
+			return false
+		end
+	end
+	return true
+end
+
+local function refreshCraftButtons()
+	for _, entry in ipairs(craftEntries) do
+		local canCraft = canCraftRecipe(entry.recipe)
+		entry.button.BackgroundColor3 = canCraft and COLORS.accent or Color3.fromRGB(80, 80, 100)
+		entry.button.TextColor3 = canCraft and Color3.fromRGB(0, 0, 0) or COLORS.textSecondary
+		entry.button.Text = canCraft and "Craft" or "Need Items"
+		entry.button.Active = canCraft
+	end
+end
+
 Remotes.PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
+	refreshCraftButtons()
 end)
 
 -- Sort molecules by points (reward)
@@ -185,16 +209,7 @@ for _, mol in ipairs(molList) do
 	valLabel.Parent = recipeCard
 
 	-- Craft button (if player has ingredients)
-	local canCraft = false
-	if playerData then
-		canCraft = true
-		for sym, count in pairs(recipe.atoms) do
-			if (playerData.atoms[sym] or 0) < count then
-				canCraft = false
-				break
-			end
-		end
-	end
+	local canCraft = canCraftRecipe(recipe)
 
 	local craftBtn = Instance.new("TextButton")
 	craftBtn.Name = "CraftBtn"
@@ -208,6 +223,7 @@ for _, mol in ipairs(molList) do
 	craftBtn.Enabled = canCraft
 	craftBtn.Parent = recipeCard
 	createCorner(craftBtn, 4)
+	table.insert(craftEntries, {recipe = recipe, button = craftBtn})
 
 	craftBtn.MouseButton1Click:Connect(function()
 		print("[RecipeBook] Craft requested:", molName)
@@ -215,6 +231,20 @@ for _, mol in ipairs(molList) do
 		Remotes.RequestBuildMolecule:FireServer(recipe.atoms)
 	end)
 end
+
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if screenGui.Enabled then
+		-- PlayerDataLoaded may have fired before this GUI connected; refresh
+		-- from the authoritative server snapshot whenever the book opens.
+		local success, data = pcall(function()
+			return GetPlayerData:InvokeServer()
+		end)
+		if success and data then
+			playerData = data
+			refreshCraftButtons()
+		end
+	end
+end)
 
 -- Close handler
 closeBtn.MouseButton1Click:Connect(function()

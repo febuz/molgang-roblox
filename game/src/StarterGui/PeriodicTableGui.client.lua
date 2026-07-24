@@ -976,10 +976,10 @@ local function loadPlayerElementData()
 		return GetPlayerData:InvokeServer()
 	end)
 
-	if success and data and data.elements then
-		for zStr, count in pairs(data.elements) do
+	if success and data and data.elementsFound then
+		for zStr, discovered in pairs(data.elementsFound) do
 			local z = tonumber(zStr)
-			if z and count > 0 then
+			if z and discovered then
 				foundElements[z] = true
 			end
 		end
