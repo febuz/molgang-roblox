@@ -134,6 +134,8 @@ if [ "$PLACE_READY" -ne 1 ]; then
     KEEP_STUDIO=1
     echo "      Studio authentication is unavailable; sign in to Roblox Studio/Vinegar and retry"
     echo "      Studio is being left open so the browser-login flow can complete"
+    echo "      This launcher remains attached until Studio is closed"
+    wait "$STUDIO_PID" 2>/dev/null || true
   else
     echo "      The process is alive, but the place is not loaded; inspect the latest Studio log"
   fi
