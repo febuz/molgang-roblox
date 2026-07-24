@@ -317,6 +317,17 @@ timeTest("Product market has V2O5 at 500 MC", function()
 	error("V2O5 product not found")
 end)
 
+timeTest("Commodity market exposes server prices", function()
+	local Market = require(ReplicatedStorage.Modules.CommodityMarket)
+	for commodity, basePrice in pairs(Market.GetBasePrices()) do
+		local current = Market.GetCurrentPrice(commodity)
+		assert(type(current) == "number" and current > 0,
+			"Missing current price for " .. commodity)
+		assert(current >= basePrice * 0.5 and current <= basePrice * 2,
+			"Price outside market bounds for " .. commodity)
+	end
+end)
+
 timeTest("Quests: first_atom quest exists", function()
 	local Quests = require(ReplicatedStorage.Modules.Quests)
 	assert(Quests.AllQuests.first_atom, "first_atom quest missing")

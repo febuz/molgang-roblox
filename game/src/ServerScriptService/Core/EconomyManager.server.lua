@@ -16,6 +16,7 @@ local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
+local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -480,16 +481,7 @@ end)
 -- ══════════════════════════════════════════════
 
 -- Simple commodity prices (can be made dynamic later)
-local COMMODITY_PRICES = {
-	Iron = 100,
-	Copper = 150,
-	Gold = 500,
-	Vanadium = 300,
-	Tungsten = 400,
-	Aluminum = 80,
-	Carbon = 60,
-	Nitrogen = 70,
-}
+local COMMODITY_PRICES = CommodityMarket.GetBasePrices()
 
 Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemName, quantity, offeredPrice)
 	local userId = player.UserId
@@ -507,7 +499,10 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 		return
 	end
 	quantity = parsedQuantity
-	local currentPrice = currentPriceOrError
+	-- offeredPrice is deliberately ignored for settlement. It is a client UI
+	-- hint; the shared server market state is the only authoritative price.
+	local currentPrice = CommodityMarket.GetCurrentPrice(itemName)
+	if not currentPrice then return end
 
 	if action == "buy" then
 		local totalCost = currentPrice * quantity

@@ -15,6 +15,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
 
 -- ═══════════════════════════════════════════════
 -- MARKET STATE
@@ -23,16 +24,7 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local marketStore = DataStoreService:GetDataStore("MOLGANG_Market_v1")
 
 -- Base prices for commodities
-local BASE_PRICES = {
-	Iron = 100,
-	Copper = 150,
-	Gold = 500,
-	Vanadium = 300,
-	Tungsten = 400,
-	Aluminum = 80,
-	Carbon = 60,
-	Nitrogen = 70,
-}
+local BASE_PRICES = CommodityMarket.GetBasePrices()
 
 local function isAcceptedTransaction(player, action, itemName, quantity, offeredPrice)
 	local valid, parsedQuantity, currentPrice = TradeRules.Validate(
@@ -41,6 +33,8 @@ local function isAcceptedTransaction(player, action, itemName, quantity, offered
 	if not valid then return false end
 	local data = PlayerDataBridge.GetPlayerData(player.UserId)
 	if not data then return false end
+	local currentPrice = CommodityMarket.GetCurrentPrice(itemName)
+	if not currentPrice then return false end
 	if action == "buy" then
 		return (data.molCoins or 0) >= currentPrice * parsedQuantity
 	end
@@ -110,7 +104,8 @@ task.spawn(function()
 
 		-- Update all commodity prices
 		for commodity, basePrice in pairs(BASE_PRICES) do
-			local newPrice = calculatePrice(commodity, now)
+		local newPrice = calculatePrice(commodity, now)
+		CommodityMarket.SetCurrentPrice(commodity, newPrice)
 
 			-- Record in history
 			table.insert(marketState.priceHistory[commodity], newPrice)
@@ -144,8 +139,7 @@ end)
 -- ═══════════════════════════════════════════════
 
 local function getCurrentPrice(commodity)
-	local now = os.time()
-	return calculatePrice(commodity, now)
+	return CommodityMarket.GetCurrentPrice(commodity)
 end
 
 local function getPriceHistory(commodity)
