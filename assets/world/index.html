@@ -135,6 +135,14 @@
   #product { margin-top: 6px; font-size: 12px; }
   #product b { color: #ffd479; font-size: 14px; transition: color .2s; }
   #product b.flash { color: #fff6c0; }
+  #sell-btn { margin-left: 6px; cursor: pointer; padding: 3px 8px; border-radius: 6px; border: 0;
+    background: #b58a2c; color: #1a1400; font: 600 10.5px system-ui; }
+  #sell-btn:disabled { background: #333a44; color: #7a8698; cursor: not-allowed; }
+  #molcoins { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 13;
+    background: rgba(14,18,26,.88); border: 1px solid #b58a2c; border-radius: 20px;
+    padding: 6px 16px; font-size: 13px; color: #ffd479; }
+  #molcoins b { color: #fff; font-variant-numeric: tabular-nums; }
+  #molcoins.flash { box-shadow: 0 0 16px rgba(255,212,121,.6); }
   #elements { color: #cdb6ff; font-size: 11px; margin-top: 1px; }
   #elpop { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 13;
     display: none; min-width: 220px; text-align: center; padding: 12px 18px; border-radius: 12px;
@@ -162,6 +170,7 @@
 </head>
 <body>
 <div id="stage"></div>
+<div id="molcoins" style="display:none">💰 <b id="mc-val">0</b> MolCoins</div>
 <div id="intro">
   <div class="card">
     <h1>MOLGANG · Moleculia</h1>
@@ -245,7 +254,8 @@
   <label class="row"><span>pH (V window 1.8–3.0)</span><span class="val" id="v-pH">2.5</span></label>
   <input type="range" id="c-pH" min="1" max="6" step="0.1" value="2.5">
   <div id="yield">V recovery: <b id="y-val">—</b> <span id="y-parts" style="color:#9fb0c6"></span></div>
-  <div id="product">🟡 V₂O₅ produced: <b id="p-val">0.00 kg</b> <span id="p-batches" style="color:#9fb0c6"></span></div>
+  <div id="product">🟡 V₂O₅ produced: <b id="p-val">0.00 kg</b> <span id="p-batches" style="color:#9fb0c6"></span>
+    <button id="sell-btn" type="button">Sell → 💰</button></div>
 </div>
 <div id="elpop">
   <div class="sym" id="ep-sym">—</div>

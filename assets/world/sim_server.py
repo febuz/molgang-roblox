@@ -109,6 +109,14 @@ class Sim:
     BATCH_SLAG_KG = 100.0
     V2O5_FRACTION = 0.015
 
+    def sell_v2o5(self):
+        """Sell the banked V2O5 and reset the tally; returns (kg, MolCoins).
+        V2O5 base price is 500 MolCoins/unit (ProductMarket, scaled from ~$15K/t)."""
+        with self.lock:
+            kg = self.reactor.get("v2o5_kg", 0.0)
+            self.reactor["v2o5_kg"] = 0.0
+            return round(kg, 2), int(kg * 500)
+
     def _v_recovery(self, rx):
         pH = rx["pH"]
         fe_penalty = 1.0 if rx.get("deironized") else (1.0 - process_sim.precipitation_fraction("Fe", pH))
@@ -279,6 +287,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"ok": True})
             except Exception:  # noqa: BLE001
                 self.send_response(400); self._cors(); self.end_headers()
+        elif self.path.startswith("/reactor/sell"):
+            kg, coins = SIM.sell_v2o5()
+            self._send_json({"kg": kg, "coins": coins})
         else:
             self.send_response(404); self._cors(); self.end_headers()
 

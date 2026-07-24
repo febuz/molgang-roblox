@@ -889,8 +889,10 @@ function buildFarm() {
     harvests[currentCrop.id] = (harvests[currentCrop.id] || 0) + 1;
     try { localStorage.setItem(HARVEST_KEY, JSON.stringify(harvests)); } catch (e) { /* quota */ }
     const y = (L.yield * 100) | 0;
+    const revenue = Math.round(currentCrop.growthDays * 100 * L.yield);   // longer crops pay more
+    earn(revenue);
     plot = { N: 0, P: 0, K: 0 }; renderPlot(); renderApplyList();
-    const pl = document.getElementById('pl-limit'); if (pl) pl.textContent = `· harvested ${currentCrop.name} at ${y}% ✓`;
+    const pl = document.getElementById('pl-limit'); if (pl) pl.textContent = `· harvested ${currentCrop.name} at ${y}% → +${revenue} 💰`;
   });
   if (crops.length) selectCrop(crops[0]);
 }
@@ -903,6 +905,32 @@ function openFarm() {
   const btn = document.getElementById('farm-btn'), close = document.getElementById('fm-close');
   if (btn) btn.addEventListener('click', openFarm);
   if (close) close.addEventListener('click', () => { document.getElementById('farm').style.display = 'none'; });
+})();
+
+// ---------- MolCoin economy: the loop that ties the five systems together ----------
+// V2O5 sales (process) + harvests (farm) earn MolCoins; factory equipment costs
+// them. One shared balance turns five systems into one game.
+const MC_KEY = 'molgang.molcoins';
+let molcoins = 20000;                            // starter capital (enough for a first machine)
+try { const v = JSON.parse(localStorage.getItem(MC_KEY)); if (Number.isFinite(v)) molcoins = v; } catch (e) { /* fresh */ }
+function saveMc() { try { localStorage.setItem(MC_KEY, JSON.stringify(molcoins)); } catch (e) { /* quota */ } }
+function updateMcHUD(flash) {
+  const el = document.getElementById('mc-val'); if (el) el.textContent = molcoins.toLocaleString();
+  if (flash) { const m = document.getElementById('molcoins'); if (m) { m.classList.add('flash'); setTimeout(() => m.classList.remove('flash'), 500); } }
+}
+function earn(n) { molcoins += n; saveMc(); updateMcHUD(true); }
+function spend(n) { if (molcoins < n) return false; molcoins -= n; saveMc(); updateMcHUD(false); return true; }
+function flashCantAfford() {
+  const m = document.getElementById('molcoins'); if (!m) return;
+  m.style.borderColor = '#ff7a6f'; setTimeout(() => { m.style.borderColor = '#b58a2c'; }, 450);
+}
+(function wireSell() {
+  const b = document.getElementById('sell-btn');
+  if (b) b.addEventListener('click', () => {
+    fetch(SIM_BASE + '/reactor/sell', { method: 'POST' }).then((r) => r.json()).then((d) => {
+      if (d && d.coins > 0) earn(d.coins);
+    }).catch(() => {});
+  });
 })();
 
 // ---------- Factory Builder: place equipment, chase adjacency bonuses ----------
@@ -979,10 +1007,12 @@ function buildFactory() {
   for (let i = 0; i < FGW * FGH; i++) {
     const cell = document.createElement('div'); cell.className = 'cell';
     cell.addEventListener('click', () => {
-      if (factoryGrid[i]) { factoryGrid[i] = null; }          // remove
-      else if (selEquip) {
+      if (factoryGrid[i]) {                                   // remove -> refund
+        earn(eqById.get(factoryGrid[i]).cost); factoryGrid[i] = null;
+      } else if (selEquip) {                                  // place -> buy
         const placed = factoryGrid.filter(Boolean).length;
         if (placed >= floorConfig.maxEquipment) return;
+        if (!spend(eqById.get(selEquip).cost)) { flashCantAfford(); return; }
         factoryGrid[i] = selEquip;
       }
       saveFactory(); renderFactory();
@@ -1052,6 +1082,7 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     { const fb = document.getElementById('fert-btn'); if (fb) fb.style.display = 'block'; }
     { const mb = document.getElementById('farm-btn'); if (mb) mb.style.display = 'block'; }
     { const bb = document.getElementById('build-btn'); if (bb) bb.style.display = 'block'; }
+    { const mc = document.getElementById('molcoins'); if (mc) mc.style.display = 'block'; updateMcHUD(false); }
     if (params.get('collectall')) {          // sandbox: skip the grind (demo/verify)
       for (const o of elements) collected.add(o.num);
       for (const [, rec] of elementSprites) { rec.sprite.material.map.dispose(); rec.sprite.material.map = elementTexture(rec.o, true); rec.sprite.material.needsUpdate = true; }
