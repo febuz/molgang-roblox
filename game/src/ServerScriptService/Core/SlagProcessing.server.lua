@@ -493,6 +493,7 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 
 	-- Clean up completed leach
 	leaches[leachId] = nil
+	persistLeachState(userId)
 
 	sendSlagUpdate(player, userId)
 	print("[SlagProcessing]", player.Name, "extracted:", table.concat(extractList, ", "))
