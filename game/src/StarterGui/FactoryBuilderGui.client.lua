@@ -161,7 +161,7 @@ rentBtn.Name = "RentBtn"
 rentBtn.Size = UDim2.new(0.9, 0, 0, 32)
 rentBtn.Position = UDim2.new(0.05, 0, 0, 28)
 rentBtn.BackgroundColor3 = C.accent
-rentBtn.Text = "RENT FACTORY (2000 MC/mo)"
+rentBtn.Text = "RENT FACTORY (500 MC trial / 2000 MC/mo)"
 rentBtn.TextColor3 = Color3.new(0, 0, 0)
 rentBtn.Font = Enum.Font.GothamBold
 rentBtn.TextScaled = true
@@ -530,11 +530,15 @@ if factoryEvent then
 		rentBtn.Visible = not data.rented
 
 		-- Update stats
+		local carbonTaxText = (data.carbonTax or 0) > 0
+			and string.format(" | Carbon tax: %d", data.carbonTax)
+			or ""
 		statsLabel.Text = string.format(
-			"Power: %d/%dkW | Cost: %d MC/mo | Items: %d/%d",
+			"Power: %d/%dkW | Cost: %d MC/mo%s | Items: %d/%d",
 			data.powerDraw or 0,
 			data.powerAvailable or 100,
 			data.monthlyCost or 0,
+			carbonTaxText,
 			data.placementCount or 0,
 			data.maxPlacements or 30
 		)
