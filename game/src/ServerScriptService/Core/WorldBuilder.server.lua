@@ -373,12 +373,15 @@ local function createPlatform(parent: Instance, config: {
 		Name = (config.Name or "Platform") .. "_UnderGlow",
 		Size = Vector3.new(size.X * 0.9, 0.5, size.Z * 0.9),
 		Position = config.Position - Vector3.new(0, size.Y / 2 + 0.3, 0),
-		Color = config.GlowColor or CONFIG.NEON_GREEN,
+		-- Desaturate the emissive cue: the platform itself must still read as
+		-- metal/concrete in D3D11 and in low-light conditions.
+		Color = config.GlowColor and config.GlowColor:Lerp(Color3.fromRGB(18, 45, 42), 0.55)
+			or Color3.fromRGB(18, 85, 65),
 		Material = Enum.Material.Neon,
 		-- Keep the floating-island cue visible without washing the entire
 		-- industrial deck in cyan. Emissive accents should guide navigation,
 		-- not replace the platform's metal/concrete material read.
-		Transparency = 0.65,
+		Transparency = 0.85,
 		CanCollide = false,
 	})
 
