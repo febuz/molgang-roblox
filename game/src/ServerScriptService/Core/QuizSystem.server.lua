@@ -217,12 +217,25 @@ local function startQuiz(player, zone)
 		})
 	end
 
-	activeSessions[userId] = {
+	local session = {
 		questions = selected,
 		currentIndex = 1,
 		score = 0,
 		startTime = tick(),
 	}
+	activeSessions[userId] = session
+
+	-- A player who closes the client or walks away must not pin a session
+	-- forever. Three questions have a 30-second budget each.
+	task.delay(90, function()
+		if activeSessions[userId] ~= session then return end
+		activeSessions[userId] = nil
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Quiz expired: the 90-second session ended. Start a new quiz when ready.",
+			rarity = "common",
+			quizExpired = true,
+		})
+	end)
 
 	-- Send first question to client
 	local q = selected[1]

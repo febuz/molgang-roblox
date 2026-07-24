@@ -120,6 +120,11 @@ backdrop.Activated:Connect(function()
 end)
 
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
+	if type(data) == "table" and data.quizExpired then
+		gui.Enabled = false
+		clearOptions()
+		return
+	end
 	-- A world quiz pillar first announces its zone, then the server creates
 	-- the authoritative question session. Dashboard launches already send
 	-- RequestQuizStart directly and continue to work unchanged.
