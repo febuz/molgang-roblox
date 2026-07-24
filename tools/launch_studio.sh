@@ -20,7 +20,8 @@ echo ""
 # Avoid multiple Wine/Studio trees. A stale Studio instance can keep the
 # WebView2/Toolbox process alive and make the next Vinegar window appear hung.
 echo "[0/4] Closing stale Vinegar/Studio session..."
-flatpak kill org.vinegarhq.Vinegar >/dev/null 2>&1 || true
+# A hung Wine child must never prevent the build phase from running.
+timeout 8 flatpak kill org.vinegarhq.Vinegar >/dev/null 2>&1 || true
 sleep 2
 
 # Step 1: Build
