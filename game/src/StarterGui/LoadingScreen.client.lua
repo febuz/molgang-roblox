@@ -13,25 +13,25 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- StarterGui can recreate LocalScripts after a character reset. The intro is
 -- a session gate, not a respawn screen, so never show it a second time.
-local introGate = playerGui:FindFirstChild("MOLGANGIntroGate")
-if introGate or _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown") then
+local introGate = ReplicatedStorage:FindFirstChild("MOLGANGIntroGate")
+if introGate or playerGui:FindFirstChild("MOLGANGIntroGate")
+	 or _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown") then
 	return
 end
--- Player attributes and script globals can be reset/recreated with the
--- character under Studio playtest. A non-resetting PlayerGui marker survives
--- LocalScript clones and is the authoritative session gate.
-introGate = Instance.new("ScreenGui")
+-- Player attributes, script globals and PlayerGui can be reset/recreated with
+-- the character under Studio playtest. A client-local ReplicatedStorage marker
+-- survives those clones and is the authoritative session gate.
+introGate = Instance.new("BoolValue")
 introGate.Name = "MOLGANGIntroGate"
-introGate.ResetOnSpawn = false
-introGate.Enabled = false
-introGate.DisplayOrder = -100
-introGate.Parent = playerGui
+introGate.Value = true
+introGate.Parent = ReplicatedStorage
 _G.MOLGANGIntroShown = true
 player:SetAttribute("MOLGANGIntroShown", true)
 
