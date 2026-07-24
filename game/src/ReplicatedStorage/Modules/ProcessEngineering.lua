@@ -335,6 +335,32 @@ function ProcessEngineering.ReagentPHFactor(reagent, pH)
 	return math.clamp(1 - deviation / 6, 0.25, 1)
 end
 
+-- Apply recovery without creating a product that the recovered mass cannot
+-- support. Sub-atom yields remain process loss instead of rounding upward.
+function ProcessEngineering.ApplyRecovery(yield, recoveryFactor)
+	if type(yield) ~= "table" then return {} end
+	if type(recoveryFactor) ~= "number" or recoveryFactor ~= recoveryFactor then
+		recoveryFactor = 0
+	end
+	recoveryFactor = math.clamp(recoveryFactor, 0, 1)
+
+	local recovered = {}
+	for _, entry in ipairs(yield) do
+		if type(entry) == "table" and type(entry.atomCount) == "number" then
+			local copy = {}
+			for key, value in pairs(entry) do copy[key] = value end
+			copy.idealAtomCount = entry.atomCount
+			copy.idealGramsExtracted = entry.gramsExtracted
+			copy.atomCount = math.floor(entry.atomCount * recoveryFactor)
+			copy.gramsExtracted = math.floor((entry.gramsExtracted or 0) * recoveryFactor * 10) / 10
+			if copy.atomCount > 0 and copy.gramsExtracted > 0 then
+				table.insert(recovered, copy)
+			end
+		end
+	end
+	return recovered
+end
+
 -- ═══════════════════════════════════════════════
 -- DISPLAY HELPERS
 -- ═══════════════════════════════════════════════
