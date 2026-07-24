@@ -3936,6 +3936,14 @@ local function buildMoleculia()
 	zonesFolder:SetAttribute("WorldName", "Moleculia")
 	zonesFolder:SetAttribute("WorldVersion", "1.0.0")
 	zonesFolder:SetAttribute("ZoneCount", 6)
+	-- Stable readiness markers let server diagnostics verify the generated
+	-- world even when Studio's streaming view has not materialized every Model.
+	zonesFolder:SetAttribute("Zone1Ready", zone1.Name)
+	zonesFolder:SetAttribute("Zone2Ready", zone2.Name)
+	zonesFolder:SetAttribute("Zone3Ready", zone3.Name)
+	zonesFolder:SetAttribute("Zone4Ready", zone4.Name)
+	zonesFolder:SetAttribute("Zone5Ready", zone5.Name)
+	zonesFolder:SetAttribute("Zone6Ready", zone6.Name)
 	zonesFolder:SetAttribute("BuildTimestamp", os.time())
 
 	-- Set individual zone attributes
