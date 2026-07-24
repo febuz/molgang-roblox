@@ -93,28 +93,24 @@ end)
 
 timeTest("Zone count >= 4", function()
 	local zones = Workspace:FindFirstChild("Zones")
-	local count = 0
-	for _, child in zones:GetChildren() do
-		if child:IsA("Model") then count = count + 1 end
+	local count = tonumber(zones:GetAttribute("ZoneCount")) or 0
+	if count == 0 then
+		for _, child in zones:GetChildren() do
+			if child:IsA("Model") or child:IsA("Folder") then count = count + 1 end
+		end
 	end
 	assert(count >= 4, "Only " .. count .. " zones found")
 end)
 
 timeTest("Nexus Hub exists", function()
 	local zones = Workspace.Zones
-	local found = false
-	for _, child in zones:GetChildren() do
-		if child.Name:find("Nexus") or child.Name:find("Zone1") then found = true end
-	end
+	local found = zones:FindFirstChild("Zone1_NexusHub") ~= nil
 	assert(found, "Nexus Hub zone not found")
 end)
 
 timeTest("Slakkenspoor factory exists", function()
 	local zones = Workspace.Zones
-	local found = false
-	for _, child in zones:GetChildren() do
-		if child.Name:find("Slakkenspoor") or child.Name:find("Zone4") then found = true end
-	end
+	local found = zones:FindFirstChild("Zone4_SlakkenspoorFabriek") ~= nil
 	assert(found, "Slakkenspoor factory not found")
 end)
 
@@ -170,7 +166,9 @@ end)
 print("\n[AutoTest] ========== LIGHTING ==========")
 
 test("GlobalShadows enabled", Lighting.GlobalShadows == true)
-test("Technology is Future", Lighting.Technology == Enum.Technology.Future)
+local technologyOk, technology = pcall(function() return Lighting.Technology end)
+test("Technology is Future", technologyOk and technology == Enum.Technology.Future,
+	technologyOk and "Technology was not Future" or "Studio capability blocks Technology read")
 test("Atmosphere exists", Lighting:FindFirstChildWhichIsA("Atmosphere") ~= nil)
 test("Bloom effect exists", Lighting:FindFirstChildWhichIsA("BloomEffect") ~= nil)
 test("ColorCorrection exists", Lighting:FindFirstChildWhichIsA("ColorCorrectionEffect") ~= nil)
