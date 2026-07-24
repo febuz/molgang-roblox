@@ -6,7 +6,7 @@
 	- Animated molecule logo with orbiting electrons
 	- Smooth fade-in of title, tagline, tips
 	- Progress bar animation
-	- "TEASER" badge
+	- "OTAP TEST" badge
 	- Proper fade-out on click (fades children, not ScreenGui)
 ]]
 
@@ -180,14 +180,14 @@ tagline.Font = Enum.Font.Gotham
 tagline.TextTransparency = 1
 tagline.Parent = bg
 
--- TEASER badge
+-- OTAP test badge
 local teaserBadge = Instance.new("TextLabel")
 teaserBadge.Name = "TeaserBadge"
-teaserBadge.Size = UDim2.fromOffset(90, 26)
+teaserBadge.Size = UDim2.fromOffset(110, 26)
 teaserBadge.Position = UDim2.new(0.5, 50, 0, 205)
 teaserBadge.BackgroundColor3 = COLORS.teaserBadge
 teaserBadge.BackgroundTransparency = 0.1
-teaserBadge.Text = "TEASER"
+teaserBadge.Text = "OTAP TEST"
 teaserBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
 teaserBadge.TextScaled = true
 teaserBadge.Font = Enum.Font.GothamBold
@@ -222,7 +222,7 @@ cpStroke.Transparency = 1
 cpStroke.Parent = contentPanel
 
 -- Description text
-local descText = [[A Chemical Engineering Simulator in space. Process BOF steel slag through realistic crushing, leaching, and extraction. Synthesize fertilizers with real NPK chemistry. Manage an industrial factory, trade on global markets, and master the periodic table — all in immersive VR/AR.]]
+local descText = [[OTAP teststraat for a Chemical Engineering Simulator in space. Process BOF steel slag through realistic crushing, leaching, and extraction. Synthesize fertilizers with real NPK chemistry. Manage an industrial factory, trade on global markets, and master the periodic table — all in immersive VR/AR.]]
 
 local description = Instance.new("TextLabel")
 description.Name = "Description"
@@ -397,7 +397,7 @@ local footer = Instance.new("TextLabel")
 footer.Size = UDim2.new(0.6, 0, 0, 18)
 footer.Position = UDim2.new(0.2, 0, 1, -30)
 footer.BackgroundTransparency = 1
-footer.Text = "VirtualV Holding B.V. + Slakkenspoor VOF | Chemical Engineering Simulator v0.2"
+footer.Text = "MOLGANG OTAP teststraat | Chemical Engineering Simulator v0.2"
 footer.TextColor3 = Color3.fromRGB(80, 85, 100)
 footer.TextScaled = true
 footer.Font = Enum.Font.Gotham
@@ -505,4 +505,4 @@ end
 -- Activated works consistently for mouse, touch and gamepad in Studio.
 playBtn.Activated:Connect(fadeOutAndDestroy)
 
-print("[MOLGANG] Teaser loading screen displayed")
+print("[MOLGANG] OTAP test loading screen displayed")

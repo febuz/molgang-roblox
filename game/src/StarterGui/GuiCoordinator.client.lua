@@ -14,6 +14,7 @@ local modalNames = {
 	ProductMarketGui = true, MiningGui = true, ProcessControlGui = true,
 	BubbleTeaGui = true, SuperheroGui = true, QuantumRacingGui = true,
 	FeedbackGui = true, MahjongGui = true, QuestModal = true,
+	QuizGui = true, NPCDialogueGui = true, TutorialGui = true,
 }
 
 local busy = false
