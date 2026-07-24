@@ -34,6 +34,10 @@ assert(ProcessEngineering.ReagentPHFactor({pH = 1}, math.huge) == 0.25,
 local acid = {pH = 1}
 assert(ProcessEngineering.ReagentPHFactor(acid, 1) == 1, "on-setpoint acid must be full strength")
 assert(ProcessEngineering.ReagentPHFactor(acid, 7) < 1, "off-setpoint acid must lose selectivity")
+assert(not ProcessEngineering.IsFiniteNumber(math.huge), "infinite controls must be rejected")
+assert(not ProcessEngineering.IsFiniteNumber(-math.huge), "negative infinite controls must be rejected")
+assert(not ProcessEngineering.IsFiniteNumber(0 / 0), "NaN controls must be rejected")
+assert(ProcessEngineering.IsFiniteNumber(25), "finite controls must be accepted")
 
 local balance = ProcessEngineering.CreateMassBalance()
 ProcessEngineering.AddStep(balance, "Crushing", 1.0, 0.99, 0.01)
@@ -53,4 +57,4 @@ assert(pipeline.lossKg >= -0.001 and pipeline.lossKg <= 0.001,
 	"full slag pipeline must conserve mass")
 assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
 
-print("Process Engineering Tests: 14 passed, 0 failed")
+print("Process Engineering Tests: 18 passed, 0 failed")

@@ -617,16 +617,16 @@ Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperat
 	local state = getProcessState(userId)
 
 	-- Validate and clamp inputs
-	if type(temperature) == "number" then
+	if ProcessEng.IsFiniteNumber(temperature) then
 		state.temperature = math.clamp(temperature, 0, 1000)
 	end
-	if type(pressure) == "number" then
+	if ProcessEng.IsFiniteNumber(pressure) then
 		state.pressure = math.clamp(pressure, 50, 500)
 	end
-	if type(pH) == "number" then
+	if ProcessEng.IsFiniteNumber(pH) then
 		state.pH = math.clamp(pH, 0, 14)
 	end
-	if type(flowRate) == "number" then
+	if ProcessEng.IsFiniteNumber(flowRate) then
 		state.flowRate = math.clamp(flowRate, 1, 50)
 	end
 
