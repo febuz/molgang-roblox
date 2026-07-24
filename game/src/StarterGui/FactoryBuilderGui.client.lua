@@ -530,7 +530,9 @@ if factoryEvent then
 		rentBtn.Visible = not data.rented
 
 		-- Update stats
-		local carbonTaxText = (data.carbonTax or 0) > 0
+		local carbonTaxText = data.carbonTaxExempt
+			and " | Carbon tax: EXEMPT"
+			or (data.carbonTax or 0) > 0
 			and string.format(" | Carbon tax: %d", data.carbonTax)
 			or ""
 		local carbonScoreText = data.carbonRating

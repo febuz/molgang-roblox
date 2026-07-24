@@ -16,5 +16,9 @@ assert(FactoryEquipment.CalculateCarbonTax(100, 0.05, 10) == 50,
 	"carbon tax must reconcile kW, rate and billing minutes")
 assert(FactoryEquipment.CalculateCarbonTax(100, 0, 10) == 0,
 	"no carbon event must not add tax")
+assert(FactoryEquipment.ApplyGreenTaxExemption(50, "Green Champion", true) == 0,
+	"green exemption event must waive carbon tax")
+assert(FactoryEquipment.ApplyGreenTaxExemption(50, "Industrial", true) == 50,
+	"non-green factories must still pay carbon tax")
 
-print("Factory Cost Tests: 6 passed, 0 failed")
+print("Factory Cost Tests: 8 passed, 0 failed")

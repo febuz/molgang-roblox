@@ -734,6 +734,14 @@ function FactoryEquipment.CalculateCarbonTax(powerDraw, taxPerKWPerMinute, billi
 	return math.floor(draw * rate * minutes + 0.5)
 end
 
+function FactoryEquipment.ApplyGreenTaxExemption(carbonTax, carbonRating, exemptFlag)
+	local tax = math.max(0, math.floor(tonumber(carbonTax) or 0))
+	if exemptFlag == true and carbonRating == "Green Champion" then
+		return 0
+	end
+	return tax
+end
+
 -- Calculate adjacency bonuses
 function FactoryEquipment.CalculateAdjacencyBonuses(placements)
 	local bonuses = {}

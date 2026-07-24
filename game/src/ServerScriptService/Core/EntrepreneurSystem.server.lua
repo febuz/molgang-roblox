@@ -274,8 +274,11 @@ local function sendFactoryUpdate(player, userId)
 	local operatingCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
 		factory.placements, operatingCostMultiplier
 	)
-	local carbonTax = FactoryEquipment.CalculateCarbonTax(
+	local carbonTaxBeforeExemption = FactoryEquipment.CalculateCarbonTax(
 		powerDraw, eventEffects.carbonTaxPerKW, RENT_INTERVAL / 60
+	)
+	local carbonTax = FactoryEquipment.ApplyGreenTaxExemption(
+		carbonTaxBeforeExemption, carbonRating, eventEffects.greenExemptFromTax
 	)
 	local totalCost = operatingCost + carbonTax
 	local bonuses = FactoryEquipment.CalculateAdjacencyBonuses(factory.placements)
@@ -307,6 +310,7 @@ local function sendFactoryUpdate(player, userId)
 		rent = rent,
 		maintenance = maintenance,
 		carbonTax = carbonTax,
+		carbonTaxExempt = carbonTaxBeforeExemption > 0 and carbonTax == 0,
 		carbonScore = carbonScore,
 		carbonRating = carbonRating,
 		carbonCredits = (PlayerDataBridge.GetPlayerData(userId) or {}).carbonCredits or 0,
@@ -591,23 +595,27 @@ task.spawn(function()
 				local operatingCost = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
 					factory.placements, eventEffects.factoryOpCostMult or 1
 				)
-				local carbonTax = FactoryEquipment.CalculateCarbonTax(
+				local waterTreatmentUnits = 0
+				for _, placement in ipairs(factory.placements) do
+					if placement.itemId == "water_treatment" then
+						waterTreatmentUnits = waterTreatmentUnits + 1
+					end
+				end
+				local carbonTaxBeforeExemption = FactoryEquipment.CalculateCarbonTax(
 					powerDraw, eventEffects.carbonTaxPerKW, RENT_INTERVAL / 60
+				)
+				local carbonScore = CarbonScore.CalculateScore({
+					factory_rent = 1,
+					equipment_power = powerDraw,
+					water_reuse = waterTreatmentUnits,
+				})
+				local carbonRating = select(1, CarbonScore.GetRating(carbonScore))
+				local carbonTax = FactoryEquipment.ApplyGreenTaxExemption(
+					carbonTaxBeforeExemption, carbonRating, eventEffects.greenExemptFromTax
 				)
 				local totalCost = operatingCost + carbonTax
 				local success = PlayerDataBridge.SpendMolCoins(userId, totalCost)
 				if success then
-					local waterTreatmentUnits = 0
-					for _, placement in ipairs(factory.placements) do
-						if placement.itemId == "water_treatment" then
-							waterTreatmentUnits = waterTreatmentUnits + 1
-						end
-					end
-					local carbonScore = CarbonScore.CalculateScore({
-						factory_rent = 1,
-						equipment_power = powerDraw,
-						water_reuse = waterTreatmentUnits,
-					})
 					local carbonCredits = CarbonScore.CalculateCreditReward(
 						carbonScore, eventEffects.carbonCreditMult, #factory.placements > 0
 					)
