@@ -145,6 +145,10 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 	for mol, count in pairs(moleculesProduced) do
 		productionBonus = productionBonus + (count * 10)  -- 10 MolCoins per molecule
 	end
+	productionBonus = Facilities.ApplyProductionBonus(
+		productionBonus,
+		activeEffects.productionBonusMult
+	)
 
 	if productionBonus > 0 then
 		PlayerDataBridge.AddEarnedMolCoins(player.UserId, productionBonus)
@@ -157,6 +161,7 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 			moleculesProduced = moleculesProduced,
 			bonusMolCoins = productionBonus,
 			outdoorPenalty = player:GetAttribute("OutdoorPenalty") or 1,
+			productionBonusMultiplier = tonumber(activeEffects.productionBonusMult) or 1,
 			totalAtoms = (function()
 				local count = 0
 				for _, c in pairs(playerData.atoms) do count = count + c end

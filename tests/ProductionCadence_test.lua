@@ -25,6 +25,12 @@ assert(math.abs(Facilities.CalculateOutdoorAtomRate(outdoorFacilities, 0.8, 1.15
 	"automation event must combine with weather-adjusted production")
 assert(Facilities.CalculateOutdoorAtomRate(outdoorFacilities, 1, 0.5) == 6.5,
 	"a 50% production event must halve the outdoor rate")
+assert(Facilities.ApplyProductionBonus(100, 1) == 100,
+	"normal production bonus must remain unchanged")
+assert(Facilities.ApplyProductionBonus(100, 1.2) == 120,
+	"production tournament must increase production bonus")
+assert(Facilities.ApplyProductionBonus(99, 1.2) == 118,
+	"production bonus must use deterministic floor rounding")
 
 local facilities = Facilities.CreatePlayerFacilities()
 assert(Facilities.BuildFacility(facilities, "Research Lab"), "research lab should build")
@@ -32,4 +38,4 @@ assert(facilities.researchLabs == 1 and facilities.researchlabs == nil,
 	"research lab must use the canonical persisted key")
 assert(Facilities.CanBuild(facilities, "Research Lab"), "research lab max-level check must read canonical key")
 
-print("Production Cadence Tests: 16 passed, 0 failed")
+print("Production Cadence Tests: 19 passed, 0 failed")

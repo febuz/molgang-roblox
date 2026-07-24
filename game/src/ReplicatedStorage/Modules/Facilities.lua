@@ -93,6 +93,12 @@ function Facilities.CalculateOutdoorAtomRate(facilities, outdoorPenalty, product
 	return baseAtoms * multiplier * speed
 end
 
+function Facilities.ApplyProductionBonus(productionBonus, bonusMultiplier)
+	local baseBonus = math.max(0, tonumber(productionBonus) or 0)
+	local multiplier = math.max(0, tonumber(bonusMultiplier) or 1)
+	return math.floor(baseBonus * multiplier)
+end
+
 -- Calculate total facility cost
 function Facilities.CalculateTotalCost(facilities)
 	local cost = 0
