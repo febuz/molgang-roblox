@@ -169,7 +169,11 @@ end
 -- PROXIMITY DETECTION LOOP
 -- ══════════════════════════════════════════════
 
-RunService.Heartbeat:Connect(function()
+local proximityTimer = 0
+RunService.Heartbeat:Connect(function(dt)
+	proximityTimer = proximityTimer + dt
+	if proximityTimer < 0.1 then return end
+	proximityTimer = 0
 	if not hrp or not hrp.Parent then return end
 
 	local playerPos = hrp.Position
