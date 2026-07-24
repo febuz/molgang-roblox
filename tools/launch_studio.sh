@@ -56,6 +56,23 @@ flatpak run --env=VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json \
 STUDIO_PID=$!
 echo "      Studio launching (PID: $STUDIO_PID)"
 
+# Vinegar can return successfully while Wine's Studio process exits during
+# graphics/WebView startup. Do not call that a healthy playtest launch.
+STUDIO_DETECTED=0
+for _ in $(seq 1 20); do
+  if pgrep -af 'RobloxStudioBeta|wine.*Roblox' >/dev/null 2>&1; then
+    STUDIO_DETECTED=1
+    break
+  fi
+  sleep 1
+done
+if [ "$STUDIO_DETECTED" -eq 1 ]; then
+  echo "      Studio process detected; F5 playtest is available"
+else
+  echo "      WARNING: Studio process was not detected after 20s"
+  echo "      Check Vinegar logs for Wine/D3D/WebView startup failures"
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════"
 echo "  MOLGANG STUDIO READY"
