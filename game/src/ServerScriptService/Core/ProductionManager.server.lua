@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 -- ═══════════════════════════════════════════════
 -- PRODUCTION CONFIGURATION
@@ -23,21 +24,19 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PRODUCTION_INTERVAL = 60  -- 60 seconds per production cycle
 local BASE_ATOMS = {"H", "O", "C", "N", "Fe", "Cu", "Au", "V", "W", "Al"}
 
--- Store player facilities data (loaded from EconomyManager)
-local playerFacilities = {}  -- {userId = {mines=N, factories=N, ...}}
-
 -- ═══════════════════════════════════════════════
 -- PRODUCTION LOGIC
 -- ═══════════════════════════════════════════════
 
-local function produceAtoms(player, facilities)
+local function produceAtoms(facilities)
 	if not facilities or facilities.mines == 0 then return {} end
 
 	local produced = {}
-	local mineCount = facilities.mines or 0
 
-	-- Each mine produces 5 random atoms per cycle
-	for i = 1, mineCount * 5 do
+	-- Use the same capacity table as the facility purchase/build system.
+	-- This prevents the production loop from silently drifting from the UI.
+	local production = Facilities.CalculateProduction(facilities)
+	for _ = 1, production.atoms do
 		local atom = BASE_ATOMS[math.random(#BASE_ATOMS)]
 		produced[atom] = (produced[atom] or 0) + 1
 	end
@@ -45,15 +44,16 @@ local function produceAtoms(player, facilities)
 	return produced
 end
 
-local function produceMolecules(player, playerData, facilities)
+local function produceMolecules(playerData, facilities)
 	if not facilities or facilities.factories == 0 then return {} end
 
 	local produced = {}
-	local factoryCount = facilities.factories or 0
 	local atoms = playerData.atoms or {}
 
-	-- Each factory tries to produce 2 random molecules per cycle
-	for i = 1, factoryCount * 2 do
+	local production = Facilities.CalculateProduction(facilities)
+	-- Each factory attempts its configured capacity; unavailable feedstock
+	-- correctly leaves that slot idle instead of creating free product.
+	for _ = 1, production.molecules do
 		-- Pick a random buildable molecule
 		local buildable = Chemistry.GetBuildableMolecules(atoms)
 		if #buildable > 0 then
@@ -88,15 +88,19 @@ end
 
 local function runProductionCycle(player, playerData, facilities)
 	if not playerData or not facilities then return end
+	playerData.atoms = playerData.atoms or {}
+	playerData.molecules = playerData.molecules or {}
+	playerData.molCoins = playerData.molCoins or 0
+	playerData.totalMolCoinsEarned = playerData.totalMolCoinsEarned or 0
 
 	-- Produce atoms from mines
-	local atomsProduced = produceAtoms(player, facilities)
+	local atomsProduced = produceAtoms(facilities)
 	for atom, count in pairs(atomsProduced) do
 		playerData.atoms[atom] = (playerData.atoms[atom] or 0) + count
 	end
 
 	-- Produce molecules from factories
-	local moleculesProduced = produceMolecules(player, playerData, facilities)
+	local moleculesProduced = produceMolecules(playerData, facilities)
 
 	-- Award MolCoins for production
 	local productionBonus = 0
@@ -136,16 +140,8 @@ end
 -- GAME LOOP
 -- ═══════════════════════════════════════════════
 
--- Wait for EconomyManager to set up, then access playerData
+-- Wait for EconomyManager to set up its server-owned data table.
 task.wait(1)
-
-local EconomyModule = nil
-for _, script in ipairs(game:GetService("ServerScriptService").Core:GetChildren()) do
-	if script.Name == "EconomyManager.server" then
-		-- We'll use remotes to query player data instead
-		break
-	end
-end
 
 -- Production cycle: runs every 60 seconds
 task.spawn(function()
@@ -153,10 +149,10 @@ task.spawn(function()
 		task.wait(PRODUCTION_INTERVAL)
 
 		for _, player in ipairs(Players:GetPlayers()) do
-			-- Get current player data via RemoteFunction
-			local playerData = Remotes.GetPlayerData:InvokeClient(player)
+			-- Production is server-authoritative. Never ask a client for the
+			-- canonical economy state: clients may be disconnected or spoofed.
+			local playerData = PlayerDataBridge.GetPlayerData(player.UserId)
 			if playerData then
-				-- Get facilities count from player data
 				local facilities = {
 					mines = playerData.facilities and playerData.facilities.mines or 0,
 					factories = playerData.facilities and playerData.facilities.factories or 0,
@@ -166,11 +162,7 @@ task.spawn(function()
 
 				-- Only run production if player has facilities
 				if facilities.mines > 0 or facilities.factories > 0 then
-					-- Note: Server-side update will happen in EconomyManager
-					-- This is just notification to client
-					Remotes.FireClient("ProductionReady", player, {
-						facilities = facilities,
-					})
+					runProductionCycle(player, playerData, facilities)
 				end
 			end
 		end
