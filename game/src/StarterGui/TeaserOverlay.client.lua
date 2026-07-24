@@ -269,7 +269,7 @@ task.delay(10, function()
 		Position = UDim2.new(0.5, -130, 0, 50),
 	}):Play()
 
-	claimBtn.MouseButton1Click:Connect(function()
+	claimBtn.Activated:Connect(function()
 		local claimRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestDailyClaim")
 		if claimRemote then
 			claimRemote:FireServer()

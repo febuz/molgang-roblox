@@ -382,7 +382,7 @@ local function displayModalQuests()
 		acceptBtn.Parent = card
 		createCorner(acceptBtn, 4)
 
-		acceptBtn.MouseButton1Click:Connect(function()
+		acceptBtn.Activated:Connect(function()
 			acceptBtn.Text = "REQUESTING..."
 			acceptBtn.Active = false
 			Remotes.RequestAcceptQuest:FireServer(quest.id)
@@ -435,7 +435,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	modalGui.Enabled = false
 end)
 

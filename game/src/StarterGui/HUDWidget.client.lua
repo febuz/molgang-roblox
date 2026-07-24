@@ -242,7 +242,7 @@ local function createQuickBtn(text, color, guiTarget)
 	local bCorner = Instance.new("UICorner")
 	bCorner.CornerRadius = UDim.new(0, 4)
 	bCorner.Parent = btn
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		local gui = playerGui:FindFirstChild(guiTarget)
 		if gui then
 			gui.Enabled = not gui.Enabled

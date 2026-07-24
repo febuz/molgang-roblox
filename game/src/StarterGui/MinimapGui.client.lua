@@ -201,7 +201,7 @@ for _, zd in ipairs(zoneDots) do
 		clickBtn.Text = ""
 		clickBtn.Parent = zd.dot
 
-		clickBtn.MouseButton1Click:Connect(function()
+		clickBtn.Activated:Connect(function()
 			setWaypoint(zd.zone.name, zd.zone.pos)
 		end)
 	end

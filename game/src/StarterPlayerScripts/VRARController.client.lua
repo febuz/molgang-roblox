@@ -538,7 +538,7 @@ if isVR then
 		dismiss.Parent = panel
 		local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(0, 8); dc.Parent = dismiss
 
-		dismiss.MouseButton1Click:Connect(function()
+		dismiss.Activated:Connect(function()
 			vrTutGui:Destroy()
 		end)
 
