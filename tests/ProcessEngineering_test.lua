@@ -34,6 +34,12 @@ assert(ProcessEngineering.ReagentPHFactor({pH = 1}, math.huge) == 0.25,
 local acid = {pH = 1}
 assert(ProcessEngineering.ReagentPHFactor(acid, 1) == 1, "on-setpoint acid must be full strength")
 assert(ProcessEngineering.ReagentPHFactor(acid, 7) < 1, "off-setpoint acid must lose selectivity")
+assert(ProcessEngineering.CalculateRecoveryFactor(0.8, 1, 1) == 0.8,
+	"normal recovery must preserve process and pH factors")
+assert(math.abs(ProcessEngineering.CalculateRecoveryFactor(0.8, 1, 0.75) - 0.6) < 0.000001,
+	"drought efficiency must reduce leach recovery")
+assert(ProcessEngineering.CalculateRecoveryFactor(0.9, 1, 1.2) == 0.95,
+	"breakthrough recovery must respect the physical upper bound")
 assert(not ProcessEngineering.IsFiniteNumber(math.huge), "infinite controls must be rejected")
 assert(not ProcessEngineering.IsFiniteNumber(-math.huge), "negative infinite controls must be rejected")
 assert(not ProcessEngineering.IsFiniteNumber(0 / 0), "NaN controls must be rejected")
@@ -57,4 +63,4 @@ assert(pipeline.lossKg >= -0.001 and pipeline.lossKg <= 0.001,
 	"full slag pipeline must conserve mass")
 assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
 
-print("Process Engineering Tests: 18 passed, 0 failed")
+print("Process Engineering Tests: 21 passed, 0 failed")

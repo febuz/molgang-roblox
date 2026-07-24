@@ -337,6 +337,15 @@ function ProcessEngineering.ReagentPHFactor(reagent, pH)
 	return math.clamp(1 - deviation / 6, 0.25, 1)
 end
 
+-- Combine process controls with a temporary world-event efficiency modifier.
+-- The bounds preserve a physically plausible recovery window.
+function ProcessEngineering.CalculateRecoveryFactor(processEfficiency, phFactor, eventMultiplier)
+	local process = tonumber(processEfficiency) or 0
+	local ph = tonumber(phFactor) or 0
+	local event = tonumber(eventMultiplier) or 1
+	return math.clamp(process * ph * math.max(0, event), 0.15, 0.95)
+end
+
 -- Apply recovery without creating a product that the recovered mass cannot
 -- support. Sub-atom yields remain process loss instead of rounding upward.
 function ProcessEngineering.ApplyRecovery(yield, recoveryFactor)

@@ -19,6 +19,7 @@ local Players = game:GetService("Players")
 
 local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
 local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local ResearchAccess = require(ReplicatedStorage.Modules.ResearchAccess)
 local GameClock = require(ReplicatedStorage.Modules.GameClock)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
@@ -98,6 +99,9 @@ local function getEffectiveLeachDuration(userId, baseMinutes, reagentId)
 
 	-- Combined effect: higher rate = shorter duration
 	local combinedRate = math.max(tempMultiplier * pressureMultiplier * residenceEffect, 0.1)
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local eventEfficiency = math.max(0, tonumber(eventEffects.leachingEfficiencyMult) or 1)
+	combinedRate = math.max(combinedRate * eventEfficiency, 0.1)
 	local effectiveDuration = baseMinutes / combinedRate
 
 	-- Clamp to reasonable range (min 10% of base, max 500%)
@@ -405,7 +409,9 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	-- Controls affect rate and residence time, not conservation of mass.
 	local processEfficiency = math.clamp(0.75 + reactionRate * 0.125, 0.75, 0.95)
 	local phFactor = ProcessEng.ReagentPHFactor(reagent, processState.pH)
-	local recoveryFactor = math.clamp(processEfficiency * phFactor, 0.15, 0.95)
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local eventEfficiency = math.max(0, tonumber(eventEffects.leachingEfficiencyMult) or 1)
+	local recoveryFactor = ProcessEng.CalculateRecoveryFactor(processEfficiency, phFactor, eventEfficiency)
 	local yield = ProcessEng.ApplyRecovery(idealYield, recoveryFactor)
 
 	-- Create leach record
