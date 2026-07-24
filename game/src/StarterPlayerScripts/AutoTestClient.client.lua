@@ -9,13 +9,26 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-task.wait(5)
-
 local requiredGuis = {
 	"HUDWidget", "DashboardGui", "QuizGui", "SlagProcessingGui",
 	"FactoryBuilderGui", "MiningGui", "ResearchGui", "InventoryGui",
 	"WalletGui", "ProductMarketGui",
 }
+
+-- GUI LocalScripts start independently and Studio/Wine can spend 15–30s
+-- compiling/loading them. Wait for the real client surface before judging it;
+-- a fixed five-second sleep created false 0/21 failures.
+local guiDeadline = os.clock() + 60
+repeat
+	task.wait(1)
+	local ready = true
+	for _, guiName in ipairs(requiredGuis) do
+		if not playerGui:FindFirstChild(guiName) then
+			ready = false
+			break
+		end
+	end
+until ready or os.clock() >= guiDeadline
 
 local passCount = 0
 local failCount = 0
