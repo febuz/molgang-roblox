@@ -499,6 +499,8 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 		})
 		return
 	end
+	playerData.slagInventory = playerData.slagInventory or {}
+	playerData.slagInventory.residue = (playerData.slagInventory.residue or 0) + 1
 
 	for elem, count in pairs(atoms) do
 		-- Add atoms via PlayerDataBridge

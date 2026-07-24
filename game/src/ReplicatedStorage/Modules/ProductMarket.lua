@@ -124,6 +124,7 @@ ProductMarket.Products = {
 		description = "Leftover slag after metal extraction. Used as road base, concrete aggregate.",
 		realWorldPrice = "€5-15/ton",
 		requiredAtoms = {},  -- byproduct, no specific atoms needed
+		requiredSlag = {residue = 1},
 	},
 }
 
@@ -156,12 +157,17 @@ function ProductMarket.GetAllPrices(gameDay)
 end
 
 -- Check if player has enough atoms to sell a product
-function ProductMarket.CanSell(playerAtoms, productId)
+function ProductMarket.CanSell(playerAtoms, productId, slagInventory)
 	for _, product in ipairs(ProductMarket.Products) do
 		if product.id == productId then
 			for atom, count in pairs(product.requiredAtoms) do
 				if (playerAtoms[atom] or 0) < count then
 					return false, "Need " .. count .. "x " .. atom
+				end
+			end
+			for residue, count in pairs(product.requiredSlag or {}) do
+				if not slagInventory or (slagInventory[residue] or 0) < count then
+					return false, "Need " .. count .. "x " .. residue
 				end
 			end
 			return true, "OK"

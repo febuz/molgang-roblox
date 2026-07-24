@@ -97,6 +97,7 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 	if not playerData then return end
 	playerData.atoms = playerData.atoms or {}
+	playerData.slagInventory = playerData.slagInventory or {}
 
 	-- Check atoms for all units
 	for atom, countPerUnit in pairs(product.requiredAtoms) do
@@ -104,6 +105,16 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 		if (playerData.atoms[atom] or 0) < needed then
 			Remotes.FireClient("ServerAnnounce", player, {
 				message = "Not enough " .. atom .. "! Need " .. needed .. ", have " .. (playerData.atoms[atom] or 0),
+				rarity = "common",
+			})
+			return
+		end
+	end
+	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+		local needed = countPerUnit * quantity
+		if (playerData.slagInventory[residue] or 0) < needed then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Not enough slag " .. residue .. "! Need " .. needed .. ", have " .. (playerData.slagInventory[residue] or 0),
 				rarity = "common",
 			})
 			return
@@ -117,6 +128,10 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 		if playerData.atoms[atom] <= 0 then
 			playerData.atoms[atom] = nil
 		end
+	end
+	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+		local consumed = countPerUnit * quantity
+		playerData.slagInventory[residue] = playerData.slagInventory[residue] - consumed
 	end
 
 	-- Calculate revenue

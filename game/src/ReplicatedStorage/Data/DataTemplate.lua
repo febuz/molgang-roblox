@@ -97,6 +97,7 @@ return {
 		crushed = 0,     -- hammer-crushed ~1cm (kg)
 		ground = 0,      -- machine-ground ~1mm (kg)
 		powder = 0,      -- ball-milled <0.1mm (kg)
+		residue = 0,     -- recovered inert residue for aggregate sales (kg)
 	},
 	activeLeaches = {},  -- { {id, reagent, size, startTime, duration, yield}, ... }
 	completedLeaches = 0,

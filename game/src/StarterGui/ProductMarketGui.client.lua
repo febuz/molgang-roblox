@@ -148,6 +148,7 @@ sellAllBtn.MouseButton1Click:Connect(function()
 		ok, playerData = pcall(function() return dataRemote:InvokeServer() end)
 	end
 	local atoms = ok and type(playerData) == "table" and playerData.atoms or {}
+	local slagInventory = ok and type(playerData) == "table" and playerData.slagInventory or {}
 	for _, product in ipairs(ProductMarket.Products) do
 		local r = Remotes:FindFirstChild("RequestSellProduct")
 		local maxQuantity = math.huge
@@ -155,6 +156,10 @@ sellAllBtn.MouseButton1Click:Connect(function()
 		for atom, countPerUnit in pairs(product.requiredAtoms) do
 			hasRequirements = true
 			maxQuantity = math.min(maxQuantity, math.floor((atoms[atom] or 0) / countPerUnit))
+		end
+		for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+			hasRequirements = true
+			maxQuantity = math.min(maxQuantity, math.floor((slagInventory[residue] or 0) / countPerUnit))
 		end
 		if r and hasRequirements and maxQuantity > 0 then
 			r:FireServer(product.id, math.min(maxQuantity, 1000))
@@ -229,6 +234,9 @@ for _, product in ipairs(ProductMarket.Products) do
 	local atomStr = ""
 	for atom, count in pairs(product.requiredAtoms) do
 		atomStr = atomStr .. count .. atom .. " "
+	end
+	for residue, count in pairs(product.requiredSlag or {}) do
+		atomStr = atomStr .. count .. " slag " .. residue .. " "
 	end
 	local atomL = Instance.new("TextLabel")
 	atomL.Size = UDim2.new(0.15, 0, 0, 14)
