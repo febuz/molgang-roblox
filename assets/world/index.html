@@ -39,6 +39,14 @@
   #controls input[type=range] { width: 100%; accent-color: #7fe0d6; margin: 0; }
   #yield { margin-top: 9px; padding-top: 8px; border-top: 1px solid #26344a; font-size: 12px; }
   #yield b { color: #6ffcda; font-size: 15px; }
+  #elements { color: #cdb6ff; font-size: 11px; margin-top: 1px; }
+  #elpop { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 13;
+    display: none; min-width: 220px; text-align: center; padding: 12px 18px; border-radius: 12px;
+    background: rgba(14,18,26,.92); border: 2px solid #cdb6ff; box-shadow: 0 0 24px rgba(150,110,255,.4); }
+  #elpop .sym { font-size: 34px; font-weight: 700; line-height: 1; }
+  #elpop .nm { font-size: 14px; margin: 3px 0 5px; }
+  #elpop .ft { font-size: 11.5px; color: #b9c6d8; max-width: 300px; }
+  #elpop .ct { font-size: 10.5px; color: #7fe0a0; margin-top: 5px; }
 </style>
 </head>
 <body>
@@ -59,6 +67,12 @@
   <input type="range" id="c-pH" min="1" max="6" step="0.1" value="2.5">
   <div id="yield">V recovery: <b id="y-val">—</b> <span id="y-parts" style="color:#9fb0c6"></span></div>
 </div>
+<div id="elpop">
+  <div class="sym" id="ep-sym">—</div>
+  <div class="nm" id="ep-nm">—</div>
+  <div class="ft" id="ep-ft">—</div>
+  <div class="ct" id="ep-ct">—</div>
+</div>
 <div id="hud">
   <h1>MOLGANG · Moleculia</h1>
   <div id="status">loading map…</div>
@@ -67,6 +81,7 @@
   <div id="mp" style="color:#6ffcda;font-size:11px;margin-top:1px;">🌐 shared world…</div>
   <div id="reactor" style="color:#ff9a6f;font-size:11px;margin-top:1px;">⚗️ leach reactor…</div>
   <div id="xr" style="color:#c9b6ff;font-size:11px;margin-top:1px;">🕶️ checking for headset…</div>
+  <div id="elements">🧪 elements collected: 0 / 118</div>
   <div class="hint">Click to look · <b>W</b> forward / <b>S</b> back / <b>A</b>/<b>D</b> strafe
     · Shift to sprint · a floating archipelago in space — the Chemical Engineering
     Simulator continues from the Roblox teaser. Walk the Slakkenspoor line: the

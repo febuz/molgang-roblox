@@ -124,6 +124,8 @@ const CAMS = {
   street: { pos: [0, 1.8, 46], yaw: Math.PI, pitch: -0.02 },
   overview: { pos: [60, 150, 90], yaw: -2.485, pitch: -0.74 },       // aerial of the whole archipelago
   factory: { pos: [-90, 62, 44], yaw: -2.09, pitch: -0.64 },          // the Slakkenspoor processing line
+  biome: { pos: [0, 26, -95], yaw: Math.PI, pitch: -0.8 },            // the periodic table (element collection)
+  pt: { pos: [16.6, 1.8, -128], yaw: Math.PI, pitch: 0.02 },          // standing in the table (by Oxygen)
   plaza: { pos: [6, 1.8, 10], yaw: -0.6, pitch: 0.0 },
   plaza2: { pos: [6, 1.8, 30], yaw: Math.PI, pitch: -0.03 },  // looks toward plaza (for MP demo)
 };
@@ -643,6 +645,74 @@ function initControls() {
   }
 }
 
+// ---------- Periodic Table Biome: collect all 118 elements ----------
+// Elements are laid out as a real periodic table (from the game's Elements data).
+// Walk up to a tile to collect it; progress persists in localStorage. This is the
+// game's second core loop (mine/collect the 118 elements) continued on the web.
+let elements = [];
+const elementSprites = new Map();       // num -> { sprite, o }
+const COLLECT_KEY = 'molgang.collected';
+let collected = new Set();
+try { collected = new Set(JSON.parse(localStorage.getItem(COLLECT_KEY) || '[]')); } catch (e) { /* fresh */ }
+
+function elementTexture(o, isCollected) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const [r, gr, b] = o.rgb || [180, 190, 210];
+  g.fillStyle = `rgb(${r},${gr},${b})`; roundRect(g, 6, 6, 116, 116, 14); g.fill();
+  g.strokeStyle = isCollected ? '#7fffb0' : 'rgba(255,255,255,0.55)';
+  g.lineWidth = isCollected ? 7 : 3; roundRect(g, 6, 6, 116, 116, 14); g.stroke();
+  const lum = 0.299 * r + 0.587 * gr + 0.114 * b;    // dark text on light tiles
+  g.fillStyle = lum > 150 ? '#101216' : '#f4f8ff'; g.textAlign = 'center';
+  g.font = '20px system-ui'; g.fillText(String(o.num), 64, 34);
+  g.font = 'bold 52px system-ui'; g.fillText(o.ref, 64, 88);
+  if (isCollected) { g.fillStyle = '#7fffb0'; g.font = 'bold 32px system-ui'; g.fillText('✓', 102, 42); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function buildElements() {
+  for (const o of elements) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: elementTexture(o, collected.has(o.num)), transparent: true }));
+    sp.position.set(o.x, 1.8, o.z); sp.scale.set(2.1, 2.1, 1);
+    scene.add(sp);
+    elementSprites.set(o.num, { sprite: sp, o });
+  }
+  updateElementHUD();
+}
+function updateElementHUD() {
+  const el = document.getElementById('elements');
+  if (el) el.textContent = `🧪 elements collected: ${collected.size} / 118`;
+}
+let _popTimer = null;
+function showElementPopup(o) {
+  const pop = document.getElementById('elpop'); if (!pop) return;
+  const [r, g, b] = o.rgb || [180, 190, 210];
+  const sym = document.getElementById('ep-sym');
+  sym.textContent = o.ref; sym.style.color = `rgb(${r},${g},${b})`;
+  document.getElementById('ep-nm').textContent = `${o.num} · ${o.name}`;
+  document.getElementById('ep-ft').textContent = o.fact || '';
+  document.getElementById('ep-ct').textContent = `collected ${collected.size} / 118`;
+  pop.style.display = 'block';
+  clearTimeout(_popTimer); _popTimer = setTimeout(() => { pop.style.display = 'none'; }, 3200);
+}
+function checkCollect() {
+  if (!elements.length) return;
+  const px = player.pos.x, pz = player.pos.z;
+  for (const [num, rec] of elementSprites) {
+    if (collected.has(num)) continue;
+    const dx = rec.o.x - px, dz = rec.o.z - pz;
+    if (dx * dx + dz * dz < 6.25) {                  // within 2.5 m
+      collected.add(num);
+      try { localStorage.setItem(COLLECT_KEY, JSON.stringify([...collected])); } catch (e) { /* quota */ }
+      rec.sprite.material.map.dispose();
+      rec.sprite.material.map = elementTexture(rec.o, true);
+      rec.sprite.material.needsUpdate = true;
+      showElementPopup(rec.o);
+      updateElementHUD();
+    }
+  }
+}
+
 // ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
@@ -651,7 +721,7 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
   step(dt);
   updateAgents(dt);
-  if (now - lastStream > 180) { lastStream = now; stream(); }
+  if (now - lastStream > 180) { lastStream = now; stream(); checkCollect(); }
   const xr = renderer.xr.isPresenting;
   if (xr) {
     const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons();
@@ -682,6 +752,8 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     for (const o of objects) if (o.t === 'platform') buildPlatform(o);
     for (const z of (w.meta.zones || [])) buildZoneLabel(z);
     const line = (w.meta.processLine || []);
+    elements = objects.filter((o) => o.t === 'element');
+    buildElements();
     initControls();
     $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
       + `the web continuation of the Roblox teaser`;
