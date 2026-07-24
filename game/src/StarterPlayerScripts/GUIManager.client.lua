@@ -171,7 +171,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 	-- R = Toggle Recipe Book
 	if input.KeyCode == Enum.KeyCode.R then
-		toggleGui("RecipeBookGui")
+		local factoryGui = findScreenGui("FactoryBuilderGui")
+		if not (factoryGui and factoryGui.Enabled) then
+			toggleGui("RecipeBookGui")
+		end
 	end
 
 	-- S = Toggle Slag Processing
@@ -211,7 +214,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 	-- X = Toggle Product Exchange
 	if input.KeyCode == Enum.KeyCode.X then
-		toggleGui("ProductMarketGui")
+		local factoryGui = findScreenGui("FactoryBuilderGui")
+		if not (factoryGui and factoryGui.Enabled) then
+			toggleGui("ProductMarketGui")
+		end
 	end
 
 	-- / or Slash = Toggle Settings
