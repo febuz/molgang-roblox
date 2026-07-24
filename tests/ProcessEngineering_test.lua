@@ -19,6 +19,18 @@ local normal = ProcessEngineering.ValidateOperatingEnvelope({
 })
 assert(normal, "normal leaching conditions must be accepted")
 
+local invalidTemp, invalidTempCode = ProcessEngineering.ValidateOperatingEnvelope({
+	temperature = math.huge, pressure = 101.325, pH = 7, flowRate = 10,
+})
+assert(not invalidTemp and invalidTempCode == "INVALID_TEMPERATURE", "infinite temperature must trip the interlock")
+
+local invalidPH, invalidPHCode = ProcessEngineering.ValidateOperatingEnvelope({
+	temperature = 25, pressure = 101.325, pH = -math.huge, flowRate = 10,
+})
+assert(not invalidPH and invalidPHCode == "INVALID_PH", "infinite pH must trip the interlock")
+assert(ProcessEngineering.ReagentPHFactor({pH = 1}, math.huge) == 0.25,
+	"invalid pH must not influence reagent selectivity")
+
 local acid = {pH = 1}
 assert(ProcessEngineering.ReagentPHFactor(acid, 1) == 1, "on-setpoint acid must be full strength")
 assert(ProcessEngineering.ReagentPHFactor(acid, 7) < 1, "off-setpoint acid must lose selectivity")
@@ -41,4 +53,4 @@ assert(pipeline.lossKg >= -0.001 and pipeline.lossKg <= 0.001,
 	"full slag pipeline must conserve mass")
 assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
 
-print("Process Engineering Tests: 11 passed, 0 failed")
+print("Process Engineering Tests: 14 passed, 0 failed")

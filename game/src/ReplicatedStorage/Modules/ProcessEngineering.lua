@@ -19,6 +19,10 @@
 
 local ProcessEngineering = {}
 
+local function isFiniteNumber(value)
+	return type(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
 -- ═══════════════════════════════════════════════
 -- CONSTANTS
 -- ═══════════════════════════════════════════════
@@ -289,6 +293,18 @@ function ProcessEngineering.ValidateOperatingEnvelope(state)
 	if not state then
 		return false, "NO_STATE", "Process state is unavailable."
 	end
+	if not isFiniteNumber(state.temperature) then
+		return false, "INVALID_TEMPERATURE", "Interlock: temperature reading is invalid."
+	end
+	if not isFiniteNumber(state.pressure) then
+		return false, "INVALID_PRESSURE", "Interlock: pressure reading is invalid."
+	end
+	if not isFiniteNumber(state.flowRate) then
+		return false, "INVALID_FLOW", "Interlock: flow reading is invalid."
+	end
+	if not isFiniteNumber(state.pH) then
+		return false, "INVALID_PH", "Interlock: pH reading is invalid."
+	end
 	if state.temperature > 120 then
 		return false, "HIGH_TEMPERATURE", "Interlock: cool the leach tank below 120°C."
 	end
@@ -313,7 +329,7 @@ end
 -- Approximate concentration control: a reagent only performs at its rated
 -- selectivity when the tank pH is close to its operating pH.
 function ProcessEngineering.ReagentPHFactor(reagent, pH)
-	if not reagent or type(pH) ~= "number" then return 0.25 end
+	if not reagent or not isFiniteNumber(pH) then return 0.25 end
 	local target = reagent.pH or 7
 	local deviation = math.abs(pH - target)
 	return math.clamp(1 - deviation / 6, 0.25, 1)
