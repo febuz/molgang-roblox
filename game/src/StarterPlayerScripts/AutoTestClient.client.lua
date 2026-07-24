@@ -120,11 +120,43 @@ end
 
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
-		local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")
-		check("Start Chemistry Quiz is wired", quizStart.Visible and quizStart.Active and quizRemote ~= nil,
-			"quiz button or RequestQuizStart remote is missing")
+	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")
+	check("Start Chemistry Quiz is wired", quizStart.Visible and quizStart.Active and quizRemote ~= nil,
+		"quiz button or RequestQuizStart remote is missing")
+	if quizRemote and quizStart.Visible and quizStart.Active then
+		local quizGui = findScreenGui("QuizGui")
+		local announceEvent = ReplicatedStorage.Remotes:FindFirstChild("ServerAnnounce")
+		local gotQuestion = false
+		local announceConnection = announceEvent and announceEvent.OnClientEvent:Connect(function(data)
+			if type(data) == "table" and type(data.quizData) == "table" then
+				gotQuestion = true
+			end
+		end)
+		if quizGui then
+			quizGui.Enabled = false
+		end
+		dashboard.Enabled = true
+		quizStart:Activate()
+		task.wait(0.8)
+		if announceConnection then
+			announceConnection:Disconnect()
+		end
+		check("Start Chemistry Quiz receives first question", gotQuestion,
+			"RequestQuizStart produced no ServerAnnounce.quizData response")
+		check("Start Chemistry Quiz opens quiz modal", quizGui ~= nil and quizGui.Enabled,
+			"QuizGui did not become visible after the server response")
+		if quizRemote then
+			local cancelRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizCancel")
+			if cancelRemote then
+				cancelRemote:FireServer()
+			end
+		end
+		if quizGui then
+			quizGui.Enabled = false
+		end
+	end
 else
-		check("Start Chemistry Quiz is wired", false, "quiz start button not found")
+	check("Start Chemistry Quiz is wired", false, "quiz start button not found")
 end
 
 local slagGui = findScreenGui("SlagProcessingGui")
