@@ -224,6 +224,41 @@ else
 	check("Modal menus are mutually exclusive", false, "DashboardGui or QuizGui is missing")
 end
 
+-- Probe every modal lane member, not just the two menus above. This catches a
+-- newly added GUI that forgot to register with GuiCoordinator and therefore
+-- can remain above another menu and swallow its input.
+local modalNames = {
+	"DashboardGui", "PeriodicTableGui", "RecipeBookGui", "InventoryGui", "SettingsGui",
+	"AchievementsGui", "LeaderboardGui", "SlagProcessingGui", "FertilizerGui",
+	"FactoryBuilderGui", "ResearchGui", "AtomTradeGui", "ProductMarketGui",
+	"MarketBiddingGui", "MiningGui", "ProcessControlGui", "BubbleTeaGui",
+	"SuperheroGui", "QuantumRacingGui", "FeedbackGui", "MahjongGui", "GuildGui",
+	"WalletGui", "NPCDialogueGui", "MiniGameGui", "QuizGui", "TutorialGui",
+}
+local modalGuis = {}
+for _, guiName in ipairs(modalNames) do
+	local modalGui = findScreenGui(guiName)
+	if modalGui then
+		table.insert(modalGuis, modalGui)
+	end
+end
+for _, modalGui in ipairs(modalGuis) do
+	for _, otherGui in ipairs(modalGuis) do
+		otherGui.Enabled = false
+	end
+	modalGui.Enabled = true
+	task.wait(0.05)
+	local enabledCount = 0
+	for _, otherGui in ipairs(modalGuis) do
+		if otherGui.Enabled then
+			enabledCount = enabledCount + 1
+		end
+	end
+	check("Modal exclusivity: " .. modalGui.Name, enabledCount == 1,
+		"expected one enabled modal, found " .. tostring(enabledCount))
+	modalGui.Enabled = false
+end
+
 local result = string.format("%d/%d passed", passCount, passCount + failCount)
 player:SetAttribute("MOLGANGClientAutoTestResults", result)
 player:SetAttribute("MOLGANGClientAutoTestFailures", failCount)
