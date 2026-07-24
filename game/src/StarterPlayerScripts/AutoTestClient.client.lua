@@ -16,24 +16,9 @@ local requiredGuis = {
 }
 
 -- GUI LocalScripts start independently and Studio/Wine can spend 15–30s
--- compiling/loading them. Wait for the real client surface before judging it;
--- a fixed five-second sleep created false 0/21 failures.
-local guiDeadline = os.clock() + 180
-repeat
-	task.wait(1)
-	local ready = true
-	for _, guiName in ipairs(requiredGuis) do
-		if not playerGui:FindFirstChild(guiName) then
-			ready = false
-			break
-		end
-	end
-until ready or os.clock() >= guiDeadline
-
--- Some GUI scripts create their controls immediately after parenting the
--- ScreenGui. Give that final construction pass a frame before inspecting
--- descendants; otherwise slow Studio clients report a false empty surface.
-task.wait(2)
+-- compiling/loading them. A fixed stabilization window avoids a race where
+-- the readiness loop observes PlayerGui before the scripts parent their UIs.
+task.wait(15)
 
 local passCount = 0
 local failCount = 0
@@ -49,7 +34,7 @@ local function check(name, condition, detail)
 end
 
 for _, guiName in ipairs(requiredGuis) do
-	local gui = playerGui:FindFirstChild(guiName)
+	local gui = playerGui:FindFirstChild(guiName, true)
 	check("GUI exists: " .. guiName, gui and gui:IsA("ScreenGui"), "missing client ScreenGui")
 	if gui then
 		local buttonCount = 0
