@@ -482,6 +482,17 @@ RunService.Heartbeat:Connect(function()
 		rateLabel.TextColor3 = C.danger
 	end
 
+	-- Show the same operating-envelope decision that the server will enforce.
+	-- This turns a failed start into an actionable plant instruction.
+	local safe, _, safetyMessage = ProcessEng.ValidateOperatingEnvelope(processState)
+	if safe then
+		helpBar.Text = "SYSTEM SAFE  |  TEMP: Arrhenius rate  |  PRESSURE: gas solubility  |  pH: selectivity  |  FLOW: residence time"
+		helpBar.TextColor3 = C.accent
+	else
+		helpBar.Text = "INTERLOCK  |  " .. safetyMessage .. "  |  Adjust the gauges before starting a batch."
+		helpBar.TextColor3 = C.danger
+	end
+
 	-- Update mass balance summary
 	local balance = ProcessEng.CalculateSlagMassBalance("ground", "H2SO4", processState.temperature)
 
