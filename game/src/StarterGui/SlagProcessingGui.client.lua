@@ -583,6 +583,11 @@ yieldLabel = label(leachPanel, {Name="Yield", Size=UDim2.new(0.5,-10,0,40),
 local startLeachBtn = btn(leachPanel, {Name="StartLeach", Size=UDim2.new(0.94,0,0,40),
 	Position=UDim2.new(0.03,0,0,420), Text="START LEACHING", BgColor=C.green})
 
+-- Prevent accidental double-clicks from creating duplicate batches/costs.
+-- The server remains authoritative; this only closes the client-side race
+-- while the first request is travelling to the server.
+local startLeachBusy = false
+
 startLeachBtn.Activated:Connect(function()
 	playUIClick()
 	if not selectedReagent then
@@ -595,9 +600,22 @@ startLeachBtn.Activated:Connect(function()
 		leachTimeLabel.TextColor3 = C.red
 		return
 	end
+	if startLeachBusy then
+		leachTimeLabel.Text = "Leach request is processing — please wait."
+		leachTimeLabel.TextColor3 = C.textDim
+		return
+	end
 	local remote = Remotes:FindFirstChild("RequestStartLeach")
 	if remote then
+		startLeachBusy = true
+		startLeachBtn.Active = false
 		remote:FireServer(selectedReagent, selectedSize)
+		task.delay(0.75, function()
+			startLeachBusy = false
+			if startLeachBtn.Parent then
+				startLeachBtn.Active = true
+			end
+		end)
 	end
 	-- Flash button
 	startLeachBtn.BackgroundColor3 = Color3.fromRGB(100, 255, 180)
