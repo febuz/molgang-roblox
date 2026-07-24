@@ -167,6 +167,64 @@ Remotes.DayAdvanced.OnClientEvent:Connect(function(data)
 	})
 end)
 
+-- World events must be visible when their server-side modifiers change.
+-- Reuse the existing queue so event headlines cannot create overlapping GUI.
+local function formatWorldModifiers(effects)
+	local modifiers = {}
+	local labels = {
+		productionSpeedMult = "production speed",
+		productionBonusMult = "production rewards",
+		miningYieldMult = "mining yield",
+		leachingEfficiencyMult = "leach efficiency",
+		cropYieldMult = "crop yield",
+		researchSpeedMult = "research speed",
+		factoryOpCostMult = "factory costs",
+		moleculeBonusMultiplier = "molecule rewards",
+	}
+	for key, label in pairs(labels) do
+		local value = effects and effects[key]
+		if type(value) == "number" and value ~= 1 then
+			table.insert(modifiers, label .. " x" .. string.format("%.2f", value))
+		end
+	end
+	table.sort(modifiers)
+	return #modifiers > 0 and (" | " .. table.concat(modifiers, ", ")) or ""
+end
+
+if Remotes.WorldEventStarted then
+	Remotes.WorldEventStarted.OnClientEvent:Connect(function(data)
+		queueAnnouncement({
+			icon = "🌐",
+			message = "WORLD EVENT: " .. tostring(data.name or "Active event")
+				.. (data.hint and (" — " .. data.hint) or ""),
+			color = COLORS.legendary,
+		})
+	end)
+end
+
+if Remotes.WorldEventEnded then
+	Remotes.WorldEventEnded.OnClientEvent:Connect(function(data)
+		queueAnnouncement({
+			icon = "🌐",
+			message = "World event ended: " .. tostring(data.eventId or "event"),
+			color = COLORS.rare,
+		})
+	end)
+end
+
+if Remotes.WorldEffectsUpdate then
+	Remotes.WorldEffectsUpdate.OnClientEvent:Connect(function(data)
+		local modifiers = formatWorldModifiers(data and data.effects)
+		if modifiers ~= "" then
+			queueAnnouncement({
+				icon = "📊",
+				message = "Active world modifiers" .. modifiers,
+				color = COLORS.accent,
+			})
+		end
+	end)
+end
+
 -- Production complete
 Remotes.ProductionCycleComplete.OnClientEvent:Connect(function(data)
 	local msg = "Production: "
