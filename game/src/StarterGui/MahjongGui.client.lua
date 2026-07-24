@@ -18,6 +18,13 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 local MahjongGame = require(ReplicatedStorage.Modules.MahjongGame)
 
 -- COLOR PALETTE
@@ -467,7 +474,7 @@ function closeGame()
 	gameActive = false
 	gameState = nil
 	-- Re-enable dashboard
-	local dashboardGui = playerGui:FindFirstChild("DashboardGui")
+	local dashboardGui = findScreenGui("DashboardGui")
 	if dashboardGui then
 		dashboardGui.Enabled = true
 	end

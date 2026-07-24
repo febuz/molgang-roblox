@@ -28,6 +28,13 @@ local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AtomCollected = Remotes:WaitForChild("AtomCollected")
@@ -950,7 +957,7 @@ createCorner(ptButton, 10)
 createStroke(ptButton, COLORS.accent, 1.5)
 
 ptButton.Activated:Connect(function()
-	local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
+	local ptGui = findScreenGui("PeriodicTableGui")
 	if ptGui then
 		ptGui.Enabled = not ptGui.Enabled
 	end
@@ -1204,7 +1211,7 @@ end)
 --------------------------------------------------------------------------------
 
 walletBtn.Activated:Connect(function()
-	local wGui = playerGui:FindFirstChild("WalletGui")
+	local wGui = findScreenGui("WalletGui")
 	if wGui then
 		wGui.Enabled = not wGui.Enabled
 	end
@@ -1300,13 +1307,13 @@ if UserInputService.TouchEnabled then
 
 	-- Periodic Table button
 	createMobileBtn("PT", Color3.fromRGB(34, 197, 94), function()
-		local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
+		local ptGui = findScreenGui("PeriodicTableGui")
 		if ptGui then ptGui.Enabled = not ptGui.Enabled end
 	end)
 
 	-- Wallet button
 	createMobileBtn("MC", Color3.fromRGB(255, 215, 0), function()
-		local wGui = playerGui:FindFirstChild("WalletGui")
+		local wGui = findScreenGui("WalletGui")
 		if wGui then wGui.Enabled = not wGui.Enabled end
 	end)
 
@@ -1344,7 +1351,7 @@ if UserInputService.TouchEnabled then
 		c2.CornerRadius = UDim.new(0, 8)
 		c2.Parent = btn2
 		btn2.Activated:Connect(function()
-			local gui = playerGui:FindFirstChild(guiName)
+			local gui = findScreenGui(guiName)
 			if gui then gui.Enabled = not gui.Enabled end
 		end)
 	end

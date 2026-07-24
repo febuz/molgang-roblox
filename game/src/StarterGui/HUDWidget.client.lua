@@ -22,6 +22,13 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 -- Wait for remotes
 local PlayerDataLoaded = Remotes:WaitForChild("PlayerDataLoaded")
 local AtomCollected = Remotes:WaitForChild("AtomCollected")
@@ -251,7 +258,7 @@ local function createQuickBtn(text, color, guiTarget)
 		local now = os.clock()
 		if now - lastToggle < 0.15 then return end
 		lastToggle = now
-		local gui = playerGui:FindFirstChild(guiTarget)
+		local gui = findScreenGui(guiTarget)
 		if gui then
 			gui.Enabled = not gui.Enabled
 		end

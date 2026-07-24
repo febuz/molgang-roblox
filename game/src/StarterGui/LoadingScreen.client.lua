@@ -19,13 +19,20 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 -- StarterGui can recreate LocalScripts after a character reset. The intro is
 -- a session gate, not a respawn screen, so never show it a second time.
 local introGate = ReplicatedStorage:FindFirstChild("MOLGANGIntroGate")
 if introGate or playerGui:FindFirstChild("MOLGANGIntroGate")
 	 or playerGui:GetAttribute("MOLGANGIntroShown")
 	 or _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown")
-	 or playerGui:FindFirstChild("LoadingScreen") then
+	 or findScreenGui("LoadingScreen") then
 	return
 end
 -- Player attributes, script globals and PlayerGui can be reset/recreated with

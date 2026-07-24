@@ -177,7 +177,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 	-- M = Toggle Minimap (HUD element)
 	if input.KeyCode == Enum.KeyCode.M then
-		local hudGui = playerGui:FindFirstChild("HUDGui")
+		local hudGui = findScreenGui("HUDGui")
 		if hudGui then
 			local minimap = hudGui:FindFirstChild("MiniMap")
 			if minimap then

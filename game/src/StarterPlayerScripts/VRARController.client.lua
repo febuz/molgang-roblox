@@ -27,6 +27,13 @@ local Camera = workspace.CurrentCamera
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 -- ═══════════════════════════════════════════════
 -- DETECT MODE
 -- ═══════════════════════════════════════════════
@@ -324,7 +331,7 @@ function handleVRInteraction(part, interactionType)
 
 	local targetGui = guiMapping[interactionType]
 	if targetGui then
-		local gui = playerGui:FindFirstChild(targetGui)
+		local gui = findScreenGui(targetGui)
 		if gui then
 			gui.Enabled = true
 		end
@@ -399,7 +406,7 @@ if isTouch and not isVR then
 			arHint.Text = "AR Mode: Point camera at flat surface!"
 			arHint.TextScaled = true
 			arHint.Font = Enum.Font.GothamBold
-			arHint.Parent = playerGui:FindFirstChild("TeaserOverlay") or playerGui
+			arHint.Parent = findScreenGui("TeaserOverlay") or playerGui
 
 			local corner = Instance.new("UICorner")
 			corner.CornerRadius = UDim.new(0, 8)
