@@ -13,6 +13,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataStoreService = game:GetService("DataStoreService")
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 -- ═══════════════════════════════════════════════
 -- MARKET STATE
@@ -31,6 +33,22 @@ local BASE_PRICES = {
 	Carbon = 60,
 	Nitrogen = 70,
 }
+
+local function isAcceptedTransaction(player, action, itemName, quantity, offeredPrice)
+	local valid, parsedQuantity, currentPrice = TradeRules.Validate(
+		action, itemName, quantity, offeredPrice, BASE_PRICES
+	)
+	if not valid then return false end
+	local data = PlayerDataBridge.GetPlayerData(player.UserId)
+	if not data then return false end
+	if action == "buy" then
+		return (data.molCoins or 0) >= currentPrice * parsedQuantity
+	end
+	if action == "sell" then
+		return (data.atoms and data.atoms[itemName] or 0) >= parsedQuantity
+	end
+	return false
+end
 
 -- Market state tracking
 local marketState = {
@@ -151,6 +169,9 @@ end
 -- Register immediately during server startup. Waiting on the signal here
 -- would block this module until the first trade and lose initial history.
 Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemName, quantity, offeredPrice)
+	if not isAcceptedTransaction(player, action, itemName, quantity, offeredPrice) then
+		return
+	end
 	if action == "buy" then
 		recordTransaction(itemName, "buy", quantity)
 	elseif action == "sell" then
