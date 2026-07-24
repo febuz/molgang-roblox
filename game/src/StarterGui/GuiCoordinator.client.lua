@@ -11,7 +11,7 @@ local modalNames = {
 	InventoryGui = true, SettingsGui = true, AchievementsGui = true,
 	LeaderboardGui = true, SlagProcessingGui = true, FertilizerGui = true,
 	FactoryBuilderGui = true, ResearchGui = true, AtomTradeGui = true,
-	ProductMarketGui = true, MiningGui = true, ProcessControlGui = true,
+	ProductMarketGui = true, MarketBiddingGui = true, MiningGui = true, ProcessControlGui = true,
 	BubbleTeaGui = true, SuperheroGui = true, QuantumRacingGui = true,
 	FeedbackGui = true, MahjongGui = true, GuildGui = true,
 	MiniGameGui = true, ShortcutOverlay = true, QuestModal = true,
