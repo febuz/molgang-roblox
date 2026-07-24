@@ -585,6 +585,7 @@ local function buildNexusHub(zonesFolder: Folder)
 		Position = Vector3.new(0, 10, 0),
 		Size = Vector3.new(200, 6, 200),
 		Color = Color3.fromRGB(35, 40, 48),
+		Material = Enum.Material.Concrete,
 		TopGlow = true,
 		GlowColor = CONFIG.NEON_GREEN,
 	})
@@ -1283,8 +1284,8 @@ local function buildPeriodicTableBiome(zonesFolder: Folder)
 			Size = Vector3.new(8, 1.5, 100),
 			Position = Vector3.new(0, bridgeY, bridgeZ),
 			Color = Color3.fromRGB(40, 45, 55),
-			Material = Enum.Material.SmoothPlastic,
-			Transparency = 0.1,
+			Material = Enum.Material.Metal,
+			Transparency = 0.05,
 		})
 		-- Railing glow
 		if seg % 3 == 0 then
