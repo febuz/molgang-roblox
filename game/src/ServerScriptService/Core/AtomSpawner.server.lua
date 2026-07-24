@@ -23,6 +23,17 @@ local COLLECT_RANGE = 30                -- studs (anti-teleport cheat)
 local COLLECT_COOLDOWN = 0.5            -- seconden tussen collects
 local MAX_COLLECTS_PER_MINUTE = 20      -- rate limiter
 
+-- BubbleTeaBar.server.lua exposes active drink buffs via _G.GetPlayerBuff
+-- (Taro Milk Tea's "collectRange" buff, +50% by default). Guarded the same
+-- way QuizSystem.server.lua's quizHint check is, since Core script init
+-- order isn't guaranteed.
+local function getCollectRangeMultiplier(userId)
+	if _G.GetPlayerBuff then
+		return _G.GetPlayerBuff(userId, "collectRange")
+	end
+	return 1.0
+end
+
 -- Zone spawn areas (center position, radius)
 local SPAWN_ZONES = {
 	-- Periodic Table Biome (noord) — meeste atomen
@@ -336,7 +347,8 @@ local function onRequestCollect(player, atomName)
 	if not hrp then return end
 
 	local distance = (hrp.Position - atom.Position).Magnitude
-	if distance > COLLECT_RANGE then
+	local effectiveRange = COLLECT_RANGE * getCollectRangeMultiplier(player.UserId)
+	if distance > effectiveRange then
 		warn("[AtomSpawner] Collect te ver:", player.Name, distance, "studs")
 		return
 	end
