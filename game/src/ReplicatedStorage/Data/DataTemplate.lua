@@ -66,6 +66,12 @@ return {
 	-- Persistent relationship state for the walking NPC cast
 	npcTrust = {},
 
+	-- Persistent technology research progress and the currently running job
+	research = {
+		unlocked = {},
+		active = nil, -- {nodeId, startedAt, completesAt}
+	},
+
 	-- Operator control state for the active slag-processing line
 	processControl = {
 		temperature = 25,

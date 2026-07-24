@@ -46,6 +46,7 @@ local function corner(p, r) local c = Instance.new("UICorner"); c.CornerRadius =
 
 -- State
 local unlockedResearch = {}
+local activeResearch = nil
 -- Mark initially unlocked nodes
 for _, node in ipairs(ResearchTree.Nodes) do
 	if node.unlocked then unlockedResearch[node.id] = true end
@@ -243,6 +244,8 @@ for _, branchName in ipairs(branches) do
 		costL.Parent = card
 
 		-- Research button or status
+		local cardState = {card = card, name = nameL, node = node, button = nil, status = nil}
+		nodeCards[node.id] = cardState
 		if isUnlocked then
 			local doneL = Instance.new("TextLabel")
 			doneL.Size = UDim2.new(0.45, 0, 0, 24)
@@ -255,6 +258,7 @@ for _, branchName in ipairs(branches) do
 			doneL.Font = Enum.Font.GothamBold
 			doneL.Parent = card
 			corner(doneL, 4)
+			cardState.status = doneL
 		elseif canResearch then
 			local resBtn = Instance.new("TextButton")
 			resBtn.Size = UDim2.new(0.45, 0, 0, 24)
@@ -266,33 +270,12 @@ for _, branchName in ipairs(branches) do
 			resBtn.TextScaled = true
 			resBtn.Parent = card
 			corner(resBtn, 4)
+			cardState.button = resBtn
 
 			resBtn.MouseButton1Click:Connect(function()
-				-- Client-side unlock (in production: validate server-side)
-				unlockedResearch[node.id] = true
-				resBtn.Text = "RESEARCHING..."
-				resBtn.BackgroundColor3 = C.gold
-				-- Simulate research time (scaled down for teaser)
-				task.delay(math.min(node.researchTime / 60, 5), function()
-					card.BackgroundColor3 = C.nodeUnlocked
-					nameL.TextColor3 = C.accent
-					resBtn:Destroy()
-					local doneL = Instance.new("TextLabel")
-					doneL.Size = UDim2.new(0.45, 0, 0, 24)
-					doneL.Position = UDim2.new(0.52, 0, 0, 86)
-					doneL.BackgroundColor3 = C.accent
-					doneL.BackgroundTransparency = 0.3
-					doneL.Text = "UNLOCKED"
-					doneL.TextColor3 = Color3.new(0, 0, 0)
-					doneL.TextScaled = true
-					doneL.Font = Enum.Font.GothamBold
-					doneL.Parent = card
-					corner(doneL, 4)
-
-					-- Update progress
-					local done, total, pct = ResearchTree.GetProgress(unlockedResearch)
-					progressL.Text = done .. "/" .. total .. " (" .. pct .. "%)"
-				end)
+				resBtn.Text = "REQUESTING..."
+				resBtn.Active = false
+				Remotes.RequestStartResearch:FireServer(node.id)
 			end)
 		else
 			local lockedL = Instance.new("TextLabel")
@@ -316,7 +299,6 @@ for _, branchName in ipairs(branches) do
 			line.Parent = column
 		end
 
-		nodeCards[node.id] = card
 	end
 
 	-- Update canvas size
@@ -326,5 +308,91 @@ end
 -- Initial progress
 local done, total, pct = ResearchTree.GetProgress(unlockedResearch)
 progressL.Text = done .. "/" .. total .. " researched (" .. pct .. "%) — 3 already unlocked! Click RESEARCH to unlock more."
+
+local function refreshProgress()
+	local researched, totalNodes, percent = ResearchTree.GetProgress(unlockedResearch)
+	progressL.Text = researched .. "/" .. totalNodes .. " researched (" .. percent .. "%)"
+end
+
+local function markUnlocked(nodeId)
+	local state = nodeCards[nodeId]
+	if not state then return end
+	unlockedResearch[nodeId] = true
+	state.card.BackgroundColor3 = C.nodeUnlocked
+	state.name.TextColor3 = C.accent
+	if state.button then
+		state.button:Destroy()
+		state.button = nil
+	end
+	if not state.status then
+		local doneLabel = Instance.new("TextLabel")
+		doneLabel.Size = UDim2.new(0.45, 0, 0, 24)
+		doneLabel.Position = UDim2.new(0.52, 0, 0, 86)
+		doneLabel.BackgroundColor3 = C.accent
+		doneLabel.BackgroundTransparency = 0.3
+		doneLabel.Text = "UNLOCKED"
+		doneLabel.TextColor3 = Color3.new(0, 0, 0)
+		doneLabel.TextScaled = true
+		doneLabel.Font = Enum.Font.GothamBold
+		doneLabel.Parent = state.card
+		corner(doneLabel, 4)
+		state.status = doneLabel
+	end
+	refreshProgress()
+end
+
+Remotes.ResearchState.OnClientEvent:Connect(function(data)
+	if type(data) ~= "table" then return end
+	if type(data.unlocked) == "table" then
+		for nodeId, value in pairs(data.unlocked) do
+			if value then markUnlocked(nodeId) end
+		end
+	end
+	activeResearch = data.active
+	for nodeId, state in pairs(nodeCards) do
+		if state.button then
+			local isActive = activeResearch and activeResearch.nodeId == nodeId
+			state.button.Text = isActive and "RESEARCHING..." or (activeResearch and "BUSY" or "RESEARCH")
+			state.button.Active = not activeResearch
+		end
+	end
+end)
+
+Remotes.ResearchStarted.OnClientEvent:Connect(function(data)
+	activeResearch = data
+	local state = data and nodeCards[data.nodeId]
+	if state and state.button then
+		state.button.Text = "RESEARCHING..."
+		state.button.Active = false
+		state.card.BackgroundColor3 = C.gold
+	end
+end)
+
+Remotes.ResearchCompleted.OnClientEvent:Connect(function(data)
+	activeResearch = nil
+	if data and data.nodeId then markUnlocked(data.nodeId) end
+	for _, state in pairs(nodeCards) do
+		if state.button then
+			state.button.Text = "RESEARCH"
+			state.button.Active = true
+		end
+	end
+end)
+
+Remotes.ResearchFailed.OnClientEvent:Connect(function(data)
+	for _, state in pairs(nodeCards) do
+		if state.button and state.button.Text == "REQUESTING..." then
+			state.button.Text = "RESEARCH"
+			state.button.Active = true
+		end
+	end
+	warn("[MOLGANG] Research request rejected: " .. tostring(data and data.reason or "unknown reason"))
+end)
+
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if screenGui.Enabled then
+		Remotes.RequestResearchInfo:FireServer()
+	end
+end)
 
 print("[MOLGANG] ResearchGui loaded — T key, 5 branches, " .. #ResearchTree.Nodes .. " technologies")

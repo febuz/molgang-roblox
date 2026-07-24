@@ -88,6 +88,11 @@ local serverToClientEvents = {
 	-- Diplomacy System
 	"DiplomacyResult",       -- {success, treatyId, error, message} treaty outcome
 	"DiplomacyExpired",      -- {treaties[]} expired treaty ids
+	-- Research and technology
+	"ResearchState",         -- {unlocked, active}
+	"ResearchStarted",       -- {nodeId, name, completesAt, duration}
+	"ResearchCompleted",     -- {nodeId, name, unlocked}
+	"ResearchFailed",        -- {reason}
 }
 
 -- ══════════════════════════════════════════════
@@ -157,6 +162,9 @@ local clientToServerEvents = {
 	"RequestAcceptTreaty",     -- {proposalId} accept a pending treaty proposal
 	"RequestRejectTreaty",     -- {proposalId} reject a pending treaty proposal
 	"RequestDiplomacyStatus",  -- {} get own treaties and pending proposals
+	-- Research and technology
+	"RequestResearchInfo",     -- {} load persistent research state
+	"RequestStartResearch",    -- {nodeId} start one validated research job
 	-- Logistics System
 	"RequestBuildRoute",       -- {fromId, toId, modeId} build a transport route
 	"RequestUpgradeRoute",     -- {routeId} upgrade route to next level
