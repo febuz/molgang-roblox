@@ -122,6 +122,27 @@ if slagGui then
 			local crushRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestCrushSlag")
 			check("Free Hammer is wired", hammer.Visible and hammer.Active and label ~= nil and crushRemote ~= nil,
 				"HammerBtn, CrushLabel or RequestCrushSlag remote is missing")
+			if crushRemote and hammer.Visible and hammer.Active then
+				local gotServerResponse = false
+				local progressEvent = ReplicatedStorage.Remotes:FindFirstChild("SlagCrushProgress")
+				local announceEvent = ReplicatedStorage.Remotes:FindFirstChild("ServerAnnounce")
+				local progressConnection = progressEvent and progressEvent.OnClientEvent:Connect(function()
+					gotServerResponse = true
+				end)
+				local announceConnection = announceEvent and announceEvent.OnClientEvent:Connect(function()
+					gotServerResponse = true
+				end)
+				hammer:Activate()
+				task.wait(0.6)
+				if progressConnection then
+					progressConnection:Disconnect()
+				end
+				if announceConnection then
+					announceConnection:Disconnect()
+				end
+				check("Free Hammer receives server response", gotServerResponse,
+					"Hammer activation produced no SlagCrushProgress or ServerAnnounce event")
+			end
 		else
 			check("Free Hammer responds", false, "HammerBtn not found")
 		end
