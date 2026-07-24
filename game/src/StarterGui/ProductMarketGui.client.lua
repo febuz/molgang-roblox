@@ -139,11 +139,25 @@ saCorner.Parent = sellAllBtn
 
 sellAllBtn.MouseButton1Click:Connect(function()
 	playUIClick()
-	-- Sell 1 of each product that player has atoms for
+	-- requiredAtoms is a dictionary, so #requiredAtoms is always zero in
+	-- Luau. Calculate the current sellable quantity from the live inventory;
+	-- the server still performs the authoritative ownership check.
+	local dataRemote = Remotes:FindFirstChild("GetPlayerData")
+	local ok, playerData = false, nil
+	if dataRemote then
+		ok, playerData = pcall(function() return dataRemote:InvokeServer() end)
+	end
+	local atoms = ok and type(playerData) == "table" and playerData.atoms or {}
 	for _, product in ipairs(ProductMarket.Products) do
 		local r = Remotes:FindFirstChild("RequestSellProduct")
-		if r and #product.requiredAtoms > 0 then
-			r:FireServer(product.id, 1)
+		local maxQuantity = math.huge
+		local hasRequirements = false
+		for atom, countPerUnit in pairs(product.requiredAtoms) do
+			hasRequirements = true
+			maxQuantity = math.min(maxQuantity, math.floor((atoms[atom] or 0) / countPerUnit))
+		end
+		if r and hasRequirements and maxQuantity > 0 then
+			r:FireServer(product.id, math.min(maxQuantity, 1000))
 		end
 	end
 	sellAllBtn.Text = "SELLING..."
