@@ -949,7 +949,7 @@ ptButton.Parent = screenGui
 createCorner(ptButton, 10)
 createStroke(ptButton, COLORS.accent, 1.5)
 
-ptButton.MouseButton1Click:Connect(function()
+ptButton.Activated:Connect(function()
 	local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
 	if ptGui then
 		ptGui.Enabled = not ptGui.Enabled
@@ -1199,7 +1199,7 @@ end)
 -- WALLET BUTTON HANDLER
 --------------------------------------------------------------------------------
 
-walletBtn.MouseButton1Click:Connect(function()
+walletBtn.Activated:Connect(function()
 	local wGui = playerGui:FindFirstChild("WalletGui")
 	if wGui then
 		wGui.Enabled = not wGui.Enabled
@@ -1290,7 +1290,7 @@ if UserInputService.TouchEnabled then
 		corner.CornerRadius = UDim.new(0, 10)
 		corner.Parent = btn
 
-		btn.MouseButton1Click:Connect(callback)
+		btn.Activated:Connect(callback)
 		return btn
 	end
 
@@ -1339,7 +1339,7 @@ if UserInputService.TouchEnabled then
 		local c2 = Instance.new("UICorner")
 		c2.CornerRadius = UDim.new(0, 8)
 		c2.Parent = btn2
-		btn2.MouseButton1Click:Connect(function()
+		btn2.Activated:Connect(function()
 			local gui = playerGui:FindFirstChild(guiName)
 			if gui then gui.Enabled = not gui.Enabled end
 		end)
