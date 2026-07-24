@@ -52,6 +52,7 @@ local playerLeaches = {}          -- {userId = {leachId = leachState}}
 local playerCrushState = {}       -- {userId = {lastHitTime, currentHits, targetSize}}
 local playerProcessState = {}     -- {userId = ProcessEngineering.CreateProcessState()}
 local recentLeachRequests = {}    -- {userId = {key, timestamp}}; duplicate guard
+local lastProcessControlUpdate = {} -- {userId = monotonic timestamp}; request guard
 local leachIdCounter = 0
 
 -- Get player's process control settings
@@ -653,6 +654,11 @@ end)
 
 Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperature, pressure, pH, flowRate)
 	local userId = player.UserId
+	local now = os.clock()
+	if lastProcessControlUpdate[userId] and now - lastProcessControlUpdate[userId] < 0.25 then
+		return
+	end
+	lastProcessControlUpdate[userId] = now
 	local state = getProcessState(userId)
 
 	-- Validate and clamp inputs
@@ -700,6 +706,7 @@ Players.PlayerRemoving:Connect(function(player)
 	-- Only clean up runtime state
 	playerCrushState[userId] = nil
 	recentLeachRequests[userId] = nil
+	lastProcessControlUpdate[userId] = nil
 end)
 
 print("[MOLGANG] SlagProcessing initialized — BOF steel slag chemistry active at Slakkenspoor")
