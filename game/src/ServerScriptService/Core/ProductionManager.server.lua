@@ -33,7 +33,7 @@ local factoryElapsed = {} -- active-session elapsed time per player
 -- ═══════════════════════════════════════════════
 
 local function produceAtoms(facilities, playerData)
-	if not facilities or facilities.mines == 0 then return {} end
+	if not facilities or ((facilities.mines or 0) == 0 and (facilities.starterBenches or 0) == 0) then return {} end
 
 	local produced = {}
 
@@ -171,6 +171,7 @@ task.spawn(function()
 			local playerData = PlayerDataBridge.GetPlayerData(player.UserId)
 			if playerData then
 				local facilities = {
+					starterBenches = playerData.facilities and playerData.facilities.starterBenches or 0,
 					mines = playerData.facilities and playerData.facilities.mines or 0,
 					factories = playerData.facilities and playerData.facilities.factories or 0,
 					researchLabs = playerData.facilities and playerData.facilities.researchLabs or 0,
@@ -188,7 +189,7 @@ task.spawn(function()
 
 				-- Mines run every minute; factories only when their configured
 				-- 120-second cycle becomes due.
-				if facilities.mines > 0 or factoryCycles > 0 then
+				if facilities.starterBenches > 0 or facilities.mines > 0 or factoryCycles > 0 then
 					runProductionCycle(player, playerData, facilities, factoryCycles)
 				end
 			end

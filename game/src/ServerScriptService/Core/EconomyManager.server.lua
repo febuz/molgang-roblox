@@ -68,6 +68,13 @@ local function loadPlayerData(player)
 				data[key] = value
 			end
 		end
+		-- Facilities are nested, so merge newly introduced facility counters too.
+		data.facilities = data.facilities or {}
+		for key, value in pairs(template.facilities) do
+			if data.facilities[key] == nil then
+				data.facilities[key] = value
+			end
+		end
 		playerData[userId] = data
 	else
 		-- New player: use template

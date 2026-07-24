@@ -19,6 +19,7 @@ return {
 
 	-- Facilities
 	facilities = {
+		starterBenches = 0,
 		mines = 0,
 		factories = 0,
 		researchLabs = 0,

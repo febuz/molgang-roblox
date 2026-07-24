@@ -63,6 +63,7 @@ end
 -- Player facilities data structure
 function Facilities.CreatePlayerFacilities()
 	return {
+		starterBenches = 0,
 		mines = 0,
 		factories = 0,
 		researchLabs = 0,
@@ -73,7 +74,8 @@ end
 -- Calculate total production per cycle
 function Facilities.CalculateProduction(facilities)
 	local production = {
-		atoms = (facilities.mines or 0) * FACILITY_TYPES.Mine.productionRate,
+		atoms = (facilities.starterBenches or 0) * FACILITY_TYPES["Starter Bench"].productionRate
+			+ (facilities.mines or 0) * FACILITY_TYPES.Mine.productionRate,
 		molecules = (facilities.factories or 0) * FACILITY_TYPES.Factory.productionRate,
 		research = (facilities.researchLabs or 0) * FACILITY_TYPES["Research Lab"].productionRate,
 		storageBonus = (facilities.offices or 0) * 50,  -- 50 extra slots per office
