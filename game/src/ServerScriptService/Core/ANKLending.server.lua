@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -23,7 +24,7 @@ local ANK_FEE = 0.01
 local MIN_LOAN = 100
 local MAX_LOAN = 10000
 local MAX_ACTIVE_LOANS = 3
-local GAME_DAY_SECONDS = 3600
+local GAME_DAY_SECONDS = GameClock.DAY_SECONDS
 
 -- ══════════════════════════════════════════════
 -- STATE

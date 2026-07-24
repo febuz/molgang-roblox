@@ -20,6 +20,7 @@ local Players = game:GetService("Players")
 local FertilizerTrack = require(ReplicatedStorage.Modules.FertilizerTrack)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 
 -- ═══════════════════════════════════════════════
 -- CONFIGURATION
@@ -27,7 +28,7 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 local MAX_PLOTS = 4                  -- farm plots per player
 local GROWTH_CHECK_INTERVAL = 30     -- seconds between growth ticks
-local GAME_DAY_SECONDS = 120         -- 1 game day = 2 real minutes (for teaser)
+local GAME_DAY_SECONDS = GameClock.DAY_SECONDS
 local SOIL_TEST_COST = 20            -- MolCoins per soil test
 
 local function isValidPlotId(plotId)

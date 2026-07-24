@@ -16,6 +16,7 @@ local ProfitLoss = require(ReplicatedStorage.Modules.ProfitLoss)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 
 -- ═══════════════════════════════════════════════
 -- STATE
@@ -181,7 +182,7 @@ end)
 -- Periodic price broadcast + day advancement
 task.spawn(function()
 	while true do
-		task.wait(120)  -- every 2 real minutes = 1 game day
+		task.wait(GameClock.DAY_SECONDS)  -- shared clock: 10 real minutes = 1 game day
 		currentGameDay = currentGameDay + 1
 		local prices = ProductMarket.GetAllPrices(currentGameDay)
 

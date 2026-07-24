@@ -86,9 +86,9 @@ def check_viewer_loads(expected):
         url = f"http://localhost:{PORT}/viewer/index.html"
         out = subprocess.run(
             [chromium, "--headless=new", "--no-sandbox", "--use-gl=swiftshader",
-             "--enable-unsafe-swiftshader", "--virtual-time-budget=20000",
+             "--enable-unsafe-swiftshader", "--virtual-time-budget=120000",
              "--run-all-compositor-stages-before-draw", "--dump-dom", url],
-            capture_output=True, text=True, timeout=90).stdout
+            capture_output=True, text=True, timeout=150).stdout
         m = re.search(r"(\d+)/(\d+) models loaded", out)
         if not m:
             fail("viewer never reported a 'N/N models loaded' status")

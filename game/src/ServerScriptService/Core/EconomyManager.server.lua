@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
@@ -398,7 +399,7 @@ end)
 
 -- Track day changes per player
 local lastDayAdvance = {} -- {userId = os.time() of last advance}
-local DAY_ADVANCE_INTERVAL = 600  -- 10 minutes = 1 game day
+local DAY_ADVANCE_INTERVAL = GameClock.DAY_SECONDS
 
 task.spawn(function()
 	while true do

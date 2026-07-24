@@ -3,8 +3,8 @@
   "files": [
     {
       "path": "MOLGANG_OTAP_Test.rbxl",
-      "bytes": 580758,
-      "sha256": "75d6ba7bb5b43c4df5d3de15593ab755f4418174b710183f7cfdb73b138675a9"
+      "bytes": 581135,
+      "sha256": "f0625ffffe1dd60a6af5386415b9899dc2c7b599a1b8424150d8f98d504d4622"
     },
     {
       "path": "assets/models/anvil_hammer.fbx",
@@ -803,6 +803,406 @@
     },
     {
       "path": "assets/models/welcome_arch.glb",
+      "bytes": 36804,
+      "sha256": "426ca952a34835e7ba53a2060a6651ed27803296f9d04de09994f0d3bc42178c"
+    },
+    {
+      "path": "deploy/molgang/models/anvil_hammer.glb",
+      "bytes": 15152,
+      "sha256": "437cc9db4e3b5f70afbcebe05fb9fff6727f31b51ee9bd30cf0df46ff048d4ad"
+    },
+    {
+      "path": "deploy/molgang/models/ball_mill.glb",
+      "bytes": 22780,
+      "sha256": "8f90fce91a9fbac5a8d0eec305490ad7a4a6fd7e0c96092820212f4ef37178d7"
+    },
+    {
+      "path": "deploy/molgang/models/banner_pole.glb",
+      "bytes": 300128,
+      "sha256": "343357d1a24109ddd785fc6faf18b450c49f423da701fb3e1d1af7823a6487f8"
+    },
+    {
+      "path": "deploy/molgang/models/beaker_1L.glb",
+      "bytes": 30852,
+      "sha256": "a7e93789f1be41420054e25c2fa72c5381965c9aa71e86919a859c6f70f85a59"
+    },
+    {
+      "path": "deploy/molgang/models/boba_brewing_station.glb",
+      "bytes": 68384,
+      "sha256": "f2a63899b5a14ae42c9a3e8f398cad099555ab74a856400418806932af3c2582"
+    },
+    {
+      "path": "deploy/molgang/models/boba_tea_cup.glb",
+      "bytes": 444376,
+      "sha256": "32fc195c84e95b4f3e4c14301fa36cda89fee5b5779d0194f07fc5f778837a06"
+    },
+    {
+      "path": "deploy/molgang/models/bof_converter.glb",
+      "bytes": 48408,
+      "sha256": "208994fb8f3b0450e8e4c3ff28d70f81ef92508ed7d5c41bf7d09f2cfb5f8b38"
+    },
+    {
+      "path": "deploy/molgang/models/bunsen_burner.glb",
+      "bytes": 32972,
+      "sha256": "fcf8bd08412b933d07acbc0f036bda8bf806c93defc2d4e1503d7000d6e1d96e"
+    },
+    {
+      "path": "deploy/molgang/models/cafe_bar_stool.glb",
+      "bytes": 132728,
+      "sha256": "1dda26d5a492a75b448d55feab0a809e7273e8ecbbf3451236d1183e6c85cd54"
+    },
+    {
+      "path": "deploy/molgang/models/cafe_bistro_table.glb",
+      "bytes": 29276,
+      "sha256": "5e22ebb201eeaedd78120540345be87de4b5908e0f8d2c923ec27d26569a365b"
+    },
+    {
+      "path": "deploy/molgang/models/cafe_counter.glb",
+      "bytes": 10048,
+      "sha256": "6759541a03f733d8fa081fa4c1956af8a047ec8f86d4403f04c1776ab65fb00e"
+    },
+    {
+      "path": "deploy/molgang/models/cafe_menu_board.glb",
+      "bytes": 27028,
+      "sha256": "34d055d7f340e1efe82f2b579a28bc32912833bdbd378529a73205c092547e6f"
+    },
+    {
+      "path": "deploy/molgang/models/cafe_planter.glb",
+      "bytes": 67488,
+      "sha256": "dfdac09f71fe6b5d9578fed18ba2ccc34723b25f33e5a6223ae6c32b28f58c34"
+    },
+    {
+      "path": "deploy/molgang/models/centrifugal_pump.glb",
+      "bytes": 41944,
+      "sha256": "d8506a30284c05e038c50f4d7c59a273821c8e61eb51eca73d2675c90dad058b"
+    },
+    {
+      "path": "deploy/molgang/models/centrifuge.glb",
+      "bytes": 20112,
+      "sha256": "c3e81c7e7d2529de622888c77f3fa8dcdbb2c36f937a3093ec6a1011e803455d"
+    },
+    {
+      "path": "deploy/molgang/models/combat_arena_floor.glb",
+      "bytes": 84708,
+      "sha256": "d25856efba0732711a2173bb27abb398b9e1313396cc155f5945b274e9c73e0a"
+    },
+    {
+      "path": "deploy/molgang/models/cone_crusher.glb",
+      "bytes": 45244,
+      "sha256": "31b8910318d953c73438b9e60be3bea02a6c5a6f30f35e8f588bfec89905d386"
+    },
+    {
+      "path": "deploy/molgang/models/conveyor_belt.glb",
+      "bytes": 45376,
+      "sha256": "7a3ea5ce4e6fe31ead24c15138b50ea47cfd0bbfef877272b8da386477f32212"
+    },
+    {
+      "path": "deploy/molgang/models/cooling_pit.glb",
+      "bytes": 10476,
+      "sha256": "8a1d35c2d46891145b062b3e808308ea63611894a8477ccecf4218545cdddeb3"
+    },
+    {
+      "path": "deploy/molgang/models/crate_stack.glb",
+      "bytes": 15484,
+      "sha256": "c6ff4d3a9dda66439920ab23692731b7952a9dc652471521bf0cc74fc65d7f74"
+    },
+    {
+      "path": "deploy/molgang/models/cyclone_separator.glb",
+      "bytes": 22364,
+      "sha256": "48e2e97da4f9ba2ffbed4c5e23bff2c2c234e808563c82cbc711800b7db3ac44"
+    },
+    {
+      "path": "deploy/molgang/models/diploma_frame.glb",
+      "bytes": 11068,
+      "sha256": "03b5eef8e883345ef42b1ca3e783383aa0a4c872471ef75cb044a6c8ee7ed80e"
+    },
+    {
+      "path": "deploy/molgang/models/directory_signpost.glb",
+      "bytes": 24228,
+      "sha256": "b098262de130648e343528d416b454d0822afde82dec576e5bbf0205b00b6027"
+    },
+    {
+      "path": "deploy/molgang/models/distillation_column.glb",
+      "bytes": 75784,
+      "sha256": "70411e6ab859e4ab8ce70716c9cdcc41af54ecafc2627b1f6ddfeec58102cd0d"
+    },
+    {
+      "path": "deploy/molgang/models/drill_rig.glb",
+      "bytes": 18828,
+      "sha256": "1ae81526838f03d08c7930dfb575f030789cd303db9047a9e9cfb0921ef11d36"
+    },
+    {
+      "path": "deploy/molgang/models/drink_display_fridge.glb",
+      "bytes": 60604,
+      "sha256": "20f427b5b126e7406a76dc3c7ec1cf70fa4981f54612165a9d4f439c9de2fafa"
+    },
+    {
+      "path": "deploy/molgang/models/erlenmeyer_flask.glb",
+      "bytes": 16728,
+      "sha256": "49c44eb6d33ce5e8c8f41a5966a5a6383252425fe406a704b9b5d8bab788a7a7"
+    },
+    {
+      "path": "deploy/molgang/models/excavator.glb",
+      "bytes": 11772,
+      "sha256": "c41a640365e49bd8a712fdd2ae045ca260d75b5e4146d2a40e9f847aaed69202"
+    },
+    {
+      "path": "deploy/molgang/models/filtration_press.glb",
+      "bytes": 30460,
+      "sha256": "435fbc90ff3418997004fe3eea9319f3f7e509bdedb80d513e0d545876d7b77d"
+    },
+    {
+      "path": "deploy/molgang/models/fume_hood.glb",
+      "bytes": 14784,
+      "sha256": "12af90237e2880cacba9a98204dadd17f6df4f651e5bfe016c3749969dc7a761"
+    },
+    {
+      "path": "deploy/molgang/models/gate_valve.glb",
+      "bytes": 99784,
+      "sha256": "db289fda519d7419b25b66971d740664f297d911286cacd783b097b9039eb257"
+    },
+    {
+      "path": "deploy/molgang/models/graduated_cylinder.glb",
+      "bytes": 559064,
+      "sha256": "00fe735c24400874cc5adb2db0b6f60664eaed8bf5da66abe3e9d78813074d6d"
+    },
+    {
+      "path": "deploy/molgang/models/haul_truck.glb",
+      "bytes": 29680,
+      "sha256": "1d708b0b11a0cfa6aaa783e84a77baaa051c2f1cdecd1393e377e42a62e24614"
+    },
+    {
+      "path": "deploy/molgang/models/heat_exchanger.glb",
+      "bytes": 54820,
+      "sha256": "f757fed0eb1e01676625021ce3924b91b2375cb6d29f9f01b90704a8358de26c"
+    },
+    {
+      "path": "deploy/molgang/models/hero_shield_generator.glb",
+      "bytes": 148700,
+      "sha256": "557082f2890e4344c320b9ff038694690e4751bd1360ce98062d0893454a55b3"
+    },
+    {
+      "path": "deploy/molgang/models/holo_map_stand.glb",
+      "bytes": 317056,
+      "sha256": "d69f33123eeea8cae96f0e1674d9f2513d492c033bfa549be936ce4f1929fe08"
+    },
+    {
+      "path": "deploy/molgang/models/info_kiosk.glb",
+      "bytes": 15172,
+      "sha256": "e730ba946bb82be6c5e6a8fd6b1c5786d8f358acaa286e5aad96cf6938efdeaa"
+    },
+    {
+      "path": "deploy/molgang/models/jaw_crusher.glb",
+      "bytes": 18828,
+      "sha256": "4e9386bcea3df78422e5fc2fa6d1f6f3203f8000af1de9c52d22f6d0eac22873"
+    },
+    {
+      "path": "deploy/molgang/models/lab_bench.glb",
+      "bytes": 45720,
+      "sha256": "d8c7d40ca31822142449692714eda5b050f43d67831b6eb2a1217bdc0244a0b1"
+    },
+    {
+      "path": "deploy/molgang/models/lamp_post.glb",
+      "bytes": 162604,
+      "sha256": "44a4d4d190f0567e1304927ea085f675b78c526626ce39e7e66401c1bb8d9d4e"
+    },
+    {
+      "path": "deploy/molgang/models/leaching_tank.glb",
+      "bytes": 41416,
+      "sha256": "5a0d9eb3dae220b9eab338388fbb2eb769172d0d341f4c906d8f75a42f87d4ea"
+    },
+    {
+      "path": "deploy/molgang/models/leaching_tank_500L_from_photo.glb",
+      "bytes": 47352,
+      "sha256": "bceb6b7627202a17687163d073e51bf5b99935a3f2359ea703ba6f8e1fa0c547"
+    },
+    {
+      "path": "deploy/molgang/models/magnetic_separator.glb",
+      "bytes": 23136,
+      "sha256": "f071f5254c97cc2ca0e320274833032f0bca53da69b90117ebdfac3ddceb2199"
+    },
+    {
+      "path": "deploy/molgang/models/microscope.glb",
+      "bytes": 41724,
+      "sha256": "b631fb91631c0cb406736b4ab608d0b1b19eeb1454d46b730316e941df4c9504"
+    },
+    {
+      "path": "deploy/molgang/models/mine_lantern.glb",
+      "bytes": 38956,
+      "sha256": "d78dee70ac972083fd763e0c4b1c217b4586b7b337ca3dfbf9de91df5574b0ab"
+    },
+    {
+      "path": "deploy/molgang/models/mine_rail.glb",
+      "bytes": 15108,
+      "sha256": "e29d3c81dd4a5a3c5e39f408b72e955f6a3d5c08cb0bdac5802284b036bcbe84"
+    },
+    {
+      "path": "deploy/molgang/models/mine_support_frame.glb",
+      "bytes": 13332,
+      "sha256": "9363c37346fcdf257c17e90f142c2c5ac2e7d456ac4f053ec729106c6349fc75"
+    },
+    {
+      "path": "deploy/molgang/models/molecule_model.glb",
+      "bytes": 395556,
+      "sha256": "54521896e824a08b41612b54f97cb36d193edbfaf672535f9181eca58973e5df"
+    },
+    {
+      "path": "deploy/molgang/models/nexus_fountain.glb",
+      "bytes": 307324,
+      "sha256": "487d125aefa381a0431dffe78073cfabb6d5fb9a40c9540a358f3af3245d48db"
+    },
+    {
+      "path": "deploy/molgang/models/ore_cart.glb",
+      "bytes": 43124,
+      "sha256": "72519687519b16fe467784f6b46d56d7588b24e9fd0670ad248e01ef6780f126"
+    },
+    {
+      "path": "deploy/molgang/models/ore_pile.glb",
+      "bytes": 54248,
+      "sha256": "b93db65689972832d7c5049395c1ab3eed6e06e768a1628396414fd85625f34b"
+    },
+    {
+      "path": "deploy/molgang/models/ore_vein.glb",
+      "bytes": 47160,
+      "sha256": "4f5441fee5b8e93fa31ed8de6098e2b79f5b9cee5a0a098e6cc7063df075c30c"
+    },
+    {
+      "path": "deploy/molgang/models/periodic_table_display.glb",
+      "bytes": 84392,
+      "sha256": "4f34e8986a0143d49b2f0725a22a219fe6ef8c41d841ca5e18f7d2bb8734b5b8"
+    },
+    {
+      "path": "deploy/molgang/models/pickaxe_rack.glb",
+      "bytes": 16260,
+      "sha256": "51eec3240cc639fc48e854eed60f9caf66e345702abc67485fe49626d3cf1069"
+    },
+    {
+      "path": "deploy/molgang/models/pipe_section.glb",
+      "bytes": 13036,
+      "sha256": "f21c853b658393bd7e29ac33b46ea6392be3c27a0611bbc5cba39a92bde08cb6"
+    },
+    {
+      "path": "deploy/molgang/models/plaza_bench.glb",
+      "bytes": 11588,
+      "sha256": "16bb7979e2f915167fd42d0dc3bada706b1cd1dc4f77813e2edd01d09d30764d"
+    },
+    {
+      "path": "deploy/molgang/models/pressure_vessel.glb",
+      "bytes": 56444,
+      "sha256": "b3372f0f7f77e494fede5d9d838632a074d6eb54dd4d19cb00e0e99d26a411c6"
+    },
+    {
+      "path": "deploy/molgang/models/quantum_dot.glb",
+      "bytes": 265300,
+      "sha256": "58db007d9b2395b54ef3d795c5e00fa8d1f80a1601c347205f0f31ad17d25830"
+    },
+    {
+      "path": "deploy/molgang/models/quantum_tunnel_ring.glb",
+      "bytes": 84164,
+      "sha256": "63be414d9f249e3ff98b42d4b8b411ed7aa6ff7546e639e285372f65fedecf84"
+    },
+    {
+      "path": "deploy/molgang/models/race_checkpoint.glb",
+      "bytes": 18096,
+      "sha256": "98003023e1e3161b123cea8bb55e53b4dd63f89e1b76cf20b59091a9d86620b4"
+    },
+    {
+      "path": "deploy/molgang/models/rail_cart.glb",
+      "bytes": 100728,
+      "sha256": "19aeb8e9c563a0ad82399e2a73f1644353a22d54f650e5465bd7b8004400c793"
+    },
+    {
+      "path": "deploy/molgang/models/reagent_shelf.glb",
+      "bytes": 119496,
+      "sha256": "fc12e420b14c3c9b87d1c37075ec4441dd6769c08efb7987c03779beb9195f1d"
+    },
+    {
+      "path": "deploy/molgang/models/roasting_kiln.glb",
+      "bytes": 104344,
+      "sha256": "2dffde2dfd571dc91f23097a6be67aa46a6646807a8e47392322fad3601cfbcf"
+    },
+    {
+      "path": "deploy/molgang/models/safety_fence_post.glb",
+      "bytes": 85372,
+      "sha256": "b1a3645f820a039416481ebfc13a044e6e55d1ed1cf245e6fc1c085c3b2ab4c5"
+    },
+    {
+      "path": "deploy/molgang/models/screw_conveyor.glb",
+      "bytes": 102828,
+      "sha256": "215a1aca90d0a128daa618b230e4b547486e97e30857d8a53a41758ee8ee2c9b"
+    },
+    {
+      "path": "deploy/molgang/models/slag_chunk.glb",
+      "bytes": 17536,
+      "sha256": "33a2200276ce526e9d0a35aa6faedf3aec46df79bcf8c61da9d6a669cb21a7cb"
+    },
+    {
+      "path": "deploy/molgang/models/slag_ladle.glb",
+      "bytes": 29384,
+      "sha256": "54f23b40d88da80c9c0180281daee2b35c523632530c4ffabcbe607de8bea420"
+    },
+    {
+      "path": "deploy/molgang/models/solar_panel.glb",
+      "bytes": 9924,
+      "sha256": "f4ec9526d15e000cc846d6754a939c1ca4f1a4bb0f9300d0452585b1f8587038"
+    },
+    {
+      "path": "deploy/molgang/models/speed_boost_pad.glb",
+      "bytes": 24060,
+      "sha256": "d5680c9b60e83795c3c8899bc58d9e9e0e9cc694e4fe8c84ac051a6eb3ac36fd"
+    },
+    {
+      "path": "deploy/molgang/models/spray_dryer.glb",
+      "bytes": 58148,
+      "sha256": "46835fcc5c69bee584319a90676d7df7c20001770f1d4d97c585b86790c1eb61"
+    },
+    {
+      "path": "deploy/molgang/models/storage_silo.glb",
+      "bytes": 35868,
+      "sha256": "f71d6bfec867c305ab1991a8a3974d8af13e562862a772996d078ee2691b9888"
+    },
+    {
+      "path": "deploy/molgang/models/tapioca_pearl_jar.glb",
+      "bytes": 29500,
+      "sha256": "5c035b0208e8c836c07b6b9079f4ffa9286501bc0069dae0978be020419cb9f1"
+    },
+    {
+      "path": "deploy/molgang/models/teleport_pad.glb",
+      "bytes": 120336,
+      "sha256": "fdf756c922999aee8c790fdec68e810cfc5742589bbe03a42ef22d6c81e2758f"
+    },
+    {
+      "path": "deploy/molgang/models/test_tube_rack.glb",
+      "bytes": 399104,
+      "sha256": "604a442526c27b030a6bc78cdc20d7a45181dff2ae141ac730ccb6770cd29d8f"
+    },
+    {
+      "path": "deploy/molgang/models/thickener_tank.glb",
+      "bytes": 73328,
+      "sha256": "3922b79f159d83e5465772dfafb16f991bb6479d65bd90deedf3dddf55199be7"
+    },
+    {
+      "path": "deploy/molgang/models/vibrating_screen.glb",
+      "bytes": 23760,
+      "sha256": "3b3a47b0e20d081104e0df1e27e4e1b96734d5aada9b92c431d0782e66a8aeee"
+    },
+    {
+      "path": "deploy/molgang/models/victory_trophy.glb",
+      "bytes": 181812,
+      "sha256": "6f92a1f3d3eb27631bcf826a3d3f1c6a20a9c9a6b04a9eba9a5df9e1ceebf2c3"
+    },
+    {
+      "path": "deploy/molgang/models/villain_pedestal.glb",
+      "bytes": 114700,
+      "sha256": "4ed921e72e997a29d140bdc2d9e6ebdc9889b8605cd346fe6f9e52dc06a0779b"
+    },
+    {
+      "path": "deploy/molgang/models/warning_beacon.glb",
+      "bytes": 85616,
+      "sha256": "1edd8bee1e55e7a5590232eb3e0bba2fdf721dde33f7beb74f8141ce3cd5118b"
+    },
+    {
+      "path": "deploy/molgang/models/welcome_arch.glb",
       "bytes": 36804,
       "sha256": "426ca952a34835e7ba53a2060a6651ed27803296f9d04de09994f0d3bc42178c"
     }
