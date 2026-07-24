@@ -426,6 +426,7 @@ const SIM_BASE = params.get('sim') || 'http://127.0.0.1:8077';
 const SIM_URL = SIM_BASE + '/state';
 const agentMeshes = new Map();   // id -> { sprite, from, to, t }
 let simOk = false, simPollMs = 150;
+let controlsSynced = false;   // sync the slider panel to the reactor once, on first poll
 
 // Multiplayer presence: a per-tab id; we POST our position and render others.
 const MY_ID = 'p' + Math.random().toString(36).slice(2, 8);
@@ -509,6 +510,15 @@ async function pollSim() {
       if (yv) yv.textContent = `${(rx.yield * 100) | 0}%`;
       const yp = document.getElementById('y-parts');
       if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
+      if (!controlsSynced && MOLECULIA) {   // reflect the actual reactor in the sliders once
+        controlsSynced = true;
+        const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
+                      flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
+        for (const key of ['temperature', 'pressure', 'flowRate', 'pH']) {
+          const el = document.getElementById('c-' + key), lab = document.getElementById('v-' + key);
+          if (el && rx[key] != null) { el.value = rx[key]; if (lab) lab.textContent = fmt[key](rx[key]); }
+        }
+      }
     }
   } catch (e) {
     simOk = false;
