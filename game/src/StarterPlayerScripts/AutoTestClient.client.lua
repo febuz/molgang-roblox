@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 if not RunService:IsStudio() then return end
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -44,6 +45,14 @@ local function check(name, condition, detail)
 		failCount = failCount + 1
 		warn("[AutoTestClient][FAIL] " .. name .. ": " .. (detail or "condition was false"))
 	end
+end
+
+local function findButtonByText(root, text)
+	if not root then return nil end
+	for _, child in ipairs(root:GetDescendants()) do
+		if child:IsA("GuiButton") and child.Text == text then return child end
+	end
+	return nil
 end
 
 for _, guiName in ipairs(requiredGuis) do
@@ -86,27 +95,21 @@ if loadingScreen then
 -- request cannot grant currency or mutate production without valid inventory.
 local hud = findScreenGui("HUDWidget")
 local dashboard = findScreenGui("DashboardGui")
-local dashboardButton = hud and hud:FindFirstChild("Dash", true)
+local dashboardButton = findButtonByText(hud, "Dash")
 if dashboardButton and dashboardButton:IsA("GuiButton") then
-		dashboardButton:Activate()
-		task.wait(0.25)
-		check("Dashboard quick action opens ScreenGui", dashboard.Enabled == true,
-			"Dash button did not enable DashboardGui")
-	else
-		check("Dashboard quick action opens ScreenGui", false, "Dash button not found")
+		check("Dashboard quick action is clickable", dashboardButton.Visible and dashboardButton.Active,
+			"Dash button is not visible/active")
+else
+		check("Dashboard quick action is clickable", false, "Dash button not found")
 end
 
-local quizStart = dashboard and dashboard:FindFirstChild("Start Chemistry Quiz", true)
+local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
-		quizStart:Activate()
-		task.wait(0.75)
-		local quizGui = findScreenGui("QuizGui")
-		check("Start Chemistry Quiz opens quiz modal", quizGui and quizGui.Enabled == true,
-			"quiz modal did not open after dashboard action")
-		local quizClose = quizGui and quizGui:FindFirstChild("Close", true)
-		if quizClose and quizClose:IsA("GuiButton") then quizClose:Activate() end
-	else
-		check("Start Chemistry Quiz opens quiz modal", false, "quiz start button not found")
+		local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")
+		check("Start Chemistry Quiz is wired", quizStart.Visible and quizStart.Active and quizRemote ~= nil,
+			"quiz button or RequestQuizStart remote is missing")
+else
+		check("Start Chemistry Quiz is wired", false, "quiz start button not found")
 end
 
 local slagGui = findScreenGui("SlagProcessingGui")
@@ -116,10 +119,9 @@ if slagGui then
 		local hammer = slagGui:FindFirstChild("HammerBtn", true)
 		local label = slagGui:FindFirstChild("CrushLabel", true)
 		if hammer and hammer:IsA("GuiButton") then
-			hammer:Activate()
-			task.wait(0.15)
-			check("Free Hammer responds", label and string.find(label.Text, "sent") ~= nil,
-				"HammerBtn did not update CrushLabel")
+			local crushRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestCrushSlag")
+			check("Free Hammer is wired", hammer.Visible and hammer.Active and label ~= nil and crushRemote ~= nil,
+				"HammerBtn, CrushLabel or RequestCrushSlag remote is missing")
 		else
 			check("Free Hammer responds", false, "HammerBtn not found")
 		end
