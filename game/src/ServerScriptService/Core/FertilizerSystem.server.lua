@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local FertilizerTrack = require(ReplicatedStorage.Modules.FertilizerTrack)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local GameClock = require(ReplicatedStorage.Modules.GameClock)
@@ -404,6 +405,8 @@ Remotes.RequestHarvestCrop.OnServerEvent:Connect(function(player, plotId)
 
 	-- Calculate yield
 	local yieldPct, cropName = FertilizerTrack.CalculateYield(plot.nutrients, plot.crop, plot.pH)
+	local eventEffects = WorldEvents.GetActiveEffects()
+	yieldPct = FertilizerTrack.ApplyYieldMultiplier(yieldPct, eventEffects.cropYieldMult)
 
 	-- Find crop reward
 	local crop = nil

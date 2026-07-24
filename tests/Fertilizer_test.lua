@@ -26,5 +26,11 @@ assert(FertilizerTrack.GetFertilizer("ammonium_sulfate").phEffect < 0,
 	"ammonium sulfate must model acidifying soil chemistry")
 assert(FertilizerTrack.GetFertilizer("slag_fertilizer").phEffect > 0,
 	"slag bio-enhancer must model liming effect")
+assert(FertilizerTrack.ApplyYieldMultiplier(100, 1) == 100,
+	"normal crop yield must remain unchanged")
+assert(FertilizerTrack.ApplyYieldMultiplier(100, 1.4) == 140,
+	"ideal growing season must increase crop yield")
+assert(FertilizerTrack.ApplyYieldMultiplier(150, 2) == 200,
+	"event stacking must respect the crop yield cap")
 
-print("Fertilizer Tests: 7 passed, 0 failed")
+print("Fertilizer Tests: 10 passed, 0 failed")

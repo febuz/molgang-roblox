@@ -450,6 +450,14 @@ function FertilizerTrack.CalculateYield(soilNutrients, cropId, soilPH)
 	return math.clamp(yieldPct, 0, 150), crop.name
 end
 
+-- Apply temporary world-event conditions after soil chemistry is evaluated.
+-- Keep the result bounded so event stacking cannot create unbounded rewards.
+function FertilizerTrack.ApplyYieldMultiplier(yieldPct, cropYieldMultiplier)
+	local baseYield = tonumber(yieldPct) or 0
+	local multiplier = math.max(0, tonumber(cropYieldMultiplier) or 1)
+	return math.clamp(math.floor(baseYield * multiplier), 0, 200)
+end
+
 -- Stoichiometric input validation for the Fertilizer Lab.
 -- The server uses these helpers so crafting consumes real atom inventory,
 -- rather than minting a fertilizer after only charging currency.
