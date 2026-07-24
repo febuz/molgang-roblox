@@ -47,10 +47,11 @@ local function displayAnnouncement(announcement)
 	-- Create announcement panel
 	local panel = Instance.new("Frame")
 	panel.Name = "AnnouncementPanel"
-	panel.Size = UDim2.new(0, 600, 0, 100)
-	panel.Position = UDim2.new(0.5, -300, 0.5, -200)
+	panel.Size = UDim2.new(0, 620, 0, 64)
+	panel.Position = UDim2.new(0.5, -310, 0, 92)
 	panel.BackgroundColor3 = COLORS.background
 	panel.BackgroundTransparency = 0.1
+	panel.ZIndex = 30
 	panel.Parent = screenGui
 
 	local corner = Instance.new("UICorner")
@@ -65,25 +66,31 @@ local function displayAnnouncement(announcement)
 	-- Icon
 	local iconLabel = Instance.new("TextLabel")
 	iconLabel.Name = "Icon"
-	iconLabel.Size = UDim2.new(0, 50, 1, 0)
-	iconLabel.Position = UDim2.new(0, 10, 0, 0)
+	iconLabel.Size = UDim2.new(0, 42, 1, 0)
+	iconLabel.Position = UDim2.new(0, 8, 0, 0)
 	iconLabel.BackgroundTransparency = 1
 	iconLabel.Text = announcement.icon or "📢"
 	iconLabel.TextScaled = true
+	iconLabel.ZIndex = 31
 	iconLabel.Parent = panel
 
 	-- Message
 	local messageLabel = Instance.new("TextLabel")
 	messageLabel.Name = "Message"
-	messageLabel.Size = UDim2.new(1, -70, 1, 0)
-	messageLabel.Position = UDim2.new(0, 60, 0, 0)
+	messageLabel.Size = UDim2.new(1, -62, 1, -8)
+	messageLabel.Position = UDim2.new(0, 54, 0, 4)
 	messageLabel.BackgroundTransparency = 1
 	messageLabel.Text = announcement.message
 	messageLabel.TextColor3 = COLORS.textPrimary
 	messageLabel.TextScaled = true
 	messageLabel.Font = Enum.Font.GothamBold
 	messageLabel.TextWrapped = true
+	messageLabel.ZIndex = 31
 	messageLabel.Parent = panel
+	local messageConstraint = Instance.new("UITextSizeConstraint")
+	messageConstraint.MinTextSize = 14
+	messageConstraint.MaxTextSize = 22
+	messageConstraint.Parent = messageLabel
 
 	-- Fade in
 	local fadeIn = TweenService:Create(
