@@ -96,14 +96,6 @@ local DRINKS = {
 }
 
 -- ═══════════════════════════════════════════════
--- SEASONAL DRINKS (data-driven archetypes — see Modules/GameObjects)
--- ═══════════════════════════════════════════════
-
-for _, seasonalDrink in ipairs(SeasonalDrinks.GetActiveSeasonalDrinks(os.date("*t").month)) do
-	table.insert(DRINKS, seasonalDrink)
-end
-
--- ═══════════════════════════════════════════════
 -- STATE
 -- ═══════════════════════════════════════════════
 
@@ -412,5 +404,17 @@ Players.PlayerRemoving:Connect(function(player)
 	playerBuffs[userId] = nil
 	playerCooldowns[userId] = nil
 end)
+
+-- ═══════════════════════════════════════════════
+-- SEASONAL DRINKS (data-driven archetypes — see Modules/GameObjects)
+--
+-- Appended last, after both remote handlers are already connected: a
+-- throw anywhere in this seasonal path degrades to "no seasonal drink
+-- today" instead of taking the whole bar offline before it can wire up.
+-- ═══════════════════════════════════════════════
+
+for _, seasonalDrink in ipairs(SeasonalDrinks.GetActiveSeasonalDrinks(os.date("*t").month)) do
+	table.insert(DRINKS, seasonalDrink)
+end
 
 print("[MOLGANG] Bubble Tea Bar initialized — 6 drinks with buffs at factory cafe")
