@@ -25,6 +25,32 @@
   #farm-btn { position: fixed; top: 132px; right: 12px; z-index: 12; cursor: pointer;
     background: rgba(14,18,26,.82); color: #e0c98a; border: 1px solid #7a6a2c;
     border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #build-btn { position: fixed; top: 172px; right: 12px; z-index: 12; cursor: pointer;
+    background: rgba(14,18,26,.82); color: #9cc0e0; border: 1px solid #2c5a7a;
+    border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #factory { position: fixed; inset: 0; z-index: 18; display: none; align-items: center;
+    justify-content: center; background: rgba(4,6,13,.72); }
+  .fc-card { width: min(920px, 96vw); }
+  #fc-stats { display: flex; flex-wrap: wrap; gap: 14px; padding: 9px 11px; margin-bottom: 10px;
+    border-radius: 9px; background: rgba(30,40,60,.5); border: 1px solid #26344a; font-size: 12px; }
+  #fc-stats div b { color: #fff; } #fc-stats .eff b { color: #6ffcda; font-size: 15px; }
+  #fc-stats .over b { color: #ff7a6f; }
+  .fc-body { display: flex; gap: 12px; }
+  #eq-palette { width: 220px; max-height: 52vh; overflow: auto; flex: none; }
+  #eq-palette .cat { font-size: 10.5px; color: #9fb0c6; text-transform: uppercase; margin: 8px 2px 3px; }
+  #eq-palette .eq { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border-radius: 7px;
+    cursor: pointer; border: 1px solid transparent; }
+  #eq-palette .eq:hover { background: rgba(40,52,74,.5); }
+  #eq-palette .eq.sel { border-color: #6ffcda; background: rgba(20,50,50,.4); }
+  #eq-palette .eq .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  #eq-palette .eq .nm { flex: 1; font-size: 11px; }
+  #eq-palette .eq .co { font-size: 10px; color: #ffd479; }
+  #eq-grid { flex: 1; display: grid; gap: 2px; align-content: start;
+    background: #0c1018; padding: 6px; border-radius: 8px; border: 1px solid #26344a; }
+  #eq-grid .cell { aspect-ratio: 1; border-radius: 3px; background: #161c28; cursor: pointer; position: relative; }
+  #eq-grid .cell:hover { outline: 1px solid #6ffcda88; }
+  #eq-grid .cell.on { box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+  #eq-grid .cell.bonus::after { content: '★'; position: absolute; top: -2px; right: 1px; font-size: 9px; color: #ffe08a; }
   #farm { position: fixed; inset: 0; z-index: 18; display: none; align-items: center;
     justify-content: center; background: rgba(4,6,13,.72); }
   #crop-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -162,6 +188,19 @@
       <span>Synthesize fertilizers from the elements you collect · <span id="fl-made">0</span> made</span>
       <button id="fl-close" type="button">✕</button></div>
     <div id="fert-list"></div>
+  </div>
+</div>
+<button id="build-btn" style="display:none">🏭 Factory</button>
+<div id="factory">
+  <div class="fl-card fc-card">
+    <div class="fl-head"><b>🏭 Factory Builder</b>
+      <span>Rent 1000 m². Place equipment; lay the chain adjacent for bonuses.</span>
+      <button id="fc-close" type="button">✕</button></div>
+    <div id="fc-stats"></div>
+    <div class="fc-body">
+      <div id="eq-palette"></div>
+      <div id="eq-grid"></div>
+    </div>
   </div>
 </div>
 <button id="farm-btn" style="display:none">🌾 Farm</button>

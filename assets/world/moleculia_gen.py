@@ -25,6 +25,49 @@ ELEMENTS_LUA = os.path.join(HERE, "..", "..", "game", "src", "ReplicatedStorage"
 FERTILIZER_LUA = os.path.join(HERE, "..", "..", "game", "src", "ReplicatedStorage", "Modules", "FertilizerTrack.lua")
 
 
+FACTORY_LUA = os.path.join(HERE, "..", "..", "game", "src", "ReplicatedStorage", "Modules", "FactoryEquipment.lua")
+
+
+def parse_equipment():
+    """Extract the factory equipment catalog + floor config from FactoryEquipment.lua
+    (real data: cost, power, category, colour, and the adjacency bonuses that make
+    factory layout a real optimisation puzzle)."""
+    try:
+        txt = open(FACTORY_LUA, encoding="utf-8").read()
+    except OSError:
+        return [], {}
+    start = txt.find("FactoryEquipment.Items")
+    end = txt.find("FactoryEquipment.FloorConfig")
+    section = txt[start:end] if start >= 0 and end > start else ""
+    ids = list(re.finditer(r"id\s*=\s*['\"]([^'\"]*)['\"]", section))
+    items = []
+    for i, m in enumerate(ids):
+        block = section[m.start(): ids[i + 1].start() if i + 1 < len(ids) else len(section)]
+        cat = re.search(r"category\s*=\s*['\"]([^'\"]*)['\"]", block)
+        cost = re.search(r"cost\s*=\s*(\d+)", block)
+        pw = re.search(r"powerKW\s*=\s*(\d+)", block)
+        nm = re.search(r"name\s*=\s*['\"]([^'\"]*)['\"]", block)
+        col = re.search(r"Color3\.fromRGB\((\d+),\s*(\d+),\s*(\d+)\)", block)
+        adj_m = re.search(r"adjacencyBonus\s*=\s*\{([^}]*)\}", block)
+        adj = {}
+        if adj_m:
+            adj = {k: float(v) for k, v in re.findall(r"(\w+)\s*=\s*([\d.]+)", adj_m.group(1))}
+        items.append({
+            "id": m.group(1), "name": nm.group(1) if nm else m.group(1),
+            "category": cat.group(1) if cat else "Other",
+            "cost": int(cost.group(1)) if cost else 0,
+            "powerKW": int(pw.group(1)) if pw else 0,
+            "rgb": [int(col.group(1)), int(col.group(2)), int(col.group(3))] if col else [150, 160, 175],
+            "adjacency": adj,
+        })
+    fc = {}
+    fcm = re.search(r"FactoryEquipment\.FloorConfig\s*=\s*\{([^}]*)\}", txt)
+    if fcm:
+        for k, v in re.findall(r"(\w+)\s*=\s*(\d+)", fcm.group(1)):
+            fc[k] = int(v)
+    return items, fc
+
+
 def parse_crops():
     """Extract the crops (real ideal NPK + pH + growth days) from FertilizerTrack.lua.
     Used for Liebig's-Law farming: yield is limited by the scarcest nutrient."""
@@ -210,10 +253,12 @@ def build():
 
     fertilizers = parse_fertilizers()
     crops = parse_crops()
+    equipment, floor = parse_equipment()
     world = {
         "meta": {"world": 460, "space": True, "zones": zmeta,
                  "processLine": [p[0] for p in PROCESS_LINE],
                  "fertilizers": fertilizers, "crops": crops,
+                 "equipment": equipment, "floorConfig": floor,
                  "vision": "MOLGANG — Chemical Engineering Simulator (Moleculia archipelago)"},
         "objects": objs,
     }

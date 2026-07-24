@@ -65,6 +65,15 @@ def check_fertilizers_crops(meta):
         if len(c.get("idealNPK", [])) != 3 or any(v <= 0 for v in c["idealNPK"]):
             fail(f"crop {c.get('id')} has a bad idealNPK (Liebig needs positive targets)")
     print(f"OK  fertilizers: {len(ferts)} (real NPK + atom recipes) · crops: {len(crops)} (ideal NPK)")
+    eq = meta.get("equipment", [])
+    if len(eq) < 30:
+        fail(f"expected the factory equipment catalog (~34), got {len(eq)}")
+    if not any(e.get("adjacency") for e in eq):
+        fail("no equipment carries adjacency bonuses (factory layout puzzle broken)")
+    fc = meta.get("floorConfig", {})
+    if not fc.get("maxEquipment"):
+        fail("floorConfig missing maxEquipment")
+    print(f"OK  factory: {len(eq)} equipment (adjacency bonuses present), floor max {fc['maxEquipment']}")
 
 
 def check_process_chemistry():

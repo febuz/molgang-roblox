@@ -905,6 +905,102 @@ function openFarm() {
   if (close) close.addEventListener('click', () => { document.getElementById('farm').style.display = 'none'; });
 })();
 
+// ---------- Factory Builder: place equipment, chase adjacency bonuses ----------
+// The game's factory pillar: rent a floor, place equipment, and lay the
+// processing chain so partners sit next to each other for adjacency bonuses.
+let equipment = [];
+const eqById = new Map();
+let floorConfig = { maxEquipment: 30, basePowerKW: 100, baseRent: 2000 };
+const FGW = 16, FGH = 10;                       // playable UI grid (scaled from 40x25)
+let factoryGrid = new Array(FGW * FGH).fill(null);
+let selEquip = null;
+const FACTORY_KEY = 'molgang.factory';
+try { const s = JSON.parse(localStorage.getItem(FACTORY_KEY) || '[]'); for (const c of s) factoryGrid[c.i] = c.id; } catch (e) { /* fresh */ }
+
+function saveFactory() {
+  const s = []; factoryGrid.forEach((id, i) => { if (id) s.push({ i, id }); });
+  try { localStorage.setItem(FACTORY_KEY, JSON.stringify(s)); } catch (e) { /* quota */ }
+}
+function cellBonus(i) {                          // active adjacency multiplier for cell i
+  const id = factoryGrid[i]; if (!id) return 1;
+  const e = eqById.get(id); if (!e || !e.adjacency) return 1;
+  const col = i % FGW, nbs = [];
+  if (col > 0) nbs.push(i - 1); if (col < FGW - 1) nbs.push(i + 1);
+  if (i - FGW >= 0) nbs.push(i - FGW); if (i + FGW < FGW * FGH) nbs.push(i + FGW);
+  let mult = 1;
+  for (const n of nbs) { const nid = factoryGrid[n]; if (nid && e.adjacency[nid]) mult *= e.adjacency[nid]; }
+  return mult;
+}
+function renderFactory() {
+  const placed = [];
+  factoryGrid.forEach((id, i) => { if (id) placed.push(i); });
+  let cost = 0, power = 0, effSum = 0, bonuses = 0;
+  for (const i of placed) {
+    const e = eqById.get(factoryGrid[i]); cost += e.cost; power += e.powerKW;
+    const m = cellBonus(i); effSum += m; if (m > 1) bonuses++;
+  }
+  const eff = placed.length ? (effSum / placed.length) : 1;
+  const over = power > floorConfig.basePowerKW;
+  document.getElementById('fc-stats').innerHTML =
+    `<div>Equipment <b>${placed.length}/${floorConfig.maxEquipment}</b></div>`
+    + `<div>Build cost <b>${cost.toLocaleString()}</b> MolCoins</div>`
+    + `<div class="${over ? 'over' : ''}">Power <b>${power} kW</b> (${floorConfig.basePowerKW} incl.)</div>`
+    + `<div>Adjacency links <b>${bonuses}</b></div>`
+    + `<div class="eff">Factory efficiency <b>${(eff * 100) | 0}%</b></div>`;
+  const grid = document.getElementById('eq-grid');
+  [...grid.children].forEach((cell, i) => {
+    const id = factoryGrid[i];
+    cell.className = 'cell' + (id ? ' on' : '') + (id && cellBonus(i) > 1 ? ' bonus' : '');
+    cell.style.background = id ? `rgb(${eqById.get(id).rgb.join(',')})` : '#161c28';
+    cell.title = id ? eqById.get(id).name : '';
+  });
+}
+function buildFactory() {
+  for (const e of equipment) eqById.set(e.id, e);
+  const pal = document.getElementById('eq-palette');
+  const cats = [...new Set(equipment.map((e) => e.category))];
+  pal.innerHTML = '';
+  for (const cat of cats) {
+    const h = document.createElement('div'); h.className = 'cat'; h.textContent = cat; pal.appendChild(h);
+    for (const e of equipment.filter((x) => x.category === cat)) {
+      const row = document.createElement('div'); row.className = 'eq'; row.dataset.id = e.id;
+      row.innerHTML = `<span class="sw" style="background:rgb(${e.rgb.join(',')})"></span>`
+        + `<span class="nm">${e.name}</span><span class="co">${(e.cost / 1000) | 0}k</span>`;
+      row.addEventListener('click', () => {
+        selEquip = e.id;
+        for (const r of pal.querySelectorAll('.eq')) r.classList.toggle('sel', r.dataset.id === e.id);
+      });
+      pal.appendChild(row);
+    }
+  }
+  const grid = document.getElementById('eq-grid');
+  grid.style.gridTemplateColumns = `repeat(${FGW}, 1fr)`;
+  grid.innerHTML = '';
+  for (let i = 0; i < FGW * FGH; i++) {
+    const cell = document.createElement('div'); cell.className = 'cell';
+    cell.addEventListener('click', () => {
+      if (factoryGrid[i]) { factoryGrid[i] = null; }          // remove
+      else if (selEquip) {
+        const placed = factoryGrid.filter(Boolean).length;
+        if (placed >= floorConfig.maxEquipment) return;
+        factoryGrid[i] = selEquip;
+      }
+      saveFactory(); renderFactory();
+    });
+    grid.appendChild(cell);
+  }
+  renderFactory();
+}
+function openFactory() {
+  document.getElementById('factory').style.display = 'flex';
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+(function wireFactory() {
+  const b = document.getElementById('build-btn'), c = document.getElementById('fc-close');
+  if (b) b.addEventListener('click', openFactory);
+  if (c) c.addEventListener('click', () => { document.getElementById('factory').style.display = 'none'; });
+})();
+
 // ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
@@ -950,8 +1046,12 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     buildFertilizerLab();
     crops = w.meta.crops || [];
     buildFarm();
+    equipment = w.meta.equipment || [];
+    floorConfig = w.meta.floorConfig || floorConfig;
+    buildFactory();
     { const fb = document.getElementById('fert-btn'); if (fb) fb.style.display = 'block'; }
     { const mb = document.getElementById('farm-btn'); if (mb) mb.style.display = 'block'; }
+    { const bb = document.getElementById('build-btn'); if (bb) bb.style.display = 'block'; }
     if (params.get('collectall')) {          // sandbox: skip the grind (demo/verify)
       for (const o of elements) collected.add(o.num);
       for (const [, rec] of elementSprites) { rec.sprite.material.map.dispose(); rec.sprite.material.map = elementTexture(rec.o, true); rec.sprite.material.needsUpdate = true; }
@@ -967,6 +1067,12 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
       renderPlot();
     }
     if (params.get('farm')) setTimeout(openFarm, 400);
+    if (params.get('factorydemo')) {           // lay the chain adjacent -> bonuses light up
+      const chain = ['jaw_crusher', 'vibrating_screen', 'cone_crusher', 'ball_mill', 'magnetic_separator', 'leaching_tank', 'filtration_press'];
+      chain.forEach((id, k) => { if (eqById.has(id)) factoryGrid[4 * FGW + 4 + k] = id; });
+      saveFactory(); renderFactory();
+    }
+    if (params.get('build')) setTimeout(openFactory, 400);
     initControls();
     $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
       + `the web continuation of the Roblox teaser`;
