@@ -225,6 +225,18 @@ if Remotes.WorldEffectsUpdate then
 	end)
 end
 
+if Remotes.WorldNewsItem then
+	Remotes.WorldNewsItem.OnClientEvent:Connect(function(data)
+		if type(data) == "table" and type(data.message) == "string" then
+			queueAnnouncement({
+				icon = "📰",
+				message = data.message,
+				color = COLORS.rare,
+			})
+		end
+	end)
+end
+
 -- Production complete
 Remotes.ProductionCycleComplete.OnClientEvent:Connect(function(data)
 	local msg = "Production: "
