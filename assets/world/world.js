@@ -274,6 +274,58 @@ function drawAR() {
   arCtx.fillText(`AR VISION · ${items.length} objects tagged · cyan=identified model · green=YOLO · amber=diffusion`, 22, h - 22);
 }
 
+// ---------- dynamic layer: moving agents from the Python sim (EVE-style) ----------
+// The Python sim owns traffic + pedestrian positions; we poll a tiny JSON state
+// a few times a second and interpolate between updates. Degrades silently to a
+// static world if the sim server isn't running.
+const SIM_URL = (params.get('sim') || 'http://127.0.0.1:8077') + '/state';
+const agentMeshes = new Map();   // id -> { sprite, from, to, t }
+let simOk = false, simPollMs = 150;
+const agentSize = { car: 3.4, delivery_truck: 4.6, van: 4.2, city_bus: 6.2, motorcycle: 2.8,
+                    pedestrian: 3.4, woman_pedestrian: 3.4, worker: 3.4 };
+function agentSpriteMat(kind) {
+  const key = 'agent:' + kind;
+  if (!_texCache.has(key)) {
+    _texCache.set(key, new THREE.SpriteMaterial({ map: impostorTex(kind), transparent: true, alphaTest: 0.4 }));
+  }
+  return _texCache.get(key);
+}
+async function pollSim() {
+  try {
+    const st = await (await fetch(SIM_URL, { cache: 'no-cache' })).json();
+    simOk = true;
+    const seen = new Set();
+    for (const a of st.agents) {
+      seen.add(a.id);
+      let m = agentMeshes.get(a.id);
+      if (!m) {
+        const sp = new THREE.Sprite(agentSpriteMat(a.k));
+        sp.center.set(0.5, 0);
+        const s = agentSize[a.k] || 3.2; sp.scale.set(s, s, 1);
+        scene.add(sp);
+        m = { sprite: sp, from: { x: a.x, z: a.z }, to: { x: a.x, z: a.z }, t: 0 };
+        agentMeshes.set(a.id, m);
+      } else {
+        m.from = { x: m.sprite.position.x, z: m.sprite.position.z };
+        m.to = { x: a.x, z: a.z }; m.t = 0;
+      }
+    }
+    for (const [id, m] of agentMeshes) if (!seen.has(id)) { scene.remove(m.sprite); agentMeshes.delete(id); }
+    const el = document.getElementById('sim'); if (el) el.textContent = `🐍 Python sim: ${st.n} live agents driving/walking`;
+  } catch (e) {
+    simOk = false;
+    const el = document.getElementById('sim'); if (el) el.textContent = '🐍 Python sim offline (static world) — run sim_server.py';
+  }
+  setTimeout(pollSim, simPollMs);
+}
+function updateAgents(dt) {
+  if (!simOk) return;
+  for (const m of agentMeshes.values()) {
+    m.t = Math.min(1, m.t + dt / (simPollMs / 1000));
+    m.sprite.position.set(m.from.x + (m.to.x - m.from.x) * m.t, 0, m.from.z + (m.to.z - m.from.z) * m.t);
+  }
+}
+
 let streamTick = 0;
 function stream() {
   const px = player.pos.x, pz = player.pos.z;
@@ -310,6 +362,7 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
   const d = (now - lastRender);
   step(dt);
+  updateAgents(dt);
   if (now - lastStream > 180) { lastStream = now; stream(); }
   if (d >= refresh / BUDGET) { lastRender = now; renderer.render(scene, camera); if (arOn) drawAR(); }
   requestAnimationFrame(loop);
@@ -328,6 +381,7 @@ requestAnimationFrame(loop);
   impPlacements = objects.filter((o) => o.t === 'imp');
   impCount = impPlacements.length;
   buildInstancedImpostors(impPlacements);  // all impostors: ~26 instanced draw calls
+  pollSim();                               // start the EVE-style dynamic layer
   // roads (cheap, drawn once)
   const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.9 });
   const lineMat = new THREE.MeshStandardMaterial({ color: 0xd9c56a, emissive: 0x2e2a16 });
