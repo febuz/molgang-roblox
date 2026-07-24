@@ -40,6 +40,13 @@ Remotes.RequestPlaceBid.OnServerEvent:Connect(function(player, productId, bidPri
 		})
 		return
 	end
+	if not ProductMarket.GetProduct(productId) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Unknown product: bid rejected.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Check player bid limit
 	local playerBidCount = 0
@@ -209,7 +216,7 @@ function matchBid(bidId, bidder)
 		if refund > 0 then
 			PlayerDataBridge.AddMolCoins(bid.playerId, refund)
 		end
-		PlayerDataBridge.AddMolCoins(bestSell.playerId, fillPrice * fillQty)
+		PlayerDataBridge.AddEarnedMolCoins(bestSell.playerId, fillPrice * fillQty)
 
 		-- Notify both parties
 		local sellerPlayer = Players:GetPlayerByUserId(bestSell.playerId)
@@ -263,7 +270,7 @@ function matchSell(sellId, seller)
 		if refund > 0 then
 			PlayerDataBridge.AddMolCoins(bestBid.playerId, refund)
 		end
-		PlayerDataBridge.AddMolCoins(sell.playerId, fillPrice * fillQty)
+		PlayerDataBridge.AddEarnedMolCoins(sell.playerId, fillPrice * fillQty)
 
 		local bidderPlayer = Players:GetPlayerByUserId(bestBid.playerId)
 		if bidderPlayer then
