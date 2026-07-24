@@ -10,19 +10,13 @@ local LogisticsNetwork = require(ReplicatedStorage.Modules.LogisticsNetwork)
 local WorldTerritory   = require(ReplicatedStorage.Modules.WorldTerritory)
 local DiplomacySystem  = require(ReplicatedStorage.Modules.DiplomacySystem)
 local Remotes          = require(ReplicatedStorage.Remotes.RemoteSetup)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 local COST_TICK_INTERVAL    = 60   -- operating costs deducted every minute
 local BOTTLENECK_CHECK_INTERVAL = 120  -- bottleneck alerts every 2 minutes
 
 -- DataStore for route persistence
 local logisticsStore = DataStoreService:GetDataStore("MolGang_Logistics_v1")
-
--- Player coin deduction bridge (fires to EconomyManager)
--- In practice, use a BindableEvent that EconomyManager listens to
-local _pendingDeductions = {}  -- {userId -> amount}
-local function requestDeduction(userId, amount, reason)
-	_pendingDeductions[userId] = (_pendingDeductions[userId] or 0) + amount
-end
 
 -- ──────────────────────────────────────────────
 -- PERSIST / RESTORE
@@ -113,11 +107,17 @@ Remotes.RequestBuildRoute.OnServerEvent:Connect(function(player, fromId, toId, m
 		return
 	end
 
-	-- Deduct cost (routed through EconomyManager)
-	requestDeduction(player.UserId, cost, "logistics_build")
+	if not PlayerDataBridge.SpendMolCoins(player.UserId, cost) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Insufficient MolCoins for this route (" .. cost .. ").",
+			rarity = "common",
+		})
+		return
+	end
 
 	local route, err = LogisticsNetwork.BuildRoute(guildId, fromId, toId, modeId)
 	if not route then
+		PlayerDataBridge.AddMolCoins(player.UserId, cost)
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Route build failed: " .. (err or "unknown error"),
 			rarity  = "common",
@@ -144,16 +144,27 @@ end)
 Remotes.RequestUpgradeRoute.OnServerEvent:Connect(function(player, routeId)
 	local guildId = player:GetAttribute("Guild") or tostring(player.UserId)
 
+	local canUpgrade, upgradeReason, upgradeCost = LogisticsNetwork.GetUpgradeCost(routeId, guildId)
+	if not canUpgrade then
+		Remotes.FireClient("ServerAnnounce", player, { message = "Upgrade failed: " .. upgradeReason, rarity = "common" })
+		return
+	end
+	if not PlayerDataBridge.SpendMolCoins(player.UserId, upgradeCost) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Insufficient MolCoins for this upgrade (" .. upgradeCost .. ").",
+			rarity = "common",
+		})
+		return
+	end
 	local ok, reason, cost = LogisticsNetwork.UpgradeRoute(routeId, guildId)
 	if not ok then
+		PlayerDataBridge.AddMolCoins(player.UserId, upgradeCost)
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Upgrade failed: " .. (reason or "unknown"),
 			rarity  = "common",
 		})
 		return
 	end
-
-	requestDeduction(player.UserId, cost, "logistics_upgrade")
 
 	Remotes.FireClient("ServerAnnounce", player, {
 		message = string.format("Route upgraded (%.0f MolCoins).", cost),
@@ -207,7 +218,7 @@ task.spawn(function()
 			-- Route to player deduction if applicable
 			local userId = tonumber(ownerIdStr)
 			if userId then
-				requestDeduction(userId, cost, "logistics_opex")
+				PlayerDataBridge.SpendMolCoins(userId, cost)
 			end
 		end
 

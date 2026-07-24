@@ -197,6 +197,20 @@ function LogisticsNetwork.UpgradeRoute(routeId, requesterId)
 	return true, nil, nextUpgrade.cost
 end
 
+function LogisticsNetwork.GetUpgradeCost(routeId, requesterId)
+	local route = LogisticsNetwork._routes[routeId]
+	if not route then return false, "Route not found", 0 end
+	if route.ownerId ~= requesterId then return false, "Not your route", 0 end
+	local mode = LogisticsNetwork.TransportModes[string.upper(route.mode)]
+	if not mode then return false, "Invalid mode", 0 end
+	for _, upg in ipairs(mode.upgradeLevels) do
+		if upg.level == route.level + 1 then
+			return true, "OK", upg.cost
+		end
+	end
+	return false, "Already at max level", 0
+end
+
 -- ════════════════════════════════════════════════
 -- THROUGHPUT & BOTTLENECK ANALYSIS
 -- ════════════════════════════════════════════════
