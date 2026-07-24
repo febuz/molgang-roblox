@@ -23,7 +23,9 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- a session gate, not a respawn screen, so never show it a second time.
 local introGate = ReplicatedStorage:FindFirstChild("MOLGANGIntroGate")
 if introGate or playerGui:FindFirstChild("MOLGANGIntroGate")
-	 or _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown") then
+	 or playerGui:GetAttribute("MOLGANGIntroShown")
+	 or _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown")
+	 or playerGui:FindFirstChild("LoadingScreen") then
 	return
 end
 -- Player attributes, script globals and PlayerGui can be reset/recreated with
@@ -35,6 +37,12 @@ introGate.Value = true
 introGate.Parent = ReplicatedStorage
 _G.MOLGANGIntroShown = true
 player:SetAttribute("MOLGANGIntroShown", true)
+playerGui:SetAttribute("MOLGANGIntroShown", true)
+local playerGuiGate = Instance.new("BoolValue")
+playerGuiGate.Name = "MOLGANGIntroGate"
+playerGuiGate.Value = true
+playerGuiGate.Archivable = false
+playerGuiGate.Parent = playerGui
 
 -- COLOR PALETTE
 local COLORS = {
