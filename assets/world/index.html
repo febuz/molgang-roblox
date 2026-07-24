@@ -16,6 +16,9 @@
     background: rgba(14,18,26,.82); color: #7fe0d6; border: 1px solid #2c704a;
     border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
   #ar-toggle.on { background: #123; color: #6ffcda; border-color: #6ffcda; box-shadow: 0 0 12px #2c704a; }
+  #xr-btn { position: fixed; top: 52px; right: 12px; z-index: 12; cursor: pointer;
+    background: rgba(14,18,26,.82); color: #c9b6ff; border: 1px solid #6a4ac7;
+    border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
   #hud { position: fixed; top: 12px; left: 12px; z-index: 10; max-width: 320px;
          background: rgba(14,18,26,.82); border: 1px solid #26344a; border-radius: 10px;
          padding: 12px 14px; backdrop-filter: blur(6px); }
@@ -31,6 +34,7 @@
 <div id="stage"></div>
 <canvas id="ar"></canvas>
 <button id="ar-toggle">🥽 AR</button>
+<button id="xr-btn" style="display:none">🥽 Enter AR</button>
 <div id="hud">
   <h1>MOLGANG · Open World</h1>
   <div id="status">loading map…</div>
@@ -38,6 +42,7 @@
   <div id="sim" style="color:#ffd479;font-size:11px;margin-top:1px;">🐍 Python sim…</div>
   <div id="mp" style="color:#6ffcda;font-size:11px;margin-top:1px;">🌐 shared world…</div>
   <div id="reactor" style="color:#ff9a6f;font-size:11px;margin-top:1px;">⚗️ leach reactor…</div>
+  <div id="xr" style="color:#c9b6ff;font-size:11px;margin-top:1px;">🕶️ checking for headset…</div>
   <div class="hint">Click to look · <b>W</b> forward / <b>S</b> back / <b>A</b>/<b>D</b> strafe
     · Shift to sprint · a factory district: identified assets are real 3D models,
     everything else is filled by diffusion.</div>

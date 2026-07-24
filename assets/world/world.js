@@ -475,19 +475,73 @@ function stream() {
   $('#live').textContent = `streaming ${[...live.values()].filter((v) => v !== 'pending').length} models + ${impCount} instanced impostors`;
 }
 
-// ---------- 49% render-budget loop ----------
+// ---------- WebXR: Quest 3 headset detection + AR passthrough toggle ----------
+// Quickly detect a VR/AR headset (WebXR), let the player enter immersive mode
+// (immersive-ar = Quest passthrough), and toggle AR on/off with a controller
+// button — AR on shows the real room through the world, AR off is full VR.
+renderer.xr.enabled = true;
+let xrMode = null;                     // 'immersive-ar' | 'immersive-vr' | null
+let xrAR = true;                       // passthrough visible when in AR
+const skyBg = scene.background;
+const xrBtn = document.getElementById('xr-btn');
+const xrStat = document.getElementById('xr');
+
+async function detectXR() {
+  if (!('xr' in navigator)) { if (xrStat) xrStat.textContent = '🕶️ no WebXR in this browser'; return; }
+  const ar = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+  const vr = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
+  xrMode = ar ? 'immersive-ar' : vr ? 'immersive-vr' : null;
+  if (!xrMode) { if (xrStat) xrStat.textContent = '🕶️ no VR/AR headset detected'; return; }
+  if (xrStat) xrStat.textContent = `🕶️ ${ar ? 'AR/VR' : 'VR'} headset detected — Quest-ready`;
+  if (xrBtn) { xrBtn.style.display = 'block'; xrBtn.textContent = ar ? '🥽 Enter AR' : '🥽 Enter VR'; }
+}
+async function enterXR() {
+  if (!xrMode) return;
+  const opts = xrMode === 'immersive-ar'
+    ? { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] }
+    : { optionalFeatures: ['local-floor'] };
+  const session = await navigator.xr.requestSession(xrMode, opts);
+  renderer.xr.setReferenceSpaceType('local-floor');
+  await renderer.xr.setSession(session);
+  xrAR = (xrMode === 'immersive-ar');
+  scene.background = xrAR ? null : skyBg;      // AR on = passthrough shows through
+  // Controller buttons toggle AR on/off (A/X or trigger).
+  const toggleAR = () => { xrAR = !xrAR; scene.background = xrAR ? null : skyBg; };
+  for (const src of session.inputSources) if (src.gamepad) src._prev = [];
+  session.addEventListener('selectstart', toggleAR);           // trigger toggles too
+  session.__pollButtons = () => {
+    for (const src of session.inputSources) {
+      const gp = src.gamepad; if (!gp) continue;
+      src._prev = src._prev || [];
+      gp.buttons.forEach((b, i) => {
+        if (i >= 4 && b.pressed && !src._prev[i]) toggleAR();     // face buttons (A/B/X/Y)
+        src._prev[i] = b.pressed;
+      });
+    }
+  };
+  session.addEventListener('end', () => { scene.background = skyBg; if (xrBtn) xrBtn.disabled = false; });
+}
+if (xrBtn) xrBtn.addEventListener('click', () => { xrBtn.disabled = true; enterXR().catch((e) => { xrBtn.disabled = false; if (xrStat) xrStat.textContent = '🕶️ XR start failed: ' + e.message; }); });
+detectXR();
+
+// ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
 function loop(now) {
+  now = now || performance.now();
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
-  const d = (now - lastRender);
   step(dt);
   updateAgents(dt);
   if (now - lastStream > 180) { lastStream = now; stream(); }
-  if (d >= refresh / BUDGET) { lastRender = now; renderer.render(scene, camera); if (arOn) drawAR(); }
-  requestAnimationFrame(loop);
+  const xr = renderer.xr.isPresenting;
+  if (xr) {
+    const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons();
+    renderer.render(scene, camera);                    // headset drives cadence
+  } else if (now - lastRender >= refresh / BUDGET) {
+    lastRender = now; renderer.render(scene, camera); if (arOn) drawAR();
+  }
 }
-requestAnimationFrame(loop);
+renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
 
 // ---------- load the map, then let streaming populate it ----------
 (async function init() {
