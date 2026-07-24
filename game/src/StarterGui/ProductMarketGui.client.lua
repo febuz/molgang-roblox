@@ -137,8 +137,13 @@ local saCorner = Instance.new("UICorner")
 saCorner.CornerRadius = UDim.new(0, 6)
 saCorner.Parent = sellAllBtn
 
+local sellAllBusy = false
+
 sellAllBtn.Activated:Connect(function()
 	playUIClick()
+	if sellAllBusy then return end
+	sellAllBusy = true
+	sellAllBtn.Active = false
 	-- requiredAtoms is a dictionary, so #requiredAtoms is always zero in
 	-- Luau. Calculate the current sellable quantity from the live inventory;
 	-- the server still performs the authoritative ownership check.
@@ -170,6 +175,10 @@ sellAllBtn.Activated:Connect(function()
 	task.delay(1, function()
 		sellAllBtn.Text = "SELL ALL"
 		sellAllBtn.BackgroundColor3 = C.accent
+	end)
+	task.delay(0.75, function()
+		sellAllBusy = false
+		if sellAllBtn.Parent then sellAllBtn.Active = true end
 	end)
 end)
 
@@ -317,11 +326,19 @@ for _, product in ipairs(ProductMarket.Products) do
 	corner(sellBtn, 6)
 
 	local pid = product.id
+	local sellBusy = false
 	sellBtn.Activated:Connect(function()
+		if sellBusy then return end
+		sellBusy = true
+		sellBtn.Active = false
 		local r = Remotes:FindFirstChild("RequestSellProduct")
 		if r then r:FireServer(pid, qty) end
 		sellBtn.BackgroundColor3 = C.gold
 		task.delay(0.3, function() sellBtn.BackgroundColor3 = C.accent end)
+		task.delay(0.75, function()
+			sellBusy = false
+			if sellBtn.Parent then sellBtn.Active = true end
+		end)
 	end)
 
 	productCards[product.id] = {card = card, priceLabel = priceL, qtyLabel = qtyLabel}
