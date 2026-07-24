@@ -28,6 +28,17 @@
              display: grid; gap: 3px; font-size: 12px; max-height: 42vh; overflow: auto; }
   #resolve .a { color: #7fe0a0; } #resolve .i { color: #e0b57f; }
   .hint { color: #9fb0c6; font-size: 11px; margin-top: 8px; }
+  #controls { position: fixed; bottom: 12px; right: 12px; z-index: 11; display: none;
+    width: 260px; background: rgba(14,18,26,.86); border: 1px solid #2c704a;
+    border-radius: 10px; padding: 11px 13px; backdrop-filter: blur(6px); }
+  #controls h2 { font-size: 13px; margin: 0 0 2px; color: #7fe0d6; }
+  #controls .sub { font-size: 10.5px; color: #9fb0c6; margin-bottom: 8px; }
+  #controls label { display: block; font-size: 11px; margin: 7px 0 1px; color: #cfe0f0; }
+  #controls .row { display: flex; justify-content: space-between; }
+  #controls .val { color: #ffd479; font-variant-numeric: tabular-nums; }
+  #controls input[type=range] { width: 100%; accent-color: #7fe0d6; margin: 0; }
+  #yield { margin-top: 9px; padding-top: 8px; border-top: 1px solid #26344a; font-size: 12px; }
+  #yield b { color: #6ffcda; font-size: 15px; }
 </style>
 </head>
 <body>
@@ -35,6 +46,19 @@
 <canvas id="ar"></canvas>
 <button id="ar-toggle">🥽 AR</button>
 <button id="xr-btn" style="display:none">🥽 Enter AR</button>
+<div id="controls">
+  <h2>⚗️ Slakkenspoor · Leaching Tank</h2>
+  <div class="sub">Operate the process — recover vanadium from the slag.</div>
+  <label class="row"><span>Temperature (Arrhenius)</span><span class="val" id="v-temperature">70°C</span></label>
+  <input type="range" id="c-temperature" min="25" max="95" step="1" value="70">
+  <label class="row"><span>Pressure (Henry)</span><span class="val" id="v-pressure">180 kPa</span></label>
+  <input type="range" id="c-pressure" min="100" max="300" step="5" value="180">
+  <label class="row"><span>Flow / residence time</span><span class="val" id="v-flowRate">4.0</span></label>
+  <input type="range" id="c-flowRate" min="1" max="10" step="0.5" value="4">
+  <label class="row"><span>pH (V window 1.8–3.0)</span><span class="val" id="v-pH">2.5</span></label>
+  <input type="range" id="c-pH" min="1" max="6" step="0.1" value="2.5">
+  <div id="yield">V recovery: <b id="y-val">—</b> <span id="y-parts" style="color:#9fb0c6"></span></div>
+</div>
 <div id="hud">
   <h1>MOLGANG · Moleculia</h1>
   <div id="status">loading map…</div>

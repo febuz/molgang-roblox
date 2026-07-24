@@ -82,6 +82,25 @@ class Sim:
         self.reactor = process_sim.default_state()
         self.reactor.update({"temperature": 70.0, "pressure": 180.0, "flowRate": 4.0, "pH": 2.5})
         self._rt = 0.0
+        # Operator control: until the player touches a dial the temperature drifts
+        # on its own (an idling station); once they set one, we honour their
+        # setpoints (manual mode) and ease temperature toward the chosen target.
+        self.manual = False
+        self._temp_target = 70.0
+
+    RANGES = {"temperature": (25.0, 95.0), "pressure": (100.0, 300.0),
+              "flowRate": (1.0, 10.0), "pH": (1.0, 6.0)}
+
+    def set_controls(self, d):
+        with self.lock:
+            self.manual = True
+            for k, (lo, hi) in self.RANGES.items():
+                if k in d:
+                    v = max(lo, min(hi, float(d[k])))
+                    if k == "temperature":
+                        self._temp_target = v
+                    else:
+                        self.reactor[k] = v
 
     def tick(self, dt):
         half = W / 2
@@ -95,7 +114,11 @@ class Sim:
             # Reactor: 1 real second = 1 process-minute; drift temperature on a
             # slow sine so the reaction rate visibly breathes; reset each batch.
             self._rt += dt
-            self.reactor["temperature"] = 70.0 + 18.0 * math.sin(self._rt * 0.15)
+            if self.manual:
+                # ease the vessel temperature toward the operator's setpoint
+                self.reactor["temperature"] += (self._temp_target - self.reactor["temperature"]) * min(1.0, dt * 0.6)
+            else:
+                self.reactor["temperature"] = 70.0 + 18.0 * math.sin(self._rt * 0.15)
             process_sim.step_reactor(self.reactor, dt * 1.0)
             if self.reactor["conversion"] >= 0.995:
                 self.reactor["conversion"] = 0.0   # next batch
@@ -114,10 +137,22 @@ class Sim:
                             "x": round(x, 2), "z": round(z, 2), "r": round(r, 2),
                             "ped": a["ped"]})
             rx = self.reactor
+            # Vanadium is the valuable metal in BOF slag. The teachable point is
+            # SELECTIVE precipitation: recover V while Fe and Al stay dissolved.
+            # V precipitates in pH 1.8-3.0, Fe only above 3.0, Al above 4.0 — so
+            # too-high pH co-precipitates Fe/Al and contaminates the product.
+            # Selective yield = leached x V-precip x (Fe still dissolved) x (Al still
+            # dissolved), giving a real optimum near the top of V's window (~2.9).
+            pH = rx["pH"]
+            v_recovery = (rx["conversion"]
+                          * process_sim.precipitation_fraction("V", pH)
+                          * (1.0 - process_sim.precipitation_fraction("Fe", pH))
+                          * (1.0 - process_sim.precipitation_fraction("Al", pH)))
             reactor = {"temperature": round(rx["temperature"], 1), "pressure": round(rx["pressure"], 1),
                        "flowRate": rx["flowRate"], "pH": rx["pH"],
                        "conversion": round(rx["conversion"], 3),
-                       "rate": round(process_sim.reaction_rate(rx), 2)}
+                       "rate": round(process_sim.reaction_rate(rx), 2),
+                       "yield": round(v_recovery, 3), "manual": self.manual}
             return {"t": round(time.time() - self.t0, 2), "n": len(out), "agents": out,
                     "reactor": reactor}
 
@@ -193,6 +228,14 @@ class Handler(BaseHTTPRequestHandler):
                 upsert_player(str(d["id"]), float(d["x"]), float(d["z"]), float(d.get("yaw", 0)))
                 self._send_json({"ok": True})
             except Exception as e:  # noqa: BLE001
+                self.send_response(400); self._cors(); self.end_headers()
+        elif self.path.startswith("/reactor/set"):
+            n = int(self.headers.get("Content-Length", 0))
+            try:
+                d = json.loads(self.rfile.read(n) or b"{}")
+                SIM.set_controls(d)
+                self._send_json({"ok": True})
+            except Exception:  # noqa: BLE001
                 self.send_response(400); self._cors(); self.end_headers()
         else:
             self.send_response(404); self._cors(); self.end_headers()

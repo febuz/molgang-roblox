@@ -502,7 +502,14 @@ async function pollSim() {
       : `🐍 Python sim: ${st.n} live agents driving/walking`;
     const rx = st.reactor, rel = document.getElementById('reactor');
     if (rx && rel) rel.innerHTML = `⚗️ leach reactor · ${(rx.conversion * 100) | 0}% converted `
-      + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)</span>`;
+      + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)`
+      + `${rx.manual ? '' : ' · idling'}</span>`;
+    if (rx && rx.yield != null) {
+      const yv = document.getElementById('y-val');
+      if (yv) yv.textContent = `${(rx.yield * 100) | 0}%`;
+      const yp = document.getElementById('y-parts');
+      if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
+    }
   } catch (e) {
     simOk = false;
     const el = document.getElementById('sim'); if (el) el.textContent = '🐍 Python sim offline (static world) — run sim_server.py';
@@ -598,6 +605,34 @@ async function enterXR() {
 if (xrBtn) xrBtn.addEventListener('click', () => { xrBtn.disabled = true; enterXR().catch((e) => { xrBtn.disabled = false; if (xrStat) xrStat.textContent = '🕶️ XR start failed: ' + e.message; }); });
 detectXR();
 
+// ---------- Slakkenspoor process controls (player = plant operator) ----------
+// The player drives the real chemistry: the sliders POST setpoints to the Python
+// sim, which owns the reactor (server authority). Yield = how much vanadium is
+// recovered (leached x precipitated at the chosen pH) — a real, teachable optimum.
+function initControls() {
+  const panel = document.getElementById('controls');
+  if (!panel) return;
+  panel.style.display = 'block';
+  const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
+                flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
+  let timer = null, pending = {};
+  const flush = () => {
+    timer = null;
+    fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pending) }).catch(() => {});
+    pending = {};
+  };
+  for (const key of ['temperature', 'pressure', 'flowRate', 'pH']) {
+    const el = document.getElementById('c-' + key), lab = document.getElementById('v-' + key);
+    if (!el) continue;
+    el.addEventListener('input', () => {
+      lab.textContent = fmt[key](el.value);
+      pending[key] = parseFloat(el.value);
+      if (!timer) timer = setTimeout(flush, 120);
+    });
+  }
+}
+
 // ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
@@ -637,6 +672,7 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     for (const o of objects) if (o.t === 'platform') buildPlatform(o);
     for (const z of (w.meta.zones || [])) buildZoneLabel(z);
     const line = (w.meta.processLine || []);
+    initControls();
     $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
       + `the web continuation of the Roblox teaser`;
     $('#resolve').innerHTML = `<div style="color:#7fe0a0;margin-bottom:3px">⚗️ Slakkenspoor — BOF slag processing line</div>`
