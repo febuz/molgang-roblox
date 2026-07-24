@@ -13,6 +13,7 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
+local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -463,16 +464,18 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 	local data = playerData[userId]
 	if not data then return end
 
-	local basePrice = COMMODITY_PRICES[itemName]
-	if not basePrice then
-		print("[EconomyManager] Unknown commodity:", itemName)
+	local valid, parsedQuantity, currentPriceOrError = TradeRules.Validate(
+		action, itemName, quantity, offeredPrice, COMMODITY_PRICES
+	)
+	if not valid then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Trade rejected: " .. currentPriceOrError,
+			rarity = "common",
+		})
 		return
 	end
-
-	-- Allow 20% price variance
-	local minPrice = basePrice * 0.8
-	local maxPrice = basePrice * 1.2
-	local currentPrice = math.max(minPrice, math.min(maxPrice, offeredPrice or basePrice))
+	quantity = parsedQuantity
+	local currentPrice = currentPriceOrError
 
 	if action == "buy" then
 		local totalCost = currentPrice * quantity
