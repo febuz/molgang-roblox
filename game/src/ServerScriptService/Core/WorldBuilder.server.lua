@@ -600,8 +600,8 @@ local function buildNexusHub(zonesFolder: Folder)
 			Name = "PlatformRim_" .. i,
 			Size = if i % 2 == 0 then Vector3.new(200, 2, 4) else Vector3.new(4, 2, 200),
 			Position = Vector3.new(rimX, 14, rimZ),
-			Color = CONFIG.NEON_GREEN,
-			Material = Enum.Material.Neon,
+			Color = Color3.fromRGB(28, 75, 65),
+			Material = Enum.Material.Metal,
 		})
 		addPointLight(rimPart, {
 			Color = CONFIG.NEON_GREEN,
@@ -615,8 +615,8 @@ local function buildNexusHub(zonesFolder: Folder)
 	spawn.Name = "MolGangSpawn"
 	spawn.Size = Vector3.new(12, 1, 12)
 	spawn.Position = Vector3.new(0, 14, 0)
-	spawn.Color = CONFIG.NEON_GREEN
-	spawn.Material = Enum.Material.Neon
+	spawn.Color = Color3.fromRGB(24, 115, 88)
+	spawn.Material = Enum.Material.Metal
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Duration = 0
