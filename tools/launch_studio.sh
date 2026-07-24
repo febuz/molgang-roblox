@@ -62,7 +62,7 @@ STUDIO_DETECTED=0
 for _ in $(seq 1 20); do
   # Vinegar and wineserver can remain alive after Studio itself has crashed.
   # Only the actual Studio executable proves that a window/playtest can work.
-  if ps -eo comm= | grep -Fqx 'RobloxStudioBeta.exe'; then
+  if ps -eo pid=,args= | awk '$2 ~ /RobloxStudioBeta[.]exe/ { found = 1 } END { exit(found ? 0 : 1) }'; then
     STUDIO_DETECTED=1
   else
     # Do not turn a short-lived process into a false-positive launch.
