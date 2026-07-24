@@ -125,7 +125,7 @@ closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- LAYOUT: Left = Equipment Catalog, Center = Grid, Right = Info
@@ -168,7 +168,7 @@ rentBtn.TextScaled = true
 rentBtn.Parent = catalogPanel
 corner(rentBtn, 6)
 
-rentBtn.MouseButton1Click:Connect(function()
+rentBtn.Activated:Connect(function()
 	playUIClick()
 	local r = Remotes:FindFirstChild("RequestRentFactory")
 	if r then r:FireServer() end
@@ -273,13 +273,13 @@ for _, item in ipairs(FactoryEquipment.Items) do
 	buyBtn.Parent = card
 	corner(buyBtn, 4)
 
-	buyBtn.MouseButton1Click:Connect(function()
+	buyBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestBuyEquipment")
 		if r then r:FireServer(item.id) end
 	end)
 
 	-- Select for placement on click
-	card.MouseButton1Click:Connect(function()
+	card.Activated:Connect(function()
 		selectedEquipment = item.id
 		currentRotation = 0
 		-- Highlight selected
@@ -341,7 +341,7 @@ for x = 1, GRID_W do
 		cell.Parent = gridCanvas
 
 		-- Click to place/interact
-		cell.MouseButton1Click:Connect(function()
+		cell.Activated:Connect(function()
 			if selectedEquipment then
 				local r = Remotes:FindFirstChild("RequestPlaceEquipment")
 				if r then r:FireServer(selectedEquipment, x, y, currentRotation) end
@@ -367,12 +367,12 @@ for x = 1, GRID_W do
 				local nb = Instance.new("TextButton"); nb.Size = UDim2.new(0.4,0,0.4,0); nb.Position = UDim2.new(0.55,0,0.55,0)
 				nb.Text = "No"; nb.BackgroundColor3 = Color3.fromRGB(60,60,80); nb.TextColor3 = Color3.new(1,1,1)
 				nb.TextScaled = true; nb.Font = Enum.Font.GothamBold; nb.Parent = cf
-				yb.MouseButton1Click:Connect(function()
+			yb.Activated:Connect(function()
 					local r = Remotes:FindFirstChild("RequestRemoveEquipment")
 					if r then r:FireServer(x, y) end
 					cg:Destroy()
 				end)
-				nb.MouseButton1Click:Connect(function() cg:Destroy() end)
+			nb.Activated:Connect(function() cg:Destroy() end)
 				task.delay(5, function() if cg.Parent then cg:Destroy() end end)
 			else
 				local r = Remotes:FindFirstChild("RequestRemoveEquipment")

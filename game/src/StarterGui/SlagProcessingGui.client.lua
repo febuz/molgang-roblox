@@ -145,7 +145,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = titleBar
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- TAB SYSTEM (3 tabs)
@@ -204,7 +204,7 @@ for _, tab in ipairs(tabs) do
 	tpanel.Parent = contentFrame
 	tabPanels[tab.key] = tpanel
 
-	tbtn.MouseButton1Click:Connect(function()
+	tbtn.Activated:Connect(function()
 		playUIClick()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do
@@ -288,7 +288,7 @@ local crushLabel
 local buyBtn = btn(slagPanel, {Name="BuyBtn", Size=UDim2.new(0.45,-10,0,36),
 	Position=UDim2.new(0,10,0,actionY), Text="Buy Raw Slag (50 MC)", BgColor=C.green})
 
-buyBtn.MouseButton1Click:Connect(function()
+buyBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestBuySlag")
 	if remote then
@@ -339,7 +339,7 @@ local millBtn = btn(slagPanel, {Name="MillBtn", Size=UDim2.new(0.28,-4,0,40),
 	Position=UDim2.new(0.68,0,0,crushBtnY), Text="BALL MILL\n(500 MC)", BgColor=Color3.fromRGB(160,100,255)})
 millBtn.TextColor3 = Color3.new(1,1,1)
 
-hammerBtn.MouseButton1Click:Connect(function()
+hammerBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
 	if remote then
@@ -365,7 +365,7 @@ hammerBtn.MouseButton1Click:Connect(function()
 	end)
 end)
 
-grindBtn.MouseButton1Click:Connect(function()
+grindBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
 	if remote then
@@ -376,7 +376,7 @@ grindBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
-millBtn.MouseButton1Click:Connect(function()
+millBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
 	if remote then
@@ -483,7 +483,7 @@ for _, rId in ipairs(reagentOrder) do
 	cardStroke.Thickness = 2
 	cardStroke.Parent = rCard
 
-	selBtn.MouseButton1Click:Connect(function()
+	selBtn.Activated:Connect(function()
 		selectedReagent = rId
 		-- Highlight selected
 		for _, rc in pairs(reagentCards) do
@@ -537,7 +537,7 @@ for i, sizeKey in ipairs(SteelSlag.SizeOrder) do
 		Text=data.name .. "\n" .. data.sizeLabel, BgColor=C.tabInactive})
 	sBtn.TextColor3 = C.text
 
-	sBtn.MouseButton1Click:Connect(function()
+	sBtn.Activated:Connect(function()
 		selectedSize = sizeKey
 		for _, sb in pairs(sizeBtns) do sb.BackgroundColor3 = C.tabInactive end
 		sBtn.BackgroundColor3 = C.accent
@@ -562,7 +562,7 @@ yieldLabel = label(leachPanel, {Name="Yield", Size=UDim2.new(0.5,-10,0,40),
 local startLeachBtn = btn(leachPanel, {Name="StartLeach", Size=UDim2.new(0.94,0,0,40),
 	Position=UDim2.new(0.03,0,0,420), Text="START LEACHING", BgColor=C.green})
 
-startLeachBtn.MouseButton1Click:Connect(function()
+startLeachBtn.Activated:Connect(function()
 	playUIClick()
 	if not selectedReagent then
 		leachTimeLabel.Text = "Select a reagent first!"
@@ -622,7 +622,7 @@ function refreshMonitor()
 	if remote then remote:FireServer() end
 end
 
-refreshBtn.MouseButton1Click:Connect(refreshMonitor)
+refreshBtn.Activated:Connect(refreshMonitor)
 
 -- ═══════════════════════════════════════════════
 -- SERVER EVENT HANDLERS
@@ -702,7 +702,7 @@ if slagInvEvent then
 					if leach.complete then
 						local extBtn = btn(card, {Name="ExtractBtn", Size=UDim2.new(0.3,0,0,24),
 							Position=UDim2.new(0.65,0,0,64), Text="EXTRACT", BgColor=C.green})
-						extBtn.MouseButton1Click:Connect(function()
+						extBtn.Activated:Connect(function()
 							local remote = Remotes:FindFirstChild("RequestExtractProducts")
 							if remote then remote:FireServer(leach.id) end
 							task.delay(0.5, refreshMonitor)
