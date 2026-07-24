@@ -20,6 +20,12 @@ local requiredGuis = {
 -- the readiness loop observes PlayerGui before the scripts parent their UIs.
 task.wait(15)
 
+local visibleChildren = {}
+for _, child in ipairs(playerGui:GetChildren()) do
+	table.insert(visibleChildren, child.Name .. ":" .. child.ClassName)
+end
+print("[AutoTestClient] PlayerGui children: " .. table.concat(visibleChildren, ", "))
+
 local passCount = 0
 local failCount = 0
 
