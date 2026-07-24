@@ -120,6 +120,18 @@ local BAR_RANGE = 20         -- studs to interact
 -- CUP ACCESSORY (visible in hand)
 -- ═══════════════════════════════════════════════
 
+-- Rarity-driven cup glow (molgang-roblox#11 remainder / GP216) — keyed by
+-- the same tier vocabulary RarityTrait.TIER_ORDER produces, so any drink's
+-- computed `rarity` field maps straight onto a visual without a separate
+-- name list to keep in sync.
+local RARITY_GLOW = {
+	Common = { brightness = 0.8, range = 4, sparkle = false },
+	Uncommon = { brightness = 1.0, range = 5, sparkle = false },
+	Rare = { brightness = 1.3, range = 6, sparkle = false },
+	Epic = { brightness = 1.7, range = 7, sparkle = true },
+	Legendary = { brightness = 2.2, range = 9, sparkle = true },
+}
+
 local function giveCupAccessory(player, drink)
 	local character = player.Character
 	if not character then return end
@@ -206,12 +218,25 @@ local function giveCupAccessory(player, drink)
 		pearlWeld.Parent = pearl
 	end
 
-	-- Neon glow on cup (buff color)
+	-- Neon glow on cup (buff color), scaled by rarity tier
+	local glow = RARITY_GLOW[drink.rarity] or RARITY_GLOW.Common
 	local light = Instance.new("PointLight")
 	light.Color = drink.color
-	light.Brightness = 0.8
-	light.Range = 4
+	light.Brightness = glow.brightness
+	light.Range = glow.range
 	light.Parent = cup
+
+	-- Epic/Legendary drinks get a sparkle flourish on the cup
+	if glow.sparkle then
+		local sparkle = Instance.new("ParticleEmitter")
+		sparkle.Color = ColorSequence.new(drink.color)
+		sparkle.Size = NumberSequence.new(0.08)
+		sparkle.Lifetime = NumberRange.new(0.4, 0.8)
+		sparkle.Rate = 8
+		sparkle.Speed = NumberRange.new(0.5, 1)
+		sparkle.SpreadAngle = Vector2.new(180, 180)
+		sparkle.Parent = cup
+	end
 
 	-- Billboard showing drink name above cup
 	local bill = Instance.new("BillboardGui")
