@@ -1,6 +1,26 @@
 -- Pure server-side validation rules for commodity trades.
 local TradeRules = {}
 
+-- A normal market transaction carries a 5% trade/tariff cost. World events
+-- can multiply this (for example free-trade sets it to 0). Keep this pure so
+-- every settlement path uses the exact same rounding and validation rules.
+TradeRules.BASE_TRADE_TAX_RATE = 0.05
+
+function TradeRules.CalculateTradeTax(grossAmount, multiplier)
+	local gross = tonumber(grossAmount) or 0
+	if gross ~= gross or gross == math.huge or gross == -math.huge or gross < 0 then
+		return 0, 0
+	end
+	local eventMultiplier = tonumber(multiplier)
+	if not eventMultiplier or eventMultiplier ~= eventMultiplier
+		or eventMultiplier == math.huge or eventMultiplier == -math.huge then
+		eventMultiplier = 1
+	end
+	eventMultiplier = math.max(0, eventMultiplier)
+	local tax = math.floor(gross * TradeRules.BASE_TRADE_TAX_RATE * eventMultiplier + 0.5)
+	return tax, math.max(0, gross - tax)
+end
+
 function TradeRules.ValidateQuantity(quantity, maximum)
 	local parsed = tonumber(quantity)
 	if not parsed or parsed ~= parsed or parsed == math.huge or parsed == -math.huge then

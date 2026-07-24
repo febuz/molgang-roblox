@@ -14,6 +14,7 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local ProductMarket = require(ReplicatedStorage.Modules.ProductMarket)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 
 -- Active bids
 local activeBids = {} -- {bidId = {playerId, playerName, productId, price, quantity, timestamp}}
@@ -275,13 +276,17 @@ function matchBid(bidId, bidder)
 		if refund > 0 then
 			PlayerDataBridge.AddMolCoins(bid.playerId, refund)
 		end
-		PlayerDataBridge.AddEarnedMolCoins(bestSell.playerId, fillPrice * fillQty)
+		local grossSettlement = fillPrice * fillQty
+		local tradeTax, netSettlement = TradeRules.CalculateTradeTax(
+			grossSettlement, WorldEvents.GetActiveEffects().tradeTaxMult
+		)
+		PlayerDataBridge.AddEarnedMolCoins(bestSell.playerId, netSettlement)
 
 		-- Notify both parties
 		local sellerPlayer = Players:GetPlayerByUserId(bestSell.playerId)
 		if sellerPlayer then
 			Remotes.FireClient("ServerAnnounce", sellerPlayer, {
-				message = "SOLD: " .. fillQty .. "x " .. bid.productId .. " @ " .. fillPrice .. " MC to " .. bid.playerName,
+				message = "SOLD: " .. fillQty .. "x " .. bid.productId .. " @ " .. fillPrice .. " MC (net " .. netSettlement .. ", tax " .. tradeTax .. ") to " .. bid.playerName,
 				rarity = "rare",
 			})
 		end
@@ -329,7 +334,11 @@ function matchSell(sellId, seller)
 		if refund > 0 then
 			PlayerDataBridge.AddMolCoins(bestBid.playerId, refund)
 		end
-		PlayerDataBridge.AddEarnedMolCoins(sell.playerId, fillPrice * fillQty)
+		local grossSettlement = fillPrice * fillQty
+		local tradeTax, netSettlement = TradeRules.CalculateTradeTax(
+			grossSettlement, WorldEvents.GetActiveEffects().tradeTaxMult
+		)
+		PlayerDataBridge.AddEarnedMolCoins(sell.playerId, netSettlement)
 
 		local bidderPlayer = Players:GetPlayerByUserId(bestBid.playerId)
 		if bidderPlayer then
@@ -339,7 +348,7 @@ function matchSell(sellId, seller)
 			})
 		end
 		Remotes.FireClient("ServerAnnounce", seller, {
-			message = "SOLD: " .. fillQty .. "x " .. sell.productId .. " @ " .. fillPrice .. " MC",
+			message = "SOLD: " .. fillQty .. "x " .. sell.productId .. " @ " .. fillPrice .. " MC (net " .. netSettlement .. ", tax " .. tradeTax .. ")",
 			rarity = "rare",
 		})
 

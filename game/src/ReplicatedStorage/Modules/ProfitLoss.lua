@@ -44,6 +44,7 @@ ProfitLoss.Categories = {
 		"mining_taxes",        -- monthly mining plot taxes
 		"exploration_licenses",-- mining exploration costs
 		"soil_tests",          -- farming soil analysis
+		"trade_tax",           -- market tariffs and transaction fees
 	},
 	-- Capital Expenditures
 	capex = {

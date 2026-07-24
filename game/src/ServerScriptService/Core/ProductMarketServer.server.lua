@@ -17,6 +17,7 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local GameClock = require(ReplicatedStorage.Modules.GameClock)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 
 -- ═══════════════════════════════════════════════
 -- STATE
@@ -148,14 +149,20 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	-- Calculate revenue
 	local unitPrice = ProductMarket.GetCurrentPrice(productId, currentGameDay)
 	local totalRevenue = unitPrice * quantity
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local tradeTax, netRevenue = TradeRules.CalculateTradeTax(totalRevenue, eventEffects.tradeTaxMult)
 
 	-- Add MolCoins
-	PlayerDataBridge.AddEarnedMolCoins(userId, totalRevenue)
+	PlayerDataBridge.AddEarnedMolCoins(userId, netRevenue)
 
 	-- Record in P&L
 	local ledger = getLedger(userId)
-	ProfitLoss.RecordTransaction(ledger, "revenue", "product_sales", totalRevenue,
+	ProfitLoss.RecordTransaction(ledger, "revenue", "product_sales", netRevenue,
 		quantity .. "x " .. product.name .. " @ " .. unitPrice .. " MC")
+	if tradeTax > 0 then
+		ProfitLoss.RecordTransaction(ledger, "opex", "trade_tax", tradeTax,
+			"Market trade tax: " .. tradeTax .. " MC")
+	end
 	persistLedger(userId, ledger)
 
 	-- Notify
@@ -164,24 +171,26 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 		name = product.name,
 		quantity = quantity,
 		unitPrice = unitPrice,
-		totalRevenue = totalRevenue,
+		totalRevenue = netRevenue,
+		grossRevenue = totalRevenue,
+		tradeTax = tradeTax,
 		margin = ProfitLoss.GetMargin(ledger),
 	})
 
 	Remotes.FireClient("ServerAnnounce", player, {
-		message = "SOLD: " .. quantity .. "x " .. product.name .. " for " .. totalRevenue .. " MolCoins!",
+		message = "SOLD: " .. quantity .. "x " .. product.name .. " for " .. netRevenue .. " MC (gross " .. totalRevenue .. ", tax " .. tradeTax .. ")!",
 		rarity = totalRevenue >= 1000 and "epic" or "rare",
 	})
 
 	-- Global announce for big sales
-	if totalRevenue >= 2000 then
+	if netRevenue >= 2000 then
 		Remotes.FireAllClients("ServerAnnounce", {
-			message = player.Name .. " sold " .. quantity .. "x " .. product.name .. " for " .. totalRevenue .. " MC!",
+			message = player.Name .. " sold " .. quantity .. "x " .. product.name .. " for " .. netRevenue .. " MC!",
 			rarity = "epic",
 		})
 	end
 
-	print("[ProductMarket]", player.Name, "sold", quantity, "x", productId, "for", totalRevenue, "MC")
+	print("[ProductMarket]", player.Name, "sold", quantity, "x", productId, "for", netRevenue, "MC (gross", totalRevenue, "tax", tradeTax .. ")")
 end)
 
 -- ═══════════════════════════════════════════════
