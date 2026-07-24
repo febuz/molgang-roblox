@@ -1,9 +1,10 @@
-// world.js — a free-roam industrial-district world composed from the
-// identified asset library, with diffusion impostors filling the gaps.
+// world.js — thin, fast renderer for the Python-authored map (world.json).
 //
-// Resolver: each thing the district needs is matched (by word) against the
-// GLB manifest. A hit places the real model ("identified"); a miss falls back
-// to a Stable-Diffusion impostor billboard ("unidentified -> generated").
+// The layout is precomputed in world_gen.py, so the client does no placement
+// work: it paints a background instantly, then STREAMS the map — only objects
+// near the camera are instantiated (GTA/Quake-style), so a 1200-object city
+// stays cheap. Real 3D models for identified assets; camera-facing sprites for
+// the diffusion gap-fill. Renders on a 49% duty cycle to spare the GPU.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -11,279 +12,34 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
 
-// ---- deterministic PRNG so the town is stable across loads ----
-function mulberry32(a) {
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-const rand = mulberry32(1337);
-const pick = (arr) => arr[Math.floor(rand() * arr.length)];
-const jitter = (m) => (rand() - 0.5) * 2 * m;
-
-// ---- data ----
-const manifest = await (await fetch('../viewer/manifest.json', { cache: 'no-cache' })).json();
-const impostorData = await (await fetch('./impostors/impostors.json', { cache: 'no-cache' })).json();
-const assetStems = manifest.models.map((m) => ({ stem: m.stem, file: m.file, set: m.set }));
-const impostorTypes = Object.keys(impostorData.impostors);
-
-// Word-boundary match against stems (so "car" does NOT match "ore_cart").
-function words(s) { return s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); }
-function resolve(keywords, impostorType) {
-  for (const a of assetStems) {
-    const w = words(a.stem);
-    if (keywords.some((k) => w.includes(k))) return { kind: 'asset', file: a.file, stem: a.stem };
-  }
-  if (impostorType && impostorData.impostors[impostorType]) {
-    return { kind: 'impostor', type: impostorType };
-  }
-  return null;
-}
-const stats = { asset: 0, impostor: 0, needs: {} };
-
-// ---- scene ----
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8fb4d6);
-scene.fog = new THREE.Fog(0x8fb4d6, 60, 260);
-const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 600);
-
+// ---------- renderer + instant background ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
 $('#stage').appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xdfeeff, 0x33383f, 1.4));
-const sun = new THREE.DirectionalLight(0xfff3e0, 2.2);
-sun.position.set(60, 120, 40);
-scene.add(sun);
+const scene = new THREE.Scene();
+// Sky gradient as an instant background (a canvas texture — no assets to wait on).
+(function sky() {
+  const c = document.createElement('canvas'); c.width = 8; c.height = 256;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 256);
+  grd.addColorStop(0, '#9ec8ea'); grd.addColorStop(0.55, '#b9d6ee'); grd.addColorStop(1, '#dfe9ee');
+  g.fillStyle = grd; g.fillRect(0, 0, 8, 256);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  scene.background = tex;
+})();
+scene.fog = new THREE.Fog(0xc4dae8, 55, 200);
 
-// ---- ground + roads ----
-const WORLD = 220;
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(WORLD, WORLD),
-  new THREE.MeshStandardMaterial({ color: 0x3c4a3a, roughness: 1 }));
-ground.rotation.x = -Math.PI / 2;
-scene.add(ground);
+const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 400);
+scene.add(new THREE.HemisphereLight(0xdfeeff, 0x384049, 1.5));
+const sun = new THREE.DirectionalLight(0xfff2e0, 2.1);
+sun.position.set(60, 130, 40); scene.add(sun);
 
-const BLOCK = 60, ROAD = 14, GRID = [-1, 0, 1];   // 3x3 blocks
-const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.9 });
-const lineMat = new THREE.MeshStandardMaterial({ color: 0xd9c56a, emissive: 0x3a3520 });
-function roadStrip(horizontal, at) {
-  const len = WORLD;
-  const geo = horizontal ? new THREE.PlaneGeometry(len, ROAD) : new THREE.PlaneGeometry(ROAD, len);
-  const road = new THREE.Mesh(geo, roadMat);
-  road.rotation.x = -Math.PI / 2;
-  road.position.set(horizontal ? 0 : at, 0.02, horizontal ? at : 0);
-  scene.add(road);
-  const dash = horizontal ? new THREE.PlaneGeometry(len, 0.5) : new THREE.PlaneGeometry(0.5, len);
-  const line = new THREE.Mesh(dash, lineMat);
-  line.rotation.x = -Math.PI / 2;
-  line.position.set(horizontal ? 0 : at, 0.03, horizontal ? at : 0);
-  scene.add(line);
-}
-const roadAts = GRID.map((g) => g * (BLOCK + ROAD));
-for (const at of roadAts) { roadStrip(true, at); roadStrip(false, at); }
-
-// ---- loaders ----
-const gltfLoader = new GLTFLoader();
-const texLoader = new THREE.TextureLoader();
-const glbCache = new Map();
-async function loadGLB(file) {
-  if (!glbCache.has(file)) glbCache.set(file, (await gltfLoader.loadAsync(`../models/${file}`)).scene);
-  return glbCache.get(file).clone(true);
-}
-const texCache = new Map();
-function loadTex(type) {
-  if (!texCache.has(type)) {
-    const t = texLoader.load(`./impostors/${impostorData.impostors[type].file}`);
-    t.colorSpace = THREE.SRGBColorSpace;
-    texCache.set(type, t);
-  }
-  return texCache.get(type);
-}
-
-// Place a GLB, normalised so its largest footprint dimension ~= targetSize,
-// standing on the ground at (x,z).
-async function placeAsset(file, x, z, targetSize, rotY = 0) {
-  const obj = await loadGLB(file);
-  const box = new THREE.Box3().setFromObject(obj);
-  const size = box.getSize(new THREE.Vector3());
-  const s = targetSize / Math.max(size.x, size.z, 0.01);
-  obj.scale.setScalar(s);
-  const box2 = new THREE.Box3().setFromObject(obj);
-  obj.position.set(x, -box2.min.y, z);
-  obj.rotation.y = rotY;
-  scene.add(obj);
-  return obj;
-}
-
-// Place an impostor billboard: an upright alpha-tested plane, base on the
-// ground, facing +/- along `faceZ` (a real standee, not a camera sprite).
-const impostors = [];
-function placeImpostor(type, x, z, height, faceRot = 0) {
-  const tex = loadTex(type);
-  const asp = 1; // square generations
-  const w = height * asp;
-  const geo = new THREE.PlaneGeometry(w, height);
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
-  const m = new THREE.Mesh(geo, mat);
-  m.position.set(x, height / 2, z);
-  m.rotation.y = faceRot;
-  m.userData.billboard = true;
-  scene.add(m);
-  impostors.push(m);
-  return m;
-}
-
-// ---- district composition ----
-const setBlocks = {
-  '-1,-1': 'Chemistry Lab', '0,-1': 'Industrial & Game', '1,-1': 'Mining Site',
-  '-1,0': 'Industrial & Game', '0,0': 'Nexus Hub', '1,0': 'Industrial & Game',
-  '-1,1': 'Bubble Tea Café', '0,1': 'Industrial & Game', '1,1': 'Mining Site',
-};
-function blockCenter(gx, gz) { return [gx * (BLOCK + ROAD), gz * (BLOCK + ROAD)]; }
-
-async function build() {
-  // 1. Per-block landmark clusters from the IDENTIFIED library (grouped by set).
-  for (const gx of GRID) for (const gz of GRID) {
-    const [cx, cz] = blockCenter(gx, gz);
-    const set = setBlocks[`${gx},${gz}`];
-    const inSet = manifest.models.filter((m) => m.set === set);
-    const n = Math.min(inSet.length, 9);
-    for (let i = 0; i < n; i++) {
-      const col = i % 3, row = Math.floor(i / 3);
-      const x = cx + (col - 1) * 15 + jitter(2);
-      const z = cz + (row - 1) * 15 + jitter(2);
-      const big = /silo|column|tower|tank|converter|kiln|excavator|truck|frame|arch|fountain|fridge/.test(inSet[i].stem);
-      await placeAsset(inSet[i].file, x, z, big ? 12 : 6, rand() * Math.PI * 2);
-      stats.asset++;
-    }
-  }
-
-  // 2. Building facades line the block edges facing the roads (GAP -> impostor).
-  for (const at of roadAts) {
-    for (let t = -WORLD / 2 + 20; t < WORLD / 2 - 20; t += 22) {
-      if (Math.abs(t) < ROAD) continue;
-      placeImpostor('factory_facade', t, at - ROAD / 2 - 3, 16, 0);
-      placeImpostor('factory_facade', t, at + ROAD / 2 + 3, 16, Math.PI);
-      placeImpostor('factory_facade', at - ROAD / 2 - 3, t, 16, Math.PI / 2);
-      placeImpostor('factory_facade', at + ROAD / 2 + 3, t, 16, -Math.PI / 2);
-    }
-  }
-  stats.impostor += 4 * roadAts.length * 8;
-
-  // 3. Street furniture + fill along the roads.
-  const NEEDS = [
-    { role: 'street light', kw: ['lamp', 'light'], imp: null, size: 5, every: 20 },
-    { role: 'bench', kw: ['bench'], imp: null, size: 4, every: 32 },
-    { role: 'signpost', kw: ['signpost'], imp: null, size: 5, every: 46 },
-    { role: 'tree', kw: ['tree'], imp: 'tree', size: 7, every: 13 },
-    { role: 'palm tree', kw: ['zzz'], imp: 'palm_tree', size: 8, every: 27 },
-    { role: 'car', kw: ['sedan', 'vehicle'], imp: 'car', size: 3.4, every: 15 },
-    { role: 'delivery truck', kw: ['zzz'], imp: 'delivery_truck', size: 4.5, every: 38 },
-    { role: 'van', kw: ['zzz'], imp: 'van', size: 4, every: 44 },
-    { role: 'city bus', kw: ['zzz'], imp: 'city_bus', size: 6, every: 70 },
-    { role: 'motorcycle', kw: ['zzz'], imp: 'motorcycle', size: 2.6, every: 34 },
-    { role: 'pedestrian', kw: ['pedestrian', 'person'], imp: 'pedestrian', size: 3.4, every: 16 },
-    { role: 'worker', kw: ['zzz'], imp: 'worker', size: 3.4, every: 30 },
-    { role: 'woman', kw: ['zzz'], imp: 'woman_pedestrian', size: 3.4, every: 26 },
-    { role: 'fire hydrant', kw: ['hydrant'], imp: 'fire_hydrant', size: 1.6, every: 28 },
-    { role: 'dumpster', kw: ['dumpster'], imp: 'dumpster', size: 2.6, every: 40 },
-    { role: 'traffic cone', kw: ['zzcone'], imp: 'traffic_cone', size: 1.3, every: 22 },
-    { role: 'shrub', kw: ['shrub', 'bush'], imp: 'shrub', size: 2.2, every: 12 },
-    { role: 'mailbox', kw: ['zzz'], imp: 'mailbox', size: 2.4, every: 52 },
-    { role: 'phone booth', kw: ['zzz'], imp: 'phone_booth', size: 3.2, every: 60 },
-    { role: 'food cart', kw: ['zzz'], imp: 'food_cart', size: 3, every: 66 },
-    { role: 'planter', kw: ['zzz'], imp: 'planter_box', size: 2.4, every: 36 },
-    { role: 'road barrier', kw: ['zzz'], imp: 'road_barrier', size: 3, every: 24 },
-  ];
-  for (const need of NEEDS) {
-    const r = resolve(need.kw, need.imp);
-    stats.needs[need.role] = r ? r.kind : 'none';
-    if (!r) continue;
-    for (const at of roadAts) {
-      for (let t = -WORLD / 2 + 16; t < WORLD / 2 - 16; t += need.every) {
-        if (Math.abs(t) < ROAD) continue;
-        const offs = [[t, at - ROAD / 2 - 1.5], [t, at + ROAD / 2 + 1.5],
-                      [at - ROAD / 2 - 1.5, t], [at + ROAD / 2 + 1.5, t]];
-        for (const [x, z] of offs) {
-          if (rand() > 0.62) continue;
-          const rot = rand() * Math.PI * 2;
-          if (r.kind === 'asset') { await placeAsset(r.file, x, z, need.size, rot); stats.asset++; }
-          else { placeImpostor(r.imp || need.imp, x, z, need.size, rot); stats.impostor++; }
-        }
-      }
-    }
-  }
-
-  // 4. Power pylons at the far corners + tall landmarks (GAP -> impostor).
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    placeImpostor('power_pylon', sx * (WORLD / 2 - 12), sz * (WORLD / 2 - 12), 20, rand() * Math.PI);
-    stats.impostor++;
-  }
-  // Cranes + water towers rise over the blocks for a denser industrial skyline.
-  for (const gx of GRID) for (const gz of GRID) {
-    const [cx, cz] = blockCenter(gx, gz);
-    if ((gx + gz) % 2 === 0) { placeImpostor('crane', cx + 18, cz + 18, 26, rand() * Math.PI); stats.impostor++; }
-    else { placeImpostor('water_tower', cx - 18, cz - 18, 16, 0); stats.impostor++; }
-  }
-
-  finishHUD();
-}
-
-function finishHUD() {
-  $('#status').textContent = `Identified → assets: ${stats.asset} · Unidentified → diffusion: ${stats.impostor}`;
-  const rows = Object.entries(stats.needs)
-    .map(([r, k]) => `<div><span class="${k === 'asset' ? 'a' : 'i'}">${k === 'asset' ? '▣ model' : '◈ diffusion'}</span> ${r}</div>`)
-    .join('');
-  $('#resolve').innerHTML = rows;
-  window.__molgangWorld = { assets: stats.asset, impostors: stats.impostor, needs: stats.needs };
-}
-
-// ---- free-roam camera (pointer-lock + WASD), inline (no extra deps) ----
-const player = { pos: new THREE.Vector3(0, 1.8, roadAts[0] + 40), yaw: Math.PI, pitch: -0.05, speed: 22 };
-// Optional verification/deep-link camera presets.
-const CAMS = {
-  overview: { pos: [90, 70, 120], yaw: -2.5, pitch: -0.5 },
-  street: { pos: [0, 1.8, 42], yaw: Math.PI, pitch: -0.03 },
-  plaza: { pos: [4, 1.8, 6], yaw: -0.6, pitch: 0.0 },
-};
-const camPreset = CAMS[params.get('cam')];
-if (camPreset) { player.pos.set(...camPreset.pos); player.yaw = camPreset.yaw; player.pitch = camPreset.pitch; }
-
-const keys = {};
-addEventListener('keydown', (e) => { keys[e.code] = true; });
-addEventListener('keyup', (e) => { keys[e.code] = false; });
-const canvas = renderer.domElement;
-canvas.addEventListener('click', () => canvas.requestPointerLock && canvas.requestPointerLock());
-addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement === canvas) {
-    player.yaw -= e.movementX * 0.0022;
-    player.pitch = Math.max(-1.4, Math.min(1.0, player.pitch - e.movementY * 0.0022));
-  }
-});
-
-function applyCamera(dt) {
-  const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
-  const right = new THREE.Vector3(forward.z, 0, -forward.x);
-  const mv = new THREE.Vector3();
-  if (keys['KeyW']) mv.sub(forward);
-  if (keys['KeyS']) mv.add(forward);
-  if (keys['KeyA']) mv.sub(right);
-  if (keys['KeyD']) mv.add(right);
-  if (mv.lengthSq() > 0) { mv.normalize().multiplyScalar(player.speed * dt); player.pos.add(mv); }
-  const half = WORLD / 2 - 2;
-  player.pos.x = Math.max(-half, Math.min(half, player.pos.x));
-  player.pos.z = Math.max(-half, Math.min(half, player.pos.z));
-  camera.position.copy(player.pos);
-  const dir = new THREE.Vector3(
-    Math.sin(player.yaw) * Math.cos(player.pitch),
-    Math.sin(player.pitch),
-    Math.cos(player.yaw) * Math.cos(player.pitch));
-  camera.lookAt(player.pos.clone().add(dir));
-}
+// Ground shows immediately too.
+let WORLD = 240, roadAts = [-74, 0, 74], ROAD = 14;
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD),
+  new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
 
 function resize() {
   const w = innerWidth, h = innerHeight;
@@ -292,13 +48,153 @@ function resize() {
 }
 addEventListener('resize', resize); resize();
 
-let last = performance.now();
+// ---------- player controller: W forward, S back, A/D strafe, mouse look ----------
+const player = { pos: new THREE.Vector3(0, 1.8, 84), yaw: Math.PI, pitch: -0.04, speed: 34 };
+const CAMS = {
+  street: { pos: [0, 1.8, 46], yaw: Math.PI, pitch: -0.02 },
+  overview: { pos: [95, 78, 128], yaw: -2.5, pitch: -0.52 },
+  plaza: { pos: [6, 1.8, 10], yaw: -0.6, pitch: 0.0 },
+};
+const preset = CAMS[params.get('cam')];
+if (preset) { player.pos.set(...preset.pos); player.yaw = preset.yaw; player.pitch = preset.pitch; }
+const keys = {};
+addEventListener('keydown', (e) => { keys[e.code] = true; });
+addEventListener('keyup', (e) => { keys[e.code] = false; });
+const canvas = renderer.domElement;
+canvas.addEventListener('click', () => canvas.requestPointerLock && canvas.requestPointerLock());
+addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement === canvas) {
+    player.yaw -= e.movementX * 0.0022;
+    player.pitch = Math.max(-1.3, Math.min(1.0, player.pitch - e.movementY * 0.0022));
+  }
+});
+function step(dt) {
+  const fwd = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw)); // look dir (horizontal)
+  const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+  const mv = new THREE.Vector3();
+  const sp = player.speed * (keys['ShiftLeft'] ? 2.2 : 1);
+  if (keys['KeyW'] || keys['ArrowUp']) mv.add(fwd);      // W = forward
+  if (keys['KeyS'] || keys['ArrowDown']) mv.sub(fwd);    // S = backward
+  if (keys['KeyD'] || keys['ArrowRight']) mv.add(right);
+  if (keys['KeyA'] || keys['ArrowLeft']) mv.sub(right);
+  if (mv.lengthSq() > 0) player.pos.add(mv.normalize().multiplyScalar(sp * dt));
+  const half = WORLD / 2 - 2;
+  player.pos.x = Math.max(-half, Math.min(half, player.pos.x));
+  player.pos.z = Math.max(-half, Math.min(half, player.pos.z));
+  camera.position.copy(player.pos);
+  const d = new THREE.Vector3(Math.sin(player.yaw) * Math.cos(player.pitch),
+    Math.sin(player.pitch), Math.cos(player.yaw) * Math.cos(player.pitch));
+  camera.lookAt(player.pos.clone().add(d));
+}
+
+// ---------- streaming: instantiate only what's near the camera ----------
+const gltfLoader = new GLTFLoader();
+const texLoader = new THREE.TextureLoader();
+const glbProto = new Map();      // file -> loaded scene (prototype) or 'loading'
+const spriteMat = new Map();     // impostor type -> SpriteMaterial
+let objects = [];                // all placements from world.json
+const live = new Map();          // placement index -> Object3D (currently in scene)
+const STREAM_IN = 95, STREAM_OUT = 120, MAX_LIVE = 260;
+
+function impostorMaterial(type) {
+  if (!spriteMat.has(type)) {
+    const t = texLoader.load(`./impostors/${type}.png`);
+    t.colorSpace = THREE.SRGBColorSpace;
+    spriteMat.set(type, new THREE.SpriteMaterial({ map: t, transparent: true, alphaTest: 0.5 }));
+  }
+  return spriteMat.get(type);
+}
+function spawnImpostor(o) {
+  const sp = new THREE.Sprite(impostorMaterial(o.ref));
+  sp.center.set(0.5, 0);                 // anchor at the bottom -> stands on ground
+  sp.scale.set(o.s, o.s, 1);
+  sp.position.set(o.x, 0, o.z);
+  return sp;
+}
+async function spawnAsset(o) {
+  let proto = glbProto.get(o.ref);
+  if (proto === 'loading') return null;
+  if (!proto) {
+    glbProto.set(o.ref, 'loading');
+    proto = (await gltfLoader.loadAsync(`../models/${o.ref}`)).scene;
+    glbProto.set(o.ref, proto);
+  }
+  const obj = proto.clone(true);
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const s = o.s / Math.max(size.x, size.z, 0.01);
+  obj.scale.setScalar(s);
+  const b2 = new THREE.Box3().setFromObject(obj);
+  obj.position.set(o.x, -b2.min.y, o.z);
+  obj.rotation.y = o.r;
+  return obj;
+}
+
+let streamTick = 0;
+function stream() {
+  const px = player.pos.x, pz = player.pos.z;
+  // Cull out-of-range live objects.
+  for (const [i, obj] of live) {
+    const o = objects[i];
+    const dx = o.x - px, dz = o.z - pz;
+    if (dx * dx + dz * dz > STREAM_OUT * STREAM_OUT) {
+      scene.remove(obj); live.delete(i);
+    }
+  }
+  // Stream in near objects (impostors first — they're cheap and set the scene).
+  if (live.size < MAX_LIVE) {
+    for (let i = 0; i < objects.length; i++) {
+      if (live.has(i)) continue;
+      const o = objects[i];
+      const dx = o.x - px, dz = o.z - pz;
+      if (dx * dx + dz * dz > STREAM_IN * STREAM_IN) continue;
+      if (o.t === 'imp') {
+        const sp = spawnImpostor(o); scene.add(sp); live.set(i, sp);
+      } else {
+        live.set(i, 'pending');
+        spawnAsset(o).then((obj) => {
+          if (obj && live.get(i) === 'pending') { scene.add(obj); live.set(i, obj); }
+          else if (!obj) live.delete(i);
+        });
+      }
+      if (live.size >= MAX_LIVE) break;
+    }
+  }
+  $('#live').textContent = `streaming ${[...live.values()].filter((v) => v !== 'pending').length} nearby objects`;
+}
+
+// ---------- 49% render-budget loop ----------
+const BUDGET = 0.49;
+let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
 function loop(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  applyCamera(dt);
-  renderer.render(scene, camera);
+  const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
+  const d = (now - lastRender);
+  step(dt);
+  if (now - lastStream > 180) { lastStream = now; stream(); }
+  if (d >= refresh / BUDGET) { lastRender = now; renderer.render(scene, camera); }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
-build();
+// ---------- load the map, then let streaming populate it ----------
+(async function init() {
+  const w = await (await fetch('./world.json', { cache: 'no-cache' })).json();
+  WORLD = w.meta.world; roadAts = w.meta.roadAts; ROAD = w.meta.road;
+  objects = w.objects;
+  // roads (cheap, drawn once)
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.9 });
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0xd9c56a, emissive: 0x2e2a16 });
+  for (const at of roadAts) {
+    for (const horiz of [true, false]) {
+      const road = new THREE.Mesh(horiz ? new THREE.PlaneGeometry(WORLD, ROAD) : new THREE.PlaneGeometry(ROAD, WORLD), roadMat);
+      road.rotation.x = -Math.PI / 2; road.position.set(horiz ? 0 : at, 0.02, horiz ? at : 0); scene.add(road);
+      const line = new THREE.Mesh(horiz ? new THREE.PlaneGeometry(WORLD, 0.5) : new THREE.PlaneGeometry(0.5, WORLD), lineMat);
+      line.rotation.x = -Math.PI / 2; line.position.set(horiz ? 0 : at, 0.03, horiz ? at : 0); scene.add(line);
+    }
+  }
+  $('#status').textContent = `Identified → models: ${w.meta.assets} · Unidentified → diffusion: ${w.meta.impostors}`;
+  $('#resolve').innerHTML = Object.entries(w.resolve)
+    .map(([r, k]) => `<div><span class="${k === 'asset' ? 'a' : 'i'}">${k === 'asset' ? '▣ model' : '◈ diffusion'}</span> ${r}</div>`).join('');
+  window.__molgangWorld = { total: objects.length, assets: w.meta.assets, impostors: w.meta.impostors };
+  stream(); // first populate
+})();
