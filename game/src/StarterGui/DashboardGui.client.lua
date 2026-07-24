@@ -302,8 +302,13 @@ quizBtn.Parent = dashboardPanel
 createCorner(quizBtn, 6)
 
 quizBtn.MouseButton1Click:Connect(function()
-	local r = Remotes:FindFirstChild("RequestQuizQuestion")
-	if r then r:FireServer() end
+	local r = Remotes:FindFirstChild("RequestQuizStart")
+	if r then
+		r:FireServer("any")
+		screenGui.Enabled = false
+	else
+		warn("[DashboardGui] RequestQuizStart remote is missing")
+	end
 end)
 
 PlayerDataLoaded.OnClientEvent:Connect(updateDashboard)

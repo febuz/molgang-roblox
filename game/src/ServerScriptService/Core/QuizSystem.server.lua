@@ -238,6 +238,15 @@ local function startQuiz(player, zone)
 	})
 end
 
+-- Start a quiz from an in-world prompt or the dashboard quick action.
+-- The client only supplies a zone hint; question selection stays server-side.
+Remotes.RequestQuizStart.OnServerEvent:Connect(function(player, zone)
+	if type(zone) ~= "string" then
+		zone = "any"
+	end
+	startQuiz(player, zone)
+end)
+
 -- Handle quiz answer
 Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, answer)
 	local userId = player.UserId

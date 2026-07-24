@@ -102,6 +102,7 @@ local clientToServerEvents = {
 	"RequestDailyClaim",     -- {} login bonus claimen
 	"RequestAtomTransfer",   -- {targetId, elementZ} atoom sturen naar vriend
 	"RequestQuizAnswer",     -- {questionId, answer} quiz antwoord
+	"RequestQuizStart",      -- {zone} start een quiz vanuit dashboard/NPC
 	"RequestStartMiniGame",  -- {} start Slakkenspoor mini-game
 	"RequestSortOrb",        -- {orbId, binChoice} sort orb in HGMS game
 	"RequestSetPH",          -- {metalName, phValue} pH puzzle answer

@@ -282,6 +282,7 @@ end
 
 -- Action buttons
 local actionY = 200
+local crushLabel
 
 -- Buy Raw Slag button
 local buyBtn = btn(slagPanel, {Name="BuyBtn", Size=UDim2.new(0.45,-10,0,36),
@@ -290,7 +291,12 @@ local buyBtn = btn(slagPanel, {Name="BuyBtn", Size=UDim2.new(0.45,-10,0,36),
 buyBtn.MouseButton1Click:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestBuySlag")
-	if remote then remote:FireServer() end
+	if remote then
+		crushLabel.Text = "Buying 1 kg raw BOF slag..."
+		remote:FireServer()
+	else
+		crushLabel.Text = "Slag service is still loading; try again."
+	end
 end)
 
 -- Crush section
@@ -315,7 +321,7 @@ crushBarFill.BackgroundColor3 = C.accent
 crushBarFill.Parent = crushBarBg
 corner(crushBarFill, 7)
 
-local crushLabel = label(slagPanel, {Name="CrushLabel", Size=UDim2.new(0.9,0,0,16),
+crushLabel = label(slagPanel, {Name="CrushLabel", Size=UDim2.new(0.9,0,0,16),
 	Position=UDim2.new(0.05,0,0,actionY+104), Text="Click HAMMER to crush chunks", Color=C.textDim,
 	Align=Enum.TextXAlignment.Center})
 
@@ -334,8 +340,14 @@ local millBtn = btn(slagPanel, {Name="MillBtn", Size=UDim2.new(0.28,-4,0,40),
 millBtn.TextColor3 = Color3.new(1,1,1)
 
 hammerBtn.MouseButton1Click:Connect(function()
+	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then remote:FireServer("crushed") end
+	if remote then
+		crushLabel.Text = "Hammer hit sent — raw chunks are required."
+		remote:FireServer("crushed")
+	else
+		crushLabel.Text = "Slag service is still loading; try again."
+	end
 	-- Hammer sound (#51)
 	local SoundService = game:GetService("SoundService")
 	local hammerSound = SoundService:FindFirstChild("crusher_impact")
@@ -354,13 +366,25 @@ hammerBtn.MouseButton1Click:Connect(function()
 end)
 
 grindBtn.MouseButton1Click:Connect(function()
+	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then remote:FireServer("ground") end
+	if remote then
+		crushLabel.Text = "Grinding request sent — first hammer raw chunks."
+		remote:FireServer("ground")
+	else
+		crushLabel.Text = "Slag service is still loading; try again."
+	end
 end)
 
 millBtn.MouseButton1Click:Connect(function()
+	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then remote:FireServer("powder") end
+	if remote then
+		crushLabel.Text = "Ball mill request sent — ground slag is required."
+		remote:FireServer("powder")
+	else
+		crushLabel.Text = "Slag service is still loading; try again."
+	end
 end)
 
 -- ═══════════════════════════════════════════════
