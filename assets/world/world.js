@@ -54,6 +54,7 @@ const CAMS = {
   street: { pos: [0, 1.8, 46], yaw: Math.PI, pitch: -0.02 },
   overview: { pos: [95, 78, 128], yaw: -2.5, pitch: -0.52 },
   plaza: { pos: [6, 1.8, 10], yaw: -0.6, pitch: 0.0 },
+  plaza2: { pos: [6, 1.8, 30], yaw: Math.PI, pitch: -0.03 },  // looks toward plaza (for MP demo)
 };
 const preset = CAMS[params.get('cam')];
 if (preset) { player.pos.set(...preset.pos); player.yaw = preset.yaw; player.pitch = preset.pitch; }
@@ -278,9 +279,27 @@ function drawAR() {
 // The Python sim owns traffic + pedestrian positions; we poll a tiny JSON state
 // a few times a second and interpolate between updates. Degrades silently to a
 // static world if the sim server isn't running.
-const SIM_URL = (params.get('sim') || 'http://127.0.0.1:8077') + '/state';
+const SIM_BASE = params.get('sim') || 'http://127.0.0.1:8077';
+const SIM_URL = SIM_BASE + '/state';
 const agentMeshes = new Map();   // id -> { sprite, from, to, t }
 let simOk = false, simPollMs = 150;
+
+// Multiplayer presence: a per-tab id; we POST our position and render others.
+const MY_ID = 'p' + Math.random().toString(36).slice(2, 8);
+const playerMeshes = new Map();  // id -> { sprite, from, to, t }
+function playerMarker(id) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 160;
+  const g = c.getContext('2d');
+  g.fillStyle = '#6ffcda'; g.beginPath();
+  g.moveTo(64, 8); g.lineTo(96, 60); g.lineTo(72, 60); g.lineTo(72, 150); g.lineTo(56, 150);
+  g.lineTo(56, 60); g.lineTo(32, 60); g.closePath(); g.fill();
+  g.fillStyle = '#0b1a16'; g.font = 'bold 20px system-ui'; g.textAlign = 'center';
+  g.fillText(id, 64, 130);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true }));
+  sp.center.set(0.5, 0); sp.scale.set(3, 3.7, 1);
+  return sp;
+}
 const agentSize = { car: 3.4, delivery_truck: 4.6, van: 4.2, city_bus: 6.2, motorcycle: 2.8,
                     pedestrian: 3.4, woman_pedestrian: 3.4, worker: 3.4 };
 function agentSpriteMat(kind) {
@@ -292,8 +311,24 @@ function agentSpriteMat(kind) {
 }
 async function pollSim() {
   try {
-    const st = await (await fetch(SIM_URL, { cache: 'no-cache' })).json();
+    // Publish our position (shared-world presence), then read the world state.
+    fetch(SIM_BASE + '/join', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: MY_ID, x: player.pos.x, z: player.pos.z, yaw: player.yaw }),
+    }).catch(() => {});
+    const st = await (await fetch(SIM_URL + '?id=' + MY_ID, { cache: 'no-cache' })).json();
     simOk = true;
+    // Other players' avatars.
+    const pseen = new Set();
+    for (const p of (st.players || [])) {
+      pseen.add(p.id);
+      let pm = playerMeshes.get(p.id);
+      if (!pm) { const sp = playerMarker(p.id); scene.add(sp); pm = { sprite: sp, from: { x: p.x, z: p.z }, to: { x: p.x, z: p.z }, t: 0 }; playerMeshes.set(p.id, pm); }
+      else { pm.from = { x: pm.sprite.position.x, z: pm.sprite.position.z }; pm.to = { x: p.x, z: p.z }; pm.t = 0; }
+    }
+    for (const [id, pm] of playerMeshes) if (!pseen.has(id)) { scene.remove(pm.sprite); playerMeshes.delete(id); }
+    const pel = document.getElementById('mp');
+    if (pel) pel.textContent = `🌐 shared world · you + ${(st.players || []).length} other player(s) online`;
     const seen = new Set();
     for (const a of st.agents) {
       seen.add(a.id);
@@ -320,10 +355,13 @@ async function pollSim() {
 }
 function updateAgents(dt) {
   if (!simOk) return;
-  for (const m of agentMeshes.values()) {
-    m.t = Math.min(1, m.t + dt / (simPollMs / 1000));
-    m.sprite.position.set(m.from.x + (m.to.x - m.from.x) * m.t, 0, m.from.z + (m.to.z - m.from.z) * m.t);
-  }
+  const lerp = (map) => {
+    for (const m of map.values()) {
+      m.t = Math.min(1, m.t + dt / (simPollMs / 1000));
+      m.sprite.position.set(m.from.x + (m.to.x - m.from.x) * m.t, 0, m.from.z + (m.to.z - m.from.z) * m.t);
+    }
+  };
+  lerp(agentMeshes); lerp(playerMeshes);
 }
 
 let streamTick = 0;

@@ -101,6 +101,26 @@ class Sim:
 
 SIM = Sim()
 
+# Shared multiplayer presence: each browser POSTs its player position; every
+# client sees the others. The Python process is the single authority (the P2P/
+# shared-world layer). Stale players (no update > 4 s) are pruned.
+PLAYERS = {}
+PLAYERS_LOCK = threading.Lock()
+
+
+def upsert_player(pid, x, z, yaw):
+    with PLAYERS_LOCK:
+        PLAYERS[pid] = {"x": round(x, 2), "z": round(z, 2), "yaw": round(yaw, 3), "seen": time.time()}
+
+
+def players_state(exclude=None):
+    now = time.time()
+    with PLAYERS_LOCK:
+        for pid in [p for p, v in PLAYERS.items() if now - v["seen"] > 4]:
+            del PLAYERS[pid]
+        return [{"id": pid, "x": v["x"], "z": v["z"], "yaw": v["yaw"]}
+                for pid, v in PLAYERS.items() if pid != exclude]
+
 
 def _tick_loop():
     last = time.time()
@@ -115,15 +135,42 @@ class Handler(BaseHTTPRequestHandler):
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
 
+    def _send_json(self, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self._cors()
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_OPTIONS(self):
+        self.send_response(204); self._cors()
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
     def do_GET(self):
         if self.path.startswith("/state"):
-            body = json.dumps(SIM.state()).encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self._cors()
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            pid = None
+            if "?" in self.path:
+                from urllib.parse import parse_qs
+                pid = parse_qs(self.path.split("?", 1)[1]).get("id", [None])[0]
+            st = SIM.state()
+            st["players"] = players_state(exclude=pid)
+            self._send_json(st)
+        else:
+            self.send_response(404); self._cors(); self.end_headers()
+
+    def do_POST(self):
+        if self.path.startswith("/join"):
+            n = int(self.headers.get("Content-Length", 0))
+            try:
+                d = json.loads(self.rfile.read(n) or b"{}")
+                upsert_player(str(d["id"]), float(d["x"]), float(d["z"]), float(d.get("yaw", 0)))
+                self._send_json({"ok": True})
+            except Exception as e:  # noqa: BLE001
+                self.send_response(400); self._cors(); self.end_headers()
         else:
             self.send_response(404); self._cors(); self.end_headers()
 
