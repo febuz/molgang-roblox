@@ -8,6 +8,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 
 local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
+local DataMigration = require(ReplicatedStorage.Modules.DataMigration)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local GameClock = require(ReplicatedStorage.Modules.GameClock)
@@ -38,16 +39,6 @@ local playerData = {}       -- {userId = data}
 local playerDailyEarned = {} -- {userId = earned today}
 local lastDayAdvance = {}   -- {userId = os.time() of last active-session advance}
 
--- Deep copy for template
-local function deepCopy(t)
-	if type(t) ~= "table" then return t end
-	local copy = {}
-	for k, v in pairs(t) do
-		copy[k] = deepCopy(v)
-	end
-	return copy
-end
-
 -- ══════════════════════════════════════════════
 -- PLAYER DATA LOAD / SAVE
 -- ══════════════════════════════════════════════
@@ -61,24 +52,12 @@ local function loadPlayerData(player)
 	end)
 
 	if success and data then
-		-- Merge with template (add any new fields from updates)
-		local template = deepCopy(DataTemplate)
-		for key, value in pairs(template) do
-			if data[key] == nil then
-				data[key] = value
-			end
-		end
-		-- Facilities are nested, so merge newly introduced facility counters too.
-		data.facilities = data.facilities or {}
-		for key, value in pairs(template.facilities) do
-			if data.facilities[key] == nil then
-				data.facilities[key] = value
-			end
-		end
+		-- Merge recursively so new fields inside nested systems are migrated too.
+		DataMigration.MergeDefaults(data, DataTemplate)
 		playerData[userId] = data
 	else
 		-- New player: use template
-		playerData[userId] = deepCopy(DataTemplate)
+		playerData[userId] = DataMigration.DeepCopy(DataTemplate)
 		if not success then
 			warn("[EconomyManager] Failed to load data for", player.Name, ":", err)
 		end
@@ -689,7 +668,7 @@ Remotes.GetPlayerData.OnServerInvoke = function(player)
 	local data = playerData[player.UserId]
 	if not data then return nil end
 	-- Return read-only snapshot (deep copy)
-	return deepCopy(data)
+	return DataMigration.DeepCopy(data)
 end
 
 Remotes.GetBuildable.OnServerInvoke = function(player)
