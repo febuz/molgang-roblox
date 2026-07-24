@@ -454,6 +454,17 @@ local function setupLighting()
 	sky.Parent = Lighting
 
 	-- Realistic day/night cycle — industrial twilight atmosphere
+	local function setDayNightBrightness(baseBrightness)
+		local weatherBrightness = Lighting:GetAttribute("WeatherBrightness")
+		local weatherScale = 1
+		if type(weatherBrightness) == "number" then
+			-- Clear weather is the reference (0.15); storms dim the same
+			-- day/night curve instead of fighting it.
+			weatherScale = math.clamp(weatherBrightness / 0.15, 0.25, 1.0)
+		end
+		Lighting.Brightness = baseBrightness * weatherScale
+	end
+
 	task.spawn(function()
 		while true do
 			Lighting.ClockTime = Lighting.ClockTime + 0.003
@@ -464,7 +475,7 @@ local function setupLighting()
 			if hour >= 6 and hour < 8 then
 				-- Sunrise: warm golden hour
 				local t = (hour - 6) / 2
-				Lighting.Brightness = 0.2 + t * 0.5
+				setDayNightBrightness(0.2 + t * 0.5)
 				Lighting.OutdoorAmbient = Color3.fromRGB(
 					20 + math.floor(t * 40),
 					28 + math.floor(t * 30),
@@ -472,12 +483,12 @@ local function setupLighting()
 				)
 			elseif hour >= 8 and hour < 17 then
 				-- Daytime: bright industrial
-				Lighting.Brightness = 0.7
+				setDayNightBrightness(0.7)
 				Lighting.OutdoorAmbient = Color3.fromRGB(60, 58, 50)
 			elseif hour >= 17 and hour < 19 then
 				-- Sunset: orange industrial glow
 				local t = (hour - 17) / 2
-				Lighting.Brightness = 0.7 - t * 0.5
+				setDayNightBrightness(0.7 - t * 0.5)
 				Lighting.OutdoorAmbient = Color3.fromRGB(
 					60 - math.floor(t * 40),
 					58 - math.floor(t * 30),
@@ -485,7 +496,7 @@ local function setupLighting()
 				)
 			else
 				-- Night: factory lights dominate
-				Lighting.Brightness = 0.2
+				setDayNightBrightness(0.2)
 				Lighting.OutdoorAmbient = Color3.fromRGB(20, 28, 35)
 			end
 

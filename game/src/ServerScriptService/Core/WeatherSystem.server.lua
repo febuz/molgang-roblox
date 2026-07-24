@@ -152,10 +152,10 @@ local function applyWeatherLighting(weather)
 		atmosphere.Haze = weather.atmosphereHaze
 		atmosphere.Density = weather.fogDensity
 	end
+	Lighting:SetAttribute("WeatherBrightness", weather.lightingBrightness)
 
 	-- Update ambient
 	Lighting.Ambient = weather.ambientColor
-	Lighting.Brightness = weather.lightingBrightness
 end
 
 -- ═══════════════════════════════════════════════
@@ -255,6 +255,7 @@ end
 -- Weather change loop
 task.spawn(function()
 	-- Start with clear weather
+	applyWeatherLighting(currentWeather)
 	broadcastWeather(currentWeather, 300)
 
 	while true do
