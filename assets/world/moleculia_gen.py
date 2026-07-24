@@ -22,6 +22,37 @@ import re
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "moleculia.json")
 ELEMENTS_LUA = os.path.join(HERE, "..", "..", "game", "src", "ReplicatedStorage", "Data", "Elements.lua")
+FERTILIZER_LUA = os.path.join(HERE, "..", "..", "game", "src", "ReplicatedStorage", "Modules", "FertilizerTrack.lua")
+
+
+def parse_fertilizers():
+    """Extract the 10 fertilizers from the game's FertilizerTrack.lua (real data:
+    name, formula, NPK, and the atom recipe that links them to element collection)."""
+    try:
+        txt = open(FERTILIZER_LUA, encoding="utf-8").read()
+    except OSError:
+        return []
+    ids = list(re.finditer(r"id\s*=\s*['\"]([^'\"]*)['\"]", txt))
+    out = []
+    for i, m in enumerate(ids):
+        block = txt[m.start(): ids[i + 1].start() if i + 1 < len(ids) else len(txt)]
+        npk = re.search(r"npk\s*=\s*\{(\d+),\s*(\d+),\s*(\d+)\}", block)
+        atoms_m = re.search(r"atoms\s*=\s*\{([^}]*)\}", block)
+        if not (npk and atoms_m):
+            continue                      # soils/crops have no atom recipe — skip
+        atoms = {a: int(n) for a, n in re.findall(r"(\w+)\s*=\s*(\d+)", atoms_m.group(1))}
+        col = re.search(r"Color3\.fromRGB\((\d+),\s*(\d+),\s*(\d+)\)", block)
+        name_m = re.search(r"name\s*=\s*['\"]([^'\"]*)['\"]", block)
+        formula_m = re.search(r"formula\s*=\s*['\"]([^'\"]*)['\"]", block)
+        out.append({
+            "id": m.group(1),
+            "name": name_m.group(1) if name_m else m.group(1),
+            "formula": formula_m.group(1) if formula_m else "",
+            "npk": [int(npk.group(1)), int(npk.group(2)), int(npk.group(3))],
+            "atoms": atoms,
+            "rgb": [int(col.group(1)), int(col.group(2)), int(col.group(3))] if col else [180, 200, 160],
+        })
+    return out
 
 
 def parse_elements():
@@ -143,9 +174,11 @@ def build():
                 big = any(k in lm for k in ("column", "silo", "tower", "arch", "fountain", "tunnel"))
                 add("asset", lm + (".glb" if not lm.endswith(".glb") else ""), lx, lz, ang, 12 if big else 6)
 
+    fertilizers = parse_fertilizers()
     world = {
         "meta": {"world": 460, "space": True, "zones": zmeta,
                  "processLine": [p[0] for p in PROCESS_LINE],
+                 "fertilizers": fertilizers,
                  "vision": "MOLGANG — Chemical Engineering Simulator (Moleculia archipelago)"},
         "objects": objs,
     }

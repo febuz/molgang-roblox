@@ -759,6 +759,62 @@ function checkCollect() {
   }
 }
 
+// ---------- Fertilizer Lab: synthesize fertilizers from collected elements ----------
+// The game's fertilizer track (real NPK + atom recipes) links the two loops:
+// collect the elements, then synthesize a fertilizer once you have its atoms.
+let fertilizers = [];
+const symToNum = new Map();
+const FERT_KEY = 'molgang.fertilizers';
+let fertInv = {};
+try { fertInv = JSON.parse(localStorage.getItem(FERT_KEY) || '{}'); } catch (e) { /* fresh */ }
+
+const fertMade = () => Object.values(fertInv).reduce((a, b) => a + b, 0);
+const haveElement = (sym) => { const n = symToNum.get(sym); return n != null && collected.has(n); };
+const canSynthesize = (f) => Object.keys(f.atoms).every(haveElement);
+
+function refreshFertRow(row, f) {
+  for (const sp of row.querySelectorAll('.atoms span')) sp.classList.toggle('have', haveElement(sp.dataset.sym));
+  const ok = canSynthesize(f), btn = row.querySelector('.mk');
+  btn.disabled = !ok; btn.textContent = ok ? 'Synthesize' : 'Need elements';
+  row.querySelector('.cnt').textContent = fertInv[f.id] ? `×${fertInv[f.id]}` : '';
+}
+function buildFertilizerLab() {
+  for (const o of elements) symToNum.set(o.ref, o.num);
+  const list = document.getElementById('fert-list');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const f of fertilizers) {
+    const row = document.createElement('div'); row.className = 'fert';
+    const [r, g, b] = f.rgb;
+    row.innerHTML =
+      `<div class="sw" style="background:rgb(${r},${g},${b})"></div>` +
+      `<div class="info"><div class="nm">${f.name}</div><div class="fo">${f.formula}</div>` +
+      `<div class="atoms">${Object.entries(f.atoms).map(([s, n]) => `<span data-sym="${s}">${s}${n > 1 ? '×' + n : ''}</span>`).join('')}</div></div>` +
+      `<div class="npk">NPK<b>${f.npk.join('-')}</b></div>` +
+      `<button class="mk" type="button">Synthesize</button><div class="cnt"></div>`;
+    row.querySelector('.mk').addEventListener('click', () => {
+      if (!canSynthesize(f)) return;
+      fertInv[f.id] = (fertInv[f.id] || 0) + 1;
+      try { localStorage.setItem(FERT_KEY, JSON.stringify(fertInv)); } catch (e) { /* quota */ }
+      refreshFertRow(row, f); document.getElementById('fl-made').textContent = fertMade();
+    });
+    list.appendChild(row); refreshFertRow(row, f);
+  }
+  document.getElementById('fl-made').textContent = fertMade();
+}
+function openFertLab() {
+  const rows = document.querySelectorAll('#fert-list .fert');   // collected set may have grown
+  fertilizers.forEach((f, i) => { if (rows[i]) refreshFertRow(rows[i], f); });
+  document.getElementById('fertlab').style.display = 'flex';
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+(function wireFertLab() {
+  const btn = document.getElementById('fert-btn'), close = document.getElementById('fl-close');
+  if (btn) btn.addEventListener('click', openFertLab);
+  if (close) close.addEventListener('click', () => { document.getElementById('fertlab').style.display = 'none'; });
+  addEventListener('keydown', (e) => { if (e.code === 'KeyF') openFertLab(); });
+})();
+
 // ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
@@ -800,6 +856,15 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     const line = (w.meta.processLine || []);
     elements = objects.filter((o) => o.t === 'element');
     buildElements();
+    fertilizers = w.meta.fertilizers || [];
+    buildFertilizerLab();
+    { const fb = document.getElementById('fert-btn'); if (fb) fb.style.display = 'block'; }
+    if (params.get('collectall')) {          // sandbox: skip the grind (demo/verify)
+      for (const o of elements) collected.add(o.num);
+      for (const [, rec] of elementSprites) { rec.sprite.material.map.dispose(); rec.sprite.material.map = elementTexture(rec.o, true); rec.sprite.material.needsUpdate = true; }
+      updateElementHUD();
+    }
+    if (params.get('lab')) setTimeout(openFertLab, 400);
     initControls();
     $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
       + `the web continuation of the Roblox teaser`;

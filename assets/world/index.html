@@ -19,6 +19,32 @@
   #xr-btn { position: fixed; top: 52px; right: 12px; z-index: 12; cursor: pointer;
     background: rgba(14,18,26,.82); color: #c9b6ff; border: 1px solid #6a4ac7;
     border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #fert-btn { position: fixed; top: 92px; right: 12px; z-index: 12; cursor: pointer;
+    background: rgba(14,18,26,.82); color: #9be08a; border: 1px solid #3a7a2c;
+    border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #fertlab { position: fixed; inset: 0; z-index: 18; display: none; align-items: center;
+    justify-content: center; background: rgba(4,6,13,.72); }
+  #fertlab .fl-card { width: min(760px, 94vw); max-height: 84vh; overflow: auto; margin: 16px;
+    background: rgba(14,18,26,.96); border: 1px solid #3a7a2c; border-radius: 14px; padding: 16px 18px; }
+  .fl-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .fl-head b { font-size: 16px; } .fl-head span { color: #9fb0c6; font-size: 12px; flex: 1; }
+  .fl-head button { cursor: pointer; background: #223; color: #cfe0f0; border: 1px solid #26344a;
+    border-radius: 8px; padding: 4px 10px; }
+  .fert { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 10px;
+    background: rgba(30,40,60,.5); border: 1px solid #26344a; margin-bottom: 7px; }
+  .fert .sw { width: 12px; height: 34px; border-radius: 4px; flex: none; }
+  .fert .info { flex: 1; min-width: 0; }
+  .fert .nm { font-size: 13px; } .fert .fo { color: #9fb0c6; font-size: 11px; }
+  .fert .atoms { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .fert .atoms span { font-size: 10.5px; padding: 1px 5px; border-radius: 4px;
+    background: rgba(60,40,40,.6); color: #e0a0a0; border: 1px solid #5a2c2c; }
+  .fert .atoms span.have { background: rgba(30,60,40,.6); color: #9be08a; border-color: #3a7a2c; }
+  .fert .npk { font-size: 11px; color: #ffd479; white-space: nowrap; text-align: center; }
+  .fert .npk b { display: block; font-size: 15px; color: #fff; }
+  .fert button.mk { cursor: pointer; padding: 8px 12px; border-radius: 8px; border: 0; white-space: nowrap;
+    background: #2f7a2c; color: #fff; font: 600 12px system-ui; }
+  .fert button.mk:disabled { background: #333a44; color: #7a8698; cursor: not-allowed; }
+  .fert .cnt { font-size: 11px; color: #9be08a; min-width: 42px; text-align: right; }
   #hud { position: fixed; top: 12px; left: 12px; z-index: 10; max-width: 320px;
          background: rgba(14,18,26,.82); border: 1px solid #26344a; border-radius: 10px;
          padding: 12px 14px; backdrop-filter: blur(6px); }
@@ -99,6 +125,15 @@
 <canvas id="ar"></canvas>
 <button id="ar-toggle">🥽 AR</button>
 <button id="xr-btn" style="display:none">🥽 Enter AR</button>
+<button id="fert-btn" style="display:none">🌱 Fertilizer Lab</button>
+<div id="fertlab">
+  <div class="fl-card">
+    <div class="fl-head"><b>🌱 Fertilizer Lab</b>
+      <span>Synthesize fertilizers from the elements you collect · <span id="fl-made">0</span> made</span>
+      <button id="fl-close" type="button">✕</button></div>
+    <div id="fert-list"></div>
+  </div>
+</div>
 <div id="controls">
   <h2>⚗️ Slakkenspoor · Leaching Tank</h2>
   <div class="sub">Operate the process — recover vanadium from the slag.</div>
