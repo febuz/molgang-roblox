@@ -109,10 +109,12 @@ local function showQuiz(data)
 end
 
 close.Activated:Connect(function()
+	Remotes.RequestQuizCancel:FireServer()
 	gui.Enabled = false
 	clearOptions()
 end)
 backdrop.Activated:Connect(function()
+	Remotes.RequestQuizCancel:FireServer()
 	gui.Enabled = false
 	clearOptions()
 end)

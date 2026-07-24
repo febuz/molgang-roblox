@@ -248,6 +248,10 @@ Remotes.RequestQuizStart.OnServerEvent:Connect(function(player, zone)
 	startQuiz(player, zone)
 end)
 
+Remotes.RequestQuizCancel.OnServerEvent:Connect(function(player)
+	activeSessions[player.UserId] = nil
+end)
+
 -- Handle quiz answer
 Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, answer)
 	local userId = player.UserId
