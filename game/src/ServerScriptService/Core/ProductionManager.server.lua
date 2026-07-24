@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
+local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
@@ -101,6 +102,12 @@ local function runProductionCycle(player, playerData, facilities)
 
 	-- Produce molecules from factories
 	local moleculesProduced = produceMolecules(playerData, facilities)
+	for molName, count in pairs(moleculesProduced) do
+		playerData.moleculesBuilt = playerData.moleculesBuilt or {}
+		playerData.moleculesBuilt[molName] = true
+		playerData.totalMoleculesBuilt = (playerData.totalMoleculesBuilt or 0) + count
+		DailyStats.Increment(playerData, "moleculesBuilt", count)
+	end
 
 	-- Award MolCoins for production
 	local productionBonus = 0
