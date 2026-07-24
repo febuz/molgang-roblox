@@ -41,18 +41,26 @@ def main() -> int:
     server_files = read_lua_files(SRC / "ServerScriptService")
 
     fired: dict[str, set[str]] = {}
+    invoked: dict[str, set[str]] = {}
     for path, source in client_files:
         names = set(re.findall(r'Remotes\.([A-Za-z][A-Za-z0-9_]*):FireServer\s*\(', source))
+        function_names = set()
         local_names = aliases(source)
         for alias, remote in local_names.items():
             if re.search(rf'\b{re.escape(alias)}:FireServer\s*\(', source):
                 names.add(remote)
+            if re.search(rf'\b{re.escape(alias)}:InvokeServer\s*\(', source):
+                function_names.add(remote)
         if names:
             fired[str(path.relative_to(ROOT))] = names
+        if function_names:
+            invoked[str(path.relative_to(ROOT))] = function_names
 
     handled: set[str] = set()
+    invoked_handlers: set[str] = set()
     for _, source in server_files:
         handled.update(re.findall(r'Remotes\.([A-Za-z][A-Za-z0-9_]*)\.OnServerEvent\s*:\s*Connect', source))
+        invoked_handlers.update(re.findall(r'Remotes\.([A-Za-z][A-Za-z0-9_]*)\.OnServerInvoke\s*=', source))
         local_names = aliases(source)
         for alias, remote in local_names.items():
             if re.search(rf'\b{re.escape(alias)}\.OnServerEvent\s*:\s*Connect', source):
@@ -61,6 +69,8 @@ def main() -> int:
     fired_names = set().union(*fired.values()) if fired else set()
     missing_setup = sorted(fired_names - configured)
     missing_handler = sorted(fired_names - handled)
+    invoked_names = set().union(*invoked.values()) if invoked else set()
+    missing_function_handler = sorted(invoked_names - invoked_handlers)
 
     print(f"configured_remotes={len(configured)}")
     print(f"client_fire_remotes={len(fired_names)}")
@@ -73,7 +83,9 @@ def main() -> int:
             unresolved = sorted(names.intersection(missing_handler))
             if unresolved:
                 print(f"  {path}: {', '.join(unresolved)}")
-    if missing_setup or missing_handler:
+    if missing_function_handler:
+        print("MISSING_SERVER_FUNCTION_HANDLER=" + ",".join(missing_function_handler))
+    if missing_setup or missing_handler or missing_function_handler:
         return 1
     print("PASS remote contract audit")
     return 0
