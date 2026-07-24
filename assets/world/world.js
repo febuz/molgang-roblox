@@ -522,6 +522,7 @@ async function pollSim() {
       if (yv) yv.textContent = `${(rx.yield * 100) | 0}%`;
       const yp = document.getElementById('y-parts');
       if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
+      if (rx.particleSize) reflectParticleSize(rx.particleSize, rx.leachSpeed);
       if (!controlsSynced && MOLECULIA) {   // reflect the actual reactor in the sliders once
         controlsSynced = true;
         const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
@@ -653,6 +654,18 @@ function initControls() {
       if (!timer) timer = setTimeout(flush, 120);
     });
   }
+  // Feed particle size from the crushing chain — sets the leach speed.
+  for (const b of document.querySelectorAll('#grind button')) {
+    b.addEventListener('click', () => {
+      fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ particleSize: b.dataset.size }) }).catch(() => {});
+    });
+  }
+}
+function reflectParticleSize(size, leachSpeed) {
+  for (const b of document.querySelectorAll('#grind button')) b.classList.toggle('on', b.dataset.size === size);
+  const ls = document.getElementById('v-leach');
+  if (ls && leachSpeed != null) ls.textContent = `${leachSpeed}×`;
 }
 
 // ---------- Periodic Table Biome: collect all 118 elements ----------

@@ -37,6 +37,12 @@
   #controls .row { display: flex; justify-content: space-between; }
   #controls .val { color: #ffd479; font-variant-numeric: tabular-nums; }
   #controls input[type=range] { width: 100%; accent-color: #7fe0d6; margin: 0; }
+  #grind { display: flex; gap: 4px; margin: 4px 0 2px; }
+  #grind button { flex: 1; cursor: pointer; padding: 5px 2px; border-radius: 6px; font: 10.5px system-ui;
+    background: rgba(30,40,60,.6); color: #cfe0f0; border: 1px solid #26344a; }
+  #grind button.on { background: #123; color: #7fe0d6; border-color: #7fe0d6; }
+  #grind + .ls { font-size: 10.5px; color: #9fb0c6; }
+  #grind + .ls b { color: #ffd479; }
   #yield { margin-top: 9px; padding-top: 8px; border-top: 1px solid #26344a; font-size: 12px; }
   #yield b { color: #6ffcda; font-size: 15px; }
   #elements { color: #cdb6ff; font-size: 11px; margin-top: 1px; }
@@ -88,6 +94,14 @@
 <div id="controls">
   <h2>⚗️ Slakkenspoor · Leaching Tank</h2>
   <div class="sub">Operate the process — recover vanadium from the slag.</div>
+  <label class="row"><span>Feed particle size (crushers)</span></label>
+  <div id="grind">
+    <button data-size="chunk" type="button">chunk</button>
+    <button data-size="crushed" type="button">crushed</button>
+    <button data-size="ground" type="button">ground</button>
+    <button data-size="powder" type="button">powder</button>
+  </div>
+  <div class="ls">leach speed <b id="v-leach">1.0×</b> · finer = more surface area = faster</div>
   <label class="row"><span>Temperature (Arrhenius)</span><span class="val" id="v-temperature">70°C</span></label>
   <input type="range" id="c-temperature" min="25" max="95" step="1" value="70">
   <label class="row"><span>Pressure (Henry)</span><span class="val" id="v-pressure">180 kPa</span></label>

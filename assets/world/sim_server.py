@@ -87,9 +87,16 @@ class Sim:
         # setpoints (manual mode) and ease temperature toward the chosen target.
         self.manual = False
         self._temp_target = 70.0
+        # Feed particle size from the crushing chain (jaw -> cone -> ball mill).
+        # Finer particles have more surface area, so they leach faster: the
+        # leachMultiplier is a TIME factor (chunk 7x slow ... powder 0.3x fast),
+        # so leach SPEED scales as 1/leachMultiplier. This links the crusher
+        # stations to the chemistry the player controls at the leaching tank.
+        self.reactor["particleSize"] = "ground"
 
     RANGES = {"temperature": (25.0, 95.0), "pressure": (100.0, 300.0),
               "flowRate": (1.0, 10.0), "pH": (1.0, 6.0)}
+    LEACH_MULT = {"chunk": 7.0, "crushed": 3.0, "ground": 1.0, "powder": 0.3}
 
     def set_controls(self, d):
         with self.lock:
@@ -101,6 +108,8 @@ class Sim:
                         self._temp_target = v
                     else:
                         self.reactor[k] = v
+            if d.get("particleSize") in self.LEACH_MULT:
+                self.reactor["particleSize"] = d["particleSize"]
 
     def tick(self, dt):
         half = W / 2
@@ -119,7 +128,9 @@ class Sim:
                 self.reactor["temperature"] += (self._temp_target - self.reactor["temperature"]) * min(1.0, dt * 0.6)
             else:
                 self.reactor["temperature"] = 70.0 + 18.0 * math.sin(self._rt * 0.15)
-            process_sim.step_reactor(self.reactor, dt * 1.0)
+            # finer feed leaches faster: k scales with 1 / leachMultiplier
+            k = 0.05 / self.LEACH_MULT.get(self.reactor.get("particleSize", "ground"), 1.0)
+            process_sim.step_reactor(self.reactor, dt * 1.0, k)
             if self.reactor["conversion"] >= 0.995:
                 self.reactor["conversion"] = 0.0   # next batch
 
@@ -152,7 +163,9 @@ class Sim:
                        "flowRate": rx["flowRate"], "pH": rx["pH"],
                        "conversion": round(rx["conversion"], 3),
                        "rate": round(process_sim.reaction_rate(rx), 2),
-                       "yield": round(v_recovery, 3), "manual": self.manual}
+                       "yield": round(v_recovery, 3), "manual": self.manual,
+                       "particleSize": rx.get("particleSize", "ground"),
+                       "leachSpeed": round(1.0 / self.LEACH_MULT.get(rx.get("particleSize", "ground"), 1.0), 2)}
             return {"t": round(time.time() - self.t0, 2), "n": len(out), "agents": out,
                     "reactor": reactor}
 
