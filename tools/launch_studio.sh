@@ -15,6 +15,7 @@ OUTPUT="/home/knight2/molgang-roblox/MOLGANG_OTAP_Test.rbxl"
 WINE_DOCS="/home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/prefixes/studio/drive_c/users/knight2/Documents"
 WINE_PLACE="Z:/home/knight2/Documents/MOLGANG_OTAP_Test.rbxl"
 PARENT_SESSION_GUID=$(cat /proc/sys/kernel/random/uuid)
+KEEP_STUDIO=0
 
 echo "=== MOLGANG Studio Launcher ==="
 echo ""
@@ -56,7 +57,7 @@ sleep 1
 "$ROJO" serve "$PROJECT" &
 ROJO_PID=$!
 cleanup() {
-  if [ -n "${STUDIO_PID:-}" ]; then
+  if [ "${KEEP_STUDIO:-0}" -ne 1 ] && [ -n "${STUDIO_PID:-}" ]; then
     kill "$STUDIO_PID" 2>/dev/null || true
   fi
   if [ -n "${ROJO_PID:-}" ]; then
@@ -130,7 +131,9 @@ if [ "$PLACE_READY" -ne 1 ]; then
   LATEST_VINEGAR_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/cache/vinegar/logs/*.log 2>/dev/null | head -1)
   if { [ -n "$LATEST_STUDIO_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_STUDIO_LOG"; } \
     || { [ -n "$LATEST_VINEGAR_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_VINEGAR_LOG"; }; then
+    KEEP_STUDIO=1
     echo "      Studio authentication is unavailable; sign in to Roblox Studio/Vinegar and retry"
+    echo "      Studio is being left open so the browser-login flow can complete"
   else
     echo "      The process is alive, but the place is not loaded; inspect the latest Studio log"
   fi
