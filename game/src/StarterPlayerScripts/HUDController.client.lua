@@ -1178,8 +1178,12 @@ end)
 
 local MAP_WORLD_SIZE = 2000 -- world studs that map covers
 local MAP_CENTER = Vector3.new(0, 0, 0) -- center of the map world
+local minimapTimer = 0
 
-RunService.Heartbeat:Connect(function()
+RunService.Heartbeat:Connect(function(dt)
+	minimapTimer = minimapTimer + dt
+	if minimapTimer < 0.1 then return end
+	minimapTimer = 0
 	local character = player.Character
 	if not character then return end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
