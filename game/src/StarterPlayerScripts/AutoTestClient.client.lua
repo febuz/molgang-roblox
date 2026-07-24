@@ -44,6 +44,17 @@ for _, guiName in ipairs(requiredGuis) do
 	end
 end
 
+local loadingScreen = playerGui:FindFirstChild("LoadingScreen")
+if loadingScreen then
+	local playButton = loadingScreen:FindFirstChild("PlayBtn", true)
+	check("LoadingScreen enter control exists", playButton ~= nil,
+		"PlayBtn was not created")
+	if playButton then
+		check("LoadingScreen enter control is ready", playButton.Visible and playButton.Active,
+			"PlayBtn is not visible/active after the loading phase")
+	end
+end
+
 local result = string.format("%d/%d passed", passCount, passCount + failCount)
 player:SetAttribute("MOLGANGClientAutoTestResults", result)
 player:SetAttribute("MOLGANGClientAutoTestFailures", failCount)
