@@ -30,6 +30,16 @@ local GROWTH_CHECK_INTERVAL = 30     -- seconds between growth ticks
 local GAME_DAY_SECONDS = 120         -- 1 game day = 2 real minutes (for teaser)
 local SOIL_TEST_COST = 20            -- MolCoins per soil test
 
+local function isValidPlotId(plotId)
+	return type(plotId) == "number"
+		and plotId == plotId
+		and plotId > -math.huge
+		and plotId < math.huge
+		and plotId == math.floor(plotId)
+		and plotId >= 1
+		and plotId <= MAX_PLOTS
+end
+
 -- ═══════════════════════════════════════════════
 -- PLAYER STATE
 -- ═══════════════════════════════════════════════
@@ -116,7 +126,7 @@ Remotes.RequestTestSoil.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if type(plotId) ~= "number" or plotId < 1 or plotId > MAX_PLOTS then return end
+	if not isValidPlotId(plotId) then return end
 	local plot = farm.plots[plotId]
 	if not plot then return end
 
@@ -260,7 +270,7 @@ Remotes.RequestApplyFertilizer.OnServerEvent:Connect(function(player, plotId, fe
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if type(plotId) ~= "number" or type(fertilizerId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(fertilizerId) ~= "string" then return end
 	local plot = farm.plots[plotId]
 	if not plot then return end
 
@@ -315,7 +325,7 @@ Remotes.RequestPlantCrop.OnServerEvent:Connect(function(player, plotId, cropId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if type(plotId) ~= "number" or type(cropId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(cropId) ~= "string" then return end
 	local plot = farm.plots[plotId]
 	if not plot then return end
 
@@ -379,7 +389,7 @@ Remotes.RequestHarvestCrop.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if type(plotId) ~= "number" then return end
+	if not isValidPlotId(plotId) then return end
 	local plot = farm.plots[plotId]
 	if not plot or not plot.crop then return end
 
