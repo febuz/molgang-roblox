@@ -17,6 +17,7 @@ local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 -- ═══════════════════════════════════════════════
 -- PRODUCTION CONFIGURATION
@@ -29,7 +30,7 @@ local BASE_ATOMS = {"H", "O", "C", "N", "Fe", "Cu", "Au", "V", "W", "Al"}
 -- PRODUCTION LOGIC
 -- ═══════════════════════════════════════════════
 
-local function produceAtoms(facilities)
+local function produceAtoms(facilities, playerData)
 	if not facilities or facilities.mines == 0 then return {} end
 
 	local produced = {}
@@ -37,7 +38,9 @@ local function produceAtoms(facilities)
 	-- Use the same capacity table as the facility purchase/build system.
 	-- This prevents the production loop from silently drifting from the UI.
 	local production = Facilities.CalculateProduction(facilities)
-	for _ = 1, production.atoms do
+	local atomCount = math.min(production.atoms,
+		InventoryLimits.GetFreeAtomSlots(playerData.atoms, playerData.facilities))
+	for _ = 1, atomCount do
 		local atom = BASE_ATOMS[math.random(#BASE_ATOMS)]
 		produced[atom] = (produced[atom] or 0) + 1
 	end
@@ -95,7 +98,7 @@ local function runProductionCycle(player, playerData, facilities)
 	playerData.totalMolCoinsEarned = playerData.totalMolCoinsEarned or 0
 
 	-- Produce atoms from mines
-	local atomsProduced = produceAtoms(facilities)
+	local atomsProduced = produceAtoms(facilities, playerData)
 	for atom, count in pairs(atomsProduced) do
 		playerData.atoms[atom] = (playerData.atoms[atom] or 0) + count
 	end

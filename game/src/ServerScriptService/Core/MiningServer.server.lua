@@ -21,6 +21,7 @@ local Players = game:GetService("Players")
 local MiningSystem = require(ReplicatedStorage.Modules.MiningSystem)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 -- ═══════════════════════════════════════════════
 -- STATE
@@ -346,6 +347,8 @@ end)
 Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
 	if not isValidPlotId(plotId) then return end
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	if not playerData then return end
 
 	local plot = worldPlots[plotId]
 	if not plot or plot.owner ~= userId then return end
@@ -364,6 +367,8 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 
 	-- Add atoms based on composition
 	local atomsGained = {}
+	local pendingAtoms = {}
+	local pendingAtomTotal = 0
 	local Elements = require(ReplicatedStorage.Data.Elements)
 
 	-- Map oxide compositions to element atoms
@@ -382,11 +387,29 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 		if mapping and pct > 0.1 then
 			local atomCount = math.floor(oreKg * pct / 100 * mapping.factor)
 			if atomCount > 0 then
-				for i = 1, math.min(atomCount, 20) do -- cap per collection
-					PlayerDataBridge.RecordAtomCollect(userId, mapping.z, mapping.sym, 2)
-				end
-				atomsGained[mapping.sym] = math.min(atomCount, 20)
+				local cappedCount = math.min(atomCount, 20) -- cap per collection
+				table.insert(pendingAtoms, {z = mapping.z, sym = mapping.sym, count = cappedCount})
+				pendingAtomTotal = pendingAtomTotal + cappedCount
+				atomsGained[mapping.sym] = cappedCount
 			end
+		end
+	end
+
+	if not InventoryLimits.CanAddAtoms(
+		playerData.atoms,
+		playerData.facilities,
+		pendingAtomTotal
+	) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Atom storage is full. Clear storage or build an Office before collecting ore.",
+			rarity = "common",
+		})
+		return
+	end
+
+	for _, pending in ipairs(pendingAtoms) do
+		for _ = 1, pending.count do
+			PlayerDataBridge.RecordAtomCollect(userId, pending.z, pending.sym, 2)
 		end
 	end
 

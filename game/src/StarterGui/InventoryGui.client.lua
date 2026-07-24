@@ -18,6 +18,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
@@ -277,10 +278,7 @@ local function updateInventoryDisplay()
 
 	-- Calculate storage
 	local totalAtoms = 0
-	local maxStorage = 500  -- Base 500, +50 per office
-	if playerData.facilities then
-		maxStorage = maxStorage + (playerData.facilities.offices or 0) * 50
-	end
+	local maxStorage = InventoryLimits.GetAtomCapacity(playerData.facilities)
 
 	-- Display each atom
 	for symbol, count in pairs(playerData.atoms) do

@@ -22,6 +22,7 @@ local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
 local ResearchAccess = require(ReplicatedStorage.Modules.ResearchAccess)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -487,6 +488,16 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	local atoms = SteelSlag.YieldToAtoms(leach.yield)
 	local totalAtoms = 0
 	local bonusCoins = 0
+	for _, count in pairs(atoms) do totalAtoms = totalAtoms + count end
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	if not playerData or not InventoryLimits.CanAddAtoms(
+		playerData.atoms, playerData.facilities, totalAtoms) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Atom storage is too full to extract this batch. Build an Office or clear storage first.",
+			rarity = "common",
+		})
+		return
+	end
 
 	for elem, count in pairs(atoms) do
 		-- Add atoms via PlayerDataBridge
@@ -505,7 +516,6 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 				bonusCoins = bonusCoins + 5
 			end
 		end
-		totalAtoms = totalAtoms + count
 	end
 
 	leach.extracted = true

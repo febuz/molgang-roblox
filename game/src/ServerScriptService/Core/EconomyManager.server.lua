@@ -17,6 +17,7 @@ local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
 local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -185,6 +186,13 @@ local function processAtomCollect(player, collectData)
 	local coinReward = collectData.coinReward
 
 	if not elementZ or not symbol then return end
+	if not InventoryLimits.CanAddAtoms(data.atoms, data.facilities, 1) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Atom storage full. Build an Office or use existing atoms first.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Add atom to inventory
 	if not data.atoms[symbol] then
@@ -506,6 +514,13 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 
 	if action == "buy" then
 		local totalCost = currentPrice * quantity
+		if not InventoryLimits.CanAddAtoms(data.atoms, data.facilities, quantity) then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Atom storage full. Build an Office or sell/process atoms first.",
+				rarity = "common",
+			})
+			return
+		end
 		if data.molCoins < totalCost then
 			print("[EconomyManager]", player.Name, "insufficient funds for", itemName)
 			return
