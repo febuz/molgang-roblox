@@ -12,5 +12,9 @@ assert(normal == normalRent + normalMaintenance, "normal factory cost must recon
 assert(reduced == reducedRent + reducedMaintenance, "event factory cost must reconcile")
 assert(reducedRent == normalRent, "automation must not change fixed rent")
 assert(reducedMaintenance < normalMaintenance, "automation must reduce maintenance")
+assert(FactoryEquipment.CalculateCarbonTax(100, 0.05, 10) == 50,
+	"carbon tax must reconcile kW, rate and billing minutes")
+assert(FactoryEquipment.CalculateCarbonTax(100, 0, 10) == 0,
+	"no carbon event must not add tax")
 
-print("Factory Cost Tests: 4 passed, 0 failed")
+print("Factory Cost Tests: 6 passed, 0 failed")

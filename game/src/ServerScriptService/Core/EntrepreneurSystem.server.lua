@@ -31,6 +31,7 @@ local factoryWorldModels = {}  -- {userId = Folder in workspace}
 local FACTORY_ORIGIN = Vector3.new(-1750, 10, -150)
 local FACTORY_FLOOR_Y = 10
 local CELL_SIZE_STUDS = 10  -- each grid cell = 10 studs (1m scaled up for game)
+local RENT_INTERVAL = 600  -- game month = 10 real minutes for OTAP
 
 local function persistFactory(userId, factory)
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
@@ -254,9 +255,13 @@ local function sendFactoryUpdate(player, userId)
 	local powerDraw, powerAvail, powerBalance = FactoryEquipment.CalculatePower(factory.placements)
 	local eventEffects = WorldEvents.GetActiveEffects()
 	local operatingCostMultiplier = eventEffects.factoryOpCostMult or 1
-	local totalCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
+	local operatingCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
 		factory.placements, operatingCostMultiplier
 	)
+	local carbonTax = FactoryEquipment.CalculateCarbonTax(
+		powerDraw, eventEffects.carbonTaxPerKW, RENT_INTERVAL / 60
+	)
+	local totalCost = operatingCost + carbonTax
 	local bonuses = FactoryEquipment.CalculateAdjacencyBonuses(factory.placements)
 
 	-- Build placement list for client
@@ -285,6 +290,7 @@ local function sendFactoryUpdate(player, userId)
 		monthlyCost = totalCost,
 		rent = rent,
 		maintenance = maintenance,
+		carbonTax = carbonTax,
 		bonuses = bonuses,
 		placementCount = #factory.placements,
 		maxPlacements = FactoryEquipment.FloorConfig.maxEquipment,
@@ -553,8 +559,6 @@ end)
 -- MONTHLY RENT COLLECTION
 -- ═══════════════════════════════════════════════
 
-local RENT_INTERVAL = 600  -- game month = 10 real minutes for teaser
-
 task.spawn(function()
 	while true do
 		task.wait(RENT_INTERVAL)
@@ -563,15 +567,20 @@ task.spawn(function()
 			local factory = playerFactories[userId]
 			if factory and factory.rented then
 				local eventEffects = WorldEvents.GetActiveEffects()
-				local totalCost = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
+				local powerDraw = FactoryEquipment.CalculatePower(factory.placements)
+				local operatingCost = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
 					factory.placements, eventEffects.factoryOpCostMult or 1
 				)
+				local carbonTax = FactoryEquipment.CalculateCarbonTax(
+					powerDraw, eventEffects.carbonTaxPerKW, RENT_INTERVAL / 60
+				)
+				local totalCost = operatingCost + carbonTax
 				local success = PlayerDataBridge.SpendMolCoins(userId, totalCost)
 				if success then
 					factory.monthsPaid = factory.monthsPaid + 1
 					persistFactory(userId, factory)
 					Remotes.FireClient("ServerAnnounce", player, {
-						message = "Monthly factory costs paid: " .. totalCost .. " MC (rent + maintenance)",
+						message = "Monthly factory costs paid: " .. totalCost .. " MC (rent + maintenance + carbon tax)",
 						rarity = "common",
 					})
 				else
