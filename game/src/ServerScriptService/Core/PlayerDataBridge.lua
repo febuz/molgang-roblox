@@ -7,7 +7,7 @@
 local PlayerDataBridge = {}
 
 -- Internal data store — only server scripts can access this module
-local pendingCollections = {} -- {userId = {elementZ, symbol, coinReward, timestamp}}
+local pendingCollections = {} -- {userId = {{elementZ, symbol, coinReward, timestamp}, ...}}
 local pendingBuilds = {}      -- {userId = {molName, atoms, timestamp}}
 local playerEconomy = {}      -- {userId = {molCoins, atoms, molecules, ...}}
 local drinkPurchaseCounts = {} -- {userId = count}
@@ -18,18 +18,25 @@ local atomCollectedCounts = {} -- {userId = count}
 -- ══════════════════════════════════════════════
 
 function PlayerDataBridge.RecordAtomCollect(userId, elementZ, symbol, coinReward)
-	pendingCollections[userId] = {
+	if not pendingCollections[userId] then
+		pendingCollections[userId] = {}
+	end
+	local timestamp = tick and tick() or os.clock()
+	table.insert(pendingCollections[userId], {
 		elementZ = elementZ,
 		symbol = symbol,
 		coinReward = coinReward,
-		timestamp = tick(),
-	}
+		timestamp = timestamp,
+	})
 end
 
 function PlayerDataBridge.GetPendingCollect(userId)
-	local data = pendingCollections[userId]
-	if data then
-		pendingCollections[userId] = nil
+	local queue = pendingCollections[userId]
+	if queue and #queue > 0 then
+		local data = table.remove(queue, 1)
+		if #queue == 0 then
+			pendingCollections[userId] = nil
+		end
 		return data
 	end
 	return nil
