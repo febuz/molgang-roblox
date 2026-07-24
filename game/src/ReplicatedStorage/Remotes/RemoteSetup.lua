@@ -45,6 +45,7 @@ local serverToClientEvents = {
 	"SlagLeachComplete",   -- {leachId, yield} leaching finished, products ready
 	"SlagExtracted",       -- {atoms, molCoins} products added to inventory
 	"SlagInventoryUpdate", -- {slagInventory} updated slag quantities
+	"ProcessControlState", -- {temperature, pressure, pH, flowRate} persisted controls
 	-- Bubble Tea Bar
 	"DrinkPurchased",      -- {drinkId, name, buffType, duration} drink bought
 	"DrinkListResponse",   -- {drinks, activeBuffs} available drinks and active buffs
@@ -117,6 +118,7 @@ local clientToServerEvents = {
 	"RequestExtractProducts",-- {leachId} collect finished leach products
 	"RequestSlagInfo",       -- {} get current slag processing state
 	"RequestSetProcessControl", -- {temperature, pressure, pH, flowRate} update process variables
+	"RequestProcessControlState", -- {} load persisted process controls
 	-- Bubble Tea Bar
 	"RequestBuyDrink",       -- {drinkId} purchase a bubble tea
 	"RequestDrinkList",      -- {} get drink menu and active buffs

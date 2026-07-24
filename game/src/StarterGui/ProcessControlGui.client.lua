@@ -52,6 +52,7 @@ local function corner(p, r) local c = Instance.new("UICorner"); c.CornerRadius =
 -- ═══════════════════════════════════════════════
 
 local processState = ProcessEng.CreateProcessState()
+local controlsReady = false
 
 -- ═══════════════════════════════════════════════
 -- SCREEN GUI
@@ -411,6 +412,27 @@ local flowGauge = createGauge(gaugeArea, {
 	end,
 })
 
+-- Load the server-owned persisted controls before the heartbeat can publish
+-- the GUI defaults back to the server.
+local processStateEvent = Remotes:FindFirstChild("ProcessControlState")
+if processStateEvent then
+	processStateEvent.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then return end
+		if data.temperature then tempGauge.setValue(data.temperature) end
+		if data.pressure then pressGauge.setValue(data.pressure) end
+		if data.pH then phGauge.setValue(data.pH) end
+		if data.flowRate then flowGauge.setValue(data.flowRate) end
+		controlsReady = true
+	end)
+end
+
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if not screenGui.Enabled then return end
+	controlsReady = false
+	local request = Remotes:FindFirstChild("RequestProcessControlState")
+	if request then request:FireServer() end
+end)
+
 -- ═══════════════════════════════════════════════
 -- RIGHT PANEL: Mass Balance + Summary
 -- ═══════════════════════════════════════════════
@@ -453,6 +475,7 @@ summaryText.Parent = summaryPanel
 local frameCount = 0
 RunService.Heartbeat:Connect(function()
 	if not screenGui.Enabled then return end
+	if not controlsReady then return end
 	frameCount = frameCount + 1
 	if frameCount % 15 ~= 0 then return end  -- update every ~0.25s
 

@@ -622,6 +622,17 @@ Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperat
 	player:SetAttribute("ReactionRate", state.reactionRate)
 end)
 
+Remotes.RequestProcessControlState.OnServerEvent:Connect(function(player)
+	local state = getProcessState(player.UserId)
+	ProcessEng.UpdateDerivedValues(state)
+	Remotes.FireClient("ProcessControlState", player, {
+		temperature = state.temperature,
+		pressure = state.pressure,
+		pH = state.pH,
+		flowRate = state.flowRate,
+	})
+end)
+
 -- ══════════════════════════════════════════════
 -- CLEANUP ON PLAYER LEAVE
 -- ══════════════════════════════════════════════
