@@ -51,6 +51,7 @@ local playerSlagData = {}         -- {userId = slagInventory}
 local playerLeaches = {}          -- {userId = {leachId = leachState}}
 local playerCrushState = {}       -- {userId = {lastHitTime, currentHits, targetSize}}
 local playerProcessState = {}     -- {userId = ProcessEngineering.CreateProcessState()}
+local recentLeachRequests = {}    -- {userId = {key, timestamp}}; duplicate guard
 local leachIdCounter = 0
 
 -- Get player's process control settings
@@ -418,9 +419,15 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		})
 		return
 	end
+	local requestKey = reagentId .. ":" .. particleSize
+	local recentRequest = recentLeachRequests[userId]
+	if recentRequest and recentRequest.key == requestKey and os.clock() - recentRequest.timestamp < 0.75 then
+		return
+	end
 	if totalProcessCost > 0 and not PlayerDataBridge.SpendMolCoins(userId, totalProcessCost) then
 		return
 	end
+	recentLeachRequests[userId] = {key = requestKey, timestamp = os.clock()}
 
 	-- Consume 1kg of slag
 	slag[particleSize] = slag[particleSize] - 1
@@ -710,6 +717,7 @@ Players.PlayerRemoving:Connect(function(player)
 	-- Keep leach data alive (persists via DataStore through EconomyManager)
 	-- Only clean up runtime state
 	playerCrushState[userId] = nil
+	recentLeachRequests[userId] = nil
 end)
 
 print("[MOLGANG] SlagProcessing initialized — BOF steel slag chemistry active at Slakkenspoor")
