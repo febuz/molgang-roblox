@@ -17,6 +17,7 @@ local serverToClientEvents = {
 	"AtomSpawned",         -- nieuw atoom in wereld, update minimap
 	"AtomCollected",       -- {elementZ, newCount} bevestiging collect, update HUD
 	"AtomRemoved",         -- atoom verdwenen (door andere speler of timeout)
+	"AtomTransferResult",  -- {success, message} server-authoritative transfer result
 	"MoleculeBuilt",       -- {molName, points} molecule succes, show fanfare
 	"ChainEntryAdded",     -- {entryData} tower display update
 	"LoanCreated",         -- {loanData} ANK bevestiging

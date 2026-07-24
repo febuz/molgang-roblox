@@ -226,6 +226,16 @@ local function refreshAtoms()
 	atomScroll.CanvasSize = UDim2.new(0, 0, 0, atomLayout.AbsoluteContentSize.Y)
 end
 
+local transferResult = Remotes:FindFirstChild("AtomTransferResult")
+if transferResult then
+	transferResult.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then return end
+		statusLabel.Text = data.message or "Transfer finished"
+		statusLabel.TextColor3 = data.success and C.green or C.red
+		if data.success then refreshAtoms() end
+	end)
+end
+
 -- Trade action
 tradeBtn.MouseButton1Click:Connect(function()
 	if not selectedPlayer or not selectedAtom then
@@ -237,8 +247,8 @@ tradeBtn.MouseButton1Click:Connect(function()
 	local remote = Remotes:FindFirstChild("RequestAtomTransfer")
 	if remote then
 		remote:FireServer(selectedPlayer.UserId, selectedAtom)
-		statusLabel.Text = "Sent 1x " .. selectedAtom .. " to " .. selectedPlayer.Name .. "!"
-		statusLabel.TextColor3 = C.green
+		statusLabel.Text = "Transfer pending server confirmation..."
+		statusLabel.TextColor3 = C.textDim
 		-- Play sound
 		local s = SoundService:FindFirstChild("purchase")
 		if s then local c = s:Clone(); c.Parent = SoundService; c:Play(); c.Ended:Connect(function() c:Destroy() end) end
