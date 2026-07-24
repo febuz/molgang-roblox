@@ -127,7 +127,9 @@ for _ in $(seq 1 20); do
 done
 if [ "$PLACE_READY" -ne 1 ]; then
   echo "      WARNING: Studio did not report OpenPlaceSuccess for $WINE_PLACE"
-  if [ -n "$LATEST_STUDIO_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_STUDIO_LOG"; then
+  LATEST_VINEGAR_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/cache/vinegar/logs/*.log 2>/dev/null | head -1)
+  if { [ -n "$LATEST_STUDIO_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_STUDIO_LOG"; } \
+    || { [ -n "$LATEST_VINEGAR_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_VINEGAR_LOG"; }; then
     echo "      Studio authentication is unavailable; sign in to Roblox Studio/Vinegar and retry"
   else
     echo "      The process is alive, but the place is not loaded; inspect the latest Studio log"
