@@ -19,11 +19,19 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 -- StarterGui can recreate LocalScripts after a character reset. The intro is
 -- a session gate, not a respawn screen, so never show it a second time.
-if _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown") then
+local introGate = playerGui:FindFirstChild("MOLGANGIntroGate")
+if introGate or _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown") then
 	return
 end
--- Player attributes can be reset/recreated with the character under Studio
--- playtest. _G is client-session scoped and survives those LocalScript clones.
+-- Player attributes and script globals can be reset/recreated with the
+-- character under Studio playtest. A non-resetting PlayerGui marker survives
+-- LocalScript clones and is the authoritative session gate.
+introGate = Instance.new("ScreenGui")
+introGate.Name = "MOLGANGIntroGate"
+introGate.ResetOnSpawn = false
+introGate.Enabled = false
+introGate.DisplayOrder = -100
+introGate.Parent = playerGui
 _G.MOLGANGIntroShown = true
 player:SetAttribute("MOLGANGIntroShown", true)
 
