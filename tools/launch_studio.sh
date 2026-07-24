@@ -71,10 +71,10 @@ echo "      Rojo serve running on localhost:34872 (PID: $ROJO_PID)"
 
 # Step 4: Launch Studio
 echo "[4/4] Launching Roblox Studio via Vinegar..."
-# Pin Wine/Vulkan to the visible NVIDIA device. Without this, the host can
-# select the headless ASPEED/Mesa device and Studio dies in vkQueuePresentKHR.
-flatpak run --env=VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json \
-  org.vinegarhq.Vinegar "$OUTPUT" &
+# Let Vinegar select the active graphics device. Forcing a host Vulkan ICD
+# made Studio choose an incompatible D3D11 path and exit before opening the
+# local place on some OTAP hosts.
+flatpak run org.vinegarhq.Vinegar "$OUTPUT" &
 STUDIO_PID=$!
 echo "      Studio launching (PID: $STUDIO_PID)"
 
