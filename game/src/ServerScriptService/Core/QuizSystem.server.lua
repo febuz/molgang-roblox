@@ -10,6 +10,18 @@ local Players = game:GetService("Players")
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
+-- BubbleTeaBar.server.lua exposes active drink buffs via _G.GetPlayerBuff
+-- (e.g. Mango Smoothie's "quizHint" buff, +30% by default). Guarded because
+-- script init order between ServerScriptService/Core scripts isn't
+-- guaranteed, though in practice a player can't reach a quiz zone before
+-- both scripts have run.
+local function getQuizRewardMultiplier(userId)
+	if _G.GetPlayerBuff then
+		return _G.GetPlayerBuff(userId, "quizHint")
+	end
+	return 1.0
+end
+
 -- ══════════════════════════════════════════════
 -- QUESTION BANK
 -- Generated from real chemistry data
@@ -243,12 +255,13 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 		-- Check answer
 		if answer == current.correct then
 			session.score = session.score + 1
-			-- Award MolCoins
-			player:SetAttribute("LastCollectReward", 10)
+			-- Award MolCoins, boosted by an active quizHint drink buff
+			local reward = math.floor(10 * getQuizRewardMultiplier(userId))
+			player:SetAttribute("LastCollectReward", reward)
 			player:SetAttribute("CollectTimestamp", tick())
 
 			Remotes.FireClient("ServerAnnounce", player, {
-				message = "Correct! +10 MolCoins",
+				message = "Correct! +" .. reward .. " MolCoins",
 				rarity = "common",
 			})
 		else
@@ -267,12 +280,13 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 		local totalScore = session.score
 
 		if totalScore == 3 then
-			-- Perfect score bonus
-			player:SetAttribute("LastCollectReward", 25)
+			-- Perfect score bonus, also boosted by an active quizHint buff
+			local bonus = math.floor(25 * getQuizRewardMultiplier(userId))
+			player:SetAttribute("LastCollectReward", bonus)
 			player:SetAttribute("CollectTimestamp", tick())
 
 			Remotes.FireClient("ServerAnnounce", player, {
-				message = "PERFECT SCORE! 3/3 correct — +25 bonus MolCoins!",
+				message = "PERFECT SCORE! 3/3 correct — +" .. bonus .. " bonus MolCoins!",
 				rarity = "epic",
 			})
 		else
