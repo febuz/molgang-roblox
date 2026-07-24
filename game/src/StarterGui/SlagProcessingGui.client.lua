@@ -95,6 +95,9 @@ local function btn(parent, props)
 	b.Text = props.Text or "Button"
 	b.Font = Enum.Font.GothamBold
 	b.TextScaled = true
+	b.Active = true
+	b.Selectable = true
+	b.ZIndex = 30
 	b.Parent = parent
 	corner(b, 6)
 	return b
