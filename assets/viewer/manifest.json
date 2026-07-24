@@ -1,6 +1,6 @@
 {
   "generated_by": "assets/viewer/build_manifest.py",
-  "count": 72,
+  "count": 80,
   "models": [
     {
       "file": "anvil_hammer.glb",
@@ -115,6 +115,12 @@
       "stem": "cooling_pit",
       "label": "Cooling Pit",
       "set": "Industrial & Game"
+    },
+    {
+      "file": "crate_stack.glb",
+      "stem": "crate_stack",
+      "label": "Crate Stack",
+      "set": "Mining Site"
     },
     {
       "file": "cyclone_separator.glb",
@@ -261,6 +267,24 @@
       "set": "Chemistry Lab"
     },
     {
+      "file": "mine_lantern.glb",
+      "stem": "mine_lantern",
+      "label": "Mine Lantern",
+      "set": "Mining Site"
+    },
+    {
+      "file": "mine_rail.glb",
+      "stem": "mine_rail",
+      "label": "Mine Rail",
+      "set": "Mining Site"
+    },
+    {
+      "file": "mine_support_frame.glb",
+      "stem": "mine_support_frame",
+      "label": "Mine Support Frame",
+      "set": "Mining Site"
+    },
+    {
       "file": "molecule_model.glb",
       "stem": "molecule_model",
       "label": "Molecule Model",
@@ -273,10 +297,34 @@
       "set": "Nexus Hub"
     },
     {
+      "file": "ore_cart.glb",
+      "stem": "ore_cart",
+      "label": "Ore Cart",
+      "set": "Mining Site"
+    },
+    {
+      "file": "ore_pile.glb",
+      "stem": "ore_pile",
+      "label": "Ore Pile",
+      "set": "Mining Site"
+    },
+    {
+      "file": "ore_vein.glb",
+      "stem": "ore_vein",
+      "label": "Ore Vein",
+      "set": "Mining Site"
+    },
+    {
       "file": "periodic_table_display.glb",
       "stem": "periodic_table_display",
       "label": "Periodic Table Display",
       "set": "Chemistry Lab"
+    },
+    {
+      "file": "pickaxe_rack.glb",
+      "stem": "pickaxe_rack",
+      "label": "Pickaxe Rack",
+      "set": "Mining Site"
     },
     {
       "file": "pipe_section.glb",

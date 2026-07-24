@@ -17,6 +17,8 @@ LAB = {"molecule_model", "bunsen_burner", "test_tube_rack", "fume_hood",
        "periodic_table_display", "graduated_cylinder", "microscope", "reagent_shelf"}
 HUB = {"welcome_arch", "directory_signpost", "nexus_fountain", "plaza_bench",
        "info_kiosk", "lamp_post", "holo_map_stand", "banner_pole"}
+MINING = {"ore_cart", "mine_support_frame", "ore_vein", "pickaxe_rack",
+          "mine_rail", "mine_lantern", "crate_stack", "ore_pile"}
 
 
 def set_of(stem):
@@ -26,6 +28,8 @@ def set_of(stem):
         return "Chemistry Lab"
     if stem in HUB:
         return "Nexus Hub"
+    if stem in MINING:
+        return "Mining Site"
     return "Industrial & Game"
 
 
