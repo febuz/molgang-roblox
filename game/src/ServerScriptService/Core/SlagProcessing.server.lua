@@ -46,15 +46,37 @@ local leachIdCounter = 0
 -- Get player's process control settings
 local function getProcessState(userId)
 	if not playerProcessState[userId] then
-		playerProcessState[userId] = ProcessEng.CreateProcessState()
+		local state = ProcessEng.CreateProcessState()
+		local playerData = PlayerDataBridge.GetPlayerData(userId)
+		local saved = playerData and playerData.processControl
+		if saved then
+			state.temperature = saved.temperature or state.temperature
+			state.pressure = saved.pressure or state.pressure
+			state.flowRate = saved.flowRate or state.flowRate
+			state.pH = saved.pH or state.pH
+			ProcessEng.UpdateDerivedValues(state)
+		end
+		playerProcessState[userId] = state
 	end
 	return playerProcessState[userId]
+end
+
+local function persistProcessState(userId, state)
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	if not playerData then return end
+	playerData.processControl = {
+		temperature = state.temperature,
+		pressure = state.pressure,
+		flowRate = state.flowRate,
+		pH = state.pH,
+	}
 end
 
 -- Calculate effective leach duration based on process controls
 local function getEffectiveLeachDuration(userId, baseMinutes, reagentId)
 	local state = getProcessState(userId)
 	ProcessEng.UpdateDerivedValues(state)
+	persistProcessState(userId, state)
 
 	-- Apply Arrhenius temperature effect to leaching
 	local Ea = 50  -- default activation energy
@@ -591,6 +613,7 @@ Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperat
 	end
 
 	ProcessEng.UpdateDerivedValues(state)
+	persistProcessState(userId, state)
 
 	-- Set player attributes for other scripts to read
 	player:SetAttribute("ProcessTemp", state.temperature)

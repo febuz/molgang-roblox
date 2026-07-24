@@ -66,6 +66,14 @@ return {
 	-- Persistent relationship state for the walking NPC cast
 	npcTrust = {},
 
+	-- Operator control state for the active slag-processing line
+	processControl = {
+		temperature = 25,
+		pressure = 101.325,
+		flowRate = 10,
+		pH = 7.0,
+	},
+
 	-- Quests & Achievements
 	questProgress = {
 		active = {},
