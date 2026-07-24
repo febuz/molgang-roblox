@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local FactoryEquipment = require(ReplicatedStorage.Modules.FactoryEquipment)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
@@ -251,7 +252,11 @@ local function sendFactoryUpdate(player, userId)
 
 	-- Calculate stats
 	local powerDraw, powerAvail, powerBalance = FactoryEquipment.CalculatePower(factory.placements)
-	local totalCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCost(factory.placements)
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local operatingCostMultiplier = eventEffects.factoryOpCostMult or 1
+	local totalCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
+		factory.placements, operatingCostMultiplier
+	)
 	local bonuses = FactoryEquipment.CalculateAdjacencyBonuses(factory.placements)
 
 	-- Build placement list for client
@@ -557,7 +562,10 @@ task.spawn(function()
 			local userId = player.UserId
 			local factory = playerFactories[userId]
 			if factory and factory.rented then
-				local totalCost = FactoryEquipment.CalculateMonthlyCost(factory.placements)
+				local eventEffects = WorldEvents.GetActiveEffects()
+				local totalCost = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
+					factory.placements, eventEffects.factoryOpCostMult or 1
+				)
 				local success = PlayerDataBridge.SpendMolCoins(userId, totalCost)
 				if success then
 					factory.monthsPaid = factory.monthsPaid + 1

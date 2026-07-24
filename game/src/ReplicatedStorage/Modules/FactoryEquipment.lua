@@ -719,6 +719,14 @@ function FactoryEquipment.CalculateMonthlyCost(placements)
 	return rent + maintenance, rent, maintenance
 end
 
+-- World events affect operating maintenance, not the fixed factory lease.
+function FactoryEquipment.CalculateMonthlyCostWithMultiplier(placements, operatingCostMultiplier)
+	local _, rent, maintenance = FactoryEquipment.CalculateMonthlyCost(placements)
+	local multiplier = math.max(0, tonumber(operatingCostMultiplier) or 1)
+	local adjustedMaintenance = math.floor(maintenance * multiplier + 0.5)
+	return rent + adjustedMaintenance, rent, adjustedMaintenance
+end
+
 -- Calculate adjacency bonuses
 function FactoryEquipment.CalculateAdjacencyBonuses(placements)
 	local bonuses = {}
