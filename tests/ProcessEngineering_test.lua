@@ -73,6 +73,15 @@ assert(chunk.lossKg >= -0.001 and ground.lossKg >= -0.001,
 local cold = ProcessEngineering.CalculateSlagMassBalance("ground", "H2SO4", 25, SteelSlag)
 assert(cold.outputKg < ground.outputKg,
 	"higher operating temperature must improve extraction yield")
+local coldYield = SteelSlag.CalculateYield("ground", "H2SO4", 1, 25)
+local hotYield = SteelSlag.CalculateYield("ground", "H2SO4", 1, 65)
+local function totalExtracted(entries)
+	local total = 0
+	for _, entry in ipairs(entries) do total = total + entry.gramsExtracted end
+	return total
+end
+assert(totalExtracted(coldYield) < totalExtracted(hotYield),
+	"actual product yield must follow temperature-dependent extraction")
 
 assert(ProcessEngineering.CalculateProcessWaterCost(50, 1, false) == 50,
 	"normal leaching must charge base process-water cost")
@@ -83,4 +92,4 @@ assert(ProcessEngineering.CalculateProcessWaterCost(50, 1.8, true) == 45,
 assert(ProcessEngineering.CalculateProcessWaterCost(-1, 1, false) == 0,
 	"invalid water cost must not charge coins")
 
-print("Process Engineering Tests: 28 passed, 0 failed")
+print("Process Engineering Tests: 29 passed, 0 failed")

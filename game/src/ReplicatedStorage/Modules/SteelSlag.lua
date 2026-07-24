@@ -15,6 +15,17 @@
 
 local SteelSlag = {}
 
+local ACTIVATION_ENERGIES = {
+	CaO = 25, FeO = 40, V2O5 = 55, TiO2 = 70, SiO2 = 90,
+	Al2O3 = 35, Cr2O3 = 50, MnO = 50, MgO = 50, P2O5 = 50,
+}
+
+local function arrheniusMultiplier(tempCelsius, activationEnergy)
+	local T = tempCelsius + 273.15
+	local exponent = (-(activationEnergy * 1000) / 8.314) * (1 / T - 1 / 298.15)
+	return math.clamp(math.exp(exponent), 0.01, 100)
+end
+
 -- ═══════════════════════════════════════════════
 -- BOF SLAG COMPOSITION (weight % of oxides)
 -- Based on typical European BOF slag
@@ -444,19 +455,28 @@ function SteelSlag.FormatLeachTime(minutes)
 	end
 end
 
--- Calculate what products a leaching process yields
+-- Calculate what products a leaching process yields. Temperature is optional
+-- for UI previews and defaults to 25°C; the server passes its live process
+-- temperature so production matches the engineering mass-balance model.
 -- Returns: { {element = "Fe", amount = N}, {element = "V", amount = N}, ... }
-function SteelSlag.CalculateYield(particleSize, reagentId, batchWeightKg)
+function SteelSlag.CalculateYield(particleSize, reagentId, batchWeightKg, temperature)
 	local size = SteelSlag.ParticleSizes[particleSize]
 	local reagent = SteelSlag.Reagents[reagentId]
 	if not size or not reagent then return {} end
 
 	local yield = {}
 	local batchWeight = batchWeightKg or SteelSlag.BATCH_WEIGHT_KG
+	temperature = temperature or 25
+	local contactFactor = math.clamp(1 / math.max(size.leachMultiplier, 0.05), 0.05, 4)
 
 	for oxide, data in pairs(SteelSlag.Composition) do
 		local extraction = reagent.extraction[oxide] or 0
 		if extraction > 0 then
+			local temperatureExtraction = math.clamp(
+				extraction * arrheniusMultiplier(temperature, ACTIVATION_ENERGIES[oxide] or 50),
+				0, 0.99
+			)
+			extraction = math.clamp(1 - ((1 - temperatureExtraction) ^ contactFactor), 0, 0.99)
 			-- Weight of this oxide in the batch (grams)
 			local oxideWeight = batchWeight * 1000 * (data.pct / 100)
 			-- Amount extracted (grams)

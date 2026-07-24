@@ -429,7 +429,9 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local baseLeachMinutes = SteelSlag.CalculateLeachTime(particleSize, reagentId)
 	local leachMinutes, reactionRate = getEffectiveLeachDuration(userId, baseLeachMinutes, reagentId)
 	local leachRealSeconds = leachMinutes * TIME_SCALE
-	local idealYield = SteelSlag.CalculateYield(particleSize, reagentId, SteelSlag.BATCH_WEIGHT_KG)
+	local idealYield = SteelSlag.CalculateYield(
+		particleSize, reagentId, SteelSlag.BATCH_WEIGHT_KG, processState.temperature
+	)
 	local massBalance = ProcessEng.CalculateSlagMassBalance(particleSize, reagentId, processState.temperature)
 
 	-- Controls affect rate and residence time, not conservation of mass.
