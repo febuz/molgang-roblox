@@ -8,4 +8,11 @@ assert(first and first.symbol == "H", "pending atom collections must preserve FI
 assert(second and second.symbol == "O", "queued atom collections must not overwrite each other")
 assert(PlayerDataBridge.GetPendingCollect(42) == nil, "empty collection queue must return nil")
 
-print("PlayerDataBridge Tests: 3 passed, 0 failed")
+local economy = {molCoins = 10, totalMolCoinsEarned = 4}
+PlayerDataBridge.SetEconomyData(43, economy)
+local ok, balance = PlayerDataBridge.AddEarnedMolCoins(43, 25)
+assert(ok and balance == 35, "earned MolCoins should update the live balance")
+assert(economy.totalMolCoinsEarned == 29, "earned MolCoins should update lifetime earnings")
+assert(not PlayerDataBridge.AddEarnedMolCoins(43, -1), "negative earnings must be rejected")
+
+print("PlayerDataBridge Tests: 6 passed, 0 failed")

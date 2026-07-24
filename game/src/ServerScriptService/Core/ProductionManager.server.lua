@@ -112,8 +112,7 @@ local function runProductionCycle(player, playerData, facilities)
 	end
 
 	if productionBonus > 0 then
-		playerData.molCoins = playerData.molCoins + productionBonus
-		playerData.totalMolCoinsEarned = playerData.totalMolCoinsEarned + productionBonus
+		PlayerDataBridge.AddEarnedMolCoins(player.UserId, productionBonus)
 	end
 
 	-- Notify client

@@ -507,11 +507,15 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 
 		-- Deduct from inventory, add MolCoins
 		local totalRevenue = currentPrice * quantity
+		if playerDailyEarned[userId] + totalRevenue > MAX_MOLCOINS_PER_DAY then
+			print("[EconomyManager]", player.Name, "daily earning limit reached for", itemName)
+			return
+		end
 		data.atoms[itemName] = itemCount - quantity
 		if data.atoms[itemName] <= 0 then
 			data.atoms[itemName] = nil
 		end
-		data.molCoins = data.molCoins + totalRevenue
+		addMolCoins(player, totalRevenue, "market_sell")
 
 		Remotes.FireClient("MarketTrade", player, {
 			action = "sell",
@@ -544,7 +548,7 @@ Remotes.RequestNPCInteract.OnServerEvent:Connect(function(player, npcName)
 	-- Award rewards
 	if dialogue.rewards then
 		if dialogue.rewards.molCoins then
-			data.molCoins = data.molCoins + dialogue.rewards.molCoins
+			addMolCoins(player, dialogue.rewards.molCoins, "npc_dialogue")
 		end
 		if dialogue.rewards.badge then
 			data.badges = data.badges or {}
