@@ -12,6 +12,7 @@ return {
 	-- Currency
 	molCoins = 500,     -- Start bonus (500 MolCoins — enough to buy slag + test features)
 	chainTokens = 0,
+	carbonCredits = 0, -- verified sustainability credits from operating factories
 	quantumDots = {},   -- { {sym='Og', count=1}, ... }
 
 	-- Game progression

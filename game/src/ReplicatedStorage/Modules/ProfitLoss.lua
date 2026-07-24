@@ -27,6 +27,7 @@ ProfitLoss.Categories = {
 		"atom_collection",     -- atom collection bonuses
 		"quest_rewards",       -- quest completion MolCoins
 		"daily_claims",        -- daily login bonuses
+		"carbon_credits",      -- verified sustainability credit income
 		"mahjong_winnings",    -- mahjong game earnings
 	},
 	-- Cost of Goods Sold

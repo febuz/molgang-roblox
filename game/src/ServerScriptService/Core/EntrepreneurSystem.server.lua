@@ -260,6 +260,9 @@ local function sendFactoryUpdate(player, userId)
 	})
 	local carbonRating = select(1, CarbonScore.GetRating(carbonScore))
 	local eventEffects = WorldEvents.GetActiveEffects()
+	local carbonCreditReward = CarbonScore.CalculateCreditReward(
+		carbonScore, eventEffects.carbonCreditMult, #factory.placements > 0
+	)
 	local operatingCostMultiplier = eventEffects.factoryOpCostMult or 1
 	local operatingCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
 		factory.placements, operatingCostMultiplier
@@ -299,6 +302,8 @@ local function sendFactoryUpdate(player, userId)
 		carbonTax = carbonTax,
 		carbonScore = carbonScore,
 		carbonRating = carbonRating,
+		carbonCredits = (PlayerDataBridge.GetPlayerData(userId) or {}).carbonCredits or 0,
+		carbonCreditReward = carbonCreditReward,
 		bonuses = bonuses,
 		placementCount = #factory.placements,
 		maxPlacements = FactoryEquipment.FloorConfig.maxEquipment,
@@ -585,10 +590,21 @@ task.spawn(function()
 				local totalCost = operatingCost + carbonTax
 				local success = PlayerDataBridge.SpendMolCoins(userId, totalCost)
 				if success then
+					local carbonScore = CarbonScore.CalculateScore({
+						factory_rent = 1,
+						equipment_power = powerDraw,
+					})
+					local carbonCredits = CarbonScore.CalculateCreditReward(
+						carbonScore, eventEffects.carbonCreditMult, #factory.placements > 0
+					)
+					local playerData = PlayerDataBridge.GetPlayerData(userId)
+					if playerData and carbonCredits > 0 then
+						playerData.carbonCredits = (playerData.carbonCredits or 0) + carbonCredits
+					end
 					factory.monthsPaid = factory.monthsPaid + 1
 					persistFactory(userId, factory)
 					Remotes.FireClient("ServerAnnounce", player, {
-						message = "Monthly factory costs paid: " .. totalCost .. " MC (rent + maintenance + carbon tax)",
+						message = "Monthly factory costs paid: " .. totalCost .. " MC (rent + maintenance + carbon tax). Carbon credits earned: " .. carbonCredits,
 						rarity = "common",
 					})
 				else

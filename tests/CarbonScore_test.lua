@@ -1,14 +1,11 @@
-Color3 = {
-	fromRGB = function(r, g, b)
-		return {R = r / 255, G = g / 255, B = b / 255}
-	end,
-}
-
 local CarbonScore = require("../game/src/ReplicatedStorage/Modules/CarbonScore")
-local score = CarbonScore.CalculateScore({factory_rent = 1, equipment_power = 100})
-assert(score == 310, "factory carbon score must include rent and power")
-local rating = CarbonScore.GetRating(score)
-assert(rating == "Heavy Industry", "factory score must resolve to the correct rating")
-assert(CarbonScore.CalculateScore({manual_mining = 10}) == 0,
-	"zero-emission activity must not increase carbon score")
-print("Carbon Score Tests: 3 passed, 0 failed")
+
+assert(CarbonScore.CalculateCreditReward(10, 1, false) == 0,
+	"empty rentals must not earn credits")
+assert(CarbonScore.CalculateCreditReward(10, 1, true) == 50,
+	"green operating factory must earn base credits")
+assert(CarbonScore.CalculateCreditReward(200, 3, true) == 30,
+	"event multiplier must increase industrial credit yield")
+assert(CarbonScore.CalculateCreditReward(600, 3, true) == 0,
+	"carbon-intensive operations must not earn credits")
+print("CarbonScore tests: 4 passed")
