@@ -230,7 +230,7 @@ task.spawn(function()
 				-- Find the player who owns this route
 				for _, player in ipairs(Players:GetPlayers()) do
 					local guildId = player:GetAttribute("Guild") or tostring(player.UserId)
-					if bn.routeId:find(guildId) or true then -- simplified: alert all for now
+					if tostring(bn.ownerId) == tostring(guildId) then
 						Remotes.FireClient("ServerAnnounce", player, {
 							message = "⚠ Logistics bottleneck: " .. bn.from .. " → " .. bn.to
 								.. " at " .. bn.utilPct .. "% capacity. " .. bn.hint,

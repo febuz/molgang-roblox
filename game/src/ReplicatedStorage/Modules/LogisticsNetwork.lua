@@ -299,8 +299,9 @@ function LogisticsNetwork.GetBottlenecks()
 	for _, route in pairs(LogisticsNetwork._routes) do
 		local utilPct = route.capacity > 0 and (route.utilisation / route.capacity) or 0
 		if utilPct > 0.80 then
-			table.insert(bottlenecks, {
+			 table.insert(bottlenecks, {
 				routeId   = route.id,
+				ownerId   = route.ownerId,
 				from      = route.from,
 				to        = route.to,
 				mode      = route.mode,
