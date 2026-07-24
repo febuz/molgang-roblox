@@ -903,9 +903,6 @@ screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 			crushBarFill.Size = UDim2.new(lastCrushProgress, 0, 1, 0)
 			crushLabel.Text = "Hammering... " .. lastCrushHits .. "/" .. lastCrushTotal .. " hits"
 		end
-		-- Also request slag inventory
-		local remote = Remotes:FindFirstChild("RequestSlagInfo")
-		if remote then remote:FireServer() end
 	end
 end)
 
