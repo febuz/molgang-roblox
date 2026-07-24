@@ -46,6 +46,9 @@ return {
 	completedLeaches = 0,
 	totalSlagProcessed = 0,
 
+	-- Fertilizer Lab / farm state (persisted by EconomyManager)
+	fertilizerFarm = {},
+
 	-- ANK Lending
 	ankLoans = {},      -- { {id, borrower, lender, amount, collateral, due, interest}, ... }
 	stakedCollateral = 0,

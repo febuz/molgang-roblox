@@ -38,6 +38,20 @@ local playerFarms = {}  -- {userId = {plots = {}, questProgress = {}, fertilizer
 
 local function getPlayerFarm(userId)
 	if not playerFarms[userId] then
+		local playerData = PlayerDataBridge.GetPlayerData(userId)
+		local savedFarm = playerData and playerData.fertilizerFarm
+		if savedFarm and type(savedFarm.plots) == "table" and #savedFarm.plots == MAX_PLOTS then
+			-- Reuse the canonical economy table so EconomyManager's normal
+			-- autosave persists farm changes without a second datastore.
+			savedFarm.questProgress = savedFarm.questProgress or {}
+			savedFarm.fertilizerInventory = savedFarm.fertilizerInventory or {}
+			savedFarm.totalHarvests = savedFarm.totalHarvests or 0
+			savedFarm.totalYield = savedFarm.totalYield or 0
+			savedFarm.currentAct = savedFarm.currentAct or 1
+			playerFarms[userId] = savedFarm
+			return playerFarms[userId]
+		end
+
 		-- Initialize 4 plots with random soil types
 		local soilTypes = FertilizerTrack.SoilTypes
 		local plots = {}
@@ -76,6 +90,9 @@ local function getPlayerFarm(userId)
 			totalYield = 0,
 			currentAct = 1,
 		}
+		if playerData then
+			playerData.fertilizerFarm = playerFarms[userId]
+		end
 	end
 	return playerFarms[userId]
 end
@@ -590,8 +607,9 @@ end)
 -- ═══════════════════════════════════════════════
 
 Players.PlayerRemoving:Connect(function(player)
-	-- In production: save farm state to DataStore
-	-- For teaser: state is session-only
+	-- Farm state is held by PlayerDataBridge's canonical player table, so the
+	-- EconomyManager save handler includes it in the normal player snapshot.
+	playerFarms[player.UserId] = nil
 end)
 
 print("[MOLGANG] FertilizerSystem initialized — 4 plots, " .. #FertilizerTrack.Fertilizers .. " fertilizers, " .. #FertilizerTrack.Crops .. " crops")
