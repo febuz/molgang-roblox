@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
@@ -33,14 +34,14 @@ local outdoorAtomRemainder = {} -- fractional production carried to the next tic
 -- PRODUCTION LOGIC
 -- ═══════════════════════════════════════════════
 
-local function produceAtoms(facilities, playerData, outdoorPenalty, previousRemainder)
+local function produceAtoms(facilities, playerData, outdoorPenalty, productionSpeedMultiplier, previousRemainder)
 	if not facilities or ((facilities.mines or 0) == 0 and (facilities.starterBenches or 0) == 0) then return {} end
 
 	local produced = {}
 
 	-- Use the same capacity table as the facility purchase/build system.
 	-- This prevents the production loop from silently drifting from the UI.
-	local due = Facilities.CalculateOutdoorAtomRate(facilities, outdoorPenalty) + (previousRemainder or 0)
+	local due = Facilities.CalculateOutdoorAtomRate(facilities, outdoorPenalty, productionSpeedMultiplier) + (previousRemainder or 0)
 	local wholeDue = math.floor(due)
 	local freeSlots = InventoryLimits.GetFreeAtomSlots(playerData.atoms, playerData.facilities)
 	local atomCount = math.min(wholeDue, freeSlots)
@@ -105,12 +106,15 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 	playerData.molecules = playerData.molecules or {}
 	playerData.molCoins = playerData.molCoins or 0
 	playerData.totalMolCoinsEarned = playerData.totalMolCoinsEarned or 0
+	local activeEffects = WorldEvents.GetActiveEffects()
+	local productionSpeedMultiplier = math.max(0, tonumber(activeEffects.productionSpeedMult) or 1)
 
 	-- Produce atoms from mines
 	local atomsProduced, nextRemainder = produceAtoms(
 		facilities,
 		playerData,
 		player:GetAttribute("OutdoorPenalty"),
+		productionSpeedMultiplier,
 		outdoorAtomRemainder[player.UserId]
 	)
 	outdoorAtomRemainder[player.UserId] = nextRemainder or 0
@@ -194,7 +198,9 @@ task.spawn(function()
 
 				local factoryCycles = 0
 				if facilities.factories > 0 then
-					local elapsed = (factoryElapsed[player.UserId] or 0) + PRODUCTION_INTERVAL
+					local activeEffects = WorldEvents.GetActiveEffects()
+					local productionSpeedMultiplier = math.max(0, tonumber(activeEffects.productionSpeedMult) or 1)
+					local elapsed = (factoryElapsed[player.UserId] or 0) + PRODUCTION_INTERVAL * productionSpeedMultiplier
 					factoryCycles = math.floor(elapsed / FACTORY_CYCLE_SECONDS)
 					factoryElapsed[player.UserId] = elapsed - factoryCycles * FACTORY_CYCLE_SECONDS
 				else

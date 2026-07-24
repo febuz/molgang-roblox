@@ -84,11 +84,13 @@ function Facilities.CalculateProduction(facilities)
 end
 
 -- Outdoor facilities are affected by the server-owned weather state.
-function Facilities.CalculateOutdoorAtomRate(facilities, outdoorPenalty)
+function Facilities.CalculateOutdoorAtomRate(facilities, outdoorPenalty, productionSpeedMultiplier)
 	local baseAtoms = Facilities.CalculateProduction(facilities).atoms
 	local multiplier = tonumber(outdoorPenalty) or 1
 	multiplier = math.clamp(multiplier, 0, 1)
-	return baseAtoms * multiplier
+	local speed = tonumber(productionSpeedMultiplier) or 1
+	speed = math.max(0, speed)
+	return baseAtoms * multiplier * speed
 end
 
 -- Calculate total facility cost

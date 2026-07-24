@@ -21,6 +21,8 @@ assert(Facilities.CalculateOutdoorAtomRate(outdoorFacilities, 0.4) == 5.2,
 	"hail must reduce outdoor atom rate")
 assert(Facilities.CalculateOutdoorAtomRate(outdoorFacilities, 99) == 13,
 	"weather multiplier must be capped at normal production")
+assert(math.abs(Facilities.CalculateOutdoorAtomRate(outdoorFacilities, 0.8, 1.15) - 11.96) < 0.000001,
+	"automation event must combine with weather-adjusted production")
 
 local facilities = Facilities.CreatePlayerFacilities()
 assert(Facilities.BuildFacility(facilities, "Research Lab"), "research lab should build")
@@ -28,4 +30,4 @@ assert(facilities.researchLabs == 1 and facilities.researchlabs == nil,
 	"research lab must use the canonical persisted key")
 assert(Facilities.CanBuild(facilities, "Research Lab"), "research lab max-level check must read canonical key")
 
-print("Production Cadence Tests: 14 passed, 0 failed")
+print("Production Cadence Tests: 15 passed, 0 failed")
