@@ -716,7 +716,7 @@ if slagInvEvent then
 				for _, leach in ipairs(data.leachList) do
 					local card = Instance.new("Frame")
 					card.Name = leach.id
-					card.Size = UDim2.new(1, 0, 0, 90)
+					card.Size = UDim2.new(1, 0, 0, 112)
 					card.BackgroundColor3 = C.panelLight
 					card.Parent = monitorScroll
 					corner(card, 8)
@@ -780,11 +780,26 @@ if slagInvEvent then
 							Position=UDim2.new(0.05,0,0,68), Text="Yields: " .. yStr, Color=C.textDim})
 					end
 
+					-- Show the physical mass outcome for this one-kilogram batch.
+					-- This keeps residue and recovery visible instead of presenting
+					-- extraction as if all input became saleable atoms.
+					local balance = leach.massBalance
+					if type(balance) == "table" and type(balance.inputKg) == "number" then
+						local outputKg = tonumber(balance.outputKg) or 0
+						local wasteKg = tonumber(balance.wasteKg) or 0
+						local recovery = tonumber(balance.recovery) or 0
+						label(card, {Name="MassBalance", Size=UDim2.new(0.58,0,0,14),
+							Position=UDim2.new(0.05,0,0,86),
+							Text=string.format("Mass: %.2f → %.2f kg | residue %.2f kg | %.1f%% recovery",
+								balance.inputKg, outputKg, wasteKg, recovery),
+							Color=C.gold})
+					end
+
 					leachCards[leach.id] = card
 				end
 			end
 
-			monitorScroll.CanvasSize = UDim2.new(0, 0, 0, #data.leachList * 98)
+			monitorScroll.CanvasSize = UDim2.new(0, 0, 0, #data.leachList * 120)
 		end
 	end)
 end
