@@ -85,6 +85,21 @@ end
 assert(totalExtracted(coldYield) < totalExtracted(hotYield),
 	"actual product yield must follow temperature-dependent extraction")
 
+local baseMinutes = SteelSlag.CalculateLeachTime("ground", "H2SO4")
+local coldDuration, coldRate = ProcessEngineering.CalculateEffectiveLeachDuration(baseMinutes, "H2SO4", {
+	temperature = 25, pressure = 101.325, flowRate = 10, reactorVolume = 50,
+}, 1)
+local hotDuration, hotRate = ProcessEngineering.CalculateEffectiveLeachDuration(baseMinutes, "H2SO4", {
+	temperature = 65, pressure = 101.325, flowRate = 10, reactorVolume = 50,
+}, 1)
+assert(hotDuration < coldDuration and hotRate > coldRate,
+	"higher leach temperature must shorten duration and increase rate")
+local slowDuration = ProcessEngineering.CalculateEffectiveLeachDuration(baseMinutes, "H2SO4", {
+	temperature = 25, pressure = 101.325, flowRate = 50, reactorVolume = 50,
+}, 1)
+assert(slowDuration > coldDuration,
+	"higher flow must reduce residence time and slow leaching")
+
 assert(ProcessEngineering.CalculateProcessWaterCost(50, 1, false) == 50,
 	"normal leaching must charge base process-water cost")
 assert(ProcessEngineering.CalculateProcessWaterCost(50, 1.8, false) == 90,
@@ -94,4 +109,4 @@ assert(ProcessEngineering.CalculateProcessWaterCost(50, 1.8, true) == 45,
 assert(ProcessEngineering.CalculateProcessWaterCost(-1, 1, false) == 0,
 	"invalid water cost must not charge coins")
 
-print("Process Engineering Tests: 29 passed, 0 failed")
+print("Process Engineering Tests: 31 passed, 0 failed")

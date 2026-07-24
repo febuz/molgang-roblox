@@ -105,27 +105,9 @@ local function getEffectiveLeachDuration(userId, baseMinutes, reagentId)
 	ProcessEng.UpdateDerivedValues(state)
 	persistProcessState(userId, state)
 
-	-- Apply Arrhenius temperature effect to leaching
-	local Ea = 50  -- default activation energy
-	if reagentId == "H2SO4" or reagentId == "HNO3" then Ea = 40 end
-	if reagentId == "NaOH" then Ea = 55 end
-	if reagentId == "CitricAcid" then Ea = 60 end
-
-	local tempMultiplier = ProcessEng.ArrheniusMultiplier(state.temperature, Ea)
-	local pressureMultiplier = ProcessEng.PressureMultiplier(state.pressure)
-	local residenceEffect = ProcessEng.ResidenceTimeEffect(state.flowRate, state.reactorVolume)
-
-	-- Combined effect: higher rate = shorter duration
-	local combinedRate = math.max(tempMultiplier * pressureMultiplier * residenceEffect, 0.1)
 	local eventEffects = WorldEvents.GetActiveEffects()
 	local eventEfficiency = math.max(0, tonumber(eventEffects.leachingEfficiencyMult) or 1)
-	combinedRate = math.max(combinedRate * eventEfficiency, 0.1)
-	local effectiveDuration = baseMinutes / combinedRate
-
-	-- Clamp to reasonable range (min 10% of base, max 500%)
-	effectiveDuration = math.clamp(effectiveDuration, baseMinutes * 0.1, baseMinutes * 5)
-
-	return math.floor(effectiveDuration), combinedRate
+	return ProcessEng.CalculateEffectiveLeachDuration(baseMinutes, reagentId, state, eventEfficiency)
 end
 
 -- ══════════════════════════════════════════════

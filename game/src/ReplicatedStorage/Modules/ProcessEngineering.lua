@@ -300,6 +300,32 @@ function ProcessEngineering.UpdateDerivedValues(state)
 	return state
 end
 
+-- Calculate the leach duration from the same operating conditions used by
+-- the server. Keeping this shared makes the UI estimate an honest prediction
+-- instead of showing only the particle-size/reagent baseline.
+function ProcessEngineering.CalculateEffectiveLeachDuration(baseMinutes, reagentId, state, eventEfficiency)
+	if not isFiniteNumber(baseMinutes) or baseMinutes <= 0 or type(state) ~= "table" then
+		return 0, 0
+	end
+
+	local activationEnergy = 50
+	if reagentId == "H2SO4" or reagentId == "HNO3" then activationEnergy = 40 end
+	if reagentId == "NaOH" then activationEnergy = 55 end
+	if reagentId == "CitricAcid" then activationEnergy = 60 end
+
+	local temperature = tonumber(state.temperature) or 25
+	local pressure = tonumber(state.pressure) or ProcessEngineering.StandardPressure
+	local flowRate = tonumber(state.flowRate) or 10
+	local reactorVolume = tonumber(state.reactorVolume) or 50
+	local combinedRate = ProcessEngineering.ArrheniusMultiplier(temperature, activationEnergy)
+		* ProcessEngineering.PressureMultiplier(pressure)
+		* ProcessEngineering.ResidenceTimeEffect(flowRate, reactorVolume)
+	combinedRate = math.max(combinedRate * math.max(0, tonumber(eventEfficiency) or 1), 0.1)
+
+	local effectiveDuration = math.clamp(baseMinutes / combinedRate, baseMinutes * 0.1, baseMinutes * 5)
+	return math.floor(effectiveDuration), combinedRate
+end
+
 -- Conservative safety envelope for aqueous leaching in the OTAP teststraat.
 function ProcessEngineering.ValidateOperatingEnvelope(state)
 	if not state then
