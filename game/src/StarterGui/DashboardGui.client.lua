@@ -26,6 +26,7 @@ local PlayerDataLoaded = Remotes:WaitForChild("PlayerDataLoaded")
 local DayAdvanced = Remotes:WaitForChild("DayAdvanced")
 local RequestBuildFacility = Remotes:WaitForChild("RequestBuildFacility")
 local RequestMarketTrade = Remotes:WaitForChild("RequestMarketTrade")
+local RequestLoan = Remotes:WaitForChild("RequestLoan")
 
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local ANKLending = require(ReplicatedStorage.Modules.ANKLending)
@@ -633,7 +634,28 @@ for _, preset in ipairs(loanPresets) do
 			if canBorrow then
 				print("[DashboardGui] Borrow approved")
 				-- Send to server
-				RequestMarketTrade:FireServer("loan", preset.name, preset.amount, preset.duration)
+				-- Loans are peer-to-peer. The dashboard currently has no lender picker,
+				-- so only submit when another player is actually available to fund it.
+				local lender = nil
+				for _, candidate in ipairs(Players:GetPlayers()) do
+					if candidate ~= player then
+						lender = candidate
+						break
+					end
+				end
+				if lender then
+					RequestLoan:FireServer(lender.UserId, preset.amount, preset.duration)
+				else
+					warn("[DashboardGui] Loan unavailable: no online lender")
+					borrowBtn.Text = "No lender online"
+					borrowBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 80)
+					task.delay(2, function()
+						if borrowBtn.Parent then
+							borrowBtn.Text = "Borrow"
+							borrowBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+						end
+					end)
+				end
 			else
 				print("[DashboardGui] Insufficient collateral (need", shortfall, "more MolCoins)")
 				borrowBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)

@@ -361,6 +361,14 @@ if remoteFolder then
 	end
 	test("Remote count >= 80", remoteCount >= 80, "Found: " .. remoteCount)
 	print("  Remotes registered: " .. remoteCount)
+	local requiredInteractiveRemotes = {
+		"RequestAtomTransfer", "RequestBuildMolecule", "RequestMarketTrade",
+		"RequestLoan", "RequestQuizStart", "RequestQuizAnswer",
+		"RequestStartLeach", "RequestExtractProducts", "RequestStartResearch",
+	}
+	for _, name in ipairs(requiredInteractiveRemotes) do
+		test("Interactive remote " .. name, remoteFolder:FindFirstChild(name) ~= nil)
+	end
 end
 
 -- ═══════════════════════════════════════════════
