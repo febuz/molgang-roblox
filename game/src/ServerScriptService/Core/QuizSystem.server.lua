@@ -184,7 +184,13 @@ end
 
 local function startQuiz(player, zone)
 	local userId = player.UserId
-	if activeSessions[userId] then return end -- already in quiz
+	if activeSessions[userId] then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "A quiz is already active. Finish it or press Close first.",
+			rarity = "common",
+		})
+		return
+	end -- already in quiz
 
 	-- Select 3 random questions for this zone
 	local zoneQuestions = {}
@@ -197,6 +203,13 @@ local function startQuiz(player, zone)
 	if #zoneQuestions < 3 then
 		-- Fallback: use any questions
 		zoneQuestions = questionBank
+	end
+	if #zoneQuestions == 0 then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Quiz unavailable: the chemistry question bank is empty.",
+			rarity = "common",
+		})
+		return
 	end
 
 	-- Pick 3 random
@@ -256,6 +269,9 @@ end
 -- The client only supplies a zone hint; question selection stays server-side.
 Remotes.RequestQuizStart.OnServerEvent:Connect(function(player, zone)
 	if type(zone) ~= "string" then
+		zone = "any"
+	end
+	if zone ~= "any" and zone ~= "biome" and zone ~= "hub" then
 		zone = "any"
 	end
 	startQuiz(player, zone)
