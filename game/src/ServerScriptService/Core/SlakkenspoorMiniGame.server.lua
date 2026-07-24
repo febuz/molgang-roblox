@@ -540,7 +540,7 @@ finalizeGame = function(session, phBonusCoins)
 	end
 
 	-- Award MolCoins via PlayerDataBridge
-	local coinSuccess, newBalance = PlayerDataBridge.AddMolCoins(userId, totalCoins)
+	local coinSuccess, newBalance = PlayerDataBridge.AddEarnedMolCoins(userId, totalCoins)
 	if not coinSuccess then
 		-- Fallback: try recording as pending collect so EconomyManager picks it up
 		-- Use V (Z=23) as symbolic element for slag mini-game reward
