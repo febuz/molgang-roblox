@@ -163,14 +163,37 @@ end)
 -- ══════════════════════════════════════════════
 
 Remotes.NPCDialogue.OnClientEvent:Connect(function(data)
-	if data and data.npcName and data.text then
-		showDialogue(data.npcName, data.text, data.trustLevel or 0.3)
+	if data and data.npcName then
+		local text = data.text or data.dialogue
+		if text then
+			showDialogue(data.npcName, text, data.trustLevel or 0.3)
+		end
 	end
 end)
 
 -- Trust change notification
 Remotes.NPCTrustChanged.OnClientEvent:Connect(function(data)
-	if data and data.npcName then
+	if data and data.npcId and data.newTrust then
+		local npcFolder = workspace:FindFirstChild("NPCs")
+		if npcFolder then
+			for _, model in ipairs(npcFolder:GetChildren()) do
+				if model:GetAttribute("NPCId") == data.npcId then
+					local head = model:FindFirstChild("Head")
+					local billboard = head and head:FindFirstChild("NPCBillboard")
+					local label = billboard and billboard:FindFirstChild("TrustLabel")
+					if label then
+						local trust = math.clamp(data.newTrust, 0, 1)
+						label.Text = "Trust: " .. math.floor(trust * 100) .. "%"
+						label.TextColor3 = trust >= 0.6
+							and Color3.fromRGB(100, 255, 100)
+							or (trust >= 0.3 and Color3.fromRGB(255, 220, 100) or Color3.fromRGB(255, 100, 100))
+					end
+					break
+				end
+			end
+		end
+	end
+	if data and data.npcName and data.change then
 		local direction = (data.change or 0) > 0 and "+" or ""
 		local color = (data.change or 0) > 0 and Color3.fromRGB(34, 197, 94) or Color3.fromRGB(239, 68, 68)
 

@@ -1067,7 +1067,12 @@ local function showDialogue(npcId, player, dialogueText)
 		end
 	end
 
-	-- Also send via RemoteEvent so client can display in custom UI if desired
+	-- Also send a typed dialogue event so the client can render this per player.
+	Remotes.FireClient("NPCDialogue", player, {
+		npcName = model:GetAttribute("DisplayName") or npcId,
+		text = dialogueText,
+		trustLevel = getTrust(player, npcId),
+	})
 	Remotes.FireClient("ServerAnnounce", player, {
 		message = dialogueText,
 		rarity = "common",
@@ -1413,29 +1418,14 @@ local function trustDisplayLoop()
 				local trust = getTrust(player, npcId)
 				local trustPercent = math.floor(trust * 100)
 
-				-- Update billboard trust label (visible to this player)
-				-- Since BillboardGui is visible to all, we update with the nearest player's trust
-				-- In a full implementation, this would use per-player UI
-				local head = model:FindFirstChild("Head")
-				if head then
-					local billboard = head:FindFirstChild("NPCBillboard")
-					if billboard then
-						local trustLabel = billboard:FindFirstChild("TrustLabel")
-						if trustLabel then
-							local bracket = getTrustBracket(trust)
-							local trustColor
-							if bracket == "low" then
-								trustColor = Color3.fromRGB(255, 100, 100)
-							elseif bracket == "mid" then
-								trustColor = Color3.fromRGB(255, 220, 100)
-							else
-								trustColor = Color3.fromRGB(100, 255, 100)
-							end
-							trustLabel.Text = "Trust: " .. trustPercent .. "%"
-							trustLabel.TextColor3 = trustColor
-						end
-					end
-				end
+				-- BillboardGuis replicate to every player, so trust must be rendered
+				-- by each client rather than writing one player's value globally.
+				Remotes.FireClient("NPCTrustChanged", player, {
+					npcId = npcId,
+					npcName = npcId,
+					newTrust = trust,
+					trustPercent = trustPercent,
+				})
 			end
 		end
 	end
