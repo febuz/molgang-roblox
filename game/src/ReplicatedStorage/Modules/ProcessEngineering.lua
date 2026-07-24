@@ -297,6 +297,15 @@ function ProcessEngineering.ValidateOperatingEnvelope(state)
 	return true, "OK", "Operating envelope safe."
 end
 
+-- Approximate concentration control: a reagent only performs at its rated
+-- selectivity when the tank pH is close to its operating pH.
+function ProcessEngineering.ReagentPHFactor(reagent, pH)
+	if not reagent or type(pH) ~= "number" then return 0.25 end
+	local target = reagent.pH or 7
+	local deviation = math.abs(pH - target)
+	return math.clamp(1 - deviation / 6, 0.25, 1)
+end
+
 -- ═══════════════════════════════════════════════
 -- DISPLAY HELPERS
 -- ═══════════════════════════════════════════════
