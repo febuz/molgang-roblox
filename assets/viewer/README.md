@@ -30,6 +30,13 @@ Flipping the toggle persists the choice (`localStorage`) and reloads; the page
 routes to the matching renderer (a WebGL/WebGPU power preference can't change
 live). The HUD shows the active renderer and the detected GPU string.
 
+## Navigation
+
+Models are grouped by their manifest `set` (Bubble Tea Café / Chemistry Lab /
+Nexus Hub / Mining Site / Industrial & Game). Each group renders as a
+contiguous block under a floating colour-keyed label, and the HUD legend has a
+per-set checkbox to show/hide that group.
+
 ## Adding models
 
 Drop new `.glb` files in `assets/models/`, then regenerate the manifest:

@@ -45,6 +45,33 @@ function detectGpu() {
   }
 }
 
+// Inject a per-set filter legend into the HUD. Each row toggles the
+// visibility of that set's models + label.
+function buildLegend(groupOf, setColor) {
+  const hud = document.querySelector('#hud');
+  if (!hud || document.querySelector('#legend')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'legend';
+  wrap.style.cssText = 'margin-top:10px;border-top:1px solid #26344a;padding-top:8px;display:grid;gap:4px;';
+  for (const set of Object.keys(groupOf)) {
+    const count = groupOf[set].filter((o) => o.isSprite !== true).length;
+    const row = document.createElement('label');
+    row.style.cssText = 'display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true;
+    cb.addEventListener('change', () => {
+      for (const obj of groupOf[set]) obj.visible = cb.checked;
+    });
+    const dot = document.createElement('span');
+    dot.style.cssText = `width:10px;height:10px;border-radius:2px;background:${setColor[set] || '#9aa7ba'};`;
+    const txt = document.createElement('span');
+    txt.textContent = `${set} (${count})`;
+    row.append(cb, dot, txt);
+    wrap.appendChild(row);
+  }
+  hud.appendChild(wrap);
+}
+
 /**
  * Build the gallery.
  * @param {object} opts
@@ -84,15 +111,62 @@ export async function initGallery({ renderer, rendererLabel, budget }) {
   scene.add(new THREE.GridHelper(100, 50, 0x2c4a70, 0x1a2740));
 
   const manifest = await (await fetch('./manifest.json', { cache: 'no-cache' })).json();
-  const models = manifest.models || [];
+  const rawModels = manifest.models || [];
   const loader = new GLTFLoader();
 
-  // Grid layout: 4 columns, centred, each cell normalised to ~4 units.
-  const COLS = 4;
-  const SPACING = 7;
+  // Group by set and lay each group out as its own contiguous block with a
+  // floating label, so 80 models are navigable instead of an undifferentiated
+  // grid. Sets render in a fixed order; anything unlisted falls to the end.
+  const SET_ORDER = ['Bubble Tea Café', 'Chemistry Lab', 'Nexus Hub', 'Mining Site', 'Industrial & Game'];
+  const setRank = (s) => { const i = SET_ORDER.indexOf(s); return i === -1 ? SET_ORDER.length : i; };
+  const models = rawModels.slice().sort((a, b) =>
+    setRank(a.set) - setRank(b.set) || rawModels.indexOf(a) - rawModels.indexOf(b));
+
+  const COLS = 6;
+  const SPACING = 6.5;
+  const groupOf = {};              // set -> [Object3D] for filtering
+  const setColor = {
+    'Bubble Tea Café': '#7fe0d6', 'Chemistry Lab': '#8fd0ff', 'Nexus Hub': '#c9b6ff',
+    'Mining Site': '#e0c07f', 'Industrial & Game': '#9aa7ba',
+  };
+
+  // A floating text label as a CanvasTexture sprite (no font files needed).
+  function makeLabel(text, colorHex) {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 96;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(14,18,26,0.85)';
+    g.strokeStyle = colorHex || '#8fd0ff';
+    g.lineWidth = 4;
+    g.beginPath(); g.roundRect(6, 6, c.width - 12, c.height - 12, 16); g.fill(); g.stroke();
+    g.fillStyle = colorHex || '#dfe7f3';
+    g.font = 'bold 46px system-ui, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, c.width / 2, c.height / 2 + 2);
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 4;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+    sprite.scale.set(9, 1.7, 1);
+    return sprite;
+  }
+
   let loaded = 0;
+  let row = 0;           // running grid row across all sets
+  let prevSet = null;
+  let colInRow = 0;
   for (let i = 0; i < models.length; i++) {
     const entry = models[i];
+    // Start each new set on a fresh row and drop a label above it.
+    if (entry.set !== prevSet) {
+      if (prevSet !== null && colInRow !== 0) row++;   // finish the partial row
+      const label = makeLabel(`${entry.set}`, setColor[entry.set]);
+      const zRow = (row - (models.length / COLS) / 2) * SPACING;
+      label.position.set(-((COLS - 1) / 2) * SPACING - 1, 5.5, zRow - SPACING * 0.6);
+      scene.add(label);
+      (groupOf[entry.set] = groupOf[entry.set] || []).push(label);
+      prevSet = entry.set;
+      colInRow = 0;
+    }
     try {
       const gltf = await loader.loadAsync(`../models/${entry.file}`);
       const object = gltf.scene;
@@ -101,20 +175,27 @@ export async function initGallery({ renderer, rendererLabel, budget }) {
       const center = box.getCenter(new THREE.Vector3());
       const scale = 4 / Math.max(size.x, size.y, size.z, 0.01);
       object.scale.setScalar(scale);
-      // Re-centre on its footprint so it sits on the floor.
+      const zRow = (row - (models.length / COLS) / 2) * SPACING;
       object.position.set(
-        (i % COLS - (COLS - 1) / 2) * SPACING - center.x * scale,
+        (colInRow - (COLS - 1) / 2) * SPACING - center.x * scale,
         -box.min.y * scale,
-        (Math.floor(i / COLS) - (models.length / COLS - 1) / 2) * SPACING - center.z * scale);
+        zRow - center.z * scale);
+      object.userData.set = entry.set;
       scene.add(object);
+      (groupOf[entry.set] = groupOf[entry.set] || []).push(object);
       loaded++;
       if (status) status.textContent = `${rendererLabel} · ${loaded}/${models.length} models`;
     } catch (err) {
       console.error('Failed to load', entry.file, err);
     }
+    colInRow++;
+    if (colInRow >= COLS) { colInRow = 0; row++; }
   }
   if (status) status.textContent = `${rendererLabel} · ${loaded}/${models.length} models loaded`;
-  window.__molgangViewer = { renderer: rendererLabel, loaded, total: models.length };
+  window.__molgangViewer = { renderer: rendererLabel, loaded, total: models.length, sets: Object.keys(groupOf) };
+
+  // Filter legend in the HUD: one toggle per set (colour-keyed).
+  buildLegend(groupOf, setColor);
 
   function resize() {
     const w = canvas.clientWidth || window.innerWidth;
