@@ -20,6 +20,7 @@ local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
 local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
 local MarketTransactionLedger = require(ReplicatedStorage.Modules.MarketTransactionLedger)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -316,13 +317,18 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	-- Confirm the authoritative build so every HUD/client system can update
 	-- from the same server result. Keep both legacy and current field names
 	-- because older widgets still consume the former contract.
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local moleculeBonusMultiplier = math.max(0, tonumber(eventEffects.moleculeBonusMultiplier) or 1)
+	local moleculeReward = Chemistry.ApplyMoleculeBonus(recipe.points, moleculeBonusMultiplier)
 	Remotes.FireClient("MoleculeBuilt", player, {
 		name = molName,
 		molName = molName,
 		moleculeName = molName,
 		formula = molName,
-		molCoinsEarned = recipe.points,
-		points = recipe.points,
+		molCoinsEarned = moleculeReward,
+		points = moleculeReward,
+		basePoints = recipe.points,
+		moleculeBonusMultiplier = moleculeBonusMultiplier,
 		chainTokensEarned = 0,
 	})
 
@@ -332,7 +338,7 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	end
 
 	-- Award MolCoins for molecule
-	addMolCoins(player, recipe.points, "molecule_build")
+	addMolCoins(player, moleculeReward, "molecule_build")
 
 	-- Update statistics
 	data.totalMoleculesBuilt = data.totalMoleculesBuilt + 1

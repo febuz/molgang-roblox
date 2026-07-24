@@ -16,6 +16,10 @@ Color3 = {
 }
 local Chemistry = require("../game/src/ReplicatedStorage/Modules/Chemistry")
 
+assert(Chemistry.ApplyMoleculeBonus(100, 1) == 100, "normal molecule reward must remain unchanged")
+assert(Chemistry.ApplyMoleculeBonus(100, 1.5) == 150, "chemistry event must increase molecule reward")
+assert(Chemistry.ApplyMoleculeBonus(99, 1.5) == 148, "molecule reward must use deterministic floor rounding")
+
 local passCount = 0
 local failCount = 0
 
