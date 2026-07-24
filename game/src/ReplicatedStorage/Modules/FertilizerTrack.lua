@@ -396,7 +396,24 @@ FertilizerTrack.StoryQuests = {
 -- ═══════════════════════════════════════════════
 
 -- Calculate crop yield based on soil nutrients vs crop needs
-function FertilizerTrack.CalculateYield(soilNutrients, cropId)
+function FertilizerTrack.CalculatePHMatch(soilPH, cropId)
+	local crop = nil
+	for _, c in ipairs(FertilizerTrack.Crops) do
+		if c.id == cropId then
+			crop = c
+			break
+		end
+	end
+	if not crop or type(soilPH) ~= "number" then return 1 end
+
+	local idealPH = crop.idealPH
+	if soilPH >= idealPH[1] and soilPH <= idealPH[2] then return 1 end
+	local distance = soilPH < idealPH[1] and idealPH[1] - soilPH or soilPH - idealPH[2]
+	-- Two pH units away is severe stress, but not an instant crop death.
+	return math.clamp(1 - distance / 2, 0.25, 1)
+end
+
+function FertilizerTrack.CalculateYield(soilNutrients, cropId, soilPH)
 	local crop = nil
 	for _, c in ipairs(FertilizerTrack.Crops) do
 		if c.id == cropId then crop = c break end
@@ -412,8 +429,9 @@ function FertilizerTrack.CalculateYield(soilNutrients, cropId)
 	local minScore = math.min(nScore, pScore, kScore)
 	-- Average of all for overall quality
 	local avgScore = (nScore + pScore + kScore) / 3
+	local phFactor = FertilizerTrack.CalculatePHMatch(soilPH, cropId)
 
-	local yieldPct = math.floor(minScore * avgScore * 100)
+	local yieldPct = math.floor(minScore * avgScore * phFactor * 100)
 	-- Penalty for excess (>1.0 means over-fertilized, burns plants)
 	if nScore > 1.3 or pScore > 1.3 or kScore > 1.3 then
 		yieldPct = math.floor(yieldPct * 0.7)  -- 30% penalty

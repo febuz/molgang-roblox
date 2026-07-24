@@ -391,7 +391,7 @@ Remotes.RequestHarvestCrop.OnServerEvent:Connect(function(player, plotId)
 	end
 
 	-- Calculate yield
-	local yieldPct, cropName = FertilizerTrack.CalculateYield(plot.nutrients, plot.crop)
+	local yieldPct, cropName = FertilizerTrack.CalculateYield(plot.nutrients, plot.crop, plot.pH)
 
 	-- Find crop reward
 	local crop = nil
