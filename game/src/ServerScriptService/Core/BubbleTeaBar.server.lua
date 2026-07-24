@@ -22,6 +22,7 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local SeasonalDrinks = require(ReplicatedStorage.Modules.GameObjects.SeasonalDrinks)
 local Achievements = require(ReplicatedStorage.Modules.GameObjects.Achievements)
+local RarityTrait = require(ReplicatedStorage.Modules.GameObjects.RarityTrait)
 
 -- ═══════════════════════════════════════════════
 -- DRINK DEFINITIONS
@@ -95,6 +96,13 @@ local DRINKS = {
 		cupColor = Color3.fromRGB(255, 220, 220),
 	},
 }
+
+-- Rarity tier per permanent drink (molgang-roblox#11) — computed via the
+-- shared RarityTrait module rather than a hardcoded per-drink value, so it
+-- stays consistent with the seasonal drinks' rarity below.
+for _, drink in ipairs(DRINKS) do
+	drink.rarity = RarityTrait.ComputeTier(drink.cost, drink.buffValue)
+end
 
 -- ═══════════════════════════════════════════════
 -- STATE
