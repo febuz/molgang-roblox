@@ -91,15 +91,32 @@ function Facilities.CalculateTotalCost(facilities)
 	return cost
 end
 
+local FACILITY_KEYS = {
+	["Starter Bench"] = "starterBenches",
+	Mine = "mines",
+	Factory = "factories",
+	["Research Lab"] = "researchLabs",
+	Office = "offices",
+}
+
+local function getFacilityKey(facilityName)
+	return FACILITY_KEYS[facilityName]
+end
+
 -- Check if facility can be built
 function Facilities.CanBuild(facilities, facilityName)
 	local facility = FACILITY_TYPES[facilityName]
 	if not facility then return false, "Unknown facility" end
 
-	local key = string.lower(facilityName):gsub(" ", "")
-	key = key == "researchlab" and "researchLabs" or (key .. "s")
+	local key = getFacilityKey(facilityName)
+	if not key then return false, "Unknown facility key" end
 
+	-- Read the legacy lowercase Research Lab field too, so old saves cannot
+	-- bypass the max-level check during migration.
 	local count = facilities[key] or 0
+	if facilityName == "Research Lab" then
+		count = math.max(count, facilities.researchlabs or 0)
+	end
 	if count >= facility.maxLevel then
 		return false, "Facility at max level"
 	end
@@ -112,10 +129,13 @@ function Facilities.BuildFacility(facilities, facilityName)
 	local facility = FACILITY_TYPES[facilityName]
 	if not facility then return false end
 
-	local key = facilityName:lower():gsub(" ", "")
-	key = key == "researchlab" and "researchlabs" or (key .. "s")
+	local key = getFacilityKey(facilityName)
+	if not key then return false end
 
 	facilities[key] = (facilities[key] or 0) + 1
+	if facilityName == "Research Lab" then
+		facilities.researchlabs = nil
+	end
 	return true
 end
 

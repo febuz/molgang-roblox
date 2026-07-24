@@ -9,4 +9,10 @@ assert(Facilities.CalculateProduction({mines = 1, factories = 1}).atoms == 10,
 assert(Facilities.CalculateProduction({mines = 1, factories = 1}).molecules == 5,
 	"factory capacity must remain 5 molecules per factory cycle")
 
-print("Production Cadence Tests: 5 passed, 0 failed")
+local facilities = Facilities.CreatePlayerFacilities()
+assert(Facilities.BuildFacility(facilities, "Research Lab"), "research lab should build")
+assert(facilities.researchLabs == 1 and facilities.researchlabs == nil,
+	"research lab must use the canonical persisted key")
+assert(Facilities.CanBuild(facilities, "Research Lab"), "research lab max-level check must read canonical key")
+
+print("Production Cadence Tests: 8 passed, 0 failed")
