@@ -1,24 +1,30 @@
 {
   "generated_by": "assets/viewer/build_manifest.py",
-  "count": 64,
+  "count": 72,
   "models": [
     {
       "file": "anvil_hammer.glb",
       "stem": "anvil_hammer",
       "label": "Anvil Hammer",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "ball_mill.glb",
       "stem": "ball_mill",
       "label": "Ball Mill",
-      "set": "Other"
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "banner_pole.glb",
+      "stem": "banner_pole",
+      "label": "Banner Pole",
+      "set": "Nexus Hub"
     },
     {
       "file": "beaker_1L.glb",
       "stem": "beaker_1L",
       "label": "Beaker 1L",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "boba_brewing_station.glb",
@@ -30,13 +36,13 @@
       "file": "boba_tea_cup.glb",
       "stem": "boba_tea_cup",
       "label": "Boba Tea Cup",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "bof_converter.glb",
       "stem": "bof_converter",
       "label": "Bof Converter",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "bunsen_burner.glb",
@@ -78,61 +84,67 @@
       "file": "centrifugal_pump.glb",
       "stem": "centrifugal_pump",
       "label": "Centrifugal Pump",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "centrifuge.glb",
       "stem": "centrifuge",
       "label": "Centrifuge",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "combat_arena_floor.glb",
       "stem": "combat_arena_floor",
       "label": "Combat Arena Floor",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "cone_crusher.glb",
       "stem": "cone_crusher",
       "label": "Cone Crusher",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "conveyor_belt.glb",
       "stem": "conveyor_belt",
       "label": "Conveyor Belt",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "cooling_pit.glb",
       "stem": "cooling_pit",
       "label": "Cooling Pit",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "cyclone_separator.glb",
       "stem": "cyclone_separator",
       "label": "Cyclone Separator",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "diploma_frame.glb",
       "stem": "diploma_frame",
       "label": "Diploma Frame",
-      "set": "Other"
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "directory_signpost.glb",
+      "stem": "directory_signpost",
+      "label": "Directory Signpost",
+      "set": "Nexus Hub"
     },
     {
       "file": "distillation_column.glb",
       "stem": "distillation_column",
       "label": "Distillation Column",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "drill_rig.glb",
       "stem": "drill_rig",
       "label": "Drill Rig",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "drink_display_fridge.glb",
@@ -144,19 +156,19 @@
       "file": "erlenmeyer_flask.glb",
       "stem": "erlenmeyer_flask",
       "label": "Erlenmeyer Flask",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "excavator.glb",
       "stem": "excavator",
       "label": "Excavator",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "filtration_press.glb",
       "stem": "filtration_press",
       "label": "Filtration Press",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "fume_hood.glb",
@@ -168,7 +180,7 @@
       "file": "gate_valve.glb",
       "stem": "gate_valve",
       "label": "Gate Valve",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "graduated_cylinder.glb",
@@ -180,49 +192,67 @@
       "file": "haul_truck.glb",
       "stem": "haul_truck",
       "label": "Haul Truck",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "heat_exchanger.glb",
       "stem": "heat_exchanger",
       "label": "Heat Exchanger",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "hero_shield_generator.glb",
       "stem": "hero_shield_generator",
       "label": "Hero Shield Generator",
-      "set": "Other"
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "holo_map_stand.glb",
+      "stem": "holo_map_stand",
+      "label": "Holo Map Stand",
+      "set": "Nexus Hub"
+    },
+    {
+      "file": "info_kiosk.glb",
+      "stem": "info_kiosk",
+      "label": "Info Kiosk",
+      "set": "Nexus Hub"
     },
     {
       "file": "jaw_crusher.glb",
       "stem": "jaw_crusher",
       "label": "Jaw Crusher",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "lab_bench.glb",
       "stem": "lab_bench",
       "label": "Lab Bench",
-      "set": "Other"
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "lamp_post.glb",
+      "stem": "lamp_post",
+      "label": "Lamp Post",
+      "set": "Nexus Hub"
     },
     {
       "file": "leaching_tank.glb",
       "stem": "leaching_tank",
       "label": "Leaching Tank",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "leaching_tank_500L_from_photo.glb",
       "stem": "leaching_tank_500L_from_photo",
       "label": "Leaching Tank 500L From Photo",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "magnetic_separator.glb",
       "stem": "magnetic_separator",
       "label": "Magnetic Separator",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "microscope.glb",
@@ -237,6 +267,12 @@
       "set": "Chemistry Lab"
     },
     {
+      "file": "nexus_fountain.glb",
+      "stem": "nexus_fountain",
+      "label": "Nexus Fountain",
+      "set": "Nexus Hub"
+    },
+    {
       "file": "periodic_table_display.glb",
       "stem": "periodic_table_display",
       "label": "Periodic Table Display",
@@ -246,37 +282,43 @@
       "file": "pipe_section.glb",
       "stem": "pipe_section",
       "label": "Pipe Section",
-      "set": "Other"
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "plaza_bench.glb",
+      "stem": "plaza_bench",
+      "label": "Plaza Bench",
+      "set": "Nexus Hub"
     },
     {
       "file": "pressure_vessel.glb",
       "stem": "pressure_vessel",
       "label": "Pressure Vessel",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "quantum_dot.glb",
       "stem": "quantum_dot",
       "label": "Quantum Dot",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "quantum_tunnel_ring.glb",
       "stem": "quantum_tunnel_ring",
       "label": "Quantum Tunnel Ring",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "race_checkpoint.glb",
       "stem": "race_checkpoint",
       "label": "Race Checkpoint",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "rail_cart.glb",
       "stem": "rail_cart",
       "label": "Rail Cart",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "reagent_shelf.glb",
@@ -288,55 +330,55 @@
       "file": "roasting_kiln.glb",
       "stem": "roasting_kiln",
       "label": "Roasting Kiln",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "safety_fence_post.glb",
       "stem": "safety_fence_post",
       "label": "Safety Fence Post",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "screw_conveyor.glb",
       "stem": "screw_conveyor",
       "label": "Screw Conveyor",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "slag_chunk.glb",
       "stem": "slag_chunk",
       "label": "Slag Chunk",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "slag_ladle.glb",
       "stem": "slag_ladle",
       "label": "Slag Ladle",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "solar_panel.glb",
       "stem": "solar_panel",
       "label": "Solar Panel",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "speed_boost_pad.glb",
       "stem": "speed_boost_pad",
       "label": "Speed Boost Pad",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "spray_dryer.glb",
       "stem": "spray_dryer",
       "label": "Spray Dryer",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "storage_silo.glb",
       "stem": "storage_silo",
       "label": "Storage Silo",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "tapioca_pearl_jar.glb",
@@ -348,7 +390,7 @@
       "file": "teleport_pad.glb",
       "stem": "teleport_pad",
       "label": "Teleport Pad",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "test_tube_rack.glb",
@@ -360,31 +402,37 @@
       "file": "thickener_tank.glb",
       "stem": "thickener_tank",
       "label": "Thickener Tank",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "vibrating_screen.glb",
       "stem": "vibrating_screen",
       "label": "Vibrating Screen",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "victory_trophy.glb",
       "stem": "victory_trophy",
       "label": "Victory Trophy",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "villain_pedestal.glb",
       "stem": "villain_pedestal",
       "label": "Villain Pedestal",
-      "set": "Other"
+      "set": "Industrial & Game"
     },
     {
       "file": "warning_beacon.glb",
       "stem": "warning_beacon",
       "label": "Warning Beacon",
-      "set": "Other"
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "welcome_arch.glb",
+      "stem": "welcome_arch",
+      "label": "Welcome Arch",
+      "set": "Nexus Hub"
     }
   ]
 }

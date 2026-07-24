@@ -15,6 +15,8 @@ CAFE = {"cafe_counter", "boba_brewing_station", "cafe_bar_stool", "cafe_bistro_t
         "cafe_menu_board", "tapioca_pearl_jar", "drink_display_fridge", "cafe_planter"}
 LAB = {"molecule_model", "bunsen_burner", "test_tube_rack", "fume_hood",
        "periodic_table_display", "graduated_cylinder", "microscope", "reagent_shelf"}
+HUB = {"welcome_arch", "directory_signpost", "nexus_fountain", "plaza_bench",
+       "info_kiosk", "lamp_post", "holo_map_stand", "banner_pole"}
 
 
 def set_of(stem):
@@ -22,7 +24,9 @@ def set_of(stem):
         return "Bubble Tea Café"
     if stem in LAB:
         return "Chemistry Lab"
-    return "Other"
+    if stem in HUB:
+        return "Nexus Hub"
+    return "Industrial & Game"
 
 
 def main():
