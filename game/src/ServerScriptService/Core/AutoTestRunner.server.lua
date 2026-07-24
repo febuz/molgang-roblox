@@ -141,6 +141,15 @@ timeTest("Spawn is above the hub platform", function()
 	assert(spawn.Position.Y > 0, "Spawn is below the safe world plane")
 end)
 
+timeTest("Nexus platform keeps grounded material values", function()
+	local nexus = Workspace:FindFirstChild("NexusPlatform", true)
+	assert(nexus and nexus:IsA("BasePart"), "NexusPlatform is missing")
+	assert(nexus.Material ~= Enum.Material.Neon, "NexusPlatform must not be emissive Neon")
+	assert(nexus.Color.R < 0.35 and nexus.Color.G < 0.40 and nexus.Color.B < 0.45,
+		"NexusPlatform color is too bright: " .. tostring(nexus.Color))
+	print("  Nexus material: " .. tostring(nexus.Material) .. " color: " .. tostring(nexus.Color))
+end)
+
 timeTest("Teleport pads have valid targets", function()
 	local padCount = 0
 	for _, desc in Workspace:GetDescendants() do
