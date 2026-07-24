@@ -49,6 +49,14 @@ Drop new `.glb` files in `assets/models/`, then regenerate the manifest:
 python3 assets/viewer/build_manifest.py
 ```
 
+## Testing
+
+```bash
+python3 assets/viewer/smoke_test.py
+```
+Checks manifest ↔ GLB sync, GLB validity, and that a headless browser loads
+all models. Run it after adding/removing models.
+
 ## Files
 
 - `index.html` — WebGL entry (default / courtesy)
