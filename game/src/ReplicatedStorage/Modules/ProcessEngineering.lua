@@ -191,6 +191,12 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 	-- Step 3: Leaching (dissolved fraction based on reagent + temperature)
 	local reagent = SteelSlag.Reagents[reagentId]
 	if reagent then
+		local sizeData = SteelSlag.ParticleSizes and SteelSlag.ParticleSizes[particleSize]
+		local leachMultiplier = sizeData and sizeData.leachMultiplier or 1
+		-- Smaller particles expose more surface area. Convert the processing
+		-- time multiplier into a kinetic contact factor so particle size changes
+		-- extraction without allowing a single step to create material.
+		local contactFactor = math.clamp(1 / math.max(leachMultiplier, 0.05), 0.05, 4)
 		local dissolved = 0
 		local residue = 0
 		local representedPct = 0
@@ -204,7 +210,11 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 				or ProcessEngineering.ActivationEnergies["base_" .. oxide]
 				or 50
 			local tempMult = ProcessEngineering.ArrheniusMultiplier(temperature, Ea)
-			extraction = math.clamp(extraction * tempMult, 0, 0.99)
+			local temperatureExtraction = math.clamp(extraction * tempMult, 0, 0.99)
+			-- First-order contact model: repeated surface exposure approaches
+			-- complete extraction asymptotically, never exceeding 99%.
+			extraction = 1 - ((1 - temperatureExtraction) ^ contactFactor)
+			extraction = math.clamp(extraction, 0, 0.99)
 
 			dissolved = dissolved + oxideMass * extraction
 			residue = residue + oxideMass * (1 - extraction)

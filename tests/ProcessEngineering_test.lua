@@ -63,6 +63,14 @@ assert(pipeline.lossKg >= -0.001 and pipeline.lossKg <= 0.001,
 	"full slag pipeline must conserve mass")
 assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
 
+local chunk = ProcessEngineering.CalculateSlagMassBalance("chunk", "H2SO4", 65, SteelSlag)
+local crushed = ProcessEngineering.CalculateSlagMassBalance("crushed", "H2SO4", 65, SteelSlag)
+local ground = ProcessEngineering.CalculateSlagMassBalance("ground", "H2SO4", 65, SteelSlag)
+assert(chunk.outputKg < crushed.outputKg and crushed.outputKg < ground.outputKg,
+	"smaller particles must improve leach product yield")
+assert(chunk.lossKg >= -0.001 and ground.lossKg >= -0.001,
+	"particle-size leaching must conserve mass")
+
 assert(ProcessEngineering.CalculateProcessWaterCost(50, 1, false) == 50,
 	"normal leaching must charge base process-water cost")
 assert(ProcessEngineering.CalculateProcessWaterCost(50, 1.8, false) == 90,
@@ -72,4 +80,4 @@ assert(ProcessEngineering.CalculateProcessWaterCost(50, 1.8, true) == 45,
 assert(ProcessEngineering.CalculateProcessWaterCost(-1, 1, false) == 0,
 	"invalid water cost must not charge coins")
 
-print("Process Engineering Tests: 25 passed, 0 failed")
+print("Process Engineering Tests: 27 passed, 0 failed")
