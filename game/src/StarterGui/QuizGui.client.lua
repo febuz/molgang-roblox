@@ -117,5 +117,13 @@ backdrop.Activated:Connect(function()
 	clearOptions()
 end)
 
-Remotes.ServerAnnounce.OnClientEvent:Connect(showQuiz)
+Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
+	-- A world quiz pillar first announces its zone, then the server creates
+	-- the authoritative question session. Dashboard launches already send
+	-- RequestQuizStart directly and continue to work unchanged.
+	if type(data) == "table" and type(data.quizStart) == "table" then
+		Remotes.RequestQuizStart:FireServer(data.quizStart.zone or "any")
+	end
+	showQuiz(data)
+end)
 print("[QuizGui] Loaded — quiz modal ready")
