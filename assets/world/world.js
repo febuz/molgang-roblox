@@ -100,16 +100,35 @@ function impostorMaterial(type) {
   if (!spriteMat.has(type)) {
     const t = texLoader.load(`./impostors/${type}.png`);
     t.colorSpace = THREE.SRGBColorSpace;
-    spriteMat.set(type, new THREE.SpriteMaterial({ map: t, transparent: true, alphaTest: 0.5 }));
+    spriteMat.set(type, new THREE.SpriteMaterial({ map: t, transparent: true, alphaTest: 0.4 }));
   }
   return spriteMat.get(type);
 }
+// Soft round ground shadow so impostors read as grounded, not floating cutouts.
+let shadowMat = null;
+function shadowMaterial() {
+  if (!shadowMat) {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const rad = g.createRadialGradient(32, 32, 4, 32, 32, 30);
+    rad.addColorStop(0, 'rgba(0,0,0,0.42)'); rad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rad; g.fillRect(0, 0, 64, 64);
+    const t = new THREE.CanvasTexture(c);
+    shadowMat = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false });
+  }
+  return shadowMat;
+}
 function spawnImpostor(o) {
+  const grp = new THREE.Group();
   const sp = new THREE.Sprite(impostorMaterial(o.ref));
   sp.center.set(0.5, 0);                 // anchor at the bottom -> stands on ground
   sp.scale.set(o.s, o.s, 1);
-  sp.position.set(o.x, 0, o.z);
-  return sp;
+  grp.add(sp);
+  const sh = new THREE.Mesh(new THREE.PlaneGeometry(o.s * 0.8, o.s * 0.8), shadowMaterial());
+  sh.rotation.x = -Math.PI / 2; sh.position.y = 0.03;
+  grp.add(sh);
+  grp.position.set(o.x, 0, o.z);
+  return grp;
 }
 async function spawnAsset(o) {
   let proto = glbProto.get(o.ref);
