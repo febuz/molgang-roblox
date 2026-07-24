@@ -15,6 +15,10 @@ WorldEvents._active = {
 local effects = WorldEvents.GetActiveEffects()
 assert(effects.miningYieldMult == 0.5, "heavy rain must halve mining yield")
 assert(effects.productionSpeedMult == 1.15, "automation advance must speed production")
+assert(WorldEvents.IsExtremeWeather({id = "storm"}), "storm must count as extreme weather")
+assert(WorldEvents.IsExtremeWeather({id = "hail"}), "hail must count as extreme weather")
+assert(not WorldEvents.IsExtremeWeather({id = "clear", windSpeed = 0}),
+	"clear weather must not count as extreme")
 
 WorldEvents._active = {}
-print("World Events Tests: 3 passed, 0 failed")
+print("World Events Tests: 6 passed, 0 failed")

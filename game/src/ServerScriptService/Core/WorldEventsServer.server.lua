@@ -23,7 +23,8 @@ local _worldStateCache = {
 
 local function refreshWorldState()
 	_worldStateCache.playerCount = #Players:GetPlayers()
-	-- (extremeWeather would be set by WeatherSystem — defaults to false)
+	local weather = _G.GetCurrentWeather and _G.GetCurrentWeather()
+	_worldStateCache.extremeWeather = WorldEvents.IsExtremeWeather(weather)
 end
 
 -- ──────────────────────────────────────────────
