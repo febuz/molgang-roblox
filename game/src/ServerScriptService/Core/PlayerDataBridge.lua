@@ -10,6 +10,7 @@ local PlayerDataBridge = {}
 local pendingCollections = {} -- {userId = {{elementZ, symbol, coinReward, timestamp}, ...}}
 local pendingBuilds = {}      -- {userId = {molName, atoms, timestamp}}
 local playerEconomy = {}      -- {userId = {molCoins, atoms, molecules, ...}}
+local pendingBalanceAdjustments = {} -- {userId = MolCoins to apply on next load}
 local drinkPurchaseCounts = {} -- {userId = count}
 local atomCollectedCounts = {} -- {userId = count}
 
@@ -69,6 +70,11 @@ end
 
 function PlayerDataBridge.SetEconomyData(userId, data)
 	playerEconomy[userId] = data
+	local pending = pendingBalanceAdjustments[userId]
+	if pending then
+		data.molCoins = (data.molCoins or 0) + pending
+		pendingBalanceAdjustments[userId] = nil
+	end
 end
 
 function PlayerDataBridge.GetEconomyData(userId)
@@ -84,12 +90,16 @@ function PlayerDataBridge.GetPlayerData(userId)
 end
 
 function PlayerDataBridge.AddMolCoins(userId, amount)
+	if type(amount) ~= "number" or amount < 0 or amount ~= amount or amount >= math.huge then
+		return false, 0
+	end
 	local data = playerEconomy[userId]
-	if data and type(amount) == "number" and amount >= 0 and amount == amount and amount < math.huge then
+	if data then
 		data.molCoins = (data.molCoins or 0) + amount
 		return true, data.molCoins
 	end
-	return false, 0
+	pendingBalanceAdjustments[userId] = (pendingBalanceAdjustments[userId] or 0) + amount
+	return true, amount
 end
 
 -- Like AddMolCoins, but boosted by an active "coinBonus" drink buff
@@ -100,6 +110,9 @@ end
 -- only one side of a player-to-player transfer would mint MolCoins from
 -- nothing (see molgang-roblox#13).
 function PlayerDataBridge.AddEarnedMolCoins(userId, amount)
+	if not playerEconomy[userId] then
+		return false, 0
+	end
 	local multiplier = 1.0
 	if _G.GetPlayerBuff then
 		multiplier = _G.GetPlayerBuff(userId, "coinBonus")

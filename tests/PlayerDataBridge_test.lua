@@ -21,4 +21,9 @@ assert(economy.molCoins == 40, "spending should reduce MolCoins exactly once")
 assert(not PlayerDataBridge.SpendMolCoins(43, -1), "negative spending must be rejected")
 assert(not PlayerDataBridge.SpendMolCoins(43, math.huge), "infinite spending must be rejected")
 
-print("PlayerDataBridge Tests: 11 passed, 0 failed")
+assert(PlayerDataBridge.AddMolCoins(44, 7), "offline balance adjustments should be queued")
+local reloaded = {molCoins = 3}
+PlayerDataBridge.SetEconomyData(44, reloaded)
+assert(reloaded.molCoins == 10, "queued balance adjustments should apply on load")
+
+print("PlayerDataBridge Tests: 13 passed, 0 failed")

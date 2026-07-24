@@ -20,6 +20,7 @@ local bidCounter = 0
 
 local MIN_BID = 10
 local MAX_BIDS_PER_PLAYER = 5
+local ORDER_EXPIRY_SECONDS = 1800
 
 -- ═══════════════════════════════════════════════
 -- PLACE BID
@@ -348,7 +349,7 @@ task.spawn(function()
 		task.wait(60)
 		local now = os.time()
 		for bidId, bid in pairs(activeBids) do
-			if now - bid.timestamp > 1800 then -- 30 min expiry
+			if now - bid.timestamp > ORDER_EXPIRY_SECONDS then
 				-- Refund
 				PlayerDataBridge.AddMolCoins(bid.playerId, bid.price * bid.quantity)
 				activeBids[bidId] = nil
@@ -362,11 +363,35 @@ task.spawn(function()
 				end
 			end
 		end
+		for sellId, sell in pairs(activeSells) do
+			if now - sell.timestamp > ORDER_EXPIRY_SECONDS then
+				activeSells[sellId] = nil
+				local seller = Players:GetPlayerByUserId(sell.playerId)
+				if seller then
+					Remotes.FireClient("ServerAnnounce", seller, {
+						message = "Sell order expired: " .. sell.quantity .. "x " .. sell.productId .. ".",
+						rarity = "common",
+					})
+				end
+			end
+		end
 	end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-	-- Bids persist for 30 min even after leave
+	-- Remove session-bound orders before PlayerDataBridge cleanup. Refund bid
+	-- escrow so an offline player cannot strand currency or match stale state.
+	for bidId, bid in pairs(activeBids) do
+		if bid.playerId == player.UserId then
+			PlayerDataBridge.AddMolCoins(player.UserId, bid.price * bid.quantity)
+			activeBids[bidId] = nil
+		end
+	end
+	for sellId, sell in pairs(activeSells) do
+		if sell.playerId == player.UserId then
+			activeSells[sellId] = nil
+		end
+	end
 end)
 
 print("[MOLGANG] MarketBidding initialized — competitive bidding system")
