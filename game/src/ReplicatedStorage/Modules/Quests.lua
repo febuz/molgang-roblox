@@ -267,8 +267,14 @@ function Quests.CheckProgress(playerData, quest)
 
 	local condType = quest.condition.type
 	local target = quest.condition.target
+	local dailyStats = playerData.dailyStats or {}
+	local isToday = dailyStats.date == os.date("%Y-%m-%d")
+	if quest.condition.daily and not isToday then return 0 end
 
 	if condType == "atomsCollected" then
+		if quest.condition.daily then
+			return math.min(dailyStats.atomsCollected or 0, target)
+		end
 		local count = 0
 		if playerData.atoms then
 			for _, c in pairs(playerData.atoms) do count = count + c end
@@ -286,9 +292,15 @@ function Quests.CheckProgress(playerData, quest)
 		return math.min(count, target)
 
 	elseif condType == "moleculesBuilt" then
+		if quest.condition.daily then
+			return math.min(dailyStats.moleculesBuilt or 0, target)
+		end
 		return math.min(playerData.totalMoleculesBuilt or 0, target)
 
 	elseif condType == "molCoinsEarned" then
+		if quest.condition.daily then
+			return math.min(dailyStats.molCoinsEarned or 0, target)
+		end
 		return math.min(playerData.totalMolCoinsEarned or 0, target)
 	end
 

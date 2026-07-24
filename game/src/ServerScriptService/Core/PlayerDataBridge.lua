@@ -6,6 +6,9 @@
 
 local PlayerDataBridge = {}
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
+
 -- Internal data store — only server scripts can access this module
 local pendingCollections = {} -- {userId = {{elementZ, symbol, coinReward, timestamp}, ...}}
 local pendingBuilds = {}      -- {userId = {molName, atoms, timestamp}}
@@ -122,6 +125,7 @@ function PlayerDataBridge.AddEarnedMolCoins(userId, amount)
 	if success then
 		local data = playerEconomy[userId]
 		data.totalMolCoinsEarned = (data.totalMolCoinsEarned or 0) + earnedAmount
+		DailyStats.Increment(data, "molCoinsEarned", earnedAmount)
 	end
 	return success, balance
 end

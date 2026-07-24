@@ -14,6 +14,7 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
+local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -139,6 +140,7 @@ local function addMolCoins(player, amount, reason)
 
 	data.molCoins = data.molCoins + amount
 	data.totalMolCoinsEarned = data.totalMolCoinsEarned + amount
+	DailyStats.Increment(data, "molCoinsEarned", amount)
 	if playerDailyEarned[userId] then
 		playerDailyEarned[userId] = playerDailyEarned[userId] + amount
 	end
@@ -193,6 +195,7 @@ local function processAtomCollect(player, collectData)
 
 	-- Update statistics
 	data.totalAtomsCollected = data.totalAtomsCollected + 1
+	DailyStats.Increment(data, "atomsCollected", 1)
 
 	-- Check for badge milestones
 	local totalElements = 0
@@ -321,6 +324,7 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 
 	-- Update statistics
 	data.totalMoleculesBuilt = data.totalMoleculesBuilt + 1
+	DailyStats.Increment(data, "moleculesBuilt", 1)
 	data.chainEntries = data.chainEntries + 1
 
 	-- Signal ChainRegistry via secure server-side bridge
