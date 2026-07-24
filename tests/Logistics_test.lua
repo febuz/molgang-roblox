@@ -1,8 +1,9 @@
 -- Lune tests for route ownership and bottleneck attribution.
 local LogisticsNetwork = require("../game/src/ReplicatedStorage/Modules/LogisticsNetwork")
 
-local route = LogisticsNetwork.BuildRoute("guild-alpha", "zone_a", "zone_b", "TRUCK")
+local route = LogisticsNetwork.BuildRoute("guild-alpha", "zone_a", "zone_b", "TRUCK", nil, 42)
 assert(route and route.ownerId == "guild-alpha", "route must retain its owner")
+assert(route.payerId == 42, "guild route must retain its payer")
 route.utilisation = route.capacity * 0.9
 local canUpgrade, _, upgradeCost = LogisticsNetwork.GetUpgradeCost(route.id, "guild-alpha")
 assert(canUpgrade and upgradeCost > 0, "route owner must receive a valid upgrade cost")
@@ -11,5 +12,8 @@ local bottlenecks = LogisticsNetwork.GetBottlenecks()
 assert(#bottlenecks == 1, "congested route must produce one bottleneck")
 assert(bottlenecks[1].ownerId == "guild-alpha", "bottleneck must identify route owner")
 
+local costs = LogisticsNetwork.ComputeOperatingCosts()
+assert(costs[42] == route.opCostPerMin, "operating cost must charge the payer, not a guild string")
+
 LogisticsNetwork.RemoveRoute(route.id, "guild-alpha")
-print("Logistics Tests: 4 passed, 0 failed")
+print("Logistics Tests: 6 passed, 0 failed")

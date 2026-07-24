@@ -129,7 +129,7 @@ function LogisticsNetwork.ValidateBuild(fromId, toId, modeId, hexDistance, owner
 end
 
 -- Build a new route
-function LogisticsNetwork.BuildRoute(ownerId, fromId, toId, modeId, level)
+function LogisticsNetwork.BuildRoute(ownerId, fromId, toId, modeId, level, payerId)
 	local id = newRouteId()
 	level = level or 1
 
@@ -146,6 +146,7 @@ function LogisticsNetwork.BuildRoute(ownerId, fromId, toId, modeId, level)
 	local route = {
 		id           = id,
 		ownerId      = ownerId,
+		payerId      = payerId,
 		from         = fromId,
 		to           = toId,
 		mode         = modeId,
@@ -290,7 +291,8 @@ function LogisticsNetwork.ComputeOperatingCosts()
 	local costs = {}
 	for _, route in pairs(LogisticsNetwork._routes) do
 		if route.active then
-			costs[route.ownerId] = (costs[route.ownerId] or 0) + route.opCostPerMin
+			local payer = route.payerId or route.ownerId
+			costs[payer] = (costs[payer] or 0) + route.opCostPerMin
 		end
 	end
 	return costs

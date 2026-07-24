@@ -115,7 +115,7 @@ Remotes.RequestBuildRoute.OnServerEvent:Connect(function(player, fromId, toId, m
 		return
 	end
 
-	local route, err = LogisticsNetwork.BuildRoute(guildId, fromId, toId, modeId)
+	local route, err = LogisticsNetwork.BuildRoute(guildId, fromId, toId, modeId, nil, player.UserId)
 	if not route then
 		PlayerDataBridge.AddMolCoins(player.UserId, cost)
 		Remotes.FireClient("ServerAnnounce", player, {
