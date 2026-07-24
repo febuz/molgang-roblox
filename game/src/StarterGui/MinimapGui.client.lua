@@ -349,12 +349,12 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
--- Toggle minimap with N key
+-- Toggle minimap with M (documented primary shortcut) or N (legacy shortcut).
 UserInputService.InputBegan:Connect(function(input, gp)
 	if gp then return end
-	if input.KeyCode == Enum.KeyCode.N then
+	if input.KeyCode == Enum.KeyCode.M or input.KeyCode == Enum.KeyCode.N then
 		screenGui.Enabled = not screenGui.Enabled
 	end
 end)
 
-print("[MOLGANG] MinimapGui loaded — player-centered map with zone navigation + travel times (N key)")
+print("[MOLGANG] MinimapGui loaded — player-centered map with zone navigation + travel times (M/N key)")

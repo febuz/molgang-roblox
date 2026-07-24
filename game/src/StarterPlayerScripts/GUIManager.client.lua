@@ -30,7 +30,7 @@ local guiStates = {
 	InventoryGui = false,
 	AchievementsGui = false,
 	LeaderboardGui = false,
-	QuestTrackerGui = false,
+	QuestModal = false,
 	RecipeBookGui = false,
 	SettingsGui = false,
 	SlagProcessingGui = false,
@@ -51,7 +51,6 @@ local guiStates = {
 	FeedbackGui = false,
 	MahjongGui = false,
 	MiniGameGui = false,
-	QuestModal = false,
 	ConfirmRemove = false,
 	CostWarning = false,
 }
@@ -167,23 +166,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 	-- Q = Toggle Quest Tracker
 	if input.KeyCode == Enum.KeyCode.Q then
-		toggleGui("QuestTrackerGui")
+		toggleGui("QuestModal")
 	end
 
 	-- R = Toggle Recipe Book
 	if input.KeyCode == Enum.KeyCode.R then
 		toggleGui("RecipeBookGui")
-	end
-
-	-- M = Toggle Minimap (HUD element)
-	if input.KeyCode == Enum.KeyCode.M then
-		local hudGui = findScreenGui("HUDGui")
-		if hudGui then
-			local minimap = hudGui:FindFirstChild("MiniMap")
-			if minimap then
-				minimap.Visible = not minimap.Visible
-			end
-		end
 	end
 
 	-- S = Toggle Slag Processing

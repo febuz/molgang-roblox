@@ -63,7 +63,7 @@ local shortcuts = {
 	{col = 1, key = "Shift", desc = "Sprint (if unlocked)"},
 	{col = 1, key = "Mouse", desc = "Look around"},
 	{col = 1, key = "Scroll", desc = "Zoom in/out"},
-	{col = 1, key = "N", desc = "Toggle Minimap"},
+	{col = 1, key = "M / N", desc = "Toggle Minimap"},
 	{col = 1, key = "Esc", desc = "Close all panels"},
 
 	-- Column 2: Production & Chemistry

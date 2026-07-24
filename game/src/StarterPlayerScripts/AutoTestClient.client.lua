@@ -13,7 +13,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local requiredGuis = {
 	"HUDWidget", "DashboardGui", "QuizGui", "SlagProcessingGui",
 	"FactoryBuilderGui", "MiningGui", "ResearchGui", "InventoryGui",
-	"WalletGui", "ProductMarketGui",
+	"WalletGui", "ProductMarketGui", "MinimapGui", "QuestModal",
 }
 
 -- GUI LocalScripts start independently and Studio/Wine can spend 15–30s
