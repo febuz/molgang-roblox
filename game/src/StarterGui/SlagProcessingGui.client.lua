@@ -238,6 +238,10 @@ label(slagPanel, {Name="WhatIsSlag", Size=UDim2.new(1,-20,0,28), Position=UDim2.
 label(slagPanel, {Name="InvTitle", Size=UDim2.new(1,-20,0,24), Position=UDim2.new(0,10,0,34),
 	Text="Slag Inventory", Color=C.accent, Font=Enum.Font.GothamBold})
 
+local residueAmount = label(slagPanel, {Name="ResidueAmount", Size=UDim2.new(0.45,0,0,20),
+	Position=UDim2.new(0.52,0,0,36), Text="Aggregate residue: 0 kg", Color=C.gold,
+	Align=Enum.TextXAlignment.Right})
+
 local slagCards = {}
 local slagAmounts = {}
 
@@ -699,6 +703,7 @@ if slagInvEvent then
 					slagAmounts[sizeKey].Text = amount .. " kg"
 				end
 			end
+			residueAmount.Text = "Aggregate residue: " .. tostring(data.slagInventory.residue or 0) .. " kg"
 		end
 
 		-- Update leach monitor if we have leach list
