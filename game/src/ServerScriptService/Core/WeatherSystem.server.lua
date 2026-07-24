@@ -146,6 +146,12 @@ end
 local function applyWeatherLighting(weather)
 	-- Smoothly transition lighting
 	local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+	Lighting:SetAttribute("WeatherId", weather.id)
+	Lighting:SetAttribute("WeatherTransitionId", (Lighting:GetAttribute("WeatherTransitionId") or 0) + 1)
+	Lighting:SetAttribute("WeatherTransitionStartedAt", os.clock())
+	Lighting:SetAttribute("WeatherTransitionDuration", tweenInfo.Time)
+	Lighting:SetAttribute("WeatherTargetHaze", weather.atmosphereHaze)
+	Lighting:SetAttribute("WeatherTargetFogDensity", weather.fogDensity)
 
 	-- Update atmosphere
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")

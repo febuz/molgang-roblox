@@ -225,7 +225,7 @@ local vEdges = {
 local weatherEvent = Remotes:FindFirstChild("WeatherChanged")
 if weatherEvent then
 	weatherEvent.OnClientEvent:Connect(function(data)
-		local isHazard = data.state == "storm" or data.state == "hail"
+		local isHazard = data.id == "storm" or data.id == "hail"
 		for _, edge in ipairs(vEdges) do
 			TweenService:Create(edge, TweenInfo.new(1), {
 				BackgroundTransparency = isHazard and 0.5 or 1,

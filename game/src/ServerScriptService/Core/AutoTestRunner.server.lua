@@ -202,6 +202,19 @@ test("ColorCorrection exists", Lighting:FindFirstChildWhichIsA("ColorCorrectionE
 test("DepthOfField exists", Lighting:FindFirstChildWhichIsA("DepthOfFieldEffect") ~= nil)
 test("Sky exists", Lighting:FindFirstChildWhichIsA("Sky") ~= nil)
 
+timeTest("Weather lighting state is initialized", function()
+	assert(Lighting:GetAttribute("WeatherId") == "clear",
+		"Expected initial clear weather, got " .. tostring(Lighting:GetAttribute("WeatherId")))
+	assert(tonumber(Lighting:GetAttribute("WeatherTransitionId")) ~= nil,
+		"Weather transition counter is missing")
+	assert(tonumber(Lighting:GetAttribute("WeatherTransitionDuration")) == 3,
+		"Weather transition duration is not 3 seconds")
+	assert(tonumber(Lighting:GetAttribute("WeatherTargetHaze")) ~= nil,
+		"Weather target haze is missing")
+	assert(tonumber(Lighting:GetAttribute("WeatherTargetFogDensity")) ~= nil,
+		"Weather target fog density is missing")
+end)
+
 local sky = Lighting:FindFirstChildWhichIsA("Sky")
 if sky then
 	test("Star count >= 5000", sky.StarCount >= 5000, "StarCount: " .. sky.StarCount)
