@@ -10,6 +10,7 @@ local PlayerDataBridge = {}
 local pendingCollections = {} -- {userId = {elementZ, symbol, coinReward, timestamp}}
 local pendingBuilds = {}      -- {userId = {molName, atoms, timestamp}}
 local playerEconomy = {}      -- {userId = {molCoins, atoms, molecules, ...}}
+local drinkPurchaseCounts = {} -- {userId = count}
 
 -- ══════════════════════════════════════════════
 -- ATOM COLLECTION (AtomSpawner → EconomyManager)
@@ -84,10 +85,28 @@ function PlayerDataBridge.SpendMolCoins(userId, amount)
 	return false, 0
 end
 
+-- ══════════════════════════════════════════════
+-- DRINK PURCHASE COUNTING (BubbleTeaBar → Achievements)
+-- ══════════════════════════════════════════════
+
+-- Returns the new total after incrementing. Callers diff old/new against
+-- Modules/GameObjects/Achievements.CheckNewlyUnlocked to detect threshold
+-- crossings without the caller having to track counts itself.
+function PlayerDataBridge.RecordDrinkPurchase(userId)
+	local newCount = (drinkPurchaseCounts[userId] or 0) + 1
+	drinkPurchaseCounts[userId] = newCount
+	return newCount
+end
+
+function PlayerDataBridge.GetDrinkPurchaseCount(userId)
+	return drinkPurchaseCounts[userId] or 0
+end
+
 function PlayerDataBridge.Cleanup(userId)
 	pendingCollections[userId] = nil
 	pendingBuilds[userId] = nil
 	playerEconomy[userId] = nil
+	drinkPurchaseCounts[userId] = nil
 end
 
 return PlayerDataBridge

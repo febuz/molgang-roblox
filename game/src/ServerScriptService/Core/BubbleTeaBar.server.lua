@@ -21,6 +21,7 @@ local Players = game:GetService("Players")
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local SeasonalDrinks = require(ReplicatedStorage.Modules.GameObjects.SeasonalDrinks)
+local Achievements = require(ReplicatedStorage.Modules.GameObjects.Achievements)
 
 -- ═══════════════════════════════════════════════
 -- DRINK DEFINITIONS
@@ -340,6 +341,17 @@ Remotes.RequestBuyDrink.OnServerEvent:Connect(function(player, drinkId)
 	-- Apply buff
 	playerCooldowns[userId] = tick()
 	applyBuff(userId, drink.buffType, drink.buffValue, drink.buffDuration)
+
+	-- Purchase-count achievements (molgang-roblox#9)
+	local previousPurchaseCount = PlayerDataBridge.GetDrinkPurchaseCount(userId)
+	local newPurchaseCount = PlayerDataBridge.RecordDrinkPurchase(userId)
+	for _, badge in ipairs(Achievements.CheckNewlyUnlocked(previousPurchaseCount, newPurchaseCount)) do
+		PlayerDataBridge.AddMolCoins(userId, badge.molCoinsReward)
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Achievement unlocked: " .. badge.name .. "! +" .. badge.molCoinsReward .. " MolCoins",
+			rarity = "rare",
+		})
+	end
 
 	-- Give cup accessory
 	giveCupAccessory(player, drink)

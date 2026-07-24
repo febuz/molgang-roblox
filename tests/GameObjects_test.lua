@@ -12,6 +12,7 @@
 
 local ObjectRegistry = require("../game/src/ReplicatedStorage/Modules/GameObjects/ObjectRegistry")
 local RarityTrait = require("../game/src/ReplicatedStorage/Modules/GameObjects/RarityTrait")
+local Achievements = require("../game/src/ReplicatedStorage/Modules/GameObjects/Achievements")
 
 local passCount = 0
 local failCount = 0
@@ -165,6 +166,43 @@ do
 	reg:Define("taro", { category = "Drink", traits = { Buyable = { cost = 40 }, Buff = { value = 1.5 } } })
 	assert_eq(RarityTrait.ComputeTierForArchetype(reg, "taro"), "Epic", "ComputeTierForArchetype matches the direct ComputeTier result")
 end
+
+-- ═══════════════════════════════════════════════
+-- Achievements: purchase-count badge threshold crossing (molgang-roblox#9)
+-- ═══════════════════════════════════════════════
+
+do
+	local unlocked = Achievements.CheckNewlyUnlocked(0, 1)
+	assert_eq(#unlocked, 1, "0->1 unlocks exactly one badge")
+	assert_eq(unlocked[1].id, "firstTaste", "0->1 unlocks firstTaste")
+end
+
+assert_eq(#Achievements.CheckNewlyUnlocked(1, 1), 0, "no-op purchase (same count) unlocks nothing")
+assert_eq(#Achievements.CheckNewlyUnlocked(3, 9), 0, "staying below the next threshold unlocks nothing")
+
+do
+	local unlocked = Achievements.CheckNewlyUnlocked(9, 10)
+	assert_eq(#unlocked, 1, "9->10 unlocks exactly one badge")
+	assert_eq(unlocked[1].id, "cafeEnthusiast", "9->10 unlocks cafeEnthusiast")
+end
+
+do
+	-- A count jump spanning multiple thresholds (e.g. a future batch grant)
+	-- must award every tier passed through, not just the nearest one.
+	local unlocked = Achievements.CheckNewlyUnlocked(0, 50)
+	assert_eq(#unlocked, 3, "0->50 unlocks all 3 badges in one jump")
+	assert_eq(unlocked[1].id, "firstTaste", "0->50 badge order: firstTaste first")
+	assert_eq(unlocked[2].id, "cafeEnthusiast", "0->50 badge order: cafeEnthusiast second")
+	assert_eq(unlocked[3].id, "bubbleTeaAddict", "0->50 badge order: bubbleTeaAddict third")
+end
+
+assert_eq(#Achievements.CheckNewlyUnlocked(50, 51), 0, "past the last threshold, nothing new unlocks")
+assert_eq(Achievements.GetBadge("cafeEnthusiast").molCoinsReward, 50, "GetBadge looks up reward by id")
+assert_true(Achievements.GetBadge("doesNotExist") == nil, "GetBadge returns nil for unknown id")
+
+assert_error(function()
+	Achievements.CheckNewlyUnlocked(5, 3)
+end, "newCount < previousCount raises instead of silently misbehaving")
 
 -- ═══════════════════════════════════════════════
 -- REPORT
