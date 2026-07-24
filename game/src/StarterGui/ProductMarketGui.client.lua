@@ -98,7 +98,7 @@ closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 
 closeBtn.BackgroundColor3 = C.red; closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- Hint for new players
 local hintLabel = Instance.new("TextLabel")
@@ -137,7 +137,7 @@ local saCorner = Instance.new("UICorner")
 saCorner.CornerRadius = UDim.new(0, 6)
 saCorner.Parent = sellAllBtn
 
-sellAllBtn.MouseButton1Click:Connect(function()
+sellAllBtn.Activated:Connect(function()
 	playUIClick()
 	-- requiredAtoms is a dictionary, so #requiredAtoms is always zero in
 	-- Luau. Calculate the current sellable quantity from the live inventory;
@@ -297,10 +297,10 @@ for _, product in ipairs(ProductMarket.Products) do
 	plusBtn.Parent = qtyFrame
 
 	local qty = 1
-	minusBtn.MouseButton1Click:Connect(function()
+	minusBtn.Activated:Connect(function()
 		qty = math.max(1, qty - 1); qtyLabel.Text = tostring(qty)
 	end)
-	plusBtn.MouseButton1Click:Connect(function()
+	plusBtn.Activated:Connect(function()
 		qty = math.min(99, qty + 1); qtyLabel.Text = tostring(qty)
 	end)
 
@@ -317,7 +317,7 @@ for _, product in ipairs(ProductMarket.Products) do
 	corner(sellBtn, 6)
 
 	local pid = product.id
-	sellBtn.MouseButton1Click:Connect(function()
+	sellBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestSellProduct")
 		if r then r:FireServer(pid, qty) end
 		sellBtn.BackgroundColor3 = C.gold

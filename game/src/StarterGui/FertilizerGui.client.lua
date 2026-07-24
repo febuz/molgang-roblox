@@ -80,7 +80,7 @@ closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 
 closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60); closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.new(1,1,1); closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true; closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Tabs
 local tabFrame = Instance.new("Frame")
@@ -119,7 +119,7 @@ for _, tab in ipairs(tabs) do
 	panel.Visible = (tab.key == "farm"); panel.Parent = contentFrame
 	tabPanels[tab.key] = panel
 
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do b.BackgroundColor3 = C.tabInactive; b.TextColor3 = C.textDim end
 		panel.Visible = true; btn.BackgroundColor3 = C.tabActive; btn.TextColor3 = C.text
@@ -208,7 +208,7 @@ for i = 1, 4 do
 	fertBtn.TextScaled = true; fertBtn.Parent = card; corner(fertBtn, 4)
 
 	-- Wire buttons
-	testBtn.MouseButton1Click:Connect(function()
+	testBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestTestSoil")
 		if r then r:FireServer(i) end
 	end)
@@ -216,14 +216,14 @@ for i = 1, 4 do
 	-- Simple crop picker: cycle through available crops
 	local cropIdx = 0
 	local availCrops = FertilizerTrack.Crops
-	plantBtn.MouseButton1Click:Connect(function()
+	plantBtn.Activated:Connect(function()
 		cropIdx = (cropIdx % #availCrops) + 1
 		local crop = availCrops[cropIdx]
 		local r = Remotes:FindFirstChild("RequestPlantCrop")
 		if r then r:FireServer(i, crop.id) end
 	end)
 
-	harvestBtn.MouseButton1Click:Connect(function()
+	harvestBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestHarvestCrop")
 		if r then r:FireServer(i) end
 	end)
@@ -231,7 +231,7 @@ for i = 1, 4 do
 	-- Simple fertilizer picker
 	local fertIdx = 0
 	local availFerts = FertilizerTrack.Fertilizers
-	fertBtn.MouseButton1Click:Connect(function()
+	fertBtn.Activated:Connect(function()
 		fertIdx = (fertIdx % #availFerts) + 1
 		local fert = availFerts[fertIdx]
 		local r = Remotes:FindFirstChild("RequestApplyFertilizer")
@@ -303,7 +303,7 @@ for _, fert in ipairs(FertilizerTrack.Fertilizers) do
 	craftBtn.TextColor3 = Color3.new(0,0,0); craftBtn.Font = Enum.Font.GothamBold
 	craftBtn.TextScaled = true; craftBtn.Parent = fCard; corner(craftBtn, 6)
 
-	craftBtn.MouseButton1Click:Connect(function()
+	craftBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestCraftFertilizer")
 		if r then r:FireServer(fert.id) end
 	end)

@@ -103,7 +103,7 @@ closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 
 closeBtn.BackgroundColor3 = C.red; closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- Tabs
 local tabFrame = Instance.new("Frame")
@@ -138,7 +138,7 @@ for _, tab in ipairs(tabs) do
 	panel.Size = UDim2.new(1,0,1,0); panel.BackgroundTransparency = 1
 	panel.Visible = (tab.key == "explore"); panel.Parent = contentFrame
 	tabPanels[tab.key] = panel
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		playUIClick()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do b.BackgroundColor3 = C.tabInactive; b.TextColor3 = C.textDim end
@@ -212,7 +212,7 @@ for _, equip in ipairs(MiningSystem.Equipment) do
 		eb.TextColor3 = C.text; eb.Font = Enum.Font.Gotham; eb.TextScaled = true
 		eb.Parent = equipFrame; corner(eb, 4)
 		equipX = equipX + 0.14
-		eb.MouseButton1Click:Connect(function()
+		eb.Activated:Connect(function()
 			local r = Remotes:FindFirstChild("RequestBuyMiningEquip")
 			if r then r:FireServer(equip.id) end
 		end)
@@ -277,7 +277,7 @@ if miningEvent then
 				buyBtn.TextColor3 = Color3.new(0,0,0); buyBtn.Font = Enum.Font.GothamBold
 				buyBtn.TextScaled = true; buyBtn.Parent = card; corner(buyBtn, 4)
 				local pid = plot.id
-				buyBtn.MouseButton1Click:Connect(function()
+				buyBtn.Activated:Connect(function()
 					local r = Remotes:FindFirstChild("RequestBuyExplorationLicense")
 					if r then r:FireServer(pid) end
 				end)
@@ -336,7 +336,7 @@ if miningEvent then
 					explBtn.Font = Enum.Font.GothamBold; explBtn.TextScaled = true
 					explBtn.Parent = card; corner(explBtn, 4)
 					local pid = plot.id
-					explBtn.MouseButton1Click:Connect(function()
+				explBtn.Activated:Connect(function()
 						local r = Remotes:FindFirstChild("RequestExplorePlot")
 						if r then r:FireServer(pid) end
 					end)
@@ -363,7 +363,7 @@ if miningEvent then
 				deployBtn.Font = Enum.Font.GothamBold; deployBtn.TextScaled = true
 				deployBtn.Parent = card; corner(deployBtn, 4)
 				local pid2 = plot.id
-				deployBtn.MouseButton1Click:Connect(function()
+				deployBtn.Activated:Connect(function()
 					-- Deploy first available equipment
 					local r = Remotes:FindFirstChild("RequestDeployEquipment")
 					if r then r:FireServer(pid2, "pneumatic_drill") end
@@ -377,7 +377,7 @@ if miningEvent then
 				collectBtn.Text = "Collect"; collectBtn.TextColor3 = Color3.new(0,0,0)
 				collectBtn.Font = Enum.Font.GothamBold; collectBtn.TextScaled = true
 				collectBtn.Parent = card; corner(collectBtn, 4)
-				collectBtn.MouseButton1Click:Connect(function()
+				collectBtn.Activated:Connect(function()
 					local r = Remotes:FindFirstChild("RequestCollectOre")
 					if r then r:FireServer(pid2) end
 				end)
@@ -391,7 +391,7 @@ if miningEvent then
 				sellBtn.TextColor3 = Color3.new(1,1,1)
 				sellBtn.Font = Enum.Font.GothamBold; sellBtn.TextScaled = true
 				sellBtn.Parent = card; corner(sellBtn, 4)
-				sellBtn.MouseButton1Click:Connect(function()
+				sellBtn.Activated:Connect(function()
 					local r = Remotes:FindFirstChild("RequestListPlotForSale")
 					if r then r:FireServer(pid2, (plot.vanadiumPct or 0.5) * 20000) end
 				end)
@@ -434,7 +434,7 @@ if miningEvent then
 				buyBtn.Font = Enum.Font.GothamBold; buyBtn.TextScaled = true
 				buyBtn.Parent = card; corner(buyBtn, 4)
 				local pid = listing.id
-				buyBtn.MouseButton1Click:Connect(function()
+				buyBtn.Activated:Connect(function()
 					local r = Remotes:FindFirstChild("RequestBuyPlotFromMarket")
 					if r then r:FireServer(pid) end
 				end)

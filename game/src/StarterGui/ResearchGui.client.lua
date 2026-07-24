@@ -110,7 +110,7 @@ closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- BRANCH COLUMNS (5 branches side by side)
@@ -272,7 +272,7 @@ for _, branchName in ipairs(branches) do
 			corner(resBtn, 4)
 			cardState.button = resBtn
 
-			resBtn.MouseButton1Click:Connect(function()
+			resBtn.Activated:Connect(function()
 				resBtn.Text = "REQUESTING..."
 				resBtn.Active = false
 				Remotes.RequestStartResearch:FireServer(node.id)

@@ -64,7 +64,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = title
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- New bid section
 local newBidLabel = Instance.new("TextLabel")
@@ -100,7 +100,7 @@ for i, pName in ipairs(productNames) do
 	pb.Parent = productFrame
 	corner(pb, 4)
 	productBtns[pName] = pb
-	pb.MouseButton1Click:Connect(function()
+	pb.Activated:Connect(function()
 		selectedProduct = pName
 		for k, b in pairs(productBtns) do
 			b.BackgroundColor3 = k == pName and C.accent or C.panel
@@ -147,7 +147,7 @@ bidBtn.Font = Enum.Font.GothamBold
 bidBtn.Parent = main
 corner(bidBtn, 6)
 
-bidBtn.MouseButton1Click:Connect(function()
+bidBtn.Activated:Connect(function()
 	if not selectedProduct then return end
 	local price = tonumber(priceBox.Text)
 	local qty = tonumber(qtyBox.Text) or 1
@@ -224,7 +224,7 @@ if bidResponseEvent then
 					cb.TextScaled = true; cb.Font = Enum.Font.GothamBold
 					cb.Parent = bf
 					corner(cb, 4)
-					cb.MouseButton1Click:Connect(function()
+					cb.Activated:Connect(function()
 						local r = Remotes:FindFirstChild("RequestCancelBid")
 						if r then r:FireServer(bid.bidId) end
 					end)
