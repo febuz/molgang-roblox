@@ -1,7 +1,7 @@
 {
   "model": "stabilityai/sd-turbo",
   "style": "low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
-  "count": 12,
+  "count": 26,
   "impostors": {
     "tree": {
       "file": "tree.png",
@@ -74,6 +74,90 @@
       "prompt": "a single orange traffic cone, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
       "model": "stabilityai/sd-turbo",
       "seed": 998388946
+    },
+    "delivery_truck": {
+      "file": "delivery_truck.png",
+      "prompt": "a single box delivery truck, side view, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 1172368109
+    },
+    "van": {
+      "file": "van.png",
+      "prompt": "a single white cargo van, side view, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 1537418130
+    },
+    "city_bus": {
+      "file": "city_bus.png",
+      "prompt": "a single blue city bus, side view, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 1031267836
+    },
+    "motorcycle": {
+      "file": "motorcycle.png",
+      "prompt": "a single parked motorcycle, side view, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 3665363577
+    },
+    "worker": {
+      "file": "worker.png",
+      "prompt": "a single standing construction worker in an orange hi-vis vest and hard hat, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 3880168645
+    },
+    "woman_pedestrian": {
+      "file": "woman_pedestrian.png",
+      "prompt": "a single standing woman in a coat, front view, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 2141098531
+    },
+    "mailbox": {
+      "file": "mailbox.png",
+      "prompt": "a single blue mailbox post box, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 250755099
+    },
+    "phone_booth": {
+      "file": "phone_booth.png",
+      "prompt": "a single red telephone booth, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 3607228298
+    },
+    "food_cart": {
+      "file": "food_cart.png",
+      "prompt": "a single street food cart with a striped awning, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 2331998626
+    },
+    "planter_box": {
+      "file": "planter_box.png",
+      "prompt": "a single rectangular concrete planter box with flowers, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 1131928354
+    },
+    "palm_tree": {
+      "file": "palm_tree.png",
+      "prompt": "a single tall palm tree, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 4012047983
+    },
+    "road_barrier": {
+      "file": "road_barrier.png",
+      "prompt": "a single striped road construction barrier, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 3803082525
+    },
+    "crane": {
+      "file": "crane.png",
+      "prompt": "a single tall yellow construction tower crane, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 3763014245
+    },
+    "water_tower": {
+      "file": "water_tower.png",
+      "prompt": "a single elevated cylindrical water tower on legs, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 2184207570
     }
   }
 }

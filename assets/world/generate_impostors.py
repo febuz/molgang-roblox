@@ -46,6 +46,21 @@ GAPS = {
     "power_pylon": "a single tall electricity transmission pylon tower",
     "shrub": "a single round green bush shrub",
     "traffic_cone": "a single orange traffic cone",
+    # --- density pass: more city variety ---
+    "delivery_truck": "a single box delivery truck, side view",
+    "van": "a single white cargo van, side view",
+    "city_bus": "a single blue city bus, side view",
+    "motorcycle": "a single parked motorcycle, side view",
+    "worker": "a single standing construction worker in an orange hi-vis vest and hard hat",
+    "woman_pedestrian": "a single standing woman in a coat, front view",
+    "mailbox": "a single blue mailbox post box",
+    "phone_booth": "a single red telephone booth",
+    "food_cart": "a single street food cart with a striped awning",
+    "planter_box": "a single rectangular concrete planter box with flowers",
+    "palm_tree": "a single tall palm tree",
+    "road_barrier": "a single striped road construction barrier",
+    "crane": "a single tall yellow construction tower crane",
+    "water_tower": "a single elevated cylindrical water tower on legs",
 }
 
 

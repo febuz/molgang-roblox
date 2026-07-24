@@ -176,16 +176,28 @@ async function build() {
 
   // 3. Street furniture + fill along the roads.
   const NEEDS = [
-    { role: 'street light', kw: ['lamp', 'light'], imp: null, size: 5, every: 26 },
-    { role: 'bench', kw: ['bench'], imp: null, size: 4, every: 40 },
-    { role: 'signpost', kw: ['signpost'], imp: null, size: 5, every: 55 },
-    { role: 'tree', kw: ['tree'], imp: 'tree', size: 7, every: 18 },
-    { role: 'car', kw: ['car', 'sedan', 'vehicle'], imp: 'car', size: 3.4, every: 21 },
-    { role: 'pedestrian', kw: ['pedestrian', 'person'], imp: 'pedestrian', size: 3.4, every: 24 },
-    { role: 'fire hydrant', kw: ['hydrant'], imp: 'fire_hydrant', size: 1.6, every: 33 },
-    { role: 'dumpster', kw: ['dumpster'], imp: 'dumpster', size: 2.6, every: 47 },
-    { role: 'traffic cone', kw: ['cone'], imp: 'traffic_cone', size: 1.3, every: 29 },
-    { role: 'shrub', kw: ['shrub', 'bush'], imp: 'shrub', size: 2.2, every: 15 },
+    { role: 'street light', kw: ['lamp', 'light'], imp: null, size: 5, every: 20 },
+    { role: 'bench', kw: ['bench'], imp: null, size: 4, every: 32 },
+    { role: 'signpost', kw: ['signpost'], imp: null, size: 5, every: 46 },
+    { role: 'tree', kw: ['tree'], imp: 'tree', size: 7, every: 13 },
+    { role: 'palm tree', kw: ['zzz'], imp: 'palm_tree', size: 8, every: 27 },
+    { role: 'car', kw: ['sedan', 'vehicle'], imp: 'car', size: 3.4, every: 15 },
+    { role: 'delivery truck', kw: ['zzz'], imp: 'delivery_truck', size: 4.5, every: 38 },
+    { role: 'van', kw: ['zzz'], imp: 'van', size: 4, every: 44 },
+    { role: 'city bus', kw: ['zzz'], imp: 'city_bus', size: 6, every: 70 },
+    { role: 'motorcycle', kw: ['zzz'], imp: 'motorcycle', size: 2.6, every: 34 },
+    { role: 'pedestrian', kw: ['pedestrian', 'person'], imp: 'pedestrian', size: 3.4, every: 16 },
+    { role: 'worker', kw: ['zzz'], imp: 'worker', size: 3.4, every: 30 },
+    { role: 'woman', kw: ['zzz'], imp: 'woman_pedestrian', size: 3.4, every: 26 },
+    { role: 'fire hydrant', kw: ['hydrant'], imp: 'fire_hydrant', size: 1.6, every: 28 },
+    { role: 'dumpster', kw: ['dumpster'], imp: 'dumpster', size: 2.6, every: 40 },
+    { role: 'traffic cone', kw: ['zzcone'], imp: 'traffic_cone', size: 1.3, every: 22 },
+    { role: 'shrub', kw: ['shrub', 'bush'], imp: 'shrub', size: 2.2, every: 12 },
+    { role: 'mailbox', kw: ['zzz'], imp: 'mailbox', size: 2.4, every: 52 },
+    { role: 'phone booth', kw: ['zzz'], imp: 'phone_booth', size: 3.2, every: 60 },
+    { role: 'food cart', kw: ['zzz'], imp: 'food_cart', size: 3, every: 66 },
+    { role: 'planter', kw: ['zzz'], imp: 'planter_box', size: 2.4, every: 36 },
+    { role: 'road barrier', kw: ['zzz'], imp: 'road_barrier', size: 3, every: 24 },
   ];
   for (const need of NEEDS) {
     const r = resolve(need.kw, need.imp);
@@ -197,7 +209,7 @@ async function build() {
         const offs = [[t, at - ROAD / 2 - 1.5], [t, at + ROAD / 2 + 1.5],
                       [at - ROAD / 2 - 1.5, t], [at + ROAD / 2 + 1.5, t]];
         for (const [x, z] of offs) {
-          if (rand() > 0.5) continue;
+          if (rand() > 0.62) continue;
           const rot = rand() * Math.PI * 2;
           if (r.kind === 'asset') { await placeAsset(r.file, x, z, need.size, rot); stats.asset++; }
           else { placeImpostor(r.imp || need.imp, x, z, need.size, rot); stats.impostor++; }
@@ -206,10 +218,16 @@ async function build() {
     }
   }
 
-  // 4. Power pylons at the far corners (GAP -> impostor).
+  // 4. Power pylons at the far corners + tall landmarks (GAP -> impostor).
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     placeImpostor('power_pylon', sx * (WORLD / 2 - 12), sz * (WORLD / 2 - 12), 20, rand() * Math.PI);
     stats.impostor++;
+  }
+  // Cranes + water towers rise over the blocks for a denser industrial skyline.
+  for (const gx of GRID) for (const gz of GRID) {
+    const [cx, cz] = blockCenter(gx, gz);
+    if ((gx + gz) % 2 === 0) { placeImpostor('crane', cx + 18, cz + 18, 26, rand() * Math.PI); stats.impostor++; }
+    else { placeImpostor('water_tower', cx - 18, cz - 18, 16, 0); stats.impostor++; }
   }
 
   finishHUD();
