@@ -19,6 +19,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local MiningSystem = require(ReplicatedStorage.Modules.MiningSystem)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
@@ -101,6 +102,25 @@ end
 -- Player mining state
 local playerMining = {}  -- {userId = {ownedPlots = {}, miningEquipment = {}}}
 local hydratedMining = {}
+local ownerNameCache = {}
+
+local function getOwnerName(userId)
+	local onlinePlayer = Players:GetPlayerByUserId(userId)
+	if onlinePlayer then
+		ownerNameCache[userId] = onlinePlayer.Name
+		return onlinePlayer.Name
+	end
+	if ownerNameCache[userId] then return ownerNameCache[userId] end
+
+	local success, name = pcall(function()
+		return Players:GetNameFromUserIdAsync(userId)
+	end)
+	if success and type(name) == "string" and name ~= "" then
+		ownerNameCache[userId] = name
+		return name
+	end
+	return "Miner #" .. tostring(userId)
+end
 
 local function getPlayerMining(userId)
 	if not playerMining[userId] then
@@ -555,7 +575,7 @@ function sendMiningUpdate(player, userId)
 				vanadiumPct = plot.explored and plot.vanadiumPct or nil,
 				rarity = plot.explored and plot.rarity or "unknown",
 				askPrice = plot.askPrice,
-				ownerName = "Another Miner",
+				ownerName = getOwnerName(plot.owner),
 			})
 		end
 	end
@@ -600,11 +620,13 @@ end)
 
 task.spawn(function()
 	while true do
+		local activeEffects = WorldEvents.GetActiveEffects()
+		local miningYieldMultiplier = math.max(0, tonumber(activeEffects.miningYieldMult) or 1)
 		for _, plot in ipairs(worldPlots) do
 			if plot.owner and #plot.mineEquipment > 0 then
 				local rate = MiningSystem.CalculateMiningRate(plot, plot.mineEquipment)
 				if rate > 0 then
-					local produced = rate * (MINING_TICK_INTERVAL / 60)  -- kg per tick
+					local produced = rate * miningYieldMultiplier * (MINING_TICK_INTERVAL / 60)  -- kg per tick
 					plot.oreStockpile = plot.oreStockpile + produced
 					plot.totalMined = plot.totalMined + produced
 					persistPlotState(plot.owner, plot)
