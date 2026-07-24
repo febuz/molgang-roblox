@@ -11,7 +11,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
 local MarketTransactionLedger = require(ReplicatedStorage.Modules.MarketTransactionLedger)
@@ -20,7 +20,7 @@ local MarketTransactionLedger = require(ReplicatedStorage.Modules.MarketTransact
 -- MARKET STATE
 -- ═══════════════════════════════════════════════
 
-local marketStore = DataStoreService:GetDataStore("MOLGANG_Market_v1")
+local marketStore = DataStoreProvider.GetDataStore("MOLGANG_Market_v1")
 
 -- Base prices for commodities
 local BASE_PRICES = CommodityMarket.GetBasePrices()

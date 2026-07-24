@@ -7,12 +7,12 @@
 ]]
 
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
-local analyticsStore = DataStoreService:GetOrderedDataStore("Analytics_v1")
+local analyticsStore = DataStoreProvider.GetOrderedDataStore("Analytics_v1")
 
 -- Session data per player
 local playerSessions = {}

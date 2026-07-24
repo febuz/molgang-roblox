@@ -4,7 +4,7 @@
 -- Top 100 per category, refreshes every 60 seconds
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
@@ -14,11 +14,11 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 -- ══════════════════════════════════════════════
 
 local boards = {
-	MolCoins     = DataStoreService:GetOrderedDataStore("LB_MolCoins_v1"),
-	Elements     = DataStoreService:GetOrderedDataStore("LB_Elements_v1"),
-	Molecules    = DataStoreService:GetOrderedDataStore("LB_Molecules_v1"),
-	ChainTokens  = DataStoreService:GetOrderedDataStore("LB_Chain_v1"),
-	ProductSales = DataStoreService:GetOrderedDataStore("LB_ProductSales_v1"), -- #67
+	MolCoins     = DataStoreProvider.GetOrderedDataStore("LB_MolCoins_v1"),
+	Elements     = DataStoreProvider.GetOrderedDataStore("LB_Elements_v1"),
+	Molecules    = DataStoreProvider.GetOrderedDataStore("LB_Molecules_v1"),
+	ChainTokens  = DataStoreProvider.GetOrderedDataStore("LB_Chain_v1"),
+	ProductSales = DataStoreProvider.GetOrderedDataStore("LB_ProductSales_v1"), -- #67
 }
 
 -- ══════════════════════════════════════════════

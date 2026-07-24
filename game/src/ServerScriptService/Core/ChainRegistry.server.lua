@@ -3,7 +3,7 @@
 -- Elke molecule die een speler maakt = 1 ChainEntry (gesimuleerd block)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players = game:GetService("Players")
 
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
@@ -14,8 +14,8 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 -- DATASTORES
 -- ══════════════════════════════════════════════
 
-local chainStore = DataStoreService:GetDataStore("MolChain_v1")
-local globalChainStore = DataStoreService:GetOrderedDataStore("MolChain_Global_v1")
+local chainStore = DataStoreProvider.GetDataStore("MolChain_v1")
+local globalChainStore = DataStoreProvider.GetOrderedDataStore("MolChain_Global_v1")
 
 -- ══════════════════════════════════════════════
 -- STATE

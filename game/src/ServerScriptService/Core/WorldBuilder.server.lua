@@ -162,14 +162,14 @@ local function ensureSoundLibrary()
 		ui_click = {"rbxasset://sounds/electronicpingshort.wav", 0.22},
 		ui_open = {"rbxasset://sounds/action_get_up.mp3", 0.18},
 		ui_close = {"rbxasset://sounds/action_get_up.mp3", 0.14},
-		crusher_impact = {"rbxasset://sounds/impact_generic.mp3", 0.5},
+		crusher_impact = {"rbxasset://sounds/action_get_up.mp3", 0.5},
 		quest_complete = {"rbxasset://sounds/electronicpingshort.wav", 0.4},
-		achievement = {"rbxasset://sounds/flash.mp3", 0.4},
+		achievement = {"rbxasset://sounds/electronicpingshort.wav", 0.4},
 		purchase = {"rbxasset://sounds/electronicpingshort.wav", 0.3},
-		rain_loop = {"rbxasset://sounds/ambient_wind.mp3", 0.12, true},
-		thunder = {"rbxasset://sounds/impact_generic.mp3", 0.45},
-		wind_loop = {"rbxasset://sounds/ambient_wind.mp3", 0.1, true},
-		ambient_hub = {"rbxasset://sounds/ambient_wind.mp3", 0.08, true},
+		rain_loop = {"rbxasset://sounds/uuhhh.mp3", 0.12, true},
+		thunder = {"rbxasset://sounds/action_get_up.mp3", 0.45},
+		wind_loop = {"rbxasset://sounds/uuhhh.mp3", 0.1, true},
+		ambient_hub = {"rbxasset://sounds/uuhhh.mp3", 0.08, true},
 	}
 	for name, config in pairs(sounds) do
 		if not SoundService:FindFirstChild(name) then

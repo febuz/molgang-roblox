@@ -7,7 +7,7 @@
 -- ANK fee: 1% of loan goes to non-profit treasury
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
@@ -34,8 +34,8 @@ local activeLoans = {}
 local treasuryBalance = 0
 local loanCounter = 0
 
-local loanStore = DataStoreService:GetDataStore("ANK_Loans_v1")
-local treasuryStore = DataStoreService:GetDataStore("ANK_Treasury_v1")
+local loanStore = DataStoreProvider.GetDataStore("ANK_Loans_v1")
+local treasuryStore = DataStoreProvider.GetDataStore("ANK_Treasury_v1")
 
 -- ══════════════════════════════════════════════
 -- LOAN REQUEST — actually moves MolCoins now

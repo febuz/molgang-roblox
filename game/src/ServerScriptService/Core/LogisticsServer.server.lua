@@ -3,7 +3,7 @@
 -- Settlers-layer: without logistics, factories can't ship product to buyers.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService  = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players           = game:GetService("Players")
 
 local LogisticsNetwork = require(ReplicatedStorage.Modules.LogisticsNetwork)
@@ -16,7 +16,7 @@ local COST_TICK_INTERVAL    = 60   -- operating costs deducted every minute
 local BOTTLENECK_CHECK_INTERVAL = 120  -- bottleneck alerts every 2 minutes
 
 -- DataStore for route persistence
-local logisticsStore = DataStoreService:GetDataStore("MolGang_Logistics_v1")
+local logisticsStore = DataStoreProvider.GetDataStore("MolGang_Logistics_v1")
 local suspendedPayers = {}
 
 -- ──────────────────────────────────────────────

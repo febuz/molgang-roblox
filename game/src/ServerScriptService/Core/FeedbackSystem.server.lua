@@ -14,7 +14,7 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
@@ -32,8 +32,8 @@ local METRIC_INTERVAL = 60          -- seconds between metric snapshots
 -- STATE
 -- ═══════════════════════════════════════════════
 
-local feedbackStore = DataStoreService:GetDataStore(FEEDBACK_STORE_NAME)
-local sessionStore = DataStoreService:GetDataStore(SESSION_STORE_NAME)
+local feedbackStore = DataStoreProvider.GetDataStore(FEEDBACK_STORE_NAME)
+local sessionStore = DataStoreProvider.GetDataStore(SESSION_STORE_NAME)
 
 local playerSessions = {}    -- {userId = sessionData}
 local playerFeedbackCount = {} -- {userId = count}

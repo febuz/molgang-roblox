@@ -4,7 +4,7 @@
 -- GOLDEN RULE: never trust client — all economy calculations on server
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players = game:GetService("Players")
 
 local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
@@ -35,7 +35,7 @@ local SAVE_INTERVAL = 60               -- auto-save every 60 seconds
 -- PLAYER DATA STORAGE
 -- ══════════════════════════════════════════════
 
-local playerDataStore = DataStoreService:GetDataStore("MolGang_PlayerData_v1")
+local playerDataStore = DataStoreProvider.GetDataStore("MolGang_PlayerData_v1")
 local playerData = {}       -- {userId = data}
 local playerDailyEarned = {} -- {userId = earned today}
 local lastDayAdvance = {}   -- {userId = os.time() of last active-session advance}

@@ -3,7 +3,7 @@
 -- Ticks every 60 seconds (1 game-minute = 1 real minute for territory pressure).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService  = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players           = game:GetService("Players")
 
 local WorldTerritory = require(ReplicatedStorage.Modules.WorldTerritory)
@@ -15,7 +15,7 @@ local TICK_INTERVAL     = 60    -- seconds between pressure ticks
 local CAPTURE_ANNOUNCE  = true  -- broadcast when territories flip
 
 -- DataStore for persistent territory state
-local territoryStore = DataStoreService:GetDataStore("MolGang_TerritoryState_v1")
+local territoryStore = DataStoreProvider.GetDataStore("MolGang_TerritoryState_v1")
 
 -- ──────────────────────────────────────────────
 -- PERSIST / RESTORE
