@@ -193,7 +193,8 @@ end
 -- ══════════════════════════════════════════════
 
 Remotes.RequestAtomCollect.OnServerEvent:Connect(function(player, atomName)
-	if not string.find(atomName, "QDot_") then return end
+	if type(atomName) ~= "string" or #atomName > 64 then return end
+	if string.sub(atomName, 1, 6) ~= "QDot_" then return end
 
 	local dot = dotsFolder:FindFirstChild(atomName)
 	if not dot then return end

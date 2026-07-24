@@ -148,10 +148,8 @@ local function recordTransaction(commodity, action, quantity)
 	end
 end
 
--- Hook into market trading events
-local oldTradeHandler = Remotes.RequestMarketTrade.OnServerEvent:Wait()
-
--- Override the market trade handler to include dynamics
+-- Register immediately during server startup. Waiting on the signal here
+-- would block this module until the first trade and lose initial history.
 Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemName, quantity, offeredPrice)
 	if action == "buy" then
 		recordTransaction(itemName, "buy", quantity)
