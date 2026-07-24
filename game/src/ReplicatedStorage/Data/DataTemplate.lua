@@ -55,6 +55,14 @@ return {
 		totalExpenses = 0,
 	},
 
+	-- Si-28 purification pipeline (products and resumable active stage)
+	siliconPurification = {
+		products = {},
+		activeStage = nil,
+		completedStages = {},
+		startTime = nil,
+	},
+
 	-- Quests & Achievements
 	questProgress = {
 		active = {},
