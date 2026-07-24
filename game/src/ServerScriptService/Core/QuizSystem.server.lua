@@ -31,6 +31,23 @@ end
 local function generateQuestions()
 	local questions = {}
 
+	local function uniqueWrongAtomicNumbers(correctNumber)
+		local wrong = {}
+		local seen = {[correctNumber] = true}
+		-- Gebruik eerst nabije atoomnummers; dat maakt de afleiders
+		-- geloofwaardig én voorkomt dubbele knoppen door random collisions.
+		for delta = 1, 5 do
+			for _, candidate in ipairs({correctNumber - delta, correctNumber + delta}) do
+				if candidate >= 1 and candidate <= 118 and not seen[candidate] then
+					seen[candidate] = true
+					table.insert(wrong, tostring(candidate))
+					if #wrong == 3 then return wrong end
+				end
+			end
+		end
+		return wrong
+	end
+
 	-- Type 1: "What is the symbol for [element]?"
 	for z, elem in pairs(Elements.Table) do
 		if z <= 36 then -- common elements
@@ -55,13 +72,7 @@ local function generateQuestions()
 	-- Type 2: "What is the atomic number of [element]?"
 	for z, elem in pairs(Elements.Table) do
 		if z <= 30 then
-			local wrongNums = {}
-			for i = 1, 3 do
-				local wz = z + math.random(-5, 5)
-				if wz == z then wz = z + 1 end
-				if wz < 1 then wz = 1 end
-				table.insert(wrongNums, tostring(wz))
-			end
+			local wrongNums = uniqueWrongAtomicNumbers(z)
 			table.insert(questions, {
 				type = "atomic_number",
 				question = "What is the atomic number (Z) of " .. elem.name .. "?",
