@@ -251,7 +251,7 @@ for _, cat in ipairs(categories) do
 	createCorner(btn, 6)
 	tabButtons[cat.key] = btn
 
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		-- Update button colors
 		for key, button in pairs(tabButtons) do
 			if key == cat.key then
@@ -274,7 +274,7 @@ end
 displayLeaderboard("MolCoins")
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 

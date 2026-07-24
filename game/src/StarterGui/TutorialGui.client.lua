@@ -330,7 +330,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- Skip button
-skipBtn.MouseButton1Click:Connect(function()
+skipBtn.Activated:Connect(function()
 	tutorialComplete = true
 	TweenService:Create(panel, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		Position = UDim2.new(0.5, -250, 1, 20),

@@ -79,7 +79,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = title
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Phase cards
 local trackScroll = Instance.new("ScrollingFrame")
@@ -205,7 +205,7 @@ for _, track in ipairs(Commissioning.Tracks) do
 	startBtn.Parent = card
 	corner(startBtn, 6)
 
-	startBtn.MouseButton1Click:Connect(function()
+	startBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestStartRace")
 		if r then r:FireServer(track.id) end
 		screenGui.Enabled = false

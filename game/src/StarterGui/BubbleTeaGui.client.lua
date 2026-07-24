@@ -86,7 +86,7 @@ closeBtn.Parent = main
 local cCorner = Instance.new("UICorner")
 cCorner.CornerRadius = UDim.new(0, 6)
 cCorner.Parent = closeBtn
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Active buff display
 local buffFrame = Instance.new("Frame")
@@ -223,7 +223,7 @@ local function populateDrinks(drinks, activeBuffs)
 			buyBtn.TextColor3 = Color3.new(0, 0, 0)
 		end
 
-		buyBtn.MouseButton1Click:Connect(function()
+		buyBtn.Activated:Connect(function()
 			local remote = Remotes:FindFirstChild("RequestBuyDrink")
 			if remote then remote:FireServer(drink.id) end
 			buyBtn.BackgroundColor3 = Color3.fromRGB(100, 255, 180)

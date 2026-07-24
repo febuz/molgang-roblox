@@ -64,7 +64,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = title
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Roles section
 local roleLabel = Instance.new("TextLabel")
@@ -146,7 +146,7 @@ for i, hero in ipairs(SafetyTrack.Heroes) do
 	selBtn.Parent = card
 	corner(selBtn, 4)
 
-	selBtn.MouseButton1Click:Connect(function()
+	selBtn.Activated:Connect(function()
 		local s = SoundService:FindFirstChild("ui_click")
 		if s then local c = s:Clone(); c.Parent = SoundService; c:Play(); c.Ended:Connect(function() c:Destroy() end) end
 		local r = Remotes:FindFirstChild("RequestSelectHero")
@@ -244,7 +244,7 @@ for _, mission in ipairs(SafetyTrack.Missions) do
 	sBtn.Parent = mCard
 	corner(sBtn, 6)
 
-	sBtn.MouseButton1Click:Connect(function()
+	sBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestStartMission")
 		if r then r:FireServer(mission.id) end
 		screenGui.Enabled = false

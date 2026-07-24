@@ -113,7 +113,7 @@ closeBtn.BackgroundColor3 = C.danger
 closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- GAUGE HELPER: Creates a vertical gauge with slider
@@ -258,10 +258,10 @@ local function createGauge(parent, config)
 		end
 	end
 
-	upBtn.MouseButton1Click:Connect(function()
+	upBtn.Activated:Connect(function()
 		updateGauge(currentValue + config.step)
 	end)
-	downBtn.MouseButton1Click:Connect(function()
+	downBtn.Activated:Connect(function()
 		updateGauge(currentValue - config.step)
 	end)
 

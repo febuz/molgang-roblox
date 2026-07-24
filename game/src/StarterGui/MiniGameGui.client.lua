@@ -108,7 +108,7 @@ local function createBin(name, label, color, callback)
 	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 10); c.Parent = btn
 	local s = Instance.new("UIStroke"); s.Color = color; s.Thickness = 2; s.Parent = btn
 
-	btn.MouseButton1Click:Connect(callback)
+	btn.Activated:Connect(callback)
 	return btn
 end
 
@@ -274,7 +274,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-phSubmit.MouseButton1Click:Connect(function()
+phSubmit.Activated:Connect(function()
 	Remotes.FireServer("RequestSetPH", currentMetal, currentPH)
 end)
 

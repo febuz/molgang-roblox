@@ -73,7 +73,7 @@ closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 
 closeBtn.BackgroundColor3 = C.red; closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = main; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Feedback type selector
 local typeFrame = Instance.new("Frame")
@@ -96,7 +96,7 @@ for _, t in ipairs({"rating", "bug", "feature", "comment"}) do
 	btn.Font = Enum.Font.GothamBold; btn.TextScaled = true
 	btn.Parent = typeFrame; corner(btn, 6)
 	typeButtons[t] = btn
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		feedbackType = t
 		for k, b in pairs(typeButtons) do
 			b.BackgroundColor3 = k == t and C.accent or Color3.fromRGB(40, 40, 50)
@@ -135,7 +135,7 @@ for _, sys in ipairs(systems) do
 	btn.Font = Enum.Font.Gotham; btn.TextScaled = true
 	btn.Parent = systemFrame; corner(btn, 4)
 	systemButtons[sys] = btn
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		selectedSystem = sys
 		for k, b in pairs(systemButtons) do
 			b.BackgroundColor3 = k == sys and C.accent or Color3.fromRGB(35, 35, 45)
@@ -171,7 +171,7 @@ for i = 1, 5 do
 	star.Parent = starFrame; corner(star, 4)
 	starButtons[i] = star
 
-	star.MouseButton1Click:Connect(function()
+	star.Activated:Connect(function()
 		selectedRating = i
 		for j = 1, 5 do
 			starButtons[j].BackgroundColor3 = j <= i and C.star or C.starEmpty
@@ -233,7 +233,7 @@ for i, sev in ipairs({"low", "normal", "high", "critical"}) do
 	btn.Text = sev:upper(); btn.TextColor3 = C.text
 	btn.Font = Enum.Font.Gotham; btn.TextScaled = true
 	btn.Parent = severityFrame; corner(btn, 4)
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		selectedSeverity = sev
 		for _, child in severityFrame:GetChildren() do
 			if child:IsA("TextButton") then
@@ -253,7 +253,7 @@ submitBtn.TextColor3 = Color3.new(0, 0, 0)
 submitBtn.Font = Enum.Font.GothamBold; submitBtn.TextScaled = true
 submitBtn.Parent = main; corner(submitBtn, 8)
 
-submitBtn.MouseButton1Click:Connect(function()
+submitBtn.Activated:Connect(function()
 	local r = Remotes:FindFirstChild("RequestSubmitFeedback")
 	if r then
 		r:FireServer({

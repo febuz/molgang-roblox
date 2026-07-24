@@ -68,7 +68,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = title
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Nearby players list
 local playersLabel = Instance.new("TextLabel")
@@ -169,7 +169,7 @@ local function refreshPlayers()
 				pb.TextXAlignment = Enum.TextXAlignment.Left
 				pb.Parent = playerScroll
 				corner(pb, 4)
-				pb.MouseButton1Click:Connect(function()
+				pb.Activated:Connect(function()
 					selectedPlayer = other
 					statusLabel.Text = "Trading with: " .. other.Name
 					statusLabel.TextColor3 = C.accent
@@ -211,7 +211,7 @@ local function refreshAtoms()
 				ab.TextXAlignment = Enum.TextXAlignment.Left
 				ab.Parent = atomScroll
 				corner(ab, 4)
-				ab.MouseButton1Click:Connect(function()
+				ab.Activated:Connect(function()
 					selectedAtom = sym
 					statusLabel.Text = "Selected: " .. sym .. " → " .. (selectedPlayer and selectedPlayer.Name or "???")
 					for _, c in atomScroll:GetChildren() do
@@ -237,7 +237,7 @@ if transferResult then
 end
 
 -- Trade action
-tradeBtn.MouseButton1Click:Connect(function()
+tradeBtn.Activated:Connect(function()
 	if not selectedPlayer or not selectedAtom then
 		statusLabel.Text = "Select a player AND an atom first!"
 		statusLabel.TextColor3 = C.red

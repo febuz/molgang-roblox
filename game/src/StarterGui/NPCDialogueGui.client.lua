@@ -142,7 +142,7 @@ local function showDialogue(npcName)
 	-- Show greeting first
 	dialogueText.Text = npc.greeting
 
-	continueBtn.MouseButton1Click:Connect(function()
+continueBtn.Activated:Connect(function()
 		if currentDialogueIndex <= #npc.dialogues then
 			local dialogue = npc.dialogues[currentDialogueIndex]
 			dialogueText.Text = dialogue.text
