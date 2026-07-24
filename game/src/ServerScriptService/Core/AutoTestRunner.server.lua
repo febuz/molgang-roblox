@@ -378,6 +378,14 @@ timeTest("Slag pipeline preserves mass and yields product", function()
 		.. " recovery=" .. string.format("%.1f%%", balance.recovery))
 end)
 
+timeTest("Slag temperature improves leach yield", function()
+	local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
+	local cold = ProcessEng.CalculateSlagMassBalance("ground", "H2SO4", 25)
+	local hot = ProcessEng.CalculateSlagMassBalance("ground", "H2SO4", 65)
+	assert(cold.outputKg < hot.outputKg,
+		"Higher leach temperature did not improve product yield")
+end)
+
 -- ═══════════════════════════════════════════════
 -- TEST 7: ECONOMY BALANCE
 -- ═══════════════════════════════════════════════
