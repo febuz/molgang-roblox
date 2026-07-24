@@ -43,6 +43,17 @@ local guiStates = {
 	ProductMarketGui = false,
 	AtomTradeGui = false,
 	GuildGui = false,
+	QuizGui = false,
+	TutorialGui = false,
+	SuperheroGui = false,
+	QuantumRacingGui = false,
+	MarketBiddingGui = false,
+	FeedbackGui = false,
+	MahjongGui = false,
+	MiniGameGui = false,
+	QuestModal = false,
+	ConfirmRemove = false,
+	CostWarning = false,
 }
 
 -- ══════════════════════════════════════════════

@@ -33,6 +33,7 @@ local SAVE_INTERVAL = 60               -- auto-save every 60 seconds
 local playerDataStore = DataStoreService:GetDataStore("MolGang_PlayerData_v1")
 local playerData = {}       -- {userId = data}
 local playerDailyEarned = {} -- {userId = earned today}
+local lastDayAdvance = {}   -- {userId = os.time() of last active-session advance}
 
 -- Deep copy for template
 local function deepCopy(t)
@@ -402,7 +403,6 @@ end)
 -- ══════════════════════════════════════════════
 
 -- Track day changes per player
-local lastDayAdvance = {} -- {userId = os.time() of last advance}
 local DAY_ADVANCE_INTERVAL = GameClock.DAY_SECONDS
 
 task.spawn(function()

@@ -16,6 +16,9 @@ local modalNames = {
 	FeedbackGui = true, MahjongGui = true, GuildGui = true,
 	MiniGameGui = true, ShortcutOverlay = true, QuestModal = true,
 	QuizGui = true, TutorialGui = true,
+	-- Dynamic confirmation and warning layers must also be exclusive. These
+	-- used to remain above a newly opened menu and could swallow button input.
+	ConfirmRemove = true, CostWarning = true,
 }
 
 local busy = false
