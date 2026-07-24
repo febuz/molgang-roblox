@@ -17,6 +17,12 @@ WINE_DOCS="/home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/prefixes/st
 echo "=== MOLGANG Studio Launcher ==="
 echo ""
 
+# Avoid multiple Wine/Studio trees. A stale Studio instance can keep the
+# WebView2/Toolbox process alive and make the next Vinegar window appear hung.
+echo "[0/4] Closing stale Vinegar/Studio session..."
+flatpak kill org.vinegarhq.Vinegar >/dev/null 2>&1 || true
+sleep 2
+
 # Step 1: Build
 echo "[1/4] Building .rbxl..."
 if ! command -v "$ROJO" >/dev/null 2>&1; then
