@@ -31,15 +31,34 @@
 
 local RegionalEconomy = {}
 
--- Baseline every region inherits, then overrides.
+-- Baseline every region inherits, then overrides. The demand categories
+-- cover every sellable thing in the game economy: refined metals (V2O5,
+-- Fe2O3), industrial chemicals (TiO2, Cr2O3, MnO2, Al2O3), fertilizer
+-- (Slag Bio-Enhancer + crops), construction aggregate, raw mined ore, and
+-- café drinks. See PRODUCT_CATEGORY for the ProductMarket mapping.
 local DEFAULTS = {
 	costOfLiving = 1.0,
-	demand = { steel = 1.0, fertilizer = 1.0, cafe = 1.0, mining = 1.0 },
+	demand = { metals = 1.0, chemicals = 1.0, fertilizer = 1.0, construction = 1.0, mining = 1.0, cafe = 1.0 },
 	currency = { code = "EUR", symbol = "€", eurRate = 1.0 },
 	flagColor = { 200, 200, 200 },
 }
 
-RegionalEconomy.CATEGORIES = { "steel", "fertilizer", "cafe", "mining" }
+RegionalEconomy.CATEGORIES = { "metals", "chemicals", "fertilizer", "construction", "mining", "cafe" }
+
+-- Maps the real ProductMarket.Products ids (read directly from
+-- ProductMarket.lua, not invented) to an economy demand category, so a
+-- product's regional sell price can be derived without loading that module
+-- (it pulls in Color3 and isn't lune-loadable).
+local PRODUCT_CATEGORY = {
+	V2O5 = "metals",
+	Fe2O3 = "metals",
+	TiO2 = "chemicals",
+	Cr2O3 = "chemicals",
+	MnO2 = "chemicals",
+	Al2O3 = "chemicals",
+	SlagBioEnhancer = "fertilizer",
+	ConstructionAggregate = "construction",
+}
 
 -- Region overrides only. Ordered for deterministic iteration.
 local REGION_ORDER = { "west_europe", "north_america", "east_asia", "south_asia", "latin_america", "africa" }
@@ -49,7 +68,7 @@ local OVERRIDES = {
 		name = "West Europe",
 		hub = "Rotterdam–Ruhr corridor",
 		costOfLiving = 1.2,
-		demand = { steel = 1.1, fertilizer = 0.9, cafe = 1.4, mining = 0.8 },
+		demand = { metals = 1.1, chemicals = 1.3, fertilizer = 0.9, construction = 1.0, mining = 0.8, cafe = 1.4 },
 		currency = { code = "EUR", symbol = "€", eurRate = 1.0 },
 		flagColor = { 40, 80, 200 },
 		industry = { "chemicals", "steel_finishing", "consumer" },
@@ -58,7 +77,7 @@ local OVERRIDES = {
 		name = "North America",
 		hub = "Great Lakes belt",
 		costOfLiving = 1.15,
-		demand = { steel = 1.0, fertilizer = 1.1, cafe = 1.3, mining = 0.9 },
+		demand = { metals = 1.0, chemicals = 1.1, fertilizer = 1.1, construction = 1.2, mining = 0.9, cafe = 1.3 },
 		currency = { code = "USD", symbol = "$", eurRate = 1.08 },
 		flagColor = { 180, 40, 50 },
 		industry = { "consumer", "agriculture", "steel" },
@@ -67,7 +86,7 @@ local OVERRIDES = {
 		name = "East Asia",
 		hub = "Yangtze steel belt",
 		costOfLiving = 0.9,
-		demand = { steel = 1.5, fertilizer = 1.0, cafe = 1.1, mining = 1.0 },
+		demand = { metals = 1.5, chemicals = 1.2, fertilizer = 1.0, construction = 1.3, mining = 1.0, cafe = 1.1 },
 		currency = { code = "CNY", symbol = "¥", eurRate = 7.8 },
 		flagColor = { 220, 60, 40 },
 		industry = { "steel_manufacturing", "electronics" },
@@ -76,7 +95,7 @@ local OVERRIDES = {
 		name = "South Asia",
 		hub = "Indo-Gangetic plain",
 		costOfLiving = 0.7,
-		demand = { steel = 1.0, fertilizer = 1.4, cafe = 0.9, mining = 1.0 },
+		demand = { metals = 1.0, chemicals = 1.0, fertilizer = 1.4, construction = 1.2, mining = 1.0, cafe = 0.9 },
 		currency = { code = "INR", symbol = "₹", eurRate = 96 },
 		flagColor = { 230, 140, 30 },
 		industry = { "agriculture", "textiles" },
@@ -85,7 +104,7 @@ local OVERRIDES = {
 		name = "Latin America",
 		hub = "Cerrado agro-mining zone",
 		costOfLiving = 0.85,
-		demand = { steel = 0.9, fertilizer = 1.3, cafe = 0.9, mining = 1.4 },
+		demand = { metals = 0.9, chemicals = 0.9, fertilizer = 1.3, construction = 1.0, mining = 1.4, cafe = 0.9 },
 		currency = { code = "BRL", symbol = "R$", eurRate = 5.9 },
 		flagColor = { 40, 160, 80 },
 		industry = { "mining", "agriculture" },
@@ -94,7 +113,7 @@ local OVERRIDES = {
 		name = "Africa",
 		hub = "Bushveld complex",
 		costOfLiving = 0.8,
-		demand = { steel = 0.9, fertilizer = 1.0, cafe = 0.9, mining = 1.5 },
+		demand = { metals = 1.0, chemicals = 0.9, fertilizer = 1.0, construction = 1.1, mining = 1.5, cafe = 0.9 },
 		currency = { code = "ZAR", symbol = "R", eurRate = 20 },
 		flagColor = { 30, 120, 60 },
 		industry = { "mining", "metals" },
@@ -184,6 +203,32 @@ function RegionalEconomy.BestRegionToSell(basePrice, category)
 		end
 	end
 	return bestId, bestPrice
+end
+
+-- Economy demand category for a real ProductMarket product id, or nil if
+-- the product isn't mapped.
+function RegionalEconomy.CategoryForProduct(productId)
+	return PRODUCT_CATEGORY[productId]
+end
+
+-- Regional sell price for a real ProductMarket product: composes the
+-- product's category with the region's demand. Caller passes the product's
+-- basePrice (from ProductMarket.Products) so this stays lune-loadable.
+function RegionalEconomy.RegionalProductPrice(basePrice, regionId, productId)
+	local category = PRODUCT_CATEGORY[productId]
+	if not category then
+		error(("RegionalEconomy: unmapped product '%s'"):format(tostring(productId)), 0)
+	end
+	return RegionalEconomy.SellPrice(basePrice, regionId, category)
+end
+
+-- Best region to sell a real ProductMarket product. Returns id, price.
+function RegionalEconomy.BestRegionForProduct(basePrice, productId)
+	local category = PRODUCT_CATEGORY[productId]
+	if not category then
+		error(("RegionalEconomy: unmapped product '%s'"):format(tostring(productId)), 0)
+	end
+	return RegionalEconomy.BestRegionToSell(basePrice, category)
 end
 
 -- Cheapest region to BUY an input priced `basePrice`. Returns id, price.

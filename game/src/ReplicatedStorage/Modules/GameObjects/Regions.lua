@@ -47,5 +47,8 @@ Regions.SellPrice = RegionalEconomy.SellPrice
 Regions.LocalCurrencyString = RegionalEconomy.LocalCurrencyString
 Regions.BestRegionToSell = RegionalEconomy.BestRegionToSell
 Regions.CheapestRegionToBuy = RegionalEconomy.CheapestRegionToBuy
+Regions.CategoryForProduct = RegionalEconomy.CategoryForProduct
+Regions.RegionalProductPrice = RegionalEconomy.RegionalProductPrice
+Regions.BestRegionForProduct = RegionalEconomy.BestRegionForProduct
 
 return Regions

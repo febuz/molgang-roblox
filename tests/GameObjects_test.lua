@@ -264,16 +264,17 @@ assert_eq(RegionalEconomy.BuyPrice(100, "west_europe"), 120, "west_europe buy pr
 assert_eq(RegionalEconomy.BuyPrice(100, "south_asia"), 70, "south_asia buy price = base * 0.7")
 
 -- SellPrice scales by that region's demand for the category. East Asia
--- (steel 1.5) pays the most for steel; Latin America (mining 1.4) for mining.
-assert_eq(RegionalEconomy.SellPrice(100, "east_asia", "steel"), 150, "east_asia pays 1.5x for steel")
+-- (metals 1.5) pays the most for metals; West Europe (cafe 1.4) for café.
+assert_eq(RegionalEconomy.SellPrice(100, "east_asia", "metals"), 150, "east_asia pays 1.5x for metals")
 assert_eq(RegionalEconomy.SellPrice(100, "west_europe", "cafe"), 140, "west_europe pays 1.4x for cafe")
+assert_eq(RegionalEconomy.SellPrice(100, "west_europe", "chemicals"), 130, "west_europe pays 1.3x for chemicals")
 
 -- BestRegionToSell picks the highest MolCoin payout (common unit, already
 -- standardized — not a currency-inflated figure).
 do
-	local id, price = RegionalEconomy.BestRegionToSell(100, "steel")
-	assert_eq(id, "east_asia", "best region to sell steel is east_asia")
-	assert_eq(price, 150, "best steel sell price is 150")
+	local id, price = RegionalEconomy.BestRegionToSell(100, "metals")
+	assert_eq(id, "east_asia", "best region to sell metals is east_asia")
+	assert_eq(price, 150, "best metals sell price is 150")
 
 	local mid = RegionalEconomy.BestRegionToSell(100, "mining")
 	assert_eq(mid, "africa", "best region to sell mining is africa (1.5x)")
@@ -281,6 +282,27 @@ do
 	local cid = RegionalEconomy.BestRegionToSell(100, "cafe")
 	assert_eq(cid, "west_europe", "best region to sell cafe is west_europe (1.4x)")
 end
+
+-- Product bridge: real ProductMarket ids map to economy categories, and
+-- regional product pricing composes the two.
+assert_eq(RegionalEconomy.CategoryForProduct("V2O5"), "metals", "V2O5 is a metal")
+assert_eq(RegionalEconomy.CategoryForProduct("SlagBioEnhancer"), "fertilizer", "Slag Bio-Enhancer is fertilizer")
+assert_eq(RegionalEconomy.CategoryForProduct("ConstructionAggregate"), "construction", "aggregate is construction")
+assert_true(RegionalEconomy.CategoryForProduct("Unobtainium") == nil, "unmapped product returns nil category")
+
+-- V2O5 base 500 in East Asia (metals 1.5) -> 750.
+assert_eq(RegionalEconomy.RegionalProductPrice(500, "east_asia", "V2O5"), 750, "V2O5 sells for 1.5x in east_asia")
+
+do
+	-- Slag Bio-Enhancer (fertilizer) sells best where fertilizer demand
+	-- peaks: South Asia (1.4x).
+	local id = RegionalEconomy.BestRegionForProduct(150, "SlagBioEnhancer")
+	assert_eq(id, "south_asia", "best region for Slag Bio-Enhancer is south_asia")
+end
+
+assert_error(function()
+	RegionalEconomy.RegionalProductPrice(100, "africa", "Unobtainium")
+end, "unmapped product raises in RegionalProductPrice")
 
 -- CheapestRegionToBuy picks the lowest cost of living.
 do
