@@ -353,6 +353,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local leachMinutes, reactionRate = getEffectiveLeachDuration(userId, baseLeachMinutes, reagentId)
 	local leachRealSeconds = leachMinutes * TIME_SCALE
 	local yield = SteelSlag.CalculateYield(particleSize, reagentId, SteelSlag.BATCH_WEIGHT_KG)
+	local massBalance = ProcessEng.CalculateSlagMassBalance(particleSize, reagentId, processState.temperature)
 
 	-- Controls affect rate and residence time, not conservation of mass.
 	local processEfficiency = math.clamp(0.75 + reactionRate * 0.125, 0.75, 0.95)
@@ -380,6 +381,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		processEfficiency = processEfficiency,
 		phFactor = phFactor,
 		recoveryFactor = recoveryFactor,
+		massBalance = massBalance,
 		complete = false,
 		extracted = false,
 	}
@@ -394,6 +396,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		durationMinutes = leachMinutes,
 		durationDisplay = timeStr,
 		yield = yield,
+		massBalance = massBalance,
 		reagentColor = {reagent.color.R * 255, reagent.color.G * 255, reagent.color.B * 255},
 	})
 
@@ -522,6 +525,7 @@ Remotes.RequestSlagInfo.OnServerEvent:Connect(function(player)
 			timeRemaining = SteelSlag.FormatLeachTime(remainingMin),
 			durationDisplay = SteelSlag.FormatLeachTime(leach.durationMinutes),
 			yield = leach.yield,
+			massBalance = leach.massBalance,
 		})
 	end
 
