@@ -45,6 +45,16 @@ return {
 		monthsPaid = 0,
 	},
 
+	-- Product-market P&L snapshot (recent entries plus cumulative totals)
+	productLedger = {
+		entries = {},
+		totals = { revenue = 0, cogs = 0, opex = 0, capex = 0 },
+		grossProfit = 0,
+		netProfit = 0,
+		totalIncome = 0,
+		totalExpenses = 0,
+	},
+
 	-- Quests & Achievements
 	questProgress = {
 		active = {},
