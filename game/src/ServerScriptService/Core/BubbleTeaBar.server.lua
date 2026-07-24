@@ -6,7 +6,7 @@
 	1. Matcha Latte      — +20% move speed (2 min)
 	2. Taro Milk Tea     — +50% atom collect range (2 min)
 	3. Classic Boba      — +25% MolCoin earnings (3 min)
-	4. Mango Smoothie    — +30% quiz accuracy hint (2 min)
+	4. Mango Smoothie    — +30% quiz MolCoin rewards (2 min)
 	5. Brown Sugar Pearl — +40% production speed (3 min)
 	6. Lychee Fizz       — +15% rare element chance (2 min)
 
@@ -70,7 +70,7 @@ local DRINKS = {
 		buffType = "quizHint",
 		buffValue = 1.3,
 		buffDuration = 120,
-		description = "+30% Quiz Accuracy Hint (2 min)",
+		description = "+30% Quiz MolCoin Rewards (2 min)",
 		cupColor = Color3.fromRGB(255, 200, 60),
 	},
 	{
