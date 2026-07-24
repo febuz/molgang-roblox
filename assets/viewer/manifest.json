@@ -1,0 +1,102 @@
+{
+  "generated_by": "assets/viewer/build_manifest.py",
+  "count": 16,
+  "models": [
+    {
+      "file": "boba_brewing_station.glb",
+      "stem": "boba_brewing_station",
+      "label": "Boba Brewing Station",
+      "set": "Bubble Tea Caf\u00e9"
+    },
+    {
+      "file": "bunsen_burner.glb",
+      "stem": "bunsen_burner",
+      "label": "Bunsen Burner",
+      "set": "Chemistry Lab"
+    },
+    {
+      "file": "cafe_bar_stool.glb",
+      "stem": "cafe_bar_stool",
+      "label": "Cafe Bar Stool",
+      "set": "Bubble Tea Caf\u00e9"
+    },
+    {
+      "file": "cafe_bistro_table.glb",
+      "stem": "cafe_bistro_table",
+      "label": "Cafe Bistro Table",
+      "set": "Bubble Tea Caf\u00e9"
+    },
+    {
+      "file": "cafe_counter.glb",
+      "stem": "cafe_counter",
+      "label": "Cafe Counter",
+      "set": "Bubble Tea Caf\u00e9"
+    },
+    {
+      "file": "cafe_menu_board.glb",
+      "stem": "cafe_menu_board",
+      "label": "Cafe Menu Board",
+      "set": "Bubble Tea Caf\u00e9"
+    },
+    {
+      "file": "cafe_planter.glb",
+      "stem": "cafe_planter",
+      "label": "Cafe Planter",
+      "set": "Bubble Tea Caf\u00e9"
+    },
+    {
+      "file": "drink_display_fridge.glb",
+      "stem": "drink_display_fridge",
+      "label": "Drink Display Fridge",
+      "set": "Bubble Tea Caf\u00e9"
+    },
+    {
+      "file": "fume_hood.glb",
+      "stem": "fume_hood",
+      "label": "Fume Hood",
+      "set": "Chemistry Lab"
+    },
+    {
+      "file": "graduated_cylinder.glb",
+      "stem": "graduated_cylinder",
+      "label": "Graduated Cylinder",
+      "set": "Chemistry Lab"
+    },
+    {
+      "file": "microscope.glb",
+      "stem": "microscope",
+      "label": "Microscope",
+      "set": "Chemistry Lab"
+    },
+    {
+      "file": "molecule_model.glb",
+      "stem": "molecule_model",
+      "label": "Molecule Model",
+      "set": "Chemistry Lab"
+    },
+    {
+      "file": "periodic_table_display.glb",
+      "stem": "periodic_table_display",
+      "label": "Periodic Table Display",
+      "set": "Chemistry Lab"
+    },
+    {
+      "file": "reagent_shelf.glb",
+      "stem": "reagent_shelf",
+      "label": "Reagent Shelf",
+      "set": "Chemistry Lab"
+    },
+    {
+      "file": "tapioca_pearl_jar.glb",
+      "stem": "tapioca_pearl_jar",
+      "label": "Tapioca Pearl Jar",
+      "set": "Bubble Tea Caf\u00e9"
+    },
+    {
+      "file": "test_tube_rack.glb",
+      "stem": "test_tube_rack",
+      "label": "Test Tube Rack",
+      "set": "Chemistry Lab"
+    }
+  ]
+}

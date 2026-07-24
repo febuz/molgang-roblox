@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOLGANG · 3D Asset Viewer (WebGPU)</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0d1017; color: #dfe7f3;
+               font: 14px/1.5 system-ui, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { width: 100vw; height: 100vh; display: block; }
+  #hud { position: fixed; top: 12px; left: 12px; z-index: 10; max-width: 340px;
+         background: rgba(14,18,26,.82); border: 1px solid #26344a; border-radius: 10px;
+         padding: 12px 14px; backdrop-filter: blur(6px); }
+  #hud h1 { font-size: 15px; margin: 0 0 6px; letter-spacing: .3px; }
+  #hud .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  #status { color: #8fd0ff; font-size: 12px; }
+  #gpuInfo { color: #9aa7ba; font-size: 11px; margin-top: 4px; word-break: break-word; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+           background: #17331f; border: 1px solid #2c704a; color: #bcffcf; }
+  label.toggle { display: flex; align-items: center; gap: 8px; cursor: pointer;
+                 font-size: 12px; user-select: none; }
+  .hint { color: #7d8aa0; font-size: 11px; margin-top: 8px; }
+  #err { position: fixed; bottom: 12px; left: 12px; right: 12px; z-index: 20;
+         color: #ff9a9a; font-size: 12px; display: none; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">
+  <h1>MOLGANG · 3D Asset Viewer</h1>
+  <div><span class="badge" id="mode">WebGPU · high-performance</span></div>
+  <div id="status">initializing…</div>
+  <div id="gpuInfo"></div>
+  <div class="row">
+    <label class="toggle">
+      <input type="checkbox" id="gpuOptIn">
+      ⚡ GPU acceleration (opt-in)
+    </label>
+  </div>
+  <div class="hint">GPU&nbsp;0 · WebGPU. Uncheck to drop back to the light WebGL
+    view. Drag to orbit · scroll to zoom.</div>
+</div>
+<div id="err"></div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "./vendor/three/three.webgpu.js",
+    "three/addons/": "./vendor/three/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { initGallery, wireGpuToggle, gpuOptIn } from './viewer-core.js';
+
+wireGpuToggle();
+
+// This page is the opt-in GPU route. If the user hasn't opted in, or the
+// browser has no WebGPU, fall back to the WebGL page.
+if (!gpuOptIn() || !('gpu' in navigator) || !THREE.WebGPURenderer) {
+  location.replace('./index.html');
+} else {
+  try {
+    const renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: 'high-performance' });
+    await renderer.init();
+    initGallery({ renderer, rendererLabel: 'WebGPU high-performance', budget: 0.9 });
+  } catch (e) {
+    const err = document.querySelector('#err');
+    err.style.display = 'block';
+    err.textContent = 'WebGPU init failed — falling back to WebGL. ' + e.message;
+    setTimeout(() => location.replace('./index.html'), 1500);
+  }
+}
+</script>
+</body>
+</html>

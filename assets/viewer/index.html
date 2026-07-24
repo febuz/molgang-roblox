@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOLGANG · 3D Asset Viewer (WebGL)</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0d1017; color: #dfe7f3;
+               font: 14px/1.5 system-ui, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { width: 100vw; height: 100vh; display: block; }
+  #hud { position: fixed; top: 12px; left: 12px; z-index: 10; max-width: 340px;
+         background: rgba(14,18,26,.82); border: 1px solid #26344a; border-radius: 10px;
+         padding: 12px 14px; backdrop-filter: blur(6px); }
+  #hud h1 { font-size: 15px; margin: 0 0 6px; letter-spacing: .3px; }
+  #hud .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  #status { color: #8fd0ff; font-size: 12px; }
+  #gpuInfo { color: #9aa7ba; font-size: 11px; margin-top: 4px; word-break: break-word; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+           background: #1b2740; border: 1px solid #2c4a70; color: #bcd4ff; }
+  label.toggle { display: flex; align-items: center; gap: 8px; cursor: pointer;
+                 font-size: 12px; user-select: none; }
+  .hint { color: #7d8aa0; font-size: 11px; margin-top: 8px; }
+  #err { position: fixed; bottom: 12px; left: 12px; right: 12px; z-index: 20;
+         color: #ff9a9a; font-size: 12px; display: none; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">
+  <h1>MOLGANG · 3D Asset Viewer</h1>
+  <div><span class="badge" id="mode">WebGL · courtesy</span></div>
+  <div id="status">initializing…</div>
+  <div id="gpuInfo"></div>
+  <div class="row">
+    <label class="toggle">
+      <input type="checkbox" id="gpuOptIn">
+      ⚡ GPU acceleration (opt-in)
+    </label>
+  </div>
+  <div class="hint">Off by default — keeps the shared box's GPU free. Opt in for
+    WebGPU / high-performance rendering (GPU&nbsp;0). Drag to orbit · scroll to zoom.</div>
+</div>
+<div id="err"></div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { initGallery, wireGpuToggle, gpuOptIn } from './viewer-core.js';
+
+wireGpuToggle();
+
+// Route to the WebGPU page when the user has opted in and the browser supports
+// it; otherwise render here with WebGL (high-performance if opted in, low-power
+// by default). This mirrors molgang-web/lab3d's index/webgpu split.
+if (gpuOptIn() && 'gpu' in navigator) {
+  location.replace('./gpu.html');
+} else {
+  const optedIn = gpuOptIn();
+  document.querySelector('#mode').textContent =
+    optedIn ? 'WebGL · high-performance' : 'WebGL · courtesy';
+  try {
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: optedIn ? 'high-performance' : 'low-power',
+    });
+    initGallery({
+      renderer,
+      rendererLabel: optedIn ? 'WebGL high-performance' : 'WebGL courtesy',
+      budget: optedIn ? 0.9 : 0.33,
+    });
+  } catch (e) {
+    const err = document.querySelector('#err');
+    err.style.display = 'block';
+    err.textContent = 'WebGL init failed: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>

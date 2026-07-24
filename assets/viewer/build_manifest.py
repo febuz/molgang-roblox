@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+"""Regenerate assets/viewer/manifest.json from the .glb files in assets/models.
+
+The browser viewer fetches this manifest, so run it after adding new GLB
+models:  python3 assets/viewer/build_manifest.py
+"""
+import json
+import os
+import glob
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MODELS = os.path.join(ROOT, "assets", "models")
+
+CAFE = {"cafe_counter", "boba_brewing_station", "cafe_bar_stool", "cafe_bistro_table",
+        "cafe_menu_board", "tapioca_pearl_jar", "drink_display_fridge", "cafe_planter"}
+LAB = {"molecule_model", "bunsen_burner", "test_tube_rack", "fume_hood",
+       "periodic_table_display", "graduated_cylinder", "microscope", "reagent_shelf"}
+
+
+def set_of(stem):
+    if stem in CAFE:
+        return "Bubble Tea Café"
+    if stem in LAB:
+        return "Chemistry Lab"
+    return "Other"
+
+
+def main():
+    models = sorted(os.path.basename(p) for p in glob.glob(os.path.join(MODELS, "*.glb")))
+    entries = [{
+        "file": m,
+        "stem": m[:-4],
+        "label": m[:-4].replace("_", " ").title(),
+        "set": set_of(m[:-4]),
+    } for m in models]
+    out = os.path.join(ROOT, "assets", "viewer", "manifest.json")
+    with open(out, "w") as f:
+        json.dump({"generated_by": "assets/viewer/build_manifest.py",
+                   "count": len(entries), "models": entries}, f, indent=2)
+    print(f"Wrote {out} ({len(entries)} GLB models)")
+
+
+if __name__ == "__main__":
+    main()
