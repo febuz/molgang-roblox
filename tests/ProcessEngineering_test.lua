@@ -7,6 +7,7 @@ Color3 = {
 }
 
 local ProcessEngineering = require("../game/src/ReplicatedStorage/Modules/ProcessEngineering")
+local SteelSlag = require("../game/src/ReplicatedStorage/Modules/SteelSlag")
 
 local safe, code = ProcessEngineering.ValidateOperatingEnvelope({
 	temperature = 25, pressure = 300, pH = 7, flowRate = 10,
@@ -34,4 +35,10 @@ assert(balance.lossKg >= -0.001 and balance.lossKg <= 0.001,
 assert(balance.recovery > 0 and balance.recovery < 100,
 	"recovery must describe final product versus original feed")
 
-print("Process Engineering Tests: 8 passed, 0 failed")
+local pipeline = ProcessEngineering.CalculateSlagMassBalance("powder", "H2SO4", 65, SteelSlag)
+assert(pipeline.inputKg == 1, "full slag pipeline must use one kilogram feed")
+assert(pipeline.lossKg >= -0.001 and pipeline.lossKg <= 0.001,
+	"full slag pipeline must conserve mass")
+assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
+
+print("Process Engineering Tests: 11 passed, 0 failed")

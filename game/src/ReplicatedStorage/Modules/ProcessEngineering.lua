@@ -164,9 +164,9 @@ function ProcessEngineering.AddStep(balance, stepName, inputKg, outputKg, wasteK
 end
 
 -- Calculate full slag processing mass balance for 1kg input
-function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, temperature)
+function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, temperature, slagModule)
 	local balance = ProcessEngineering.CreateMassBalance()
-	local SteelSlag = require(script.Parent.SteelSlag)
+	local SteelSlag = slagModule or require(script.Parent.SteelSlag)
 
 	local inputKg = 1.0
 	temperature = temperature or 25
@@ -187,8 +187,10 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 	if reagent then
 		local dissolved = 0
 		local residue = 0
+		local representedPct = 0
 		for oxide, comp in pairs(SteelSlag.Composition) do
 			local oxideMass = afterMagSep * (comp.pct / 100)
+			representedPct = representedPct + comp.pct
 			local extraction = reagent.extraction[oxide] or 0
 
 			-- Apply temperature effect (Arrhenius)
@@ -201,6 +203,11 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 			dissolved = dissolved + oxideMass * extraction
 			residue = residue + oxideMass * (1 - extraction)
 		end
+		-- BOF analyses contain a trace/inert fraction that is not listed as an
+		-- extractable oxide. Keep it in the residue instead of silently losing
+		-- mass from the plant balance.
+		local unlistedFraction = math.max(0, 1 - representedPct / 100)
+		residue = residue + afterMagSep * unlistedFraction
 		ProcessEngineering.AddStep(balance, "Leaching (" .. (reagent.name or reagentId) .. " @ " .. temperature .. "°C)",
 			afterMagSep, dissolved, residue)
 
