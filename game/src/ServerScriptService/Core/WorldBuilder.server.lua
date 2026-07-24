@@ -377,11 +377,14 @@ local function createPlatform(parent: Instance, config: {
 		-- metal/concrete in D3D11 and in low-light conditions.
 		Color = config.GlowColor and config.GlowColor:Lerp(Color3.fromRGB(18, 45, 42), 0.55)
 			or Color3.fromRGB(18, 85, 65),
-		Material = Enum.Material.Neon,
+		-- A transparent Neon sheet still clips as a solid cyan plane under
+		-- Vinegar's D3D11 renderer. A dark underside keeps the floating cue
+		-- without overpowering the platform's physical material.
+		Material = Enum.Material.SmoothPlastic,
 		-- Keep the floating-island cue visible without washing the entire
 		-- industrial deck in cyan. Emissive accents should guide navigation,
 		-- not replace the platform's metal/concrete material read.
-		Transparency = 0.85,
+		Transparency = 0.3,
 		CanCollide = false,
 	})
 
