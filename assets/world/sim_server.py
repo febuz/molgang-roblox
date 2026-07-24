@@ -23,6 +23,8 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import process_sim  # realistic chemistry ported from ProcessEngineering.lua
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORLD = json.load(open(os.path.join(HERE, "world.json")))["meta"]
 W = WORLD["world"]
@@ -73,6 +75,14 @@ class Sim:
                             "speed": rng.uniform(1.6, 2.8), "ped": True})
                         aid += 1
 
+        # A live CHEMISTRY reactor station driven by the ported process sim:
+        # a batch leach whose conversion advances with real Arrhenius / Henry /
+        # residence-time kinetics. Its process parameters drift so the station
+        # visibly runs (operator dial changes), and it resets on batch complete.
+        self.reactor = process_sim.default_state()
+        self.reactor.update({"temperature": 70.0, "pressure": 180.0, "flowRate": 4.0, "pH": 2.5})
+        self._rt = 0.0
+
     def tick(self, dt):
         half = W / 2
         with self.lock:
@@ -82,6 +92,13 @@ class Sim:
                     a["pos"] = -half
                 elif a["pos"] < -half:
                     a["pos"] = half
+            # Reactor: 1 real second = 1 process-minute; drift temperature on a
+            # slow sine so the reaction rate visibly breathes; reset each batch.
+            self._rt += dt
+            self.reactor["temperature"] = 70.0 + 18.0 * math.sin(self._rt * 0.15)
+            process_sim.step_reactor(self.reactor, dt * 1.0)
+            if self.reactor["conversion"] >= 0.995:
+                self.reactor["conversion"] = 0.0   # next batch
 
     def state(self):
         with self.lock:
@@ -96,7 +113,13 @@ class Sim:
                 out.append({"id": a["id"], "k": a["kind"],
                             "x": round(x, 2), "z": round(z, 2), "r": round(r, 2),
                             "ped": a["ped"]})
-            return {"t": round(time.time() - self.t0, 2), "n": len(out), "agents": out}
+            rx = self.reactor
+            reactor = {"temperature": round(rx["temperature"], 1), "pressure": round(rx["pressure"], 1),
+                       "flowRate": rx["flowRate"], "pH": rx["pH"],
+                       "conversion": round(rx["conversion"], 3),
+                       "rate": round(process_sim.reaction_rate(rx), 2)}
+            return {"t": round(time.time() - self.t0, 2), "n": len(out), "agents": out,
+                    "reactor": reactor}
 
 
 SIM = Sim()

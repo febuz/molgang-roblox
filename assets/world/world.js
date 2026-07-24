@@ -426,6 +426,9 @@ async function pollSim() {
     }
     for (const [id, m] of agentMeshes) if (!seen.has(id)) { scene.remove(m.sprite); agentMeshes.delete(id); }
     const el = document.getElementById('sim'); if (el) el.textContent = `🐍 Python sim: ${st.n} live agents driving/walking`;
+    const rx = st.reactor, rel = document.getElementById('reactor');
+    if (rx && rel) rel.innerHTML = `⚗️ leach reactor · ${(rx.conversion * 100) | 0}% converted `
+      + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)</span>`;
   } catch (e) {
     simOk = false;
     const el = document.getElementById('sim'); if (el) el.textContent = '🐍 Python sim offline (static world) — run sim_server.py';
