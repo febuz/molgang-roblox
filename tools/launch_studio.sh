@@ -13,6 +13,8 @@ ROJO="${ROJO:-/home/knight2/.local/bin/rojo}"
 PROJECT="/home/knight2/molgang-roblox/game"
 OUTPUT="/home/knight2/molgang-roblox/MOLGANG_OTAP_Test.rbxl"
 WINE_DOCS="/home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/prefixes/studio/drive_c/users/knight2/Documents"
+WINE_PLACE="Z:/home/knight2/Documents/MOLGANG_OTAP_Test.rbxl"
+PARENT_SESSION_GUID=$(cat /proc/sys/kernel/random/uuid)
 
 echo "=== MOLGANG Studio Launcher ==="
 echo ""
@@ -75,7 +77,17 @@ echo "[4/4] Launching Roblox Studio via Vinegar..."
 # Let Vinegar select the active graphics device. Forcing a host Vulkan ICD
 # made Studio choose an incompatible D3D11 path and exit before opening the
 # local place on some OTAP hosts.
-flatpak run org.vinegarhq.Vinegar "$OUTPUT" &
+# Explicit EditFile intent is required by current Studio builds. Passing only
+# the Linux path starts the shell/start page with Studio Launch Intent=None;
+# the Wine Documents path plus EditFile opens the place data model directly.
+flatpak run org.vinegarhq.Vinegar \
+  -task EditFile \
+  -localPlaceFile "$WINE_PLACE" \
+  -userid 9400855976 \
+  -parentPid "$$" \
+  -parentSessionGuid "$PARENT_SESSION_GUID" \
+  -baseUrl https://www.roblox.com \
+  -channel zbuck2release-730-control &
 STUDIO_PID=$!
 echo "      Studio launching (PID: $STUDIO_PID)"
 
@@ -98,6 +110,24 @@ if [ "$STUDIO_DETECTED" -eq 1 ]; then
 else
   echo "      WARNING: Studio process was not detected after 20s"
   echo "      Check Vinegar logs for Wine/D3D/WebView startup failures"
+  exit 1
+fi
+
+# A Wine Studio process can exist while the start page is still hung. Require
+# the local-place state machine to report a successful open before claiming
+# that OTAP is ready; this prevents a false-positive "READY" on Vinegar 0.731.
+PLACE_READY=0
+for _ in $(seq 1 20); do
+  LATEST_STUDIO_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/appdata/Roblox/logs/*Studio*_last.log 2>/dev/null | head -1)
+  if [ -n "$LATEST_STUDIO_LOG" ] && rg -q "State: OpenPlaceSuccess|OpenPlaceSuccess" "$LATEST_STUDIO_LOG"; then
+    PLACE_READY=1
+    break
+  fi
+  sleep 1
+done
+if [ "$PLACE_READY" -ne 1 ]; then
+  echo "      WARNING: Studio did not report OpenPlaceSuccess for $WINE_PLACE"
+  echo "      The process is alive, but the place is not loaded; inspect the latest Studio log"
   exit 1
 fi
 
