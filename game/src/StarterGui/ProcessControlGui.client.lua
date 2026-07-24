@@ -473,24 +473,36 @@ summaryText.Parent = summaryPanel
 -- ═══════════════════════════════════════════════
 
 local frameCount = 0
+local lastSentControls = nil
 RunService.Heartbeat:Connect(function()
 	if not screenGui.Enabled then return end
 	if not controlsReady then return end
 	frameCount = frameCount + 1
-	if frameCount % 15 ~= 0 then return end  -- update every ~0.25s
+	if frameCount % 60 ~= 0 then return end -- at most once per second
 
 	-- Update derived values
 	ProcessEng.UpdateDerivedValues(processState)
 
 	-- Send process variables to server
 	local setControlRemote = Remotes:FindFirstChild("RequestSetProcessControl")
-	if setControlRemote then
+	local controlsChanged = not lastSentControls
+		or lastSentControls.temperature ~= processState.temperature
+		or lastSentControls.pressure ~= processState.pressure
+		or lastSentControls.pH ~= processState.pH
+		or lastSentControls.flowRate ~= processState.flowRate
+	if setControlRemote and controlsChanged then
 		setControlRemote:FireServer(
 			processState.temperature,
 			processState.pressure,
 			processState.pH,
 			processState.flowRate
 		)
+		lastSentControls = {
+			temperature = processState.temperature,
+			pressure = processState.pressure,
+			pH = processState.pH,
+			flowRate = processState.flowRate,
+		}
 	end
 
 	-- Update reaction rate display
