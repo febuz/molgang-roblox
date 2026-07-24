@@ -14,6 +14,9 @@ assert(bottlenecks[1].ownerId == "guild-alpha", "bottleneck must identify route 
 
 local costs = LogisticsNetwork.ComputeOperatingCosts()
 assert(costs[42] == route.opCostPerMin, "operating cost must charge the payer, not a guild string")
+assert(LogisticsNetwork.SuspendRoutesForPayer(42) == 1, "unpaid payer must be able to suspend routes")
+assert(not route.active, "suspended route must stop operating")
+assert(LogisticsNetwork.ResumeRoutesForPayer(42) == 1 and route.active, "route must resume after payment")
 
 LogisticsNetwork.RemoveRoute(route.id, "guild-alpha")
-print("Logistics Tests: 6 passed, 0 failed")
+print("Logistics Tests: 9 passed, 0 failed")

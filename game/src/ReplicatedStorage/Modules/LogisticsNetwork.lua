@@ -298,6 +298,38 @@ function LogisticsNetwork.ComputeOperatingCosts()
 	return costs
 end
 
+function LogisticsNetwork.GetPayerOperatingCost(payerId)
+	local total = 0
+	for _, route in pairs(LogisticsNetwork._routes) do
+		if (route.payerId or route.ownerId) == payerId then
+			total = total + (route.opCostPerMin or 0)
+		end
+	end
+	return total
+end
+
+function LogisticsNetwork.SuspendRoutesForPayer(payerId)
+	local count = 0
+	for _, route in pairs(LogisticsNetwork._routes) do
+		if route.active and (route.payerId or route.ownerId) == payerId then
+			route.active = false
+			count = count + 1
+		end
+	end
+	return count
+end
+
+function LogisticsNetwork.ResumeRoutesForPayer(payerId)
+	local count = 0
+	for _, route in pairs(LogisticsNetwork._routes) do
+		if not route.active and (route.payerId or route.ownerId) == payerId then
+			route.active = true
+			count = count + 1
+		end
+	end
+	return count
+end
+
 -- Decay utilisation each tick (demand is per-minute, resets between ticks)
 function LogisticsNetwork.DecayUtilisation()
 	for _, route in pairs(LogisticsNetwork._routes) do

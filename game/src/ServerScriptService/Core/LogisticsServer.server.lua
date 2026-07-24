@@ -17,6 +17,7 @@ local BOTTLENECK_CHECK_INTERVAL = 120  -- bottleneck alerts every 2 minutes
 
 -- DataStore for route persistence
 local logisticsStore = DataStoreService:GetDataStore("MolGang_Logistics_v1")
+local suspendedPayers = {}
 
 -- ──────────────────────────────────────────────
 -- PERSIST / RESTORE
@@ -211,6 +212,21 @@ end)
 task.spawn(function()
 	while true do
 		task.wait(COST_TICK_INTERVAL)
+		for payerId in pairs(suspendedPayers) do
+			local cost = LogisticsNetwork.GetPayerOperatingCost(payerId)
+			local data = PlayerDataBridge.GetEconomyData(payerId)
+			if cost > 0 and data and (data.molCoins or 0) >= cost then
+				local resumed = LogisticsNetwork.ResumeRoutesForPayer(payerId)
+				suspendedPayers[payerId] = nil
+				local payer = Players:GetPlayerByUserId(payerId)
+				if payer then
+					Remotes.FireClient("ServerAnnounce", payer, {
+						message = "Logistics resumed after payment: " .. resumed .. " route(s) active.",
+						rarity = "uncommon",
+					})
+				end
+			end
+		end
 
 		-- Compute and deduct operating costs for all route owners
 		local costs = LogisticsNetwork.ComputeOperatingCosts()
@@ -218,7 +234,17 @@ task.spawn(function()
 			-- Route to player deduction if applicable
 			local userId = tonumber(ownerIdStr)
 			if userId then
-				PlayerDataBridge.SpendMolCoins(userId, cost)
+				if not PlayerDataBridge.SpendMolCoins(userId, cost) then
+					local suspended = LogisticsNetwork.SuspendRoutesForPayer(userId)
+					suspendedPayers[userId] = true
+					local payer = Players:GetPlayerByUserId(userId)
+					if payer then
+						Remotes.FireClient("ServerAnnounce", payer, {
+							message = "Logistics suspended: insufficient MolCoins for " .. suspended .. " route(s).",
+							rarity = "common",
+						})
+					end
+				end
 			end
 		end
 
