@@ -15,7 +15,7 @@ local modalNames = {
 	BubbleTeaGui = true, SuperheroGui = true, QuantumRacingGui = true,
 	FeedbackGui = true, MahjongGui = true, GuildGui = true,
 	MiniGameGui = true, ShortcutOverlay = true, QuestModal = true,
-	QuizGui = true, NPCDialogueGui = true, TutorialGui = true,
+	QuizGui = true, TutorialGui = true,
 }
 
 local busy = false
