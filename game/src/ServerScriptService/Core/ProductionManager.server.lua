@@ -27,27 +27,34 @@ local PRODUCTION_INTERVAL = 60  -- 60 seconds per production cycle
 local BASE_ATOMS = {"H", "O", "C", "N", "Fe", "Cu", "Au", "V", "W", "Al"}
 local FACTORY_CYCLE_SECONDS = Facilities.GetFacility("Factory").productionTime
 local factoryElapsed = {} -- active-session elapsed time per player
+local outdoorAtomRemainder = {} -- fractional production carried to the next tick
 
 -- ═══════════════════════════════════════════════
 -- PRODUCTION LOGIC
 -- ═══════════════════════════════════════════════
 
-local function produceAtoms(facilities, playerData)
+local function produceAtoms(facilities, playerData, outdoorPenalty, previousRemainder)
 	if not facilities or ((facilities.mines or 0) == 0 and (facilities.starterBenches or 0) == 0) then return {} end
 
 	local produced = {}
 
 	-- Use the same capacity table as the facility purchase/build system.
 	-- This prevents the production loop from silently drifting from the UI.
-	local production = Facilities.CalculateProduction(facilities)
-	local atomCount = math.min(production.atoms,
-		InventoryLimits.GetFreeAtomSlots(playerData.atoms, playerData.facilities))
+	local due = Facilities.CalculateOutdoorAtomRate(facilities, outdoorPenalty) + (previousRemainder or 0)
+	local wholeDue = math.floor(due)
+	local freeSlots = InventoryLimits.GetFreeAtomSlots(playerData.atoms, playerData.facilities)
+	local atomCount = math.min(wholeDue, freeSlots)
+	local remainder = due - wholeDue
+	if atomCount < wholeDue then
+		-- Storage overflow is discarded rather than banked into a later burst.
+		remainder = 0
+	end
 	for _ = 1, atomCount do
 		local atom = BASE_ATOMS[math.random(#BASE_ATOMS)]
 		produced[atom] = (produced[atom] or 0) + 1
 	end
 
-	return produced
+	return produced, remainder
 end
 
 local function produceMolecules(playerData, facilities)
@@ -100,7 +107,13 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 	playerData.totalMolCoinsEarned = playerData.totalMolCoinsEarned or 0
 
 	-- Produce atoms from mines
-	local atomsProduced = produceAtoms(facilities, playerData)
+	local atomsProduced, nextRemainder = produceAtoms(
+		facilities,
+		playerData,
+		player:GetAttribute("OutdoorPenalty"),
+		outdoorAtomRemainder[player.UserId]
+	)
+	outdoorAtomRemainder[player.UserId] = nextRemainder or 0
 	for atom, count in pairs(atomsProduced) do
 		playerData.atoms[atom] = (playerData.atoms[atom] or 0) + count
 	end
@@ -139,6 +152,7 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 			atomsProduced = atomsProduced,
 			moleculesProduced = moleculesProduced,
 			bonusMolCoins = productionBonus,
+			outdoorPenalty = player:GetAttribute("OutdoorPenalty") or 1,
 			totalAtoms = (function()
 				local count = 0
 				for _, c in pairs(playerData.atoms) do count = count + c end
@@ -199,6 +213,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	factoryElapsed[player.UserId] = nil
+	outdoorAtomRemainder[player.UserId] = nil
 end)
 
 print("[ProductionManager] initialized — mine 60s / factory " .. FACTORY_CYCLE_SECONDS .. "s cycles active")
