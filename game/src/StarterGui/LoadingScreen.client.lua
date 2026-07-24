@@ -307,7 +307,7 @@ local controlsData = {
 	{"L", "Leaderboards"},
 	{"A", "Achievements"},
 	{"Tab", "Wallet"},
-	{"M", "Map / Mahjong"},
+	{"M", "Minimap"},
 	{"Esc", "Close All"},
 }
 

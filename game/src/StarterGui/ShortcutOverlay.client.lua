@@ -89,7 +89,7 @@ local shortcuts = {
 	{col = 3, key = "L", desc = "Leaderboards"},
 	{col = 3, key = ";", desc = "Guilds"},
 	{col = 3, key = ".", desc = "Atom Trading"},
-	{col = 3, key = "M", desc = "Mahjong"},
+	{col = 3, key = "Dashboard", desc = "Mahjong openen"},
 	{col = 3, key = "/", desc = "Settings"},
 }
 
