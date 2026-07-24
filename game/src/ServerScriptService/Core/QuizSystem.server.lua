@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local QuizQuestionUtils = require(ReplicatedStorage.Modules.QuizQuestionUtils)
 
 -- BubbleTeaBar.server.lua exposes active drink buffs via _G.GetPlayerBuff
 -- (e.g. Mango Smoothie's "quizHint" buff, +30% by default). Guarded because
@@ -30,23 +31,6 @@ end
 
 local function generateQuestions()
 	local questions = {}
-
-	local function uniqueWrongAtomicNumbers(correctNumber)
-		local wrong = {}
-		local seen = {[correctNumber] = true}
-		-- Gebruik eerst nabije atoomnummers; dat maakt de afleiders
-		-- geloofwaardig én voorkomt dubbele knoppen door random collisions.
-		for delta = 1, 5 do
-			for _, candidate in ipairs({correctNumber - delta, correctNumber + delta}) do
-				if candidate >= 1 and candidate <= 118 and not seen[candidate] then
-					seen[candidate] = true
-					table.insert(wrong, tostring(candidate))
-					if #wrong == 3 then return wrong end
-				end
-			end
-		end
-		return wrong
-	end
 
 	-- Type 1: "What is the symbol for [element]?"
 	for z, elem in pairs(Elements.Table) do
@@ -72,7 +56,7 @@ local function generateQuestions()
 	-- Type 2: "What is the atomic number of [element]?"
 	for z, elem in pairs(Elements.Table) do
 		if z <= 30 then
-			local wrongNums = uniqueWrongAtomicNumbers(z)
+			local wrongNums = QuizQuestionUtils.UniqueWrongAtomicNumbers(z, 3)
 			table.insert(questions, {
 				type = "atomic_number",
 				question = "What is the atomic number (Z) of " .. elem.name .. "?",
