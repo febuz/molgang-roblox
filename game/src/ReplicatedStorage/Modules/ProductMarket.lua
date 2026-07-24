@@ -134,14 +134,19 @@ ProductMarket.Products = {
 
 -- Dynamic pricing (fluctuates each game day)
 function ProductMarket.GetCurrentPrice(productId, gameDay)
+	gameDay = tonumber(gameDay) or 1
 	for _, product in ipairs(ProductMarket.Products) do
 		if product.id == productId then
-			-- Sine wave price fluctuation
-			local dayFactor = math.sin(gameDay * 0.3 + #productId) * product.volatility
-			local price = product.basePrice * (1 + dayFactor)
-			-- Add small random noise
-			price = price * (0.95 + math.random() * 0.1)
-			return math.floor(price)
+			-- Deterministic market movement: the same product/day must produce
+			-- the same quote in the UI, sale validation, and bidding systems.
+			local productSeed = 0
+			for index = 1, #product.id do
+				productSeed = productSeed + string.byte(product.id, index) * index
+			end
+			local dayFactor = math.sin(gameDay * 0.3 + productSeed) * product.volatility
+			local marketNoise = math.sin(gameDay * 1.7 + productSeed * 0.13) * 0.025
+			local price = product.basePrice * (1 + dayFactor + marketNoise)
+			return math.floor(math.max(0, price))
 		end
 	end
 	return 0

@@ -5,6 +5,10 @@ if not Color3 then
 end
 local ProductMarket = require("../game/src/ReplicatedStorage/Modules/ProductMarket")
 
+local quoteA = ProductMarket.GetCurrentPrice("V2O5", 7)
+local quoteB = ProductMarket.GetCurrentPrice("V2O5", 7)
+assert(quoteA == quoteB, "same product and game day must have a stable market quote")
+
 local product = ProductMarket.GetProduct("SlagBioEnhancer")
 local effects = {
 	requiresCertification = true,
@@ -24,4 +28,4 @@ assert(ProductMarket.ApplyMarketPriceMultiplier("V2O5", 100, {V2O5 = 1.45}) == 1
 	"world price event must change the visible product price")
 assert(ProductMarket.ApplyMarketPriceMultiplier("V2O5", 100, nil) == 100,
 	"no world price event must preserve the base price")
-print("ProductMarket certification tests: 6 passed")
+print("ProductMarket certification tests: 7 passed")
