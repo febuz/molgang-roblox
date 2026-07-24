@@ -25,6 +25,15 @@ return {
 		offices = 0,
 	},
 
+	-- Mining rights and plot state (persisted through EconomyManager)
+	mining = {
+		ownedPlots = {},
+		equipment = {},
+		plotStates = {},
+		totalOreMined = 0,
+		totalOreValue = 0,
+	},
+
 	-- Quests & Achievements
 	questProgress = {
 		active = {},

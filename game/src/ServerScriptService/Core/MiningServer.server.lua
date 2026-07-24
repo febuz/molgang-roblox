@@ -44,8 +44,62 @@ local function isFiniteNumber(value)
 	return type(value) == "number" and value == value and value > -math.huge and value < math.huge
 end
 
+local function serializePlotState(plot)
+	local equipment = {}
+	for index, equipId in ipairs(plot.mineEquipment or {}) do
+		equipment[index] = equipId
+	end
+	return {
+		explored = plot.explored,
+		composition = plot.composition,
+		vanadiumPct = plot.vanadiumPct,
+		rarity = plot.rarity,
+		mineEquipment = equipment,
+		oreStockpile = plot.oreStockpile,
+		totalMined = plot.totalMined,
+		forSale = plot.forSale,
+		askPrice = plot.askPrice,
+	}
+end
+
+local function persistPlotState(userId, plot)
+	local data = PlayerDataBridge.GetPlayerData(userId)
+	if not data then return end
+	data.mining = data.mining or {}
+	data.mining.plotStates = data.mining.plotStates or {}
+	data.mining.plotStates[tostring(plot.id)] = serializePlotState(plot)
+end
+
+local function removePersistedPlotState(userId, plotId)
+	local data = PlayerDataBridge.GetPlayerData(userId)
+	if data and data.mining and data.mining.plotStates then
+		data.mining.plotStates[tostring(plotId)] = nil
+	end
+end
+
+local function hydratePlotStates(userId, miningData)
+	for plotIdString, saved in pairs(miningData.plotStates or {}) do
+		local plotId = tonumber(plotIdString)
+		local plot = plotId and worldPlots[plotId]
+		if plot and (not plot.owner or plot.owner == userId) then
+			plot.owner = userId
+			plot.explored = saved.explored == true
+			plot.composition = saved.composition or plot.composition
+			plot.vanadiumPct = saved.vanadiumPct or plot.vanadiumPct
+			plot.rarity = saved.rarity or plot.rarity
+			plot.mineEquipment = saved.mineEquipment or {}
+			plot.oreStockpile = saved.oreStockpile or 0
+			plot.totalMined = saved.totalMined or 0
+			plot.forSale = saved.forSale == true
+			plot.askPrice = saved.askPrice
+			miningData.ownedPlots[plotId] = true
+		end
+	end
+end
+
 -- Player mining state
 local playerMining = {}  -- {userId = {ownedPlots = {}, miningEquipment = {}}}
+local hydratedMining = {}
 
 local function getPlayerMining(userId)
 	if not playerMining[userId] then
@@ -55,6 +109,20 @@ local function getPlayerMining(userId)
 			totalOreMined = 0,
 			totalOreValue = 0,
 		}
+	end
+	if not hydratedMining[userId] then
+		local playerData = PlayerDataBridge.GetPlayerData(userId)
+		if playerData then
+			playerData.mining = playerData.mining or {}
+			playerData.mining.ownedPlots = playerData.mining.ownedPlots or {}
+			playerData.mining.equipment = playerData.mining.equipment or {}
+			playerData.mining.plotStates = playerData.mining.plotStates or {}
+			playerData.mining.totalOreMined = playerData.mining.totalOreMined or 0
+			playerData.mining.totalOreValue = playerData.mining.totalOreValue or 0
+			playerMining[userId] = playerData.mining
+			hydratePlotStates(userId, playerData.mining)
+			hydratedMining[userId] = true
+		end
 	end
 	return playerMining[userId]
 end
@@ -94,6 +162,7 @@ Remotes.RequestBuyExplorationLicense.OnServerEvent:Connect(function(player, plot
 	plot.owner = userId
 	local pm = getPlayerMining(userId)
 	pm.ownedPlots[plotId] = true
+	persistPlotState(userId, plot)
 
 	Remotes.FireClient("ServerAnnounce", player, {
 		message = "Exploration license acquired for Plot #" .. plotId .. " in " .. plot.region .. "! Composition UNKNOWN — use a Drill Rig to explore.",
@@ -155,6 +224,7 @@ Remotes.RequestExplorePlot.OnServerEvent:Connect(function(player, plotId)
 
 	-- REVEAL THE COMPOSITION! (this is the big moment)
 	plot.explored = true
+	persistPlotState(userId, plot)
 
 	-- Build composition string
 	local compStr = ""
@@ -258,6 +328,7 @@ Remotes.RequestDeployEquipment.OnServerEvent:Connect(function(player, plotId, eq
 	-- Deploy
 	pm.equipment[equipId] = pm.equipment[equipId] - 1
 	table.insert(plot.mineEquipment, equipId)
+	persistPlotState(userId, plot)
 
 	local equip = MiningSystem.GetEquipment(equipId)
 	Remotes.FireClient("ServerAnnounce", player, {
@@ -328,6 +399,7 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 
 	-- Clear stockpile
 	plot.oreStockpile = 0
+	persistPlotState(userId, plot)
 
 	-- Build result string
 	local atomStr = ""
@@ -356,6 +428,7 @@ Remotes.RequestListPlotForSale.OnServerEvent:Connect(function(player, plotId, as
 
 	plot.forSale = true
 	plot.askPrice = math.max(askPrice, 100)
+	persistPlotState(userId, plot)
 
 	Remotes.FireClient("ServerAnnounce", player, {
 		message = "Plot #" .. plotId .. " listed for sale at " .. plot.askPrice .. " MolCoins!",
@@ -402,6 +475,7 @@ Remotes.RequestBuyPlotFromMarket.OnServerEvent:Connect(function(player, plotId)
 		-- Remove from seller's owned list
 		local sellerMining = playerMining[sellerId]
 		if sellerMining then sellerMining.ownedPlots[plotId] = nil end
+		removePersistedPlotState(sellerId, plotId)
 	end
 
 	-- Transfer ownership
@@ -409,6 +483,7 @@ Remotes.RequestBuyPlotFromMarket.OnServerEvent:Connect(function(player, plotId)
 	plot.forSale = false
 	local pm = getPlayerMining(userId)
 	pm.ownedPlots[plotId] = true
+	persistPlotState(userId, plot)
 
 	Remotes.FireClient("PlotPurchased", player, {
 		plotId = plotId,
@@ -509,6 +584,7 @@ task.spawn(function()
 					local produced = rate * (MINING_TICK_INTERVAL / 60)  -- kg per tick
 					plot.oreStockpile = plot.oreStockpile + produced
 					plot.totalMined = plot.totalMined + produced
+					persistPlotState(plot.owner, plot)
 
 					-- Notify owner periodically
 					local ownerPlayer = Players:GetPlayerByUserId(plot.owner)
@@ -531,7 +607,10 @@ end)
 -- ═══════════════════════════════════════════════
 
 Players.PlayerRemoving:Connect(function(player)
-	-- Keep plot ownership (would persist via DataStore in production)
+	-- Plot state lives in the canonical player table and is saved by
+	-- EconomyManager. Drop only the runtime cache so a rejoin rehydrates it.
+	playerMining[player.UserId] = nil
+	hydratedMining[player.UserId] = nil
 end)
 
 print("[MOLGANG] MiningServer initialized — " .. #worldPlots .. " plots across " .. #MiningSystem.PlotLocations .. " regions")
