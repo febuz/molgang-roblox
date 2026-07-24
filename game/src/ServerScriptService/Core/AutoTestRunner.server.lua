@@ -139,9 +139,7 @@ end)
 
 timeTest("Atoms folder created", function()
 	local atoms = Workspace:FindFirstChild("Atoms")
-	-- May not exist yet if spawner hasn't run
-	-- Just check the spawner script is loaded
-	assert(true, "Atoms folder check (spawner-dependent)")
+	assert(atoms and atoms:IsA("Folder"), "AtomSpawner did not create Workspace.Atoms")
 end)
 
 timeTest("Part count reasonable (<5000)", function()
