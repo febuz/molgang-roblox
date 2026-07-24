@@ -30,8 +30,20 @@ local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 
--- Wait for world to build
-task.wait(5)
+-- Wait for the asynchronous world builder instead of testing a half-built
+-- Workspace. Studio may take considerably longer under Wine/D3D11.
+local worldDeadline = os.clock() + 60
+repeat
+	task.wait(1)
+until (function()
+	local zones = Workspace:FindFirstChild("Zones")
+	if not zones then return false end
+	local count = 0
+	for _, child in zones:GetChildren() do
+		if child:IsA("Model") then count += 1 end
+	end
+	return count >= 4
+end)() or os.clock() >= worldDeadline
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 

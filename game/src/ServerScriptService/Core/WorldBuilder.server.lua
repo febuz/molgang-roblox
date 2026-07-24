@@ -3908,7 +3908,12 @@ local function buildMoleculia()
 	-- player physics. Explicit values avoid Studio/place settings from leaving
 	-- characters weightless or destroying parts before the safety system acts.
 	Workspace.Gravity = 196.2
-	Workspace.FallenPartsDestroyHeight = -1000
+	local ok, err = pcall(function()
+		Workspace.FallenPartsDestroyHeight = -1000
+	end)
+	if not ok then
+		warn("[WorldBuilder] Studio blocked FallenPartsDestroyHeight; safety recovery remains active: " .. tostring(err))
+	end
 
 	-- Step 2: Configure lighting and atmosphere
 	setupLighting()
