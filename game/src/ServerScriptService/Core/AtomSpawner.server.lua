@@ -139,27 +139,12 @@ local function spawnAtomAt(position, elementZ, zoneName)
 	atom:SetAttribute("Rarity", elem.rarity)
 	atom:SetAttribute("Interactable", true)
 	atom:SetAttribute("InteractionType", "collect")
-
-	-- Floating animatie via AlignPosition
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = atom
-
-	local alignPos = Instance.new("AlignPosition")
-	alignPos.Mode = Enum.PositionAlignmentMode.OneAttachment
-	alignPos.Attachment0 = attachment
-	alignPos.Position = position + Vector3.new(0, math.sin(tick()) * 1.5, 0)
-	alignPos.MaxForce = 10000
-	alignPos.Responsiveness = 10
-	alignPos.Parent = atom
-
-	-- Rotatie
-	local alignOri = Instance.new("AlignOrientation")
-	alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
-	alignOri.Attachment0 = attachment
-	alignOri.CFrame = CFrame.Angles(0, tick() * 0.8, 0)
-	alignOri.MaxTorque = 10000
-	alignOri.Responsiveness = 5
-	alignOri.Parent = atom
+	-- De server houdt alleen de vaste spawnpositie bij; de lichte zweef-/rotatie-
+	-- animatie gebeurt lokaal zodat veel atomen geen physics-constraints nodig hebben.
+	atom:SetAttribute("BasePosition", position)
+	atom:SetAttribute("FloatPhase", math.random() * math.pi * 2)
+	atom:SetAttribute("FloatAmplitude", 0.35 + math.random() * 0.25)
+	atom:SetAttribute("SpinRate", 0.25 + math.random() * 0.35)
 
 	-- Billboard label boven atoom
 	local bill = Instance.new("BillboardGui")
