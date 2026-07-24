@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local ProductMarket = require(ReplicatedStorage.Modules.ProductMarket)
+local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 
 -- Active bids
 local activeBids = {} -- {bidId = {playerId, playerName, productId, price, quantity, timestamp}}
@@ -27,7 +28,10 @@ local MAX_BIDS_PER_PLAYER = 5
 Remotes.RequestPlaceBid.OnServerEvent:Connect(function(player, productId, bidPrice, quantity)
 	local userId = player.UserId
 
-	if type(productId) ~= "string" or type(bidPrice) ~= "number" or type(quantity) ~= "number" then return end
+	local quantityOk, parsedQuantity = TradeRules.ValidateQuantity(quantity, 100)
+	if type(productId) ~= "string" or type(bidPrice) ~= "number" or not quantityOk
+		or bidPrice ~= bidPrice or bidPrice == math.huge or bidPrice == -math.huge then return end
+	quantity = parsedQuantity
 	if bidPrice < MIN_BID or quantity < 1 or quantity > 100 then
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Invalid bid: min " .. MIN_BID .. " MC, max 100 units.",
@@ -93,12 +97,17 @@ local sellCounter = 0
 
 Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPrice, quantity)
 	local userId = player.UserId
-	if type(productId) ~= "string" or type(askPrice) ~= "number" or type(quantity) ~= "number" then return end
-	if askPrice < 1 or quantity < 1 or quantity > 100 then return end
+	local quantityOk, parsedQuantity = TradeRules.ValidateQuantity(quantity, 100)
+	if type(productId) ~= "string" or type(askPrice) ~= "number" or not quantityOk
+		or askPrice ~= askPrice or askPrice == math.huge or askPrice == -math.huge then return end
+	quantity = parsedQuantity
+	if askPrice < 1 then return end
 
 	-- Check player has product atoms to sell
 	local pData = PlayerDataBridge.GetPlayerData(userId)
 	if not pData then return end
+	local product = ProductMarket.GetProduct(productId)
+	if not product then return end
 
 	sellCounter = sellCounter + 1
 	local sellId = "sell_" .. sellCounter .. "_" .. os.time()
@@ -126,6 +135,28 @@ end)
 -- ORDER BOOK MATCHING ENGINE
 -- ═══════════════════════════════════════════════
 
+local function transferProduct(productId, sellerId, buyerId, quantity)
+	local product = ProductMarket.GetProduct(productId)
+	local sellerData = PlayerDataBridge.GetPlayerData(sellerId)
+	local buyerData = PlayerDataBridge.GetPlayerData(buyerId)
+	if not product or not sellerData or not buyerData then return false end
+	sellerData.atoms = sellerData.atoms or {}
+	buyerData.atoms = buyerData.atoms or {}
+
+	for atom, countPerUnit in pairs(product.requiredAtoms) do
+		if (sellerData.atoms[atom] or 0) < countPerUnit * quantity then
+			return false
+		end
+	end
+	for atom, countPerUnit in pairs(product.requiredAtoms) do
+		local amount = countPerUnit * quantity
+		sellerData.atoms[atom] = sellerData.atoms[atom] - amount
+		if sellerData.atoms[atom] <= 0 then sellerData.atoms[atom] = nil end
+		buyerData.atoms[atom] = (buyerData.atoms[atom] or 0) + amount
+	end
+	return true
+end
+
 function matchBid(bidId, bidder)
 	local bid = activeBids[bidId]
 	if not bid then return end
@@ -145,6 +176,10 @@ function matchBid(bidId, bidder)
 	if bestSell then
 		local fillQty = math.min(bid.quantity, bestSell.quantity)
 		local fillPrice = bestSell.price -- execute at seller's ask price
+		if not transferProduct(bestSell.productId, bestSell.playerId, bid.playerId, fillQty) then
+			activeSells[bestSellId] = nil
+			return
+		end
 
 		-- Transfer: bidder gets product, seller gets payment
 		-- Refund price difference to bidder (bid was escrowed at bid price)
@@ -197,6 +232,10 @@ function matchSell(sellId, seller)
 	if bestBid then
 		local fillQty = math.min(sell.quantity, bestBid.quantity)
 		local fillPrice = sell.price
+		if not transferProduct(sell.productId, sell.playerId, bestBid.playerId, fillQty) then
+			activeSells[sellId] = nil
+			return
+		end
 
 		local refund = (bestBid.price - fillPrice) * fillQty
 		if refund > 0 then

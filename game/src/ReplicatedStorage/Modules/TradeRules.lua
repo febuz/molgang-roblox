@@ -1,6 +1,18 @@
 -- Pure server-side validation rules for commodity trades.
 local TradeRules = {}
 
+function TradeRules.ValidateQuantity(quantity, maximum)
+	local parsed = tonumber(quantity)
+	if not parsed or parsed ~= parsed or parsed == math.huge or parsed == -math.huge then
+		return false, "Quantity must be a finite number"
+	end
+	parsed = math.floor(parsed)
+	if parsed < 1 or parsed > maximum then
+		return false, "Quantity must be between 1 and " .. maximum
+	end
+	return true, parsed
+end
+
 function TradeRules.Validate(action, itemName, quantity, offeredPrice, prices)
 	if action ~= "buy" and action ~= "sell" then
 		return false, "Invalid trade action"
@@ -10,14 +22,9 @@ function TradeRules.Validate(action, itemName, quantity, offeredPrice, prices)
 		return false, "Unknown commodity"
 	end
 
-	local parsedQuantity = tonumber(quantity)
-	if not parsedQuantity or parsedQuantity ~= parsedQuantity then
-		return false, "Quantity must be a number"
-	end
-	parsedQuantity = math.floor(parsedQuantity)
-	if parsedQuantity < 1 or parsedQuantity > 1000 then
-		return false, "Quantity must be between 1 and 1000"
-	end
+	local quantityOk, parsedQuantityOrError = TradeRules.ValidateQuantity(quantity, 1000)
+	if not quantityOk then return false, parsedQuantityOrError end
+	local parsedQuantity = parsedQuantityOrError
 
 	local parsedPrice = tonumber(offeredPrice)
 	if not parsedPrice or parsedPrice ~= parsedPrice or parsedPrice == math.huge or parsedPrice == -math.huge then

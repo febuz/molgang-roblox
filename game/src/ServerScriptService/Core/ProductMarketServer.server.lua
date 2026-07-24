@@ -15,6 +15,7 @@ local ProductMarket = require(ReplicatedStorage.Modules.ProductMarket)
 local ProfitLoss = require(ReplicatedStorage.Modules.ProfitLoss)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 
 -- ═══════════════════════════════════════════════
 -- STATE
@@ -37,7 +38,12 @@ end
 Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, quantity)
 	local userId = player.UserId
 	if type(productId) ~= "string" then return end
-	quantity = math.max(1, math.floor(tonumber(quantity) or 1))
+	local quantityOk, parsedQuantity = TradeRules.ValidateQuantity(quantity, 1000)
+	if not quantityOk then
+		Remotes.FireClient("ServerAnnounce", player, {message = "Sale rejected: " .. parsedQuantity, rarity = "common"})
+		return
+	end
+	quantity = parsedQuantity
 
 	local product = ProductMarket.GetProduct(productId)
 	if not product then return end
@@ -46,6 +52,7 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	-- For each unit sold, consume the required atoms
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 	if not playerData then return end
+	playerData.atoms = playerData.atoms or {}
 
 	-- Check atoms for all units
 	for atom, countPerUnit in pairs(product.requiredAtoms) do
