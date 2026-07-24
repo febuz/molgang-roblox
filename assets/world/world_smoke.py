@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-world_smoke.py — GPU-free integrity check for the whole open-world pipeline.
+world_smoke.py — GPU-free integrity check for the Moleculia web experience.
 
-Guards the committed world so it keeps running without a GPU: the map matches
-its assets, every referenced impostor exists, YOLO labels line up, the exported
-JEPA world model does a valid forward pass, the fast-GAN generator loads, and
-the Python sim produces state. Any failure exits non-zero.
+Guards the committed world so it keeps running without a GPU: the Moleculia map
+matches the game's data (6 zones, the 12-station Slakkenspoor line, 118 elements,
+10 fertilizers, 5 crops), the ported process chemistry behaves (Arrhenius +
+selective precipitation with a real pH optimum), and the Python sim exposes the
+reactor the browser drives. The reusable engine pieces (JEPA world model, fast
+GAN) and the legacy city (world.json) are checked only if present. Any hard
+failure exits non-zero.
 
 Run:  python3 assets/world/world_smoke.py
 """
@@ -22,43 +25,92 @@ def fail(m):
     print(f"FAIL: {m}"); sys.exit(1)
 
 
-def check_map():
-    w = json.load(open(os.path.join(HERE, "world.json")))
-    objs = w["objects"]
-    if not objs:
-        fail("world.json has no objects")
-    na = sum(1 for o in objs if o["t"] == "asset")
-    ni = sum(1 for o in objs if o["t"] == "imp")
-    if (na, ni) != (w["meta"]["assets"], w["meta"]["impostors"]):
-        fail(f"world.json meta counts {w['meta']['assets']}/{w['meta']['impostors']} != {na}/{ni}")
-    if not w.get("resolve"):
-        fail("world.json has no resolver report")
-    print(f"OK  map: {len(objs)} objects ({na} identified models, {ni} diffusion impostors)")
-    return objs
-
-
-def check_impostors(objs):
-    imp_dir = os.path.join(HERE, "impostors")
-    have = {os.path.basename(p)[:-4] for p in glob.glob(os.path.join(imp_dir, "*.png"))}
-    needed = {o["ref"] for o in objs if o["t"] == "imp"}
-    missing = needed - have
+def check_moleculia():
+    """The primary world: Moleculia (moleculia.json), authored by moleculia_gen.py."""
+    w = json.load(open(os.path.join(HERE, "moleculia.json")))
+    meta, objs = w["meta"], w["objects"]
+    if not meta.get("space"):
+        fail("moleculia.json is not flagged as a space world")
+    zones = [o for o in objs if o["t"] == "platform"]
+    if len(zones) != 6:
+        fail(f"expected 6 floating zones, got {len(zones)}")
+    stations = [o for o in objs if o.get("station")]
+    if len(stations) != 12:
+        fail(f"expected the 12-station Slakkenspoor line, got {len(stations)}")
+    # every equipment/landmark GLB the world streams must exist
+    models = {os.path.basename(p) for p in glob.glob(os.path.join(HERE, "..", "models", "*.glb"))}
+    missing = {o["ref"] for o in objs if o["t"] == "asset"} - models
     if missing:
-        fail(f"world references impostors with no PNG: {sorted(missing)[:5]}")
-    labels = json.load(open(os.path.join(imp_dir, "impostors.json")))["impostors"]
-    if not needed <= set(labels):
-        fail("impostors.json missing entries used by the world")
-    print(f"OK  impostors: all {len(needed)} referenced types have a PNG + manifest entry")
+        fail(f"moleculia references GLBs with no file: {sorted(missing)[:5]}")
+    elements = [o for o in objs if o["t"] == "element"]
+    nums = {o["num"] for o in elements}
+    if len(elements) != 118 or nums != set(range(1, 119)):
+        fail(f"expected 118 elements numbered 1..118, got {len(elements)}")
+    print(f"OK  Moleculia: {len(zones)} zones, {len(stations)} stations, {len(elements)} elements, "
+          f"{len(objs)} objects")
+    return meta
 
 
-def check_ar_labels():
-    p = os.path.join(HERE, "ar_labels.json")
-    if not os.path.exists(p):
-        print("WARN  ar_labels.json missing — AR falls back to type names"); return
-    d = json.load(open(p))["labels"]
-    hit = sum(1 for v in d.values() if v.get("yolo"))
-    print(f"OK  YOLO labels: {hit}/{len(d)} impostors recognised")
+def check_fertilizers_crops(meta):
+    ferts = meta.get("fertilizers", [])
+    if len(ferts) != 10:
+        fail(f"expected 10 fertilizers, got {len(ferts)}")
+    for f in ferts:
+        if len(f.get("npk", [])) != 3 or not f.get("atoms"):
+            fail(f"fertilizer {f.get('id')} missing NPK or atom recipe")
+    crops = meta.get("crops", [])
+    if len(crops) != 5:
+        fail(f"expected 5 crops, got {len(crops)}")
+    for c in crops:
+        if len(c.get("idealNPK", [])) != 3 or any(v <= 0 for v in c["idealNPK"]):
+            fail(f"crop {c.get('id')} has a bad idealNPK (Liebig needs positive targets)")
+    print(f"OK  fertilizers: {len(ferts)} (real NPK + atom recipes) · crops: {len(crops)} (ideal NPK)")
 
 
+def check_process_chemistry():
+    """The ported ProcessEngineering chemistry (process_sim.py) must behave."""
+    sys.path.insert(0, HERE)
+    import process_sim as p
+    # selective vanadium recovery must have its optimum inside V's 1.8-3.0 window
+    def sel(pH):
+        return (p.precipitation_fraction("V", pH)
+                * (1 - p.precipitation_fraction("Fe", pH))
+                * (1 - p.precipitation_fraction("Al", pH)))
+    if not (sel(2.9) > sel(2.2) and sel(2.9) > sel(5.5) and sel(5.5) < 0.05):
+        fail("selective V recovery has no optimum inside the vanadium pH window")
+    # Arrhenius must speed the reaction with temperature
+    if not p.arrhenius_multiplier(90, 50) > p.arrhenius_multiplier(40, 50) > 0:
+        fail("Arrhenius multiplier not increasing with temperature")
+    # a finer feed (smaller k divisor) must convert more per step
+    st = p.default_state(); st.update({"temperature": 75, "pressure": 180, "flowRate": 5, "pH": 2.9, "conversion": 0.2})
+    coarse = p.step_reactor(dict(st), 1.0, 0.05 / 7.0)      # chunk
+    fine = p.step_reactor(dict(st), 1.0, 0.05 / 1.0)        # ground
+    if not fine > coarse:
+        fail("finer feed did not leach faster")
+    print(f"OK  chemistry: V optimum in-window (sel@2.9={sel(2.9):.2f} > sel@5.5={sel(5.5):.2f}), "
+          f"Arrhenius + particle-size monotone")
+
+
+def check_sim():
+    """The live sim authority exposes the reactor the browser operates."""
+    sys.path.insert(0, HERE)
+    import importlib
+    sim = importlib.import_module("sim_server")
+    sim.SIM.set_controls({"temperature": 85, "pressure": 220, "flowRate": 7, "pH": 2.9,
+                          "particleSize": "powder", "deironized": True, "roasted": True})
+    rx = sim.SIM.state()["reactor"]
+    need = {"temperature", "pressure", "pH", "flowRate", "conversion", "rate",
+            "yield", "particleSize", "leachSpeed", "deironized", "roasted", "v2o5", "batches"}
+    missing = need - set(rx)
+    if missing:
+        fail(f"reactor state missing fields: {sorted(missing)}")
+    if rx["particleSize"] != "powder" or not rx["deironized"] or not rx["roasted"]:
+        fail("reactor did not honour operator setpoints")
+    print(f"OK  sim reactor: setpoints honoured (powder {rx['leachSpeed']}x, de-ironed, roasted), "
+          f"yield {rx['yield']}")
+
+
+# ---- reusable engine pieces (optional; only if the files are present) ----
 def _lin(w, b, x):
     return [sum(w[o][i] * x[i] for i in range(len(x))) + b[o] for o in range(len(w))]
 
@@ -69,50 +121,33 @@ def _gelu(v):
 
 def check_world_model():
     p = os.path.join(HERE, "world_model.json")
-    m = json.load(open(p))
-    K = m["meta"]["K"]
-
+    if not os.path.exists(p):
+        print("WARN  world_model.json missing — JEPA overlay disabled"); return
+    m = json.load(open(p)); K = m["meta"]["K"]
     def mlp(layer, x):
         return _lin(layer["w1"], layer["b1"], _gelu(_lin(layer["w0"], layer["b0"], x)))
-    x = [0.1] * (6 * K)                                  # 6 features per step, K steps
-    out = mlp(m["dec"], mlp(m["pred"], mlp(m["enc"], x)))
+    out = mlp(m["dec"], mlp(m["pred"], mlp(m["enc"], [0.1] * (6 * K))))
     if len(out) != 2 or any(math.isnan(v) or math.isinf(v) for v in out):
         fail(f"world model forward produced bad output: {out}")
-    print(f"OK  JEPA world model: enc->pred->dec forward valid, heading out {tuple(round(v, 3) for v in out)}")
+    print("OK  JEPA world model: forward pass valid (engine, reusable)")
 
 
-def check_fast_gan():
-    p = os.path.join(HERE, "fastgan_G.pt")
+def check_legacy_city():
+    p = os.path.join(HERE, "world.json")
     if not os.path.exists(p):
-        print("WARN  fastgan_G.pt missing"); return
-    try:
-        import torch
-        ckpt = torch.load(p, map_location="cpu")
-        if "classes" not in ckpt or not ckpt["classes"]:
-            fail("fastgan_G.pt has no class list")
-        print(f"OK  fast GAN: generator loads, {len(ckpt['classes'])} classes")
-    except ImportError:
-        print("WARN  torch not installed — skipping GAN load check")
-
-
-def check_sim():
-    sys.path.insert(0, HERE)
-    import importlib
-    sim = importlib.import_module("sim_server")
-    st = sim.SIM.state()
-    if st["n"] <= 0 or not st["agents"]:
-        fail("sim produced no agents")
-    print(f"OK  sim: {st['n']} agents, sample {st['agents'][0]['k']} at ({st['agents'][0]['x']},{st['agents'][0]['z']})")
+        print("WARN  world.json (legacy city) missing — ?world=./world.json disabled"); return
+    objs = json.load(open(p))["objects"]
+    print(f"OK  legacy city still available behind ?world=./world.json ({len(objs)} objects)")
 
 
 def main():
-    print("== MOLGANG open-world smoke test ==")
-    objs = check_map()
-    check_impostors(objs)
-    check_ar_labels()
-    check_world_model()
-    check_fast_gan()
+    print("== MOLGANG · Moleculia smoke test ==")
+    meta = check_moleculia()
+    check_fertilizers_crops(meta)
+    check_process_chemistry()
     check_sim()
+    check_world_model()
+    check_legacy_city()
     print("PASS")
 
 

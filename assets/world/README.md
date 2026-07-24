@@ -1,67 +1,79 @@
-# MOLGANG Open World
+# MOLGANG · Moleculia (web)
 
-A free-roam, first-person browser world that is **composed from the identified
-asset library and filled in by generative AI where the library falls short** —
-with an AR overlay, a live Python simulation, shared-world multiplayer, and a
-learned predictive world model. Built to be GPU-thin (49% render budget +
-instancing + streaming) and Python-heavy (the world is authored and simulated
-server-side; the browser is a thin client).
+The web continuation of the MOLGANG Roblox teaser: a first-person **Chemical
+Engineering Simulator** you walk through in the browser. Moleculia is a floating
+archipelago in space with six zones; its core loop is the **Slakkenspoor
+factory**, where you process BOF steel slag through the real 12-station line
+under real process kinetics, then collect the 118 elements, synthesize
+fertilizers from them, and grow crops under Liebig's Law.
+
+Built GPU-thin (49% render budget + instancing + streaming) and Python-heavy
+(the world is authored and simulated server-side; the browser is a thin client).
+Only the **engine** was reused from the earlier open-world prototype — the
+content is rebuilt around the game's actual goals.
 
 ## Run it
 
 ```bash
-# 1. static world (map + streaming renderer + diffusion impostors + AR)
-assets/viewer/serve.sh                       # serves assets/ on http://localhost:8090
-#    open http://localhost:8090/world/        (add ?ar=1 for the AR glasses)
+# static world (map + streaming renderer) — serve assets/ and open /world/
+python3 -m http.server 8082 --directory assets    # http://localhost:8082/world/
 
-# 2. living world (moving traffic + pedestrians + multiplayer) — optional
-python3 assets/world/sim_server.py           # EVE-style sim authority on :8077
+# live process sim (the Slakkenspoor reactor + multiplayer presence)
+python3 assets/world/sim_server.py                # authority on :8077
 ```
 
-Controls: **click** to capture the mouse, **W** forward / **S** back / **A**/**D**
-strafe / **Shift** sprint. `?cam=street|overview|plaza` deep-links a viewpoint;
-`?ar=1` starts with the AR overlay; the 🥽 button toggles it.
+Controls: **click** to look, **W/A/S/D** move, **Shift** sprint. Buttons: 🌱
+Fertilizer Lab (**F**), 🌾 Farm, 🥽 AR (**R** toggles the overlay).
+Deep-links: `?cam=overview|factory|biome|pt`, `?world=./world.json` (the legacy
+city), `?nointro`. Sandbox: `?collectall`, `?stockfert`, `?farmdemo`, `?lab`,
+`?farm`.
 
-## Architecture (data flows top→bottom)
+## The game, on the web
+
+| System | Where | What you do |
+|---|---|---|
+| **Operate the plant** | Slakkenspoor zone · control panel | Set feed particle size (crushers), magnetic separation, roasting, then temperature / pressure / pH / flow. Real kinetics (Arrhenius, Henry, residence time, selective precipitation) drive selective **vanadium recovery**; finished batches bank **V₂O₅**. |
+| **Collect elements** | Periodic Table Biome | Walk the real periodic table and collect all **118 elements** (each with its real colour + fact). Progress persists (localStorage). |
+| **Synthesize fertilizers** | 🌱 Fertilizer Lab | Build the **10 fertilizers** (real NPK + atom recipes) from the elements you've collected. |
+| **Farm** | 🌾 Farm | Feed fertilizers to **5 crops**; yield is capped by the scarcest nutrient — **Liebig's Law of the Minimum**. |
+
+## Architecture (engine reused, content rebuilt)
 
 | Layer | File | What it does |
 |---|---|---|
-| **Map authoring** | `world_gen.py` → `world.json` | Python precomputes the whole district (roads, block clusters, street furniture) so the client does no layout work. Resolver word-matches each need to the GLB library — hit = real model, miss = diffusion impostor. |
-| **Diffusion gap-fill** | `generate_impostors.py` → `impostors/` | Stable-Diffusion-Turbo generates billboard impostors for object types the library lacks (cars, trees, people, facades…), magenta-keyed to transparent. |
-| **Fast GAN** | `fast_gan.py` → `fastgan_G.pt` | A class-conditional GAN distilled from the diffusion seeds — real-time (~30000× faster) per-class impostor generation for the hot path. |
-| **Detection / labels** | `ar_label.py` → `ar_labels.json` | YOLOv9 re-identifies each diffusion impostor (car/person/hydrant…) for the AR overlay. |
-| **Renderer** | `world.js` + `index.html` | Thin client: instant sky+ground, then streams only nearby GLB models and draws all impostors as **instanced** billboards (~26 draw calls). 49% render-budget loop. |
-| **AR overlay** | `world.js` (`?ar=1`) | Labels everything in view — identified models (cyan), diffusion (amber), YOLO-recognised incl. live traffic (green), other players (pink) — plus JEPA predicted trajectories. |
-| **Live simulation** | `sim_server.py` (:8077) | EVE-Online-style Python authority: 64 agents (traffic + pedestrians) ticked at 20 Hz; tiny JSON state polled by the client. Also holds the multiplayer player roster (`/join`). |
-| **World model** | `world_model.py` → `world_model.json` | LeCun **JEPA** predictive world model: learns the traffic dynamics (turns at intersections) in latent space; 34% better 2s-ahead than a constant-velocity baseline. Runs in-browser (plain-JS forward pass) to draw predicted trajectories. |
-| **P2P asset layer** | `world.js` + optional `ipfs.json` | If an `ipfs.json` (gateway + CIDs) is present, models/impostors load from IPFS (peer-to-peer) with a local fallback. |
+| **Map authoring** | `moleculia_gen.py` → `moleculia.json` | Python precomputes Moleculia from the game's data: 6 floating zones, the 12-station Slakkenspoor line (real equipment GLBs), 118 elements (`Data/Elements.lua`), 10 fertilizers + 5 crops (`Modules/FertilizerTrack.lua`). |
+| **Renderer** | `world.js` + `index.html` | Thin client: starfield space + floating platforms, streams only nearby GLB models, 49% render-budget loop. Hosts the process control panel, element collection, Fertilizer Lab, and Farm. |
+| **Process chemistry** | `process_sim.py` | Faithful port of `Modules/ProcessEngineering.lua`: Arrhenius, Henry, residence-time conversion, Henderson-Hasselbalch precipitation windows. |
+| **Live simulation** | `sim_server.py` (:8077) | Python authority owns the reactor the browser operates (`/reactor/set`, `/state`) plus multiplayer presence (`/join`). |
+| **World model** | `world_model.py` → `world_model.json` | LeCun **JEPA** predictive model (reusable engine piece; drives the AR trajectory overlay in the legacy city). |
+| **P2P asset layer** | `world.js` + optional `ipfs.json` | If present, models load from IPFS (peer-to-peer) with a local fallback. |
 
-## Regenerating the AI pieces (needs a GPU)
+The old GTA-style city (`world_gen.py`, `generate_impostors.py`, `fast_gan.py`,
+`ar_label.py`) is kept only as a reusable-engine reference, reachable via
+`?world=./world.json`.
+
+## Deploy
 
 ```bash
-pip install --user --break-system-packages diffusers==0.31.0 transformers accelerate ultralytics
-python3 assets/world/generate_impostors.py   # diffusion impostors
-python3 assets/world/ar_label.py             # YOLOv9 labels
-python3 assets/world/fast_gan.py             # class-conditional fast GAN
-python3 assets/world/world_model.py          # JEPA world model (CPU)
-python3 assets/world/world_gen.py            # rebuild the map (CPU)
-python3 assets/world/world_smoke.py          # validate the whole pipeline
+bash assets/world/build_deploy.sh          # -> deploy/molgang/ (self-contained, ~22M)
+# publish (your SSH):
+rsync -az --delete deploy/molgang/  <user>@knitweb.art:/var/www/knitweb.art/molgang/
 ```
 
-Committed outputs (`world.json`, `impostors/`, `world_model.json`,
-`fastgan_G.pt`, `ar_labels.json`) mean the world runs with **no GPU** — only
-regenerating needs one.
+## Validate (no GPU)
 
-## Verified vs. needs-your-browser
-
-Composition, AR overlay, instancing, live sim, multiplayer and world-model
-trajectories are all verified by real-browser screenshots. Free-roam movement
-+ pointer-lock mouse-look need real keyboard/mouse input to feel out.
+```bash
+python3 assets/world/moleculia_gen.py      # rebuild the world from the game data
+python3 assets/world/world_smoke.py        # integrity check (zones, stations, 118
+                                           # elements, 10 fertilizers, 5 crops,
+                                           # chemistry optimum, sim reactor)
+```
 
 ## Honest scope
 
-The impostors are billboards (camera-facing, shadow-grounded) — a stylised
-2.5D fill, not full 3D. The fast GAN is class-correct but impressionistic at
-64×64/160 seeds (more seeds + resolution → production quality). The JEPA model
-learns a deliberately simple sim rule; richer dynamics are the natural next
-step.
+Verified by headless-browser screenshots: the six labelled zones, the
+Slakkenspoor line rendering the real stations, the live reactor + operable
+process chain, element collection, Fertilizer Lab, and Liebig farming. Free-roam
+movement + pointer-lock look and WebXR/Quest AR need real hardware to feel out.
+Not yet on the web: factory building (grid + equipment placement) and the
+economy (MolCoins / ANK / MolChain).
