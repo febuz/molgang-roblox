@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
@@ -116,7 +117,8 @@ local WEATHER_TYPES = {
 -- ═══════════════════════════════════════════════
 
 local currentWeather = WEATHER_TYPES[1]  -- start clear
-local weatherChangeTime = tick() + 300   -- first change after 5 min
+local initialWeatherDuration = RunService:IsStudio() and 30 or 300
+local weatherChangeTime = tick() + initialWeatherDuration
 local totalWeatherWeight = 0
 
 for _, w in ipairs(WEATHER_TYPES) do
@@ -268,7 +270,9 @@ end
 task.spawn(function()
 	-- Start with clear weather
 	applyWeatherLighting(currentWeather)
-	broadcastWeather(currentWeather, 300)
+	Lighting:SetAttribute("WeatherTestMode", RunService:IsStudio())
+	Lighting:SetAttribute("WeatherNextChangeAt", weatherChangeTime)
+	broadcastWeather(currentWeather, initialWeatherDuration)
 
 	while true do
 		task.wait(10)  -- check every 10 seconds
@@ -280,6 +284,7 @@ task.spawn(function()
 
 			currentWeather = newWeather
 			weatherChangeTime = tick() + duration
+			Lighting:SetAttribute("WeatherNextChangeAt", weatherChangeTime)
 
 			-- Apply lighting changes
 			applyWeatherLighting(newWeather)

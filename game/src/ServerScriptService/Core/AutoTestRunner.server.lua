@@ -228,6 +228,10 @@ timeTest("Weather lighting state is initialized", function()
 		"Weather target haze is missing")
 	assert(tonumber(Lighting:GetAttribute("WeatherTargetFogDensity")) ~= nil,
 		"Weather target fog density is missing")
+	assert(Lighting:GetAttribute("WeatherTestMode") == true,
+		"Studio weather test mode is not enabled")
+	assert(tonumber(Lighting:GetAttribute("WeatherNextChangeAt")) ~= nil,
+		"Weather next-change timestamp is missing")
 end)
 
 local sky = Lighting:FindFirstChildWhichIsA("Sky")
