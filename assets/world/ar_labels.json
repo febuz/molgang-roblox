@@ -1,0 +1,109 @@
+{
+  "model": "yolov9c",
+  "labels": {
+    "tree": {
+      "yolo": "airplane",
+      "conf": 0.213
+    },
+    "car": {
+      "yolo": "car",
+      "conf": 0.931
+    },
+    "pedestrian": {
+      "yolo": "person",
+      "conf": 0.957
+    },
+    "fire_hydrant": {
+      "yolo": "fire hydrant",
+      "conf": 0.984
+    },
+    "shipping_container": {
+      "yolo": "train",
+      "conf": 0.275
+    },
+    "factory_facade": {
+      "yolo": "car",
+      "conf": 0.614
+    },
+    "billboard_sign": {
+      "yolo": null,
+      "conf": 0.0
+    },
+    "dumpster": {
+      "yolo": "refrigerator",
+      "conf": 0.667
+    },
+    "bus_stop": {
+      "yolo": "oven",
+      "conf": 0.219
+    },
+    "power_pylon": {
+      "yolo": "airplane",
+      "conf": 0.245
+    },
+    "shrub": {
+      "yolo": "banana",
+      "conf": 0.957
+    },
+    "traffic_cone": {
+      "yolo": null,
+      "conf": 0.0
+    },
+    "delivery_truck": {
+      "yolo": "truck",
+      "conf": 0.897
+    },
+    "van": {
+      "yolo": "truck",
+      "conf": 0.565
+    },
+    "city_bus": {
+      "yolo": "bus",
+      "conf": 0.934
+    },
+    "motorcycle": {
+      "yolo": "motorcycle",
+      "conf": 0.944
+    },
+    "worker": {
+      "yolo": "person",
+      "conf": 0.936
+    },
+    "woman_pedestrian": {
+      "yolo": "person",
+      "conf": 0.681
+    },
+    "mailbox": {
+      "yolo": "toaster",
+      "conf": 0.942
+    },
+    "phone_booth": {
+      "yolo": "clock",
+      "conf": 0.433
+    },
+    "food_cart": {
+      "yolo": "truck",
+      "conf": 0.204
+    },
+    "planter_box": {
+      "yolo": "carrot",
+      "conf": 0.233
+    },
+    "palm_tree": {
+      "yolo": "bird",
+      "conf": 0.368
+    },
+    "road_barrier": {
+      "yolo": null,
+      "conf": 0.0
+    },
+    "crane": {
+      "yolo": null,
+      "conf": 0.0
+    },
+    "water_tower": {
+      "yolo": "train",
+      "conf": 0.267
+    }
+  }
+}
