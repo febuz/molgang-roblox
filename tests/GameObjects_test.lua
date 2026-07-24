@@ -14,6 +14,7 @@ local ObjectRegistry = require("../game/src/ReplicatedStorage/Modules/GameObject
 local RarityTrait = require("../game/src/ReplicatedStorage/Modules/GameObjects/RarityTrait")
 local Achievements = require("../game/src/ReplicatedStorage/Modules/GameObjects/Achievements")
 local MiningMilestones = require("../game/src/ReplicatedStorage/Modules/GameObjects/MiningMilestones")
+local RegionalEconomy = require("../game/src/ReplicatedStorage/Modules/GameObjects/RegionalEconomy")
 
 local passCount = 0
 local failCount = 0
@@ -231,6 +232,78 @@ assert_true(MiningMilestones.GetMilestone("doesNotExist") == nil, "GetMilestone 
 assert_error(function()
 	MiningMilestones.CheckNewlyUnlocked(10, 5)
 end, "newCount < previousCount raises instead of silently misbehaving")
+
+-- ═══════════════════════════════════════════════
+-- RegionalEconomy: region data, composition merge, pricing, comparison
+-- ═══════════════════════════════════════════════
+
+-- All 6 regions present and iterable in deterministic order.
+do
+	local ids = RegionalEconomy.AllRegionIds()
+	assert_eq(#ids, 6, "there are 6 regions")
+	assert_eq(ids[1], "west_europe", "region order is deterministic (west_europe first)")
+end
+
+-- Merge composition: a region inherits DEFAULTS for anything it doesn't
+-- override. Every region must have all 4 demand categories filled in even
+-- though several override only some of them.
+do
+	for _, id in ipairs(RegionalEconomy.AllRegionIds()) do
+		local region = RegionalEconomy.GetRegion(id)
+		for _, category in ipairs(RegionalEconomy.CATEGORIES) do
+			assert_true(type(region.demand[category]) == "number", id .. " has demand for " .. category)
+		end
+		assert_true(type(region.currency.eurRate) == "number", id .. " has a currency eurRate")
+		assert_true(region.name ~= nil, id .. " has a name")
+	end
+end
+
+-- BuyPrice scales by cost of living; West Europe (1.2) costs more than
+-- South Asia (0.7) for the same base input.
+assert_eq(RegionalEconomy.BuyPrice(100, "west_europe"), 120, "west_europe buy price = base * 1.2")
+assert_eq(RegionalEconomy.BuyPrice(100, "south_asia"), 70, "south_asia buy price = base * 0.7")
+
+-- SellPrice scales by that region's demand for the category. East Asia
+-- (steel 1.5) pays the most for steel; Latin America (mining 1.4) for mining.
+assert_eq(RegionalEconomy.SellPrice(100, "east_asia", "steel"), 150, "east_asia pays 1.5x for steel")
+assert_eq(RegionalEconomy.SellPrice(100, "west_europe", "cafe"), 140, "west_europe pays 1.4x for cafe")
+
+-- BestRegionToSell picks the highest MolCoin payout (common unit, already
+-- standardized — not a currency-inflated figure).
+do
+	local id, price = RegionalEconomy.BestRegionToSell(100, "steel")
+	assert_eq(id, "east_asia", "best region to sell steel is east_asia")
+	assert_eq(price, 150, "best steel sell price is 150")
+
+	local mid = RegionalEconomy.BestRegionToSell(100, "mining")
+	assert_eq(mid, "africa", "best region to sell mining is africa (1.5x)")
+
+	local cid = RegionalEconomy.BestRegionToSell(100, "cafe")
+	assert_eq(cid, "west_europe", "best region to sell cafe is west_europe (1.4x)")
+end
+
+-- CheapestRegionToBuy picks the lowest cost of living.
+do
+	local id, price = RegionalEconomy.CheapestRegionToBuy(100)
+	assert_eq(id, "south_asia", "cheapest region to buy is south_asia (0.7x)")
+	assert_eq(price, 70, "cheapest buy price is 70")
+end
+
+-- LocalCurrencyString renders the MolCoin amount in the region's currency
+-- (display only). 36 MolCoins in East Asia (¥, eurRate 7.8) -> ¥281 CNY.
+assert_eq(RegionalEconomy.LocalCurrencyString(36, "east_asia"), "¥281 CNY", "east_asia local currency string")
+assert_eq(RegionalEconomy.LocalCurrencyString(36, "west_europe"), "€36 EUR", "west_europe is 1:1 with EUR")
+
+-- Error handling.
+assert_error(function()
+	RegionalEconomy.GetRegion("atlantis")
+end, "unknown region raises")
+assert_error(function()
+	RegionalEconomy.SellPrice(100, "africa", "spaceships")
+end, "unknown category raises")
+assert_error(function()
+	RegionalEconomy.BuyPrice(-5, "africa")
+end, "negative base price raises")
 
 -- ═══════════════════════════════════════════════
 -- REPORT
