@@ -31,6 +31,19 @@ local worldPlots = MiningSystem.GeneratePlots()
 local MINING_TICK_INTERVAL = 30  -- seconds between mining production ticks
 local EXPLORATION_COST = 1000    -- base cost for exploration license (composition unknown)
 
+local function isValidPlotId(plotId)
+	return type(plotId) == "number"
+		and plotId == plotId
+		and plotId > -math.huge
+		and plotId < math.huge
+		and plotId == math.floor(plotId)
+		and plotId >= 1
+	end
+
+local function isFiniteNumber(value)
+	return type(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
 -- Player mining state
 local playerMining = {}  -- {userId = {ownedPlots = {}, miningEquipment = {}}}
 
@@ -52,7 +65,7 @@ end
 
 Remotes.RequestBuyExplorationLicense.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if type(plotId) ~= "number" then return end
+	if not isValidPlotId(plotId) then return end
 
 	local plot = worldPlots[plotId]
 	if not plot then return end
@@ -102,7 +115,7 @@ end)
 
 Remotes.RequestExplorePlot.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if type(plotId) ~= "number" then return end
+	if not isValidPlotId(plotId) then return end
 
 	local plot = worldPlots[plotId]
 	if not plot then return end
@@ -228,7 +241,7 @@ end)
 
 Remotes.RequestDeployEquipment.OnServerEvent:Connect(function(player, plotId, equipId)
 	local userId = player.UserId
-	if type(plotId) ~= "number" or type(equipId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(equipId) ~= "string" then return end
 
 	local plot = worldPlots[plotId]
 	if not plot or plot.owner ~= userId then return end
@@ -261,7 +274,7 @@ end)
 
 Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if type(plotId) ~= "number" then return end
+	if not isValidPlotId(plotId) then return end
 
 	local plot = worldPlots[plotId]
 	if not plot or plot.owner ~= userId then return end
@@ -336,7 +349,7 @@ end)
 
 Remotes.RequestListPlotForSale.OnServerEvent:Connect(function(player, plotId, askPrice)
 	local userId = player.UserId
-	if type(plotId) ~= "number" or type(askPrice) ~= "number" then return end
+	if not isValidPlotId(plotId) or not isFiniteNumber(askPrice) then return end
 
 	local plot = worldPlots[plotId]
 	if not plot or plot.owner ~= userId then return end
@@ -359,7 +372,7 @@ end)
 
 Remotes.RequestBuyPlotFromMarket.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if type(plotId) ~= "number" then return end
+	if not isValidPlotId(plotId) then return end
 
 	local plot = worldPlots[plotId]
 	if not plot or not plot.forSale then return end
