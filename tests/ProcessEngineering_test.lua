@@ -70,6 +70,9 @@ assert(chunk.outputKg < crushed.outputKg and crushed.outputKg < ground.outputKg,
 	"smaller particles must improve leach product yield")
 assert(chunk.lossKg >= -0.001 and ground.lossKg >= -0.001,
 	"particle-size leaching must conserve mass")
+local cold = ProcessEngineering.CalculateSlagMassBalance("ground", "H2SO4", 25, SteelSlag)
+assert(cold.outputKg < ground.outputKg,
+	"higher operating temperature must improve extraction yield")
 
 assert(ProcessEngineering.CalculateProcessWaterCost(50, 1, false) == 50,
 	"normal leaching must charge base process-water cost")
@@ -80,4 +83,4 @@ assert(ProcessEngineering.CalculateProcessWaterCost(50, 1.8, true) == 45,
 assert(ProcessEngineering.CalculateProcessWaterCost(-1, 1, false) == 0,
 	"invalid water cost must not charge coins")
 
-print("Process Engineering Tests: 27 passed, 0 failed")
+print("Process Engineering Tests: 28 passed, 0 failed")
