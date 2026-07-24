@@ -37,6 +37,10 @@ Nexus Hub / Mining Site / Industrial & Game). Each group renders as a
 contiguous block under a floating colour-keyed label, and the HUD legend has a
 per-set checkbox to show/hide that group.
 
+**🏷 Show model names** (HUD toggle, off by default) floats each model's name
+above it — the way to tell 80 look-alike low-poly shapes apart. Deep-link with
+`?names=1` to start with names on. Name labels respect the per-set filter.
+
 ## Adding models
 
 Drop new `.glb` files in `assets/models/`, then regenerate the manifest:

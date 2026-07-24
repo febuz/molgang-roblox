@@ -45,9 +45,9 @@ function detectGpu() {
   }
 }
 
-// Inject a per-set filter legend into the HUD. Each row toggles the
-// visibility of that set's models + label.
-function buildLegend(groupOf, setColor) {
+// Inject a per-set filter legend into the HUD. Each checkbox adds/removes
+// the set from hiddenSets and calls refresh (which honours the names toggle).
+function buildLegend(groupOf, setColor, hiddenSets, refresh) {
   const hud = document.querySelector('#hud');
   if (!hud || document.querySelector('#legend')) return;
   const wrap = document.createElement('div');
@@ -60,7 +60,8 @@ function buildLegend(groupOf, setColor) {
     const cb = document.createElement('input');
     cb.type = 'checkbox'; cb.checked = true;
     cb.addEventListener('change', () => {
-      for (const obj of groupOf[set]) obj.visible = cb.checked;
+      if (cb.checked) hiddenSets.delete(set); else hiddenSets.add(set);
+      refresh();
     });
     const dot = document.createElement('span');
     dot.style.cssText = `width:10px;height:10px;border-radius:2px;background:${setColor[set] || '#9aa7ba'};`;
@@ -70,6 +71,23 @@ function buildLegend(groupOf, setColor) {
     wrap.appendChild(row);
   }
   hud.appendChild(wrap);
+}
+
+// Inject the "show model names" toggle into the HUD.
+function buildNamesToggle(onChange, initial) {
+  const hud = document.querySelector('#hud');
+  if (!hud || document.querySelector('#namesToggle')) return;
+  const row = document.createElement('label');
+  row.id = 'namesToggle';
+  row.style.cssText = 'display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;'
+    + 'margin-top:8px;border-top:1px solid #26344a;padding-top:8px;';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = !!initial;
+  cb.addEventListener('change', () => onChange(cb.checked));
+  const txt = document.createElement('span');
+  txt.textContent = '🏷 Show model names';
+  row.append(cb, txt);
+  hud.appendChild(row);
 }
 
 /**
@@ -150,6 +168,27 @@ export async function initGallery({ renderer, rendererLabel, budget }) {
     return sprite;
   }
 
+  // Per-model name labels — core for an asset browser (80 look-alike
+  // low-poly shapes are hard to tell apart). Off by default to keep the
+  // overview clean; toggle in the HUD or deep-link with ?names=1.
+  const nameLabels = [];
+  const showNames = new URLSearchParams(location.search).get('names') === '1';
+  function makeNameLabel(text) {
+    const c = document.createElement('canvas');
+    c.width = 384; c.height = 56;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(14,18,26,0.8)';
+    g.beginPath(); g.roundRect(2, 2, c.width - 4, c.height - 4, 10); g.fill();
+    g.fillStyle = '#dfe7f3';
+    g.font = '30px system-ui, sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, c.width / 2, c.height / 2 + 1);
+    const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+    s.scale.set(4.2, 0.62, 1);
+    return s;
+  }
+
   let loaded = 0;
   let row = 0;           // running grid row across all sets
   let prevSet = null;
@@ -183,6 +222,16 @@ export async function initGallery({ renderer, rendererLabel, budget }) {
       object.userData.set = entry.set;
       scene.add(object);
       (groupOf[entry.set] = groupOf[entry.set] || []).push(object);
+      // Name label floating just above the model (controlled by the names
+      // toggle + its set's filter, via refreshVisibility below).
+      const nameSprite = makeNameLabel(entry.label || entry.stem);
+      const topY = box.max.y * scale - box.min.y * scale;   // scaled height
+      nameSprite.position.set(object.position.x, Math.max(topY, 0.5) + 0.7,
+                              zRow - center.z * scale);
+      nameSprite.userData.set = entry.set;
+      nameSprite.visible = showNames;
+      scene.add(nameSprite);
+      nameLabels.push(nameSprite);
       loaded++;
       if (status) status.textContent = `${rendererLabel} · ${loaded}/${models.length} models`;
     } catch (err) {
@@ -194,8 +243,21 @@ export async function initGallery({ renderer, rendererLabel, budget }) {
   if (status) status.textContent = `${rendererLabel} · ${loaded}/${models.length} models loaded`;
   window.__molgangViewer = { renderer: rendererLabel, loaded, total: models.length, sets: Object.keys(groupOf) };
 
-  // Filter legend in the HUD: one toggle per set (colour-keyed).
-  buildLegend(groupOf, setColor);
+  // Shared visibility state: a set is hidden by its legend checkbox; name
+  // labels additionally depend on the global names toggle.
+  const hiddenSets = new Set();
+  let namesOn = showNames;
+  function refreshVisibility() {
+    for (const set of Object.keys(groupOf)) {
+      const vis = !hiddenSets.has(set);
+      for (const obj of groupOf[set]) obj.visible = vis;
+    }
+    for (const s of nameLabels) s.visible = namesOn && !hiddenSets.has(s.userData.set);
+  }
+
+  buildLegend(groupOf, setColor, hiddenSets, refreshVisibility);
+  buildNamesToggle((on) => { namesOn = on; refreshVisibility(); }, showNames);
+  window.__molgangViewer.namesOn = () => namesOn;
 
   function resize() {
     const w = canvas.clientWidth || window.innerWidth;
