@@ -20,6 +20,7 @@ local Players = game:GetService("Players")
 local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
 local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
 local ResearchAccess = require(ReplicatedStorage.Modules.ResearchAccess)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
@@ -28,10 +29,10 @@ local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 -- CONFIGURATION
 -- ══════════════════════════════════════════════
 
--- Time scale: 1 game minute = TIME_SCALE real seconds
--- At 1:10 ratio, 1 game day (1440 min) = 2.4 real hours
--- For teaser: accelerated so players see results in minutes
-local TIME_SCALE = 0.5            -- 1 game minute = 0.5 real seconds
+-- Use the shared OTAP clock: 1 game day is 1440 game minutes and
+-- GameClock.DAY_SECONDS real seconds. This keeps leaching aligned with
+-- fertilizer growth, market cycles, loans, and factory production.
+local TIME_SCALE = GameClock.DAY_SECONDS / 1440
 local CRUSH_COOLDOWN = 0.3        -- seconds between hammer hits
 local LEACH_UPDATE_INTERVAL = 5   -- seconds between progress updates to client
 
