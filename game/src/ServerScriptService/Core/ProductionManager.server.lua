@@ -25,6 +25,8 @@ local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 local PRODUCTION_INTERVAL = 60  -- 60 seconds per production cycle
 local BASE_ATOMS = {"H", "O", "C", "N", "Fe", "Cu", "Au", "V", "W", "Al"}
+local FACTORY_CYCLE_SECONDS = Facilities.GetFacility("Factory").productionTime
+local factoryElapsed = {} -- active-session elapsed time per player
 
 -- ═══════════════════════════════════════════════
 -- PRODUCTION LOGIC
@@ -90,7 +92,7 @@ local function produceMolecules(playerData, facilities)
 	return produced
 end
 
-local function runProductionCycle(player, playerData, facilities)
+local function runProductionCycle(player, playerData, facilities, factoryCycles)
 	if not playerData or not facilities then return end
 	playerData.atoms = playerData.atoms or {}
 	playerData.molecules = playerData.molecules or {}
@@ -104,7 +106,13 @@ local function runProductionCycle(player, playerData, facilities)
 	end
 
 	-- Produce molecules from factories
-	local moleculesProduced = produceMolecules(playerData, facilities)
+	local moleculesProduced = {}
+	for _ = 1, factoryCycles do
+		local cycleMolecules = produceMolecules(playerData, facilities)
+		for molName, count in pairs(cycleMolecules) do
+			moleculesProduced[molName] = (moleculesProduced[molName] or 0) + count
+		end
+	end
 	for molName, count in pairs(moleculesProduced) do
 		playerData.moleculesBuilt = playerData.moleculesBuilt or {}
 		playerData.moleculesBuilt[molName] = true
@@ -169,13 +177,27 @@ task.spawn(function()
 					offices = playerData.facilities and playerData.facilities.offices or 0,
 				}
 
-				-- Only run production if player has facilities
-				if facilities.mines > 0 or facilities.factories > 0 then
-					runProductionCycle(player, playerData, facilities)
+				local factoryCycles = 0
+				if facilities.factories > 0 then
+					local elapsed = (factoryElapsed[player.UserId] or 0) + PRODUCTION_INTERVAL
+					factoryCycles = math.floor(elapsed / FACTORY_CYCLE_SECONDS)
+					factoryElapsed[player.UserId] = elapsed - factoryCycles * FACTORY_CYCLE_SECONDS
+				else
+					factoryElapsed[player.UserId] = 0
+				end
+
+				-- Mines run every minute; factories only when their configured
+				-- 120-second cycle becomes due.
+				if facilities.mines > 0 or factoryCycles > 0 then
+					runProductionCycle(player, playerData, facilities, factoryCycles)
 				end
 			end
 		end
 	end
 end)
 
-print("[ProductionManager] initialized — 60 second production cycles active")
+Players.PlayerRemoving:Connect(function(player)
+	factoryElapsed[player.UserId] = nil
+end)
+
+print("[ProductionManager] initialized — mine 60s / factory " .. FACTORY_CYCLE_SECONDS .. "s cycles active")
