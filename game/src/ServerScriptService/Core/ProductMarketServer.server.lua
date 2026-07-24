@@ -92,6 +92,7 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 
 	local product = ProductMarket.GetProduct(productId)
 	if not product then return end
+	local eventEffects = WorldEvents.GetActiveEffects()
 
 	-- Check player has required atoms (via PlayerDataBridge)
 	-- For each unit sold, consume the required atoms
@@ -107,6 +108,13 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 			})
 			return
 		end
+	end
+	if not ProductMarket.GetCertificationStatus(product, eventEffects, playerData.research) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Sale rejected: EU certification is required during this market event.",
+			rarity = "common",
+		})
+		return
 	end
 	playerData.atoms = playerData.atoms or {}
 	playerData.slagInventory = playerData.slagInventory or {}
@@ -148,8 +156,10 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 
 	-- Calculate revenue
 	local unitPrice = ProductMarket.GetCurrentPrice(productId, currentGameDay)
+	unitPrice = math.floor(ProductMarket.ApplyCertificationPrice(
+		product, unitPrice, eventEffects, playerData.research
+	) + 0.5)
 	local totalRevenue = unitPrice * quantity
-	local eventEffects = WorldEvents.GetActiveEffects()
 	local tradeTax, netRevenue = TradeRules.CalculateTradeTax(totalRevenue, eventEffects.tradeTaxMult)
 
 	-- Add MolCoins

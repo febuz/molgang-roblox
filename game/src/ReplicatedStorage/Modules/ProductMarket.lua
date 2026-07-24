@@ -147,6 +147,30 @@ function ProductMarket.GetCurrentPrice(productId, gameDay)
 	return 0
 end
 
+-- EU certification events affect only agricultural products. Keep the rule
+-- pure so the server can validate before consuming inventory and tests can
+-- prove that premium/penalty paths are symmetric.
+function ProductMarket.GetCertificationStatus(product, effects, research)
+	if not product or product.category ~= "Agricultural Product"
+		or not effects or not effects.requiresCertification then
+		return true
+	end
+	local unlocked = research and research.unlocked or {}
+	return unlocked.slag_biostimulant == true or unlocked.icp_oes == true
+end
+
+function ProductMarket.ApplyCertificationPrice(product, price, effects, research)
+	local basePrice = math.max(0, tonumber(price) or 0)
+	if not product or product.category ~= "Agricultural Product"
+		or not effects or not effects.requiresCertification then
+		return basePrice
+	end
+	local multiplier = ProductMarket.GetCertificationStatus(product, effects, research)
+		and (tonumber(effects.certifiedPricePremium) or 1)
+		or (tonumber(effects.uncertifiedPricePenalty) or 1)
+	return math.max(0, basePrice * math.max(0, multiplier))
+end
+
 -- Get all current prices
 function ProductMarket.GetAllPrices(gameDay)
 	local prices = {}
