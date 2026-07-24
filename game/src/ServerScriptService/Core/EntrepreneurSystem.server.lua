@@ -251,12 +251,19 @@ end
 
 local function sendFactoryUpdate(player, userId)
 	local factory = getFactory(userId)
+	local waterTreatmentUnits = 0
+	for _, placement in ipairs(factory.placements) do
+		if placement.itemId == "water_treatment" then
+			waterTreatmentUnits = waterTreatmentUnits + 1
+		end
+	end
 
 	-- Calculate stats
 	local powerDraw, powerAvail, powerBalance = FactoryEquipment.CalculatePower(factory.placements)
 	local carbonScore = CarbonScore.CalculateScore({
 		factory_rent = 1,
 		equipment_power = powerDraw,
+		water_reuse = waterTreatmentUnits,
 	})
 	local carbonRating = select(1, CarbonScore.GetRating(carbonScore))
 	local eventEffects = WorldEvents.GetActiveEffects()
@@ -590,9 +597,16 @@ task.spawn(function()
 				local totalCost = operatingCost + carbonTax
 				local success = PlayerDataBridge.SpendMolCoins(userId, totalCost)
 				if success then
+					local waterTreatmentUnits = 0
+					for _, placement in ipairs(factory.placements) do
+						if placement.itemId == "water_treatment" then
+							waterTreatmentUnits = waterTreatmentUnits + 1
+						end
+					end
 					local carbonScore = CarbonScore.CalculateScore({
 						factory_rent = 1,
 						equipment_power = powerDraw,
+						water_reuse = waterTreatmentUnits,
 					})
 					local carbonCredits = CarbonScore.CalculateCreditReward(
 						carbonScore, eventEffects.carbonCreditMult, #factory.placements > 0
@@ -607,6 +621,7 @@ task.spawn(function()
 						message = "Monthly factory costs paid: " .. totalCost .. " MC (rent + maintenance + carbon tax). Carbon credits earned: " .. carbonCredits,
 						rarity = "common",
 					})
+					sendFactoryUpdate(player, userId)
 				else
 					-- Can't pay rent — warning
 					Remotes.FireClient("ServerAnnounce", player, {
