@@ -14,11 +14,12 @@ local modalNames = {
 	ProductMarketGui = true, MarketBiddingGui = true, MiningGui = true, ProcessControlGui = true,
 	BubbleTeaGui = true, SuperheroGui = true, QuantumRacingGui = true,
 	FeedbackGui = true, MahjongGui = true, GuildGui = true,
+	WalletGui = true, NPCDialogueGui = true,
 	MiniGameGui = true, ShortcutOverlay = true, QuestModal = true,
 	QuizGui = true, TutorialGui = true,
 	-- Dynamic confirmation and warning layers must also be exclusive. These
 	-- used to remain above a newly opened menu and could swallow button input.
-	ConfirmRemove = true, CostWarning = true,
+	ConfirmRemove = true,
 }
 
 local busy = false
