@@ -86,6 +86,7 @@ end
 -- Calculate total facility cost
 function Facilities.CalculateTotalCost(facilities)
 	local cost = 0
+	cost = cost + (facilities.starterBenches or 0) * FACILITY_TYPES["Starter Bench"].cost
 	cost = cost + (facilities.mines or 0) * FACILITY_TYPES.Mine.cost
 	cost = cost + (facilities.factories or 0) * FACILITY_TYPES.Factory.cost
 	cost = cost + (facilities.researchLabs or 0) * FACILITY_TYPES["Research Lab"].cost

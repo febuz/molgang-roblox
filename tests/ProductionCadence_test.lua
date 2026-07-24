@@ -8,6 +8,8 @@ assert(Facilities.CalculateProduction({mines = 1, factories = 1}).atoms == 10,
 	"mine capacity must remain 10 atoms per cycle")
 assert(Facilities.CalculateProduction({starterBenches = 1}).atoms == 3,
 	"starter bench must produce its advertised 3 atoms per cycle")
+assert(Facilities.CalculateTotalCost({starterBenches = 1}) == 200,
+	"starter bench must be included in facility cost accounting")
 assert(Facilities.CalculateProduction({mines = 1, factories = 1}).molecules == 5,
 	"factory capacity must remain 5 molecules per factory cycle")
 
@@ -17,4 +19,4 @@ assert(facilities.researchLabs == 1 and facilities.researchlabs == nil,
 	"research lab must use the canonical persisted key")
 assert(Facilities.CanBuild(facilities, "Research Lab"), "research lab max-level check must read canonical key")
 
-print("Production Cadence Tests: 9 passed, 0 failed")
+print("Production Cadence Tests: 10 passed, 0 failed")
