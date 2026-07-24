@@ -362,6 +362,22 @@ timeTest("Safe leaching envelope accepts normal conditions", function()
 	assert(safe, "Normal leach conditions were rejected")
 end)
 
+timeTest("Slag pipeline preserves mass and yields product", function()
+	local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
+	local balance = ProcessEng.CalculateSlagMassBalance("crushed", "H2SO4", 50)
+	assert(#balance.steps == 5, "Expected five serial process steps, got " .. #balance.steps)
+	assert(math.abs(balance.inputKg - 1) < 0.001, "Unexpected feed mass: " .. tostring(balance.inputKg))
+	assert(balance.outputKg > 0, "Pipeline produced no final product mass")
+	assert(balance.wasteKg >= 0, "Pipeline produced negative waste")
+	assert(balance.lossKg >= -0.001, "Mass balance gained material: " .. tostring(balance.lossKg))
+	local accounted = balance.outputKg + balance.wasteKg + math.max(0, balance.lossKg)
+	assert(math.abs(accounted - balance.inputKg) < 0.01,
+		"Mass is not accounted for: input=" .. balance.inputKg .. " accounted=" .. accounted)
+	print("  Slag balance: output=" .. string.format("%.3fkg", balance.outputKg)
+		.. " waste=" .. string.format("%.3fkg", balance.wasteKg)
+		.. " recovery=" .. string.format("%.1f%%", balance.recovery))
+end)
+
 -- ═══════════════════════════════════════════════
 -- TEST 7: ECONOMY BALANCE
 -- ═══════════════════════════════════════════════
