@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 -- BubbleTeaBar.server.lua exposes active drink buffs via _G.GetPlayerBuff
 -- (e.g. Mango Smoothie's "quizHint" buff, +30% by default). Guarded because
@@ -252,6 +253,8 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 	local userId = player.UserId
 	local session = activeSessions[userId]
 	if not session then return end
+	if type(questionId) ~= "number" or questionId ~= math.floor(questionId) then return end
+	if questionId ~= session.currentIndex or type(answer) ~= "string" then return end
 
 	local current = session.questions[session.currentIndex]
 	if not current then return end
@@ -266,6 +269,7 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 			session.score = session.score + 1
 			-- Award MolCoins, boosted by an active quizHint drink buff
 			local reward = math.floor(10 * getQuizRewardMultiplier(userId))
+			PlayerDataBridge.AddEarnedMolCoins(userId, reward)
 			player:SetAttribute("LastCollectReward", reward)
 			player:SetAttribute("CollectTimestamp", tick())
 
@@ -291,6 +295,7 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 		if totalScore == 3 then
 			-- Perfect score bonus, also boosted by an active quizHint buff
 			local bonus = math.floor(25 * getQuizRewardMultiplier(userId))
+			PlayerDataBridge.AddEarnedMolCoins(userId, bonus)
 			player:SetAttribute("LastCollectReward", bonus)
 			player:SetAttribute("CollectTimestamp", tick())
 
