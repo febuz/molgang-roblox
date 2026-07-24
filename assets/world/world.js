@@ -136,6 +136,16 @@ addEventListener('keydown', (e) => { keys[e.code] = true; });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 const canvas = renderer.domElement;
 canvas.addEventListener('click', () => canvas.requestPointerLock && canvas.requestPointerLock());
+// Intro overlay: "the Roblox teaser continues on the web" — dismiss to enter.
+const introBtn = document.getElementById('intro-btn');
+if (introBtn) introBtn.addEventListener('click', () => {
+  const el = document.getElementById('intro'); if (el) el.style.display = 'none';
+  if (canvas.requestPointerLock) canvas.requestPointerLock();
+});
+// Deep-links (a cam preset) or ?nointro skip the entry screen.
+if (params.get('cam') || params.get('nointro')) {
+  const el = document.getElementById('intro'); if (el) el.style.display = 'none';
+}
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas) {
     player.yaw -= e.movementX * 0.0022;
