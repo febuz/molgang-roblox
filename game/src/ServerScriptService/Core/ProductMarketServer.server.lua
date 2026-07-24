@@ -96,6 +96,17 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	-- For each unit sold, consume the required atoms
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 	if not playerData then return end
+	if product.requiresResearch then
+		local research = playerData.research or {}
+		local unlocked = research.unlocked or {}
+		if not unlocked[product.requiresResearch] then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Sale rejected: research required (" .. product.requiresResearch .. ").",
+				rarity = "common",
+			})
+			return
+		end
+	end
 	playerData.atoms = playerData.atoms or {}
 	playerData.slagInventory = playerData.slagInventory or {}
 
