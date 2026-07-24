@@ -421,12 +421,25 @@ test("Remotes folder exists", remoteFolder ~= nil)
 
 if remoteFolder then
 	local remoteCount = 0
+	local remoteNames = {}
+	local duplicateRemoteCount = 0
 	for _, child in remoteFolder:GetChildren() do
 		if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
 			remoteCount = remoteCount + 1
+			if remoteNames[child.Name] then
+				duplicateRemoteCount = duplicateRemoteCount + 1
+			end
+			remoteNames[child.Name] = child.ClassName
 		end
 	end
 	test("Remote count >= 80", remoteCount >= 80, "Found: " .. remoteCount)
+	test("Remote names are unique", duplicateRemoteCount == 0,
+		"Found duplicate remote instances: " .. duplicateRemoteCount)
+	for name, className in pairs(remoteNames) do
+		local remote = remoteFolder:FindFirstChild(name)
+		test("Remote type is stable: " .. name, remote and remote.ClassName == className,
+			"expected " .. className .. ", found " .. tostring(remote and remote.ClassName))
+	end
 	print("  Remotes registered: " .. remoteCount)
 	local requiredInteractiveRemotes = {
 		"RequestAtomTransfer", "RequestBuildMolecule", "RequestMarketTrade",
