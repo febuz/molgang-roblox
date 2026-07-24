@@ -18,7 +18,7 @@ local requiredGuis = {
 -- GUI LocalScripts start independently and Studio/Wine can spend 15–30s
 -- compiling/loading them. Wait for the real client surface before judging it;
 -- a fixed five-second sleep created false 0/21 failures.
-local guiDeadline = os.clock() + 60
+local guiDeadline = os.clock() + 180
 repeat
 	task.wait(1)
 	local ready = true
@@ -29,6 +29,11 @@ repeat
 		end
 	end
 until ready or os.clock() >= guiDeadline
+
+-- Some GUI scripts create their controls immediately after parenting the
+-- ScreenGui. Give that final construction pass a frame before inspecting
+-- descendants; otherwise slow Studio clients report a false empty surface.
+task.wait(2)
 
 local passCount = 0
 local failCount = 0

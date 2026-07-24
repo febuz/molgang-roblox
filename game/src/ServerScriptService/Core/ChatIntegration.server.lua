@@ -33,7 +33,7 @@ local function broadcastChat(message)
 end
 
 -- Listen for major game events and broadcast
-Remotes.ServerAnnounce.Event:Connect(function(player, data)
+local function onServerAnnounce(player, data)
 	if data and data.rarity then
 		-- Only broadcast epic/legendary events to chat
 		if data.rarity == "epic" or data.rarity == "legendary" then
@@ -41,7 +41,15 @@ Remotes.ServerAnnounce.Event:Connect(function(player, data)
 			broadcastChat(chatMsg)
 		end
 	end
-end)
+end
+
+-- RemoteSetup creates ServerAnnounce as a RemoteEvent. Keep the handler
+-- compatible with the server-side signal used by older local test fixtures.
+if Remotes.ServerAnnounce:IsA("RemoteEvent") then
+	Remotes.ServerAnnounce.OnServerEvent:Connect(onServerAnnounce)
+elseif Remotes.ServerAnnounce:IsA("BindableEvent") then
+	Remotes.ServerAnnounce.Event:Connect(onServerAnnounce)
+end
 
 -- Player joins
 Players.PlayerAdded:Connect(function(player)
