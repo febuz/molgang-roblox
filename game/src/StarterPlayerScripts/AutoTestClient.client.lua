@@ -69,12 +69,18 @@ for _, guiName in ipairs(requiredGuis) do
 		"expected one ScreenGui, found " .. tostring(guiCount))
 	if gui then
 		local buttonCount = 0
+		local invalidHitAreas = 0
 		for _, child in ipairs(gui:GetDescendants()) do
 			if child:IsA("TextButton") or child:IsA("ImageButton") then
 				buttonCount = buttonCount + 1
+				if child.Visible and (child.AbsoluteSize.X < 2 or child.AbsoluteSize.Y < 2) then
+					invalidHitAreas = invalidHitAreas + 1
+				end
 			end
 		end
 		check("GUI has controls: " .. guiName, buttonCount > 0, "no TextButton/ImageButton descendants")
+		check("GUI visible controls have hit area: " .. guiName, invalidHitAreas == 0,
+			"visible button has zero-sized hit area; likely clipped or outside its layout")
 	end
 end
 
