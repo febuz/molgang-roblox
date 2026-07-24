@@ -85,6 +85,10 @@ local function loadPlayerData(player)
 	playerData[userId].lastLoginDate = today
 
 	playerDailyEarned[userId] = 0
+	-- Start the active-session clock at load time. Without this, the first
+	-- 30-second tick compared against epoch zero and advanced a fresh player
+	-- immediately instead of after one complete OTAP day.
+	lastDayAdvance[userId] = os.time()
 	-- Publish the same server-owned table to the bridge so other server
 	-- systems (market, factory, slag and minigames) see live player state.
 	PlayerDataBridge.SetEconomyData(userId, playerData[userId])
@@ -687,6 +691,7 @@ Players.PlayerRemoving:Connect(function(player)
 	PlayerDataBridge.Cleanup(player.UserId)
 	playerData[player.UserId] = nil
 	playerDailyEarned[player.UserId] = nil
+	lastDayAdvance[player.UserId] = nil
 end)
 
 -- Auto-save loop

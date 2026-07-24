@@ -2,7 +2,7 @@
 -- ANK Cooperative Lending System for MOLGANG
 -- Players lend MolCoins to other players via the ANK cooperative model
 -- NOW WITH ACTUAL CURRENCY MOVEMENT via PlayerDataBridge
--- Interest: 5% per game-day (1 hour real-time = 1 game-day)
+-- Interest: 5% per game-day (10 real minutes = 1 game-day in OTAP)
 -- Collateral: borrower must stake 120% MolCoin value
 -- ANK fee: 1% of loan goes to non-profit treasury
 
