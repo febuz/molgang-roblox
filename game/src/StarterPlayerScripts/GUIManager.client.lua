@@ -69,6 +69,15 @@ end)
 -- GUI TOGGLE HELPER
 -- ══════════════════════════════════════════════
 
+local function findScreenGui(guiName)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == guiName and child:IsA("ScreenGui") then
+			return child
+		end
+	end
+	return nil
+end
+
 -- Cost hints for expensive GUIs (#7)
 local GUI_COST_HINTS = {
 	FactoryBuilderGui = {cost = 2000, hint = "Factory rental costs 2000 MC/month"},
@@ -77,7 +86,7 @@ local GUI_COST_HINTS = {
 }
 
 local function toggleGui(guiName)
-	local gui = playerGui:FindFirstChild(guiName)
+	local gui = findScreenGui(guiName)
 	if gui then
 		gui.Enabled = not gui.Enabled
 		guiStates[guiName] = gui.Enabled
@@ -110,7 +119,7 @@ end
 
 local function closeAllOverlays()
 	for guiName, _ in pairs(guiStates) do
-		local gui = playerGui:FindFirstChild(guiName)
+		local gui = findScreenGui(guiName)
 		if gui and gui.Enabled then
 			gui.Enabled = false
 			guiStates[guiName] = false
