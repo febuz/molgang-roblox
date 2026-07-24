@@ -22,5 +22,9 @@ assert(high > limiting, "Liebig yield must be limited by the scarcest nutrient")
 local optimalPH = FertilizerTrack.CalculateYield({N = 120, P = 40, K = 40}, "wheat", 6.8)
 local stressedPH = FertilizerTrack.CalculateYield({N = 120, P = 40, K = 40}, "wheat", 3.0)
 assert(optimalPH > stressedPH, "crop yield must reflect pH stress outside the ideal range")
+assert(FertilizerTrack.GetFertilizer("ammonium_sulfate").phEffect < 0,
+	"ammonium sulfate must model acidifying soil chemistry")
+assert(FertilizerTrack.GetFertilizer("slag_fertilizer").phEffect > 0,
+	"slag bio-enhancer must model liming effect")
 
-print("Fertilizer Tests: 5 passed, 0 failed")
+print("Fertilizer Tests: 7 passed, 0 failed")

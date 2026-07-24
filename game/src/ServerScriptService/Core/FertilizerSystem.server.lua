@@ -285,6 +285,7 @@ Remotes.RequestApplyFertilizer.OnServerEvent:Connect(function(player, plotId, fe
 	plot.nutrients.N = plot.nutrients.N + math.floor(fert.npk[1] * scale)
 	plot.nutrients.P = plot.nutrients.P + math.floor(fert.npk[2] * scale)
 	plot.nutrients.K = plot.nutrients.K + math.floor(fert.npk[3] * scale)
+	plot.pH = math.clamp(plot.pH + (fert.phEffect or 0), 3.0, 9.0)
 	plot.fertilized = true
 	plot.fertilizerUsed = fert.name
 
@@ -299,7 +300,7 @@ Remotes.RequestApplyFertilizer.OnServerEvent:Connect(function(player, plotId, fe
 	end
 
 	Remotes.FireClient("ServerAnnounce", player, {
-		message = "Applied " .. fert.name .. " to Plot " .. plotId .. " | N+" .. math.floor(fert.npk[1]*scale) .. " P+" .. math.floor(fert.npk[2]*scale) .. " K+" .. math.floor(fert.npk[3]*scale),
+		message = "Applied " .. fert.name .. " to Plot " .. plotId .. " | N+" .. math.floor(fert.npk[1]*scale) .. " P+" .. math.floor(fert.npk[2]*scale) .. " K+" .. math.floor(fert.npk[3]*scale) .. " | pH " .. string.format("%+.1f", fert.phEffect or 0),
 		rarity = "uncommon",
 	})
 
