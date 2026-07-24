@@ -88,6 +88,12 @@ if loadingScreen then
 	if playButton then
 		check("LoadingScreen enter control is ready", playButton.Visible and playButton.Active,
 			"PlayBtn is not visible/active after the loading phase")
+		if playButton.Visible and playButton.Active then
+			playButton:Activate()
+			task.wait(0.9)
+			check("LoadingScreen enter control responds", findScreenGui("LoadingScreen") == nil,
+				"PlayBtn activation did not close the intro screen")
+		end
 	end
 	else
 		print("[AutoTestClient][PASS] LoadingScreen enter control: intro gate already active")
