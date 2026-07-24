@@ -19,6 +19,7 @@ local Players = game:GetService("Players")
 
 local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
 local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
+local ResearchAccess = require(ReplicatedStorage.Modules.ResearchAccess)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
@@ -59,6 +60,11 @@ local function getProcessState(userId)
 		playerProcessState[userId] = state
 	end
 	return playerProcessState[userId]
+end
+
+local function getResearchState(userId)
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	return playerData and playerData.research or {}
 end
 
 local function persistProcessState(userId, state)
@@ -225,6 +231,14 @@ Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 	if type(targetSize) ~= "string" then return end
 	local sizeData = SteelSlag.ParticleSizes[targetSize]
 	if not sizeData then return end
+	local sizeAllowed, sizeRequirement = ResearchAccess.CanUseParticleSize(getResearchState(userId), targetSize)
+	if not sizeAllowed then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Research required: " .. tostring(sizeRequirement) .. ".",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Determine source size (what are we crushing FROM)
 	local sourceSize, sourceKey
@@ -330,6 +344,15 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local reagent = SteelSlag.Reagents[reagentId]
 	local sizeData = SteelSlag.ParticleSizes[particleSize]
 	if not reagent or not sizeData then return end
+
+	local reagentAllowed, reagentRequirement = ResearchAccess.CanUseReagent(getResearchState(userId), reagentId)
+	if not reagentAllowed then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Research required: " .. tostring(reagentRequirement) .. ".",
+			rarity = "common",
+		})
+		return
+	end
 
 	local safe, _, safetyMessage = ProcessEng.ValidateOperatingEnvelope(processState)
 	if not safe then
