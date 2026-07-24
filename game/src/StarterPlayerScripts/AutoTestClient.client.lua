@@ -50,7 +50,7 @@ end
 local function findButtonByText(root, text)
 	if not root then return nil end
 	for _, child in ipairs(root:GetDescendants()) do
-		if child:IsA("GuiButton") and child.Text == text then return child end
+		if child:IsA("TextButton") and child.Text == text then return child end
 	end
 	return nil
 end
