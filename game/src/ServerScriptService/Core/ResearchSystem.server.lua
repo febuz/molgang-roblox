@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ResearchTree = require(ReplicatedStorage.Modules.ResearchTree)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
@@ -100,7 +101,9 @@ Remotes.RequestStartResearch.OnServerEvent:Connect(function(player, nodeId)
 		return
 	end
 
-	local duration = math.max(0, math.floor(tonumber(node.researchTime) or 0))
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local researchSpeedMultiplier = math.max(0.01, tonumber(eventEffects.researchSpeedMult) or 1)
+	local duration = ResearchTree.CalculateResearchDuration(node.researchTime, researchSpeedMultiplier)
 	if duration == 0 then
 		research.unlocked[node.id] = true
 		Remotes.FireClient("ResearchCompleted", player, {
@@ -122,6 +125,7 @@ Remotes.RequestStartResearch.OnServerEvent:Connect(function(player, nodeId)
 		startedAt = now,
 		completesAt = now + duration,
 		duration = duration,
+		researchSpeedMultiplier = researchSpeedMultiplier,
 		cost = cost,
 	})
 	Remotes.FireClient("ResearchState", player, statePayload(research))
