@@ -87,23 +87,86 @@ function step(dt) {
   camera.lookAt(player.pos.clone().add(d));
 }
 
+// ---------- P2P/IPFS asset layer ----------
+// If ipfs.json (a { models: CID, impostors: CID } map, same pattern as
+// molgang-web/lab3d) is present, assets load from the IPFS gateway (P2P) with
+// a local HTTP fallback; otherwise straight from the repo. Keeps the client
+// bandwidth-thin and lets the world be served peer-to-peer.
+let ASSET_BASE = { model: '../models/', imp: './impostors/' };
+async function initAssetLayer() {
+  try {
+    const cfg = await (await fetch('./ipfs.json', { cache: 'no-cache' })).json();
+    const gw = cfg.gateway || 'http://127.0.0.1:8080/ipfs/';
+    if (cfg.models) ASSET_BASE.model = `${gw}${cfg.models}/`;
+    if (cfg.impostors) ASSET_BASE.imp = `${gw}${cfg.impostors}/`;
+    console.log('[world] P2P/IPFS asset layer active', ASSET_BASE);
+  } catch (e) { /* no ipfs.json -> local */ }
+}
+
 // ---------- streaming: instantiate only what's near the camera ----------
 const gltfLoader = new GLTFLoader();
 const texLoader = new THREE.TextureLoader();
+
+// Impostors are drawn as INSTANCED billboards: one InstancedMesh per type holds
+// every instance of that type, so ~1000 impostors cost ~26 draw calls instead
+// of ~1000 sprites. A tiny onBeforeCompile makes each instance face the camera
+// (billboard) while keeping per-instance position + scale from world_gen.
+function buildInstancedImpostors(impObjs) {
+  const byType = {};
+  for (const o of impObjs) (byType[o.ref] = byType[o.ref] || []).push(o);
+  const geo = new THREE.PlaneGeometry(1, 1);
+  geo.translate(0, 0.5, 0); // pivot at the base so it stands on the ground
+  const shadowGeo = new THREE.PlaneGeometry(1, 1); shadowGeo.rotateX(-Math.PI / 2);
+  const shadowMesh = new THREE.InstancedMesh(shadowGeo, shadowMaterial(), impObjs.length);
+  let si = 0;
+  const dummy = new THREE.Object3D();
+  for (const [type, arr] of Object.entries(byType)) {
+    const mat = new THREE.MeshBasicMaterial({ map: impostorTex(type), transparent: true, alphaTest: 0.4 });
+    billboardify(mat);
+    const inst = new THREE.InstancedMesh(geo, mat, arr.length);
+    inst.frustumCulled = false;
+    for (let i = 0; i < arr.length; i++) {
+      const o = arr[i];
+      dummy.position.set(o.x, 0, o.z); dummy.scale.set(o.s, o.s, o.s); dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix(); inst.setMatrixAt(i, dummy.matrix);
+      dummy.position.set(o.x, 0.04, o.z); dummy.scale.set(o.s * 0.8, o.s * 0.8, 1); dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix(); shadowMesh.setMatrixAt(si++, dummy.matrix);
+    }
+    inst.instanceMatrix.needsUpdate = true;
+    scene.add(inst);
+  }
+  shadowMesh.count = si; shadowMesh.instanceMatrix.needsUpdate = true;
+  shadowMesh.frustumCulled = false; scene.add(shadowMesh);
+}
+// Make an InstancedMesh material billboard toward the camera (keep instance
+// translation + uniform scale, but orient the quad in view space).
+function billboardify(mat) {
+  mat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace(
+      '#include <begin_vertex>',
+      `vec3 iPos = vec3(instanceMatrix[3]);
+       float iScale = length(vec3(instanceMatrix[0]));
+       vec3 transformed = iPos
+         + (position.x * iScale) * vec3(modelViewMatrix[0][0], modelViewMatrix[1][0], modelViewMatrix[2][0])
+         + (position.y * iScale) * vec3(modelViewMatrix[0][1], modelViewMatrix[1][1], modelViewMatrix[2][1]);`);
+  };
+}
+const _texCache = new Map();
+function impostorTex(type) {
+  if (!_texCache.has(type)) {
+    const t = texLoader.load(`${ASSET_BASE.imp}${type}.png`);
+    t.colorSpace = THREE.SRGBColorSpace; _texCache.set(type, t);
+  }
+  return _texCache.get(type);
+}
 const glbProto = new Map();      // file -> loaded scene (prototype) or 'loading'
-const spriteMat = new Map();     // impostor type -> SpriteMaterial
 let objects = [];                // all placements from world.json
-const live = new Map();          // placement index -> Object3D (currently in scene)
+let assetIdx = [];               // indices of GLB-asset placements (streamed)
+let impPlacements = [];          // impostor placements (instanced; kept for AR)
+let impCount = 0;
+const live = new Map();          // asset placement index -> Object3D (streamed)
 const STREAM_IN = 95, STREAM_OUT = 120, MAX_LIVE = 260;
 
-function impostorMaterial(type) {
-  if (!spriteMat.has(type)) {
-    const t = texLoader.load(`./impostors/${type}.png`);
-    t.colorSpace = THREE.SRGBColorSpace;
-    spriteMat.set(type, new THREE.SpriteMaterial({ map: t, transparent: true, alphaTest: 0.4 }));
-  }
-  return spriteMat.get(type);
-}
 // Soft round ground shadow so impostors read as grounded, not floating cutouts.
 let shadowMat = null;
 function shadowMaterial() {
@@ -118,24 +181,12 @@ function shadowMaterial() {
   }
   return shadowMat;
 }
-function spawnImpostor(o) {
-  const grp = new THREE.Group();
-  const sp = new THREE.Sprite(impostorMaterial(o.ref));
-  sp.center.set(0.5, 0);                 // anchor at the bottom -> stands on ground
-  sp.scale.set(o.s, o.s, 1);
-  grp.add(sp);
-  const sh = new THREE.Mesh(new THREE.PlaneGeometry(o.s * 0.8, o.s * 0.8), shadowMaterial());
-  sh.rotation.x = -Math.PI / 2; sh.position.y = 0.03;
-  grp.add(sh);
-  grp.position.set(o.x, 0, o.z);
-  return grp;
-}
 async function spawnAsset(o) {
   let proto = glbProto.get(o.ref);
   if (proto === 'loading') return null;
   if (!proto) {
     glbProto.set(o.ref, 'loading');
-    proto = (await gltfLoader.loadAsync(`../models/${o.ref}`)).scene;
+    proto = (await gltfLoader.loadAsync(`${ASSET_BASE.model}${o.ref}`)).scene;
     glbProto.set(o.ref, proto);
   }
   const obj = proto.clone(true);
@@ -184,18 +235,18 @@ function drawAR() {
   arCtx.beginPath(); arCtx.arc(w / 2, h / 2, 5, 0, 7); arCtx.stroke();
 
   const items = [];
-  for (const [i, obj] of live) {
-    if (obj === 'pending') continue;
-    const o = objects[i];
-    _v.set(o.x, o.s * 0.6, o.z).project(camera);
-    if (_v.z > 1) continue;                       // behind camera
-    const sx = (_v.x * 0.5 + 0.5) * w, sy = (-_v.y * 0.5 + 0.5) * h;
-    if (sx < 0 || sx > w || sy < 0 || sy > h) continue;
+  const consider = (o) => {
     const dx = o.x - player.pos.x, dz = o.z - player.pos.z;
     const dist = Math.hypot(dx, dz);
-    if (dist > 70) continue;
+    if (dist > 70) return;
+    _v.set(o.x, o.s * 0.6, o.z).project(camera);
+    if (_v.z > 1) return;                          // behind camera
+    const sx = (_v.x * 0.5 + 0.5) * w, sy = (-_v.y * 0.5 + 0.5) * h;
+    if (sx < 0 || sx > w || sy < 0 || sy > h) return;
     items.push({ o, sx, sy, dist });
-  }
+  };
+  for (const [i, obj] of live) if (obj !== 'pending') consider(objects[i]);   // streamed models
+  for (const o of impPlacements) consider(o);                                 // instanced impostors
   items.sort((a, b) => a.dist - b.dist);
   const COL = { id: '#6fe0ff', yolo: '#7fffb0', gen: '#ffcf7f' };
   for (const it of items.slice(0, 46)) {
@@ -234,26 +285,22 @@ function stream() {
       scene.remove(obj); live.delete(i);
     }
   }
-  // Stream in near objects (impostors first — they're cheap and set the scene).
+  // Stream in near GLB assets only (impostors are instanced upfront — cheap).
   if (live.size < MAX_LIVE) {
-    for (let i = 0; i < objects.length; i++) {
+    for (const i of assetIdx) {
       if (live.has(i)) continue;
       const o = objects[i];
       const dx = o.x - px, dz = o.z - pz;
       if (dx * dx + dz * dz > STREAM_IN * STREAM_IN) continue;
-      if (o.t === 'imp') {
-        const sp = spawnImpostor(o); scene.add(sp); live.set(i, sp);
-      } else {
-        live.set(i, 'pending');
-        spawnAsset(o).then((obj) => {
-          if (obj && live.get(i) === 'pending') { scene.add(obj); live.set(i, obj); }
-          else if (!obj) live.delete(i);
-        });
-      }
+      live.set(i, 'pending');
+      spawnAsset(o).then((obj) => {
+        if (obj && live.get(i) === 'pending') { scene.add(obj); live.set(i, obj); }
+        else if (!obj) live.delete(i);
+      });
       if (live.size >= MAX_LIVE) break;
     }
   }
-  $('#live').textContent = `streaming ${[...live.values()].filter((v) => v !== 'pending').length} nearby objects`;
+  $('#live').textContent = `streaming ${[...live.values()].filter((v) => v !== 'pending').length} models + ${impCount} instanced impostors`;
 }
 
 // ---------- 49% render-budget loop ----------
@@ -271,11 +318,16 @@ requestAnimationFrame(loop);
 
 // ---------- load the map, then let streaming populate it ----------
 (async function init() {
+  await initAssetLayer();
   try { arLabels = (await (await fetch('./ar_labels.json', { cache: 'no-cache' })).json()).labels || {}; } catch (e) { /* optional */ }
   setAR(arOn);
   const w = await (await fetch('./world.json', { cache: 'no-cache' })).json();
   WORLD = w.meta.world; roadAts = w.meta.roadAts; ROAD = w.meta.road;
   objects = w.objects;
+  assetIdx = objects.map((o, i) => (o.t === 'asset' ? i : -1)).filter((i) => i >= 0);
+  impPlacements = objects.filter((o) => o.t === 'imp');
+  impCount = impPlacements.length;
+  buildInstancedImpostors(impPlacements);  // all impostors: ~26 instanced draw calls
   // roads (cheap, drawn once)
   const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.9 });
   const lineMat = new THREE.MeshStandardMaterial({ color: 0xd9c56a, emissive: 0x2e2a16 });
