@@ -23,4 +23,7 @@ assert(tax == 100 and net == 899, "event multiplier should stack on the base tax
 tax, net = TradeRules.CalculateTradeTax(-1, 1)
 assert(tax == 0 and net == 0, "invalid gross amount should not mint or charge coins")
 
-print("Trade Rules Tests: 9 passed, 0 failed")
+assert(TradeRules.CalculateOrderLimit(5, 1) == 5, "normal market must keep the base order limit")
+assert(TradeRules.CalculateOrderLimit(5, 1.5) == 7, "high-volume event must expand order capacity")
+
+print("Trade Rules Tests: 11 passed, 0 failed")

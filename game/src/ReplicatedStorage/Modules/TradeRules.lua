@@ -6,6 +6,15 @@ local TradeRules = {}
 -- every settlement path uses the exact same rounding and validation rules.
 TradeRules.BASE_TRADE_TAX_RATE = 0.05
 
+function TradeRules.CalculateOrderLimit(baseLimit, volumeMultiplier)
+	local base = math.max(1, math.floor(tonumber(baseLimit) or 1))
+	local multiplier = tonumber(volumeMultiplier) or 1
+	if multiplier ~= multiplier or multiplier == math.huge or multiplier == -math.huge then
+		multiplier = 1
+	end
+	return math.max(base, math.floor(base * math.max(0, multiplier)))
+end
+
 function TradeRules.CalculateTradeTax(grossAmount, multiplier)
 	local gross = tonumber(grossAmount) or 0
 	if gross ~= gross or gross == math.huge or gross == -math.huge or gross < 0 then

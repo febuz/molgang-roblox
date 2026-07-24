@@ -22,6 +22,7 @@ local bidCounter = 0
 
 local MIN_BID = 10
 local MAX_BIDS_PER_PLAYER = 5
+local MAX_SELLS_PER_PLAYER = 5
 local ORDER_EXPIRY_SECONDS = 1800
 
 local function hasRequiredResearch(playerData, product)
@@ -66,13 +67,15 @@ Remotes.RequestPlaceBid.OnServerEvent:Connect(function(player, productId, bidPri
 	end
 
 	-- Check player bid limit
+	local tradingVolumeBonus = WorldEvents.GetActiveEffects().tradingVolumeBonus
+	local maxBidsPerPlayer = TradeRules.CalculateOrderLimit(MAX_BIDS_PER_PLAYER, tradingVolumeBonus)
 	local playerBidCount = 0
 	for _, bid in pairs(activeBids) do
 		if bid.playerId == userId then playerBidCount = playerBidCount + 1 end
 	end
-	if playerBidCount >= MAX_BIDS_PER_PLAYER then
+	if playerBidCount >= maxBidsPerPlayer then
 		Remotes.FireClient("ServerAnnounce", player, {
-			message = "Max " .. MAX_BIDS_PER_PLAYER .. " active bids. Cancel one first.",
+			message = "Max " .. maxBidsPerPlayer .. " active bids. Cancel one first.",
 			rarity = "common",
 		})
 		return
@@ -136,6 +139,26 @@ Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPr
 	if not hasRequiredResearch(pData, product) then
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Sell order rejected: required research is not unlocked.",
+			rarity = "common",
+		})
+		return
+	end
+	local eventEffects = WorldEvents.GetActiveEffects()
+	if not ProductMarket.GetCertificationStatus(product, eventEffects, pData.research) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Sell order rejected: EU certification is required during this market event.",
+			rarity = "common",
+		})
+		return
+	end
+	local maxSellsPerPlayer = TradeRules.CalculateOrderLimit(MAX_SELLS_PER_PLAYER, eventEffects.tradingVolumeBonus)
+	local playerSellCount = 0
+	for _, existingSell in pairs(activeSells) do
+		if existingSell.playerId == userId then playerSellCount = playerSellCount + 1 end
+	end
+	if playerSellCount >= maxSellsPerPlayer then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Max " .. maxSellsPerPlayer .. " active sell orders. Cancel one first.",
 			rarity = "common",
 		})
 		return
@@ -215,6 +238,10 @@ local function transferProduct(productId, sellerId, buyerId, quantity)
 	sellerData.slagInventory = sellerData.slagInventory or {}
 	buyerData.slagInventory = buyerData.slagInventory or {}
 	if not hasRequiredResearch(sellerData, product) or not hasRequiredResearch(buyerData, product) then return false end
+	local eventEffects = WorldEvents.GetActiveEffects()
+	if not ProductMarket.GetCertificationStatus(product, eventEffects, sellerData.research) then
+		return false
+	end
 
 	local atomTransferCount = 0
 
