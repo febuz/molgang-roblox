@@ -220,7 +220,8 @@ for _, mol in ipairs(molList) do
 	craftBtn.Text = canCraft and "Craft" or "Need Items"
 	craftBtn.Font = Enum.Font.GothamBold
 	craftBtn.TextScaled = true
-	craftBtn.Enabled = canCraft
+	craftBtn.Active = canCraft
+	craftBtn.Selectable = canCraft
 	craftBtn.Parent = recipeCard
 	createCorner(craftBtn, 4)
 	table.insert(craftEntries, {recipe = recipe, button = craftBtn})

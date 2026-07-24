@@ -121,7 +121,7 @@ systemFrame.BackgroundTransparency = 1
 systemFrame.Parent = main
 local sLayout = Instance.new("UIGridLayout")
 sLayout.CellSize = UDim2.new(0, 90, 0, 26)
-sLayout.CellPadding = UDim2.new(0, 4, 0, 4)
+sLayout.Padding = UDim.new(0, 4)
 sLayout.Parent = systemFrame
 
 local selectedSystem = "Overall"

@@ -109,7 +109,7 @@ badgeGrid.Parent = mainPanel
 
 local badgeLayout = Instance.new("UIListLayout")
 badgeLayout.FillDirection = Enum.FillDirection.Horizontal
-badgeLayout.CellPadding = UDim2.new(0, 8, 0, 0)
+badgeLayout.Padding = UDim.new(0, 8)
 badgeLayout.SortOrder = Enum.SortOrder.Name
 badgeLayout.Parent = badgeGrid
 
