@@ -229,6 +229,43 @@ function setAR(on) {
 arToggle.addEventListener('click', () => setAR(!arOn));
 addEventListener('keydown', (e) => { if (e.code === 'KeyR') setAR(!arOn); });
 
+// ---------- LeCun JEPA world model, running in the browser ----------
+// The tiny MLP trained by world_model.py (enc -> latent predictor -> decoder)
+// predicts each vehicle's next heading; we roll it forward with physics to
+// draw a 2 s predicted trajectory in the AR view — the world model's future,
+// visualised. Curves at intersections (it learned "turn right there") where a
+// straight-line guess would be wrong.
+let WM = null;
+fetch('./world_model.json', { cache: 'no-cache' }).then(r => r.json()).then(m => { WM = m; }).catch(() => {});
+const gelu = (x) => 0.5 * x * (1 + Math.tanh(0.7978845608 * (x + 0.044715 * x * x * x)));
+function layer(Wm, b, x) {
+  const out = new Array(Wm.length);
+  for (let o = 0; o < Wm.length; o++) { let s = b[o]; const row = Wm[o]; for (let i = 0; i < x.length; i++) s += row[i] * x[i]; out[o] = s; }
+  return out;
+}
+const mlp = (m, x) => layer(m.w1, m.b1, layer(m.w0, m.b0, x).map(gelu));
+const wmForward = (x) => mlp(WM.dec, mlp(WM.pred, mlp(WM.enc, x)));   // -> [cos, sin] next heading
+function wmFeat(st) {
+  const W2 = WM.meta.W, ra = WM.meta.roadAts;
+  const dmin = Math.min(Math.min(...ra.map(r => Math.abs(st.x - r))), Math.min(...ra.map(r => Math.abs(st.z - r))));
+  return [st.x / W2, st.z / W2, Math.cos(st.h), Math.sin(st.h), st.spd / 16, Math.tanh(dmin / 6)];
+}
+// Roll the world model H steps from an agent's K-window; returns predicted (x,z) path.
+function wmPredictPath(win, H) {
+  const dt = WM.meta.dt, path = [];
+  let w = win.slice(), cur = w[w.length - 1];
+  for (let s = 0; s < H; s++) {
+    const feat = [];
+    for (const st of w) feat.push(...wmFeat(st));
+    const [c, si] = wmForward(feat);
+    const nh = Math.atan2(si, c);
+    const nx = cur.x + Math.cos(nh) * cur.spd * dt, nz = cur.z + Math.sin(nh) * cur.spd * dt;
+    cur = { x: nx, z: nz, h: nh, spd: cur.spd };
+    w = w.slice(1); w.push(cur); path.push([nx, nz]);
+  }
+  return path;
+}
+
 const _v = new THREE.Vector3();
 function drawAR() {
   const w = innerWidth, h = innerHeight;
@@ -279,8 +316,35 @@ function drawAR() {
       arCtx.fillStyle = col; arCtx.fillRect(bx, by - 16, 3, 15);
     }
   }
+  // JEPA world-model predicted trajectories for nearby vehicles.
+  let predicted = 0;
+  if (WM) {
+    const VEH = new Set(['car', 'delivery_truck', 'van', 'city_bus', 'motorcycle']);
+    for (const m of agentMeshes.values()) {
+      if (!VEH.has(m.kind) || m.hist.length < 2) continue;
+      const dx = m.sprite.position.x - player.pos.x, dz = m.sprite.position.z - player.pos.z;
+      if (Math.hypot(dx, dz) > 60) continue;
+      const win = m.hist.slice(); while (win.length < WM.meta.K) win.unshift(win[0]);
+      const path = wmPredictPath(win.slice(-WM.meta.K), 10);   // ~2 s ahead
+      arCtx.beginPath();
+      let started = false;
+      _v.set(m.sprite.position.x, 0.5, m.sprite.position.z).project(camera);
+      if (_v.z <= 1) { arCtx.moveTo((_v.x * 0.5 + 0.5) * w, (-_v.y * 0.5 + 0.5) * h); started = true; }
+      for (const [px, pz] of path) {
+        _v.set(px, 0.5, pz).project(camera);
+        if (_v.z > 1) { started = false; continue; }
+        const sx = (_v.x * 0.5 + 0.5) * w, sy = (-_v.y * 0.5 + 0.5) * h;
+        if (started) arCtx.lineTo(sx, sy); else { arCtx.moveTo(sx, sy); started = true; }
+      }
+      arCtx.strokeStyle = 'rgba(120,230,255,0.75)'; arCtx.lineWidth = 2; arCtx.stroke();
+      const end = path[path.length - 1];
+      _v.set(end[0], 0.5, end[1]).project(camera);
+      if (_v.z <= 1) { arCtx.fillStyle = 'rgba(120,230,255,0.9)'; arCtx.beginPath(); arCtx.arc((_v.x * 0.5 + 0.5) * w, (-_v.y * 0.5 + 0.5) * h, 3, 0, 7); arCtx.fill(); }
+      predicted++;
+    }
+  }
   arCtx.fillStyle = 'rgba(111,252,218,0.85)'; arCtx.font = 'bold 13px system-ui';
-  arCtx.fillText(`AR VISION · ${items.length} objects tagged · cyan=identified model · green=YOLO · amber=diffusion`, 22, h - 22);
+  arCtx.fillText(`AR VISION · ${items.length} tagged · ${predicted} JEPA-predicted paths · cyan=model green=YOLO amber=diffusion`, 22, h - 22);
 }
 
 // ---------- dynamic layer: moving agents from the Python sim (EVE-style) ----------
@@ -346,10 +410,17 @@ async function pollSim() {
         sp.center.set(0.5, 0);
         const s = agentSize[a.k] || 3.2; sp.scale.set(s, s, 1);
         scene.add(sp);
-        m = { sprite: sp, kind: a.k, from: { x: a.x, z: a.z }, to: { x: a.x, z: a.z }, t: 0 };
+        m = { sprite: sp, kind: a.k, from: { x: a.x, z: a.z }, to: { x: a.x, z: a.z }, t: 0, hist: [] };
         agentMeshes.set(a.id, m);
       } else {
-        m.from = { x: m.sprite.position.x, z: m.sprite.position.z };
+        const fx = m.sprite.position.x, fz = m.sprite.position.z;
+        const dx = a.x - fx, dz = a.z - fz, d = Math.hypot(dx, dz);
+        if (d > 0.05 && d < 30) {   // ignore wrap jumps
+          const h = Math.atan2(dz, dx), spd = d / (simPollMs / 1000);
+          m.hist.push({ x: a.x, z: a.z, h, spd });
+          if (m.hist.length > 4) m.hist.shift();
+        }
+        m.from = { x: fx, z: fz };
         m.to = { x: a.x, z: a.z }; m.t = 0;
       }
     }
