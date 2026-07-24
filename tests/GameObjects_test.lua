@@ -13,6 +13,7 @@
 local ObjectRegistry = require("../game/src/ReplicatedStorage/Modules/GameObjects/ObjectRegistry")
 local RarityTrait = require("../game/src/ReplicatedStorage/Modules/GameObjects/RarityTrait")
 local Achievements = require("../game/src/ReplicatedStorage/Modules/GameObjects/Achievements")
+local MiningMilestones = require("../game/src/ReplicatedStorage/Modules/GameObjects/MiningMilestones")
 
 local passCount = 0
 local failCount = 0
@@ -202,6 +203,33 @@ assert_true(Achievements.GetBadge("doesNotExist") == nil, "GetBadge returns nil 
 
 assert_error(function()
 	Achievements.CheckNewlyUnlocked(5, 3)
+end, "newCount < previousCount raises instead of silently misbehaving")
+
+-- ═══════════════════════════════════════════════
+-- MiningMilestones: atom-collected count milestone threshold crossing
+-- ═══════════════════════════════════════════════
+
+do
+	local unlocked = MiningMilestones.CheckNewlyUnlocked(9, 10)
+	assert_eq(#unlocked, 1, "9->10 unlocks exactly one milestone")
+	assert_eq(unlocked[1].id, "elementHunter", "9->10 unlocks elementHunter")
+end
+
+assert_eq(#MiningMilestones.CheckNewlyUnlocked(10, 10), 0, "no-op collect (same count) unlocks nothing")
+assert_eq(#MiningMilestones.CheckNewlyUnlocked(10, 99), 0, "staying below the next threshold unlocks nothing")
+
+do
+	local unlocked = MiningMilestones.CheckNewlyUnlocked(0, 500)
+	assert_eq(#unlocked, 3, "0->500 unlocks all 3 milestones in one jump")
+	assert_eq(unlocked[3].id, "periodicTableMaster", "0->500 badge order: periodicTableMaster last")
+end
+
+assert_eq(#MiningMilestones.CheckNewlyUnlocked(500, 501), 0, "past the last threshold, nothing new unlocks")
+assert_eq(MiningMilestones.GetMilestone("atomicCollector").molCoinsReward, 75, "GetMilestone looks up reward by id")
+assert_true(MiningMilestones.GetMilestone("doesNotExist") == nil, "GetMilestone returns nil for unknown id")
+
+assert_error(function()
+	MiningMilestones.CheckNewlyUnlocked(10, 5)
 end, "newCount < previousCount raises instead of silently misbehaving")
 
 -- ═══════════════════════════════════════════════

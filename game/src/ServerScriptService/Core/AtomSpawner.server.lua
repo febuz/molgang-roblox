@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local MiningMilestones = require(ReplicatedStorage.Modules.GameObjects.MiningMilestones)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATIE
@@ -374,6 +375,17 @@ local function onRequestCollect(player, atomName)
 
 	-- Secure server-side bridge (not spoofable by client)
 	PlayerDataBridge.RecordAtomCollect(player.UserId, elementZ, elem.sym, coinReward)
+
+	-- Mining milestones (total atoms collected across all sessions)
+	local previousCollectedCount = PlayerDataBridge.GetAtomCollectedCount(player.UserId)
+	local newCollectedCount = PlayerDataBridge.RecordAtomCollected(player.UserId)
+	for _, milestone in ipairs(MiningMilestones.CheckNewlyUnlocked(previousCollectedCount, newCollectedCount)) do
+		PlayerDataBridge.AddEarnedMolCoins(player.UserId, milestone.molCoinsReward)
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Milestone unlocked: " .. milestone.name .. "! +" .. milestone.molCoinsReward .. " MolCoins",
+			rarity = "rare",
+		})
+	end
 
 	-- Notify client
 	Remotes.FireClient("AtomCollected", player, {

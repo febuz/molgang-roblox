@@ -11,6 +11,7 @@ local pendingCollections = {} -- {userId = {elementZ, symbol, coinReward, timest
 local pendingBuilds = {}      -- {userId = {molName, atoms, timestamp}}
 local playerEconomy = {}      -- {userId = {molCoins, atoms, molecules, ...}}
 local drinkPurchaseCounts = {} -- {userId = count}
+local atomCollectedCounts = {} -- {userId = count}
 
 -- ══════════════════════════════════════════════
 -- ATOM COLLECTION (AtomSpawner → EconomyManager)
@@ -117,11 +118,28 @@ function PlayerDataBridge.GetDrinkPurchaseCount(userId)
 	return drinkPurchaseCounts[userId] or 0
 end
 
+-- ══════════════════════════════════════════════
+-- ATOM COLLECT COUNTING (AtomSpawner → MiningMilestones)
+-- ══════════════════════════════════════════════
+
+-- Same shape as RecordDrinkPurchase — returns the new total so callers can
+-- diff old/new against Modules/GameObjects/MiningMilestones.CheckNewlyUnlocked.
+function PlayerDataBridge.RecordAtomCollected(userId)
+	local newCount = (atomCollectedCounts[userId] or 0) + 1
+	atomCollectedCounts[userId] = newCount
+	return newCount
+end
+
+function PlayerDataBridge.GetAtomCollectedCount(userId)
+	return atomCollectedCounts[userId] or 0
+end
+
 function PlayerDataBridge.Cleanup(userId)
 	pendingCollections[userId] = nil
 	pendingBuilds[userId] = nil
 	playerEconomy[userId] = nil
 	drinkPurchaseCounts[userId] = nil
+	atomCollectedCounts[userId] = nil
 end
 
 return PlayerDataBridge
