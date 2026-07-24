@@ -11,6 +11,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
+// The web experience CONTINUES the Roblox teaser: the same world (Moleculia — a
+// floating archipelago in space, MOLGANG's Chemical Engineering Simulator).
+// ?world=./world.json falls back to the old city for comparison.
+const WORLDFILE = params.get('world') || './moleculia.json';
+let MOLECULIA = true;   // set from meta.space after the map loads
 
 // ---------- renderer + instant background ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
@@ -36,10 +41,75 @@ const sun = new THREE.DirectionalLight(0xfff2e0, 2.1);
 sun.position.set(60, 130, 40); scene.add(sun);
 
 // Ground shows immediately too.
-let WORLD = 240, roadAts = [-74, 0, 74], ROAD = 14;
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD),
-  new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 1 }));
+let WORLD = 240, roadAts = null, ROAD = 14;
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 1 });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD), groundMat);
 ground.rotation.x = -Math.PI / 2; scene.add(ground);
+
+// ---------- Moleculia: floating archipelago in space ----------
+// Switch the instant sky/ground/lighting to a deep-space setting and paint a
+// starfield behind the zones. Called from init() when meta.space is set.
+function setSpace() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 1024);
+  grd.addColorStop(0, '#05060d'); grd.addColorStop(0.6, '#0a0b1c'); grd.addColorStop(1, '#12102a');
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 1024);
+  for (let i = 0; i < 1400; i++) {                 // stars
+    const x = Math.random() * 1024, y = Math.random() * 1024, r = Math.random() * 1.4;
+    g.globalAlpha = 0.35 + Math.random() * 0.65;
+    g.fillStyle = Math.random() < 0.1 ? '#bcd8ff' : '#ffffff';
+    g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+  g.globalAlpha = 0.10;                              // a soft nebula wash
+  for (const col of ['#3a6ea5', '#6a3aa5', '#2aa58a']) {
+    const rg = g.createRadialGradient(Math.random() * 1024, Math.random() * 1024, 20,
+      Math.random() * 1024, Math.random() * 1024, 400);
+    rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, 1024, 1024);
+  }
+  g.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  scene.background = tex;
+  scene.fog = new THREE.Fog(0x0a0b1c, 90, 340);
+  groundMat.color.set(0x07070f); groundMat.roughness = 1;   // the void below the platforms
+  // Cooler, dimmer space lighting.
+  scene.traverse((n) => { if (n.isHemisphereLight || n.isDirectionalLight) n.intensity *= 0.75; });
+  scene.add(new THREE.PointLight(0x88aaff, 0.6, 600));
+}
+
+// Each zone is a floating disc platform (a low cylinder) with a glowing rim so
+// the archipelago reads as separate islands in space.
+function buildPlatform(o) {
+  const rad = o.s;
+  const disc = new THREE.Mesh(
+    new THREE.CylinderGeometry(rad, rad * 0.92, 2.4, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1b2436, roughness: 0.85, metalness: 0.1 }));
+  disc.position.set(o.x, -1.2, o.z); scene.add(disc);
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(rad, 0.35, 8, 64),
+    new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0x2f6bd0, emissiveIntensity: 0.8 }));
+  rim.rotation.x = Math.PI / 2; rim.position.set(o.x, 0.05, o.z); scene.add(rim);
+}
+
+// A floating name label above each zone (canvas sprite), so the player can see
+// the six zones of Moleculia at a glance.
+function buildZoneLabel(z) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(8,12,22,0.72)'; roundRect(g, 8, 30, 496, 68, 16); g.fill();
+  g.strokeStyle = '#6fe0ff'; g.lineWidth = 2; roundRect(g, 8, 30, 496, 68, 16); g.stroke();
+  g.fillStyle = '#dff0ff'; g.font = 'bold 40px system-ui'; g.textAlign = 'center';
+  g.fillText(z.name, 256, 78);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
+  sp.position.set(z.x, 22, z.z); sp.scale.set(28, 7, 1); scene.add(sp);
+}
+function roundRect(g, x, y, w, h, r) {
+  g.beginPath(); g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
 
 function resize() {
   const w = innerWidth, h = innerHeight;
@@ -49,10 +119,11 @@ function resize() {
 addEventListener('resize', resize); resize();
 
 // ---------- player controller: W forward, S back, A/D strafe, mouse look ----------
-const player = { pos: new THREE.Vector3(0, 1.8, 84), yaw: Math.PI, pitch: -0.04, speed: 34 };
+const player = { pos: new THREE.Vector3(0, 1.8, 30), yaw: Math.PI, pitch: -0.02, speed: 30 };
 const CAMS = {
   street: { pos: [0, 1.8, 46], yaw: Math.PI, pitch: -0.02 },
-  overview: { pos: [95, 78, 128], yaw: -2.5, pitch: -0.52 },
+  overview: { pos: [60, 150, 90], yaw: -2.485, pitch: -0.74 },       // aerial of the whole archipelago
+  factory: { pos: [-90, 62, 44], yaw: -2.09, pitch: -0.64 },          // the Slakkenspoor processing line
   plaza: { pos: [6, 1.8, 10], yaw: -0.6, pitch: 0.0 },
   plaza2: { pos: [6, 1.8, 30], yaw: Math.PI, pitch: -0.03 },  // looks toward plaza (for MP demo)
 };
@@ -402,7 +473,7 @@ async function pollSim() {
     const pel = document.getElementById('mp');
     if (pel) pel.textContent = `🌐 shared world · you + ${(st.players || []).length} other player(s) online`;
     const seen = new Set();
-    for (const a of st.agents) {
+    for (const a of (MOLECULIA ? [] : st.agents)) {   // city traffic doesn't belong in the space factory
       seen.add(a.id);
       let m = agentMeshes.get(a.id);
       if (!m) {
@@ -425,7 +496,10 @@ async function pollSim() {
       }
     }
     for (const [id, m] of agentMeshes) if (!seen.has(id)) { scene.remove(m.sprite); agentMeshes.delete(id); }
-    const el = document.getElementById('sim'); if (el) el.textContent = `🐍 Python sim: ${st.n} live agents driving/walking`;
+    const el = document.getElementById('sim');
+    if (el) el.textContent = MOLECULIA
+      ? `🐍 Python process sim live (Arrhenius/Henry/pH kinetics)`
+      : `🐍 Python sim: ${st.n} live agents driving/walking`;
     const rx = st.reactor, rel = document.getElementById('reactor');
     if (rx && rel) rel.innerHTML = `⚗️ leach reactor · ${(rx.conversion * 100) | 0}% converted `
       + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)</span>`;
@@ -548,28 +622,43 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
   await initAssetLayer();
   try { arLabels = (await (await fetch('./ar_labels.json', { cache: 'no-cache' })).json()).labels || {}; } catch (e) { /* optional */ }
   setAR(arOn);
-  const w = await (await fetch('./world.json', { cache: 'no-cache' })).json();
-  WORLD = w.meta.world; roadAts = w.meta.roadAts; ROAD = w.meta.road;
+  const w = await (await fetch(WORLDFILE, { cache: 'no-cache' })).json();
+  WORLD = w.meta.world; roadAts = w.meta.roadAts || null; ROAD = w.meta.road || 14;
+  MOLECULIA = !!w.meta.space;
   objects = w.objects;
   assetIdx = objects.map((o, i) => (o.t === 'asset' ? i : -1)).filter((i) => i >= 0);
   impPlacements = objects.filter((o) => o.t === 'imp');
   impCount = impPlacements.length;
-  buildInstancedImpostors(impPlacements);  // all impostors: ~26 instanced draw calls
-  pollSim();                               // start the EVE-style dynamic layer
-  // roads (cheap, drawn once)
-  const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.9 });
-  const lineMat = new THREE.MeshStandardMaterial({ color: 0xd9c56a, emissive: 0x2e2a16 });
-  for (const at of roadAts) {
-    for (const horiz of [true, false]) {
-      const road = new THREE.Mesh(horiz ? new THREE.PlaneGeometry(WORLD, ROAD) : new THREE.PlaneGeometry(ROAD, WORLD), roadMat);
-      road.rotation.x = -Math.PI / 2; road.position.set(horiz ? 0 : at, 0.02, horiz ? at : 0); scene.add(road);
-      const line = new THREE.Mesh(horiz ? new THREE.PlaneGeometry(WORLD, 0.5) : new THREE.PlaneGeometry(0.5, WORLD), lineMat);
-      line.rotation.x = -Math.PI / 2; line.position.set(horiz ? 0 : at, 0.03, horiz ? at : 0); scene.add(line);
+  if (impCount) buildInstancedImpostors(impPlacements);   // diffusion gap-fill (old city only)
+  pollSim();                                              // reactor + multiplayer (EVE-style)
+
+  if (MOLECULIA) {
+    setSpace();
+    for (const o of objects) if (o.t === 'platform') buildPlatform(o);
+    for (const z of (w.meta.zones || [])) buildZoneLabel(z);
+    const line = (w.meta.processLine || []);
+    $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
+      + `the web continuation of the Roblox teaser`;
+    $('#resolve').innerHTML = `<div style="color:#7fe0a0;margin-bottom:3px">⚗️ Slakkenspoor — BOF slag processing line</div>`
+      + line.map((s, i) => `<div><span class="a">${String(i + 1).padStart(2, '0')}</span> ${s}</div>`).join('');
+    window.__molgangWorld = { world: 'moleculia', zones: (w.meta.zones || []).length,
+      stations: line.length, assets: assetIdx.length };
+  } else {
+    // legacy city (roads + diffusion) — kept behind ?world=./world.json
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.9 });
+    const lineMat = new THREE.MeshStandardMaterial({ color: 0xd9c56a, emissive: 0x2e2a16 });
+    for (const at of (roadAts || [])) {
+      for (const horiz of [true, false]) {
+        const road = new THREE.Mesh(horiz ? new THREE.PlaneGeometry(WORLD, ROAD) : new THREE.PlaneGeometry(ROAD, WORLD), roadMat);
+        road.rotation.x = -Math.PI / 2; road.position.set(horiz ? 0 : at, 0.02, horiz ? at : 0); scene.add(road);
+        const ln = new THREE.Mesh(horiz ? new THREE.PlaneGeometry(WORLD, 0.5) : new THREE.PlaneGeometry(0.5, WORLD), lineMat);
+        ln.rotation.x = -Math.PI / 2; ln.position.set(horiz ? 0 : at, 0.03, horiz ? at : 0); scene.add(ln);
+      }
     }
+    $('#status').textContent = `Identified → models: ${w.meta.assets} · Unidentified → diffusion: ${w.meta.impostors}`;
+    if (w.resolve) $('#resolve').innerHTML = Object.entries(w.resolve)
+      .map(([r, k]) => `<div><span class="${k === 'asset' ? 'a' : 'i'}">${k === 'asset' ? '▣ model' : '◈ diffusion'}</span> ${r}</div>`).join('');
+    window.__molgangWorld = { total: objects.length, assets: w.meta.assets, impostors: w.meta.impostors };
   }
-  $('#status').textContent = `Identified → models: ${w.meta.assets} · Unidentified → diffusion: ${w.meta.impostors}`;
-  $('#resolve').innerHTML = Object.entries(w.resolve)
-    .map(([r, k]) => `<div><span class="${k === 'asset' ? 'a' : 'i'}">${k === 'asset' ? '▣ model' : '◈ diffusion'}</span> ${r}</div>`).join('');
-  window.__molgangWorld = { total: objects.length, assets: w.meta.assets, impostors: w.meta.impostors };
   stream(); // first populate
 })();
