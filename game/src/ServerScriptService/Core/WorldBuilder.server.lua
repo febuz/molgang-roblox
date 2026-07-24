@@ -3893,6 +3893,11 @@ local function buildMoleculia()
 
 	-- Step 1: Remove default environment
 	removeBaseplate()
+	-- Keep the floating archipelago visually spacious while preserving normal
+	-- player physics. Explicit values avoid Studio/place settings from leaving
+	-- characters weightless or destroying parts before the safety system acts.
+	Workspace.Gravity = 196.2
+	Workspace.FallenPartsDestroyHeight = -1000
 
 	-- Step 2: Configure lighting and atmosphere
 	setupLighting()

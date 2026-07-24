@@ -114,6 +114,29 @@ timeTest("Spawn location exists", function()
 	assert(spawn, "No SpawnLocation found")
 end)
 
+timeTest("Normal gravity is configured", function()
+	assert(math.abs(Workspace.Gravity - 196.2) < 0.01,
+		"Unexpected gravity: " .. tostring(Workspace.Gravity))
+end)
+
+timeTest("Spawn is above the hub platform", function()
+	local spawn = Workspace:FindFirstChild("MolGangSpawn", true)
+	assert(spawn and spawn:IsA("BasePart"), "MolGangSpawn is missing")
+	assert(spawn.Position.Y > 0, "Spawn is below the safe world plane")
+end)
+
+timeTest("Teleport pads have valid targets", function()
+	local padCount = 0
+	for _, desc in Workspace:GetDescendants() do
+		if desc:IsA("BasePart") and desc.Name:find("TeleportPad") then
+			padCount = padCount + 1
+			assert(typeof(desc:GetAttribute("TeleportTarget")) == "Vector3",
+				"Teleport pad has no Vector3 target: " .. desc:GetFullName())
+		end
+	end
+	assert(padCount > 0, "No teleport pads were built")
+end)
+
 timeTest("Atoms folder created", function()
 	local atoms = Workspace:FindFirstChild("Atoms")
 	-- May not exist yet if spawner hasn't run

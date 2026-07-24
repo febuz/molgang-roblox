@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 
 local COOLDOWN = 3 -- seconds between teleports per player
 local playerCooldowns = {}
+local boundPads = {}
 
 local function onTouched(hit, pad)
 	local character = hit.Parent
@@ -26,7 +27,7 @@ local function onTouched(hit, pad)
 	end
 
 	local target = pad:GetAttribute("TeleportTarget")
-	if not target then return end
+	if typeof(target) ~= "Vector3" then return end
 
 	playerCooldowns[player.UserId] = now
 
@@ -36,13 +37,18 @@ local function onTouched(hit, pad)
 	end
 end
 
+local function bindPad(obj)
+	if not obj:IsA("BasePart") or not obj.Name:find("TeleportPad") or boundPads[obj] then return end
+	boundPads[obj] = true
+	obj.Touched:Connect(function(hit) onTouched(hit, obj) end)
+end
+
 -- Wait for pads to be created by WorldBuilder
 task.delay(5, function()
 	for _, obj in workspace:GetDescendants() do
-		if obj:IsA("BasePart") and obj.Name:find("TeleportPad") then
-			obj.Touched:Connect(function(hit) onTouched(hit, obj) end)
-		end
+		bindPad(obj)
 	end
+	workspace.DescendantAdded:Connect(bindPad)
 end)
 
 Players.PlayerRemoving:Connect(function(player)

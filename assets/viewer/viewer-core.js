@@ -98,6 +98,7 @@ function buildNamesToggle(onChange, initial) {
  * @param {number} opts.budget            render duty cycle 0..1 (GPU courtesy)
  */
 export async function initGallery({ renderer, rendererLabel, budget }) {
+  const smokeMode = new URLSearchParams(location.search).get('smoke') === '1';
   const canvas = renderer.domElement;
   document.querySelector('#stage').appendChild(canvas);
   const status = document.querySelector('#status');
@@ -288,5 +289,5 @@ export async function initGallery({ renderer, rendererLabel, budget }) {
     }
     requestAnimationFrame(loop);
   };
-  requestAnimationFrame(loop);
+  if (!smokeMode) requestAnimationFrame(loop);
 }

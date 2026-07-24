@@ -19,6 +19,7 @@ import glob
 import json
 import os
 import re
+import signal
 import shutil
 import subprocess
 import sys
@@ -83,12 +84,19 @@ def check_viewer_loads(expected):
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         time.sleep(2)
-        url = f"http://localhost:{PORT}/viewer/index.html"
-        out = subprocess.run(
+        url = f"http://localhost:{PORT}/viewer/index.html?smoke=1"
+        browser = subprocess.Popen(
             [chromium, "--headless=new", "--no-sandbox", "--use-gl=swiftshader",
              "--enable-unsafe-swiftshader", "--virtual-time-budget=120000",
              "--run-all-compositor-stages-before-draw", "--dump-dom", url],
-            capture_output=True, text=True, timeout=150).stdout
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            start_new_session=True)
+        try:
+            out, _ = browser.communicate(timeout=150)
+        except subprocess.TimeoutExpired:
+            os.killpg(browser.pid, signal.SIGKILL)
+            browser.wait()
+            fail("headless Chromium timed out while loading the viewer")
         m = re.search(r"(\d+)/(\d+) models loaded", out)
         if not m:
             fail("viewer never reported a 'N/N models loaded' status")
