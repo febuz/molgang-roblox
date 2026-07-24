@@ -523,6 +523,7 @@ async function pollSim() {
       const yp = document.getElementById('y-parts');
       if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
       if (rx.particleSize) reflectParticleSize(rx.particleSize, rx.leachSpeed);
+      reflectPrep(rx);
       if (!controlsSynced && MOLECULIA) {   // reflect the actual reactor in the sliders once
         controlsSynced = true;
         const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
@@ -661,6 +662,17 @@ function initControls() {
         body: JSON.stringify({ particleSize: b.dataset.size }) }).catch(() => {});
     });
   }
+  // Pre-leach stations: magnetic separation + roasting (toggles).
+  for (const b of document.querySelectorAll('#prep button')) {
+    b.addEventListener('click', () => {
+      const on = !b.classList.contains('on');
+      fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [b.dataset.flag]: on }) }).catch(() => {});
+    });
+  }
+}
+function reflectPrep(rx) {
+  for (const b of document.querySelectorAll('#prep button')) b.classList.toggle('on', !!rx[b.dataset.flag]);
 }
 function reflectParticleSize(size, leachSpeed) {
   for (const b of document.querySelectorAll('#grind button')) b.classList.toggle('on', b.dataset.size === size);

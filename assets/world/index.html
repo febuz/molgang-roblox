@@ -43,6 +43,11 @@
   #grind button.on { background: #123; color: #7fe0d6; border-color: #7fe0d6; }
   #grind + .ls { font-size: 10.5px; color: #9fb0c6; }
   #grind + .ls b { color: #ffd479; }
+  #prep { display: flex; gap: 4px; margin: 7px 0 2px; }
+  #prep button { flex: 1; cursor: pointer; padding: 6px 2px; border-radius: 6px; font: 11px system-ui;
+    background: rgba(30,40,60,.6); color: #cfe0f0; border: 1px solid #26344a; }
+  #prep button.on { background: #123; color: #7fe0d6; border-color: #7fe0d6; }
+  #prep + .ls { font-size: 10px; color: #9fb0c6; }
   #yield { margin-top: 9px; padding-top: 8px; border-top: 1px solid #26344a; font-size: 12px; }
   #yield b { color: #6ffcda; font-size: 15px; }
   #elements { color: #cdb6ff; font-size: 11px; margin-top: 1px; }
@@ -102,6 +107,11 @@
     <button data-size="powder" type="button">powder</button>
   </div>
   <div class="ls">leach speed <b id="v-leach">1.0×</b> · finer = more surface area = faster</div>
+  <div id="prep">
+    <button data-flag="deironized" type="button">🧲 Magnetic sep</button>
+    <button data-flag="roasted" type="button">🔥 Roasting</button>
+  </div>
+  <div class="ls" id="prep-note">🧲 removes Fe (cleaner at high pH) · 🔥 +60% leach speed</div>
   <label class="row"><span>Temperature (Arrhenius)</span><span class="val" id="v-temperature">70°C</span></label>
   <input type="range" id="c-temperature" min="25" max="95" step="1" value="70">
   <label class="row"><span>Pressure (Henry)</span><span class="val" id="v-pressure">180 kPa</span></label>
