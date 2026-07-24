@@ -686,15 +686,14 @@ end)
 -- KEYBOARD SHORTCUT: TAB TO TOGGLE DASHBOARD
 -- ════════════════════════════════════════════════
 
-local dashboardOpen = true
-
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 
 	-- D = Toggle Dashboard
 	if input.KeyCode == Enum.KeyCode.D then
-		dashboardOpen = not dashboardOpen
-		screenGui.Enabled = dashboardOpen
+		-- Use the actual ScreenGui state; other buttons and the modal
+		-- coordinator can change it independently of this shortcut.
+		screenGui.Enabled = not screenGui.Enabled
 	end
 end)
 

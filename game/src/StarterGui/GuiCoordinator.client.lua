@@ -13,7 +13,8 @@ local modalNames = {
 	FactoryBuilderGui = true, ResearchGui = true, AtomTradeGui = true,
 	ProductMarketGui = true, MiningGui = true, ProcessControlGui = true,
 	BubbleTeaGui = true, SuperheroGui = true, QuantumRacingGui = true,
-	FeedbackGui = true, MahjongGui = true, QuestModal = true,
+	FeedbackGui = true, MahjongGui = true, GuildGui = true,
+	MiniGameGui = true, ShortcutOverlay = true, QuestModal = true,
 	QuizGui = true, NPCDialogueGui = true, TutorialGui = true,
 }
 
