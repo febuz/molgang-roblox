@@ -109,6 +109,27 @@ Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPr
 	local product = ProductMarket.GetProduct(productId)
 	if not product then return end
 
+	-- Open sell orders reserve the same underlying atoms. Without this check a
+	-- player could list the same inventory repeatedly and create orders that
+	-- can never settle once the first one fills.
+	for atom, countPerUnit in pairs(product.requiredAtoms) do
+		local reserved = 0
+		for _, existingSell in pairs(activeSells) do
+			if existingSell.playerId == userId and existingSell.productId == productId then
+				reserved = reserved + existingSell.quantity * countPerUnit
+			end
+		end
+		local needed = countPerUnit * quantity
+		local available = (pData.atoms[atom] or 0) - reserved
+		if available < needed then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Not enough unreserved " .. atom .. " for this sell order.",
+				rarity = "common",
+			})
+			return
+		end
+	end
+
 	sellCounter = sellCounter + 1
 	local sellId = "sell_" .. sellCounter .. "_" .. os.time()
 
