@@ -14,6 +14,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -479,12 +480,16 @@ end)
 -- ═══════════════════════════════════════════════
 
 local didFadeOut = false
+local rawInputConnection
 local function fadeOutAndDestroy()
 	if didFadeOut then return end
 	didFadeOut = true
 	-- Disconnect electron animation
 	if animConnection then
 		animConnection:Disconnect()
+	end
+	if rawInputConnection then
+		rawInputConnection:Disconnect()
 	end
 
 	-- Fade all visible elements
@@ -515,6 +520,29 @@ local function fadeOutAndDestroy()
 		screenGui:Destroy()
 	end)
 end
+
+-- Some Wine/Studio embedded-surface builds do not route a click through
+-- GuiButton.Activated or MouseButton1Click. Keep the normal button events,
+-- but also handle raw input at the screen level so the intro cannot strand
+-- the player behind a non-responsive welcome surface.
+rawInputConnection = UserInputService.InputBegan:Connect(function(input)
+	if didFadeOut or not playBtn.Visible then return end
+
+	if input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.Space then
+		fadeOutAndDestroy()
+		return
+	end
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		local point = input.Position
+		local topLeft = playBtn.AbsolutePosition
+		local bottomRight = topLeft + playBtn.AbsoluteSize
+		if point.X >= topLeft.X and point.X <= bottomRight.X
+			and point.Y >= topLeft.Y and point.Y <= bottomRight.Y then
+			fadeOutAndDestroy()
+		end
+	end
+end)
 
 -- Activated works consistently for mouse, touch and gamepad in Studio.
 playBtn.Activated:Connect(fadeOutAndDestroy)
