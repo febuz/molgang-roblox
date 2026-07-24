@@ -17,6 +17,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
@@ -149,13 +150,18 @@ local function applyWeatherLighting(weather)
 	-- Update atmosphere
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 	if atmosphere then
-		atmosphere.Haze = weather.atmosphereHaze
-		atmosphere.Density = weather.fogDensity
+		TweenService:Create(atmosphere, tweenInfo, {
+			Haze = weather.atmosphereHaze,
+			Density = weather.fogDensity,
+		}):Play()
 	end
 	Lighting:SetAttribute("WeatherBrightness", weather.lightingBrightness)
 
-	-- Update ambient
-	Lighting.Ambient = weather.ambientColor
+	-- Update ambient without a hard visual cut when weather changes.
+	TweenService:Create(Lighting, tweenInfo, {
+		Ambient = weather.ambientColor,
+		OutdoorAmbient = weather.ambientColor,
+	}):Play()
 end
 
 -- ═══════════════════════════════════════════════
