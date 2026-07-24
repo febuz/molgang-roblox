@@ -6,8 +6,14 @@
 
 local PlayerDataBridge = {}
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
+local DailyStats
+if game then
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	DailyStats = require(ReplicatedStorage.Modules.DailyStats)
+else
+	-- Lune test runner fallback; Roblox resolves the Instance path above.
+	DailyStats = require("../../ReplicatedStorage/Modules/DailyStats")
+end
 
 -- Internal data store — only server scripts can access this module
 local pendingCollections = {} -- {userId = {{elementZ, symbol, coinReward, timestamp}, ...}}
