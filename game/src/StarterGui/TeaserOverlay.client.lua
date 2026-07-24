@@ -1,11 +1,11 @@
 --[[
 	TeaserOverlay.client.lua
-	MOLGANG Teaser — Persistent Branding & Navigation
+	MOLGANG OTAP — Persistent Branding & Navigation
 
 	Features:
 	- Subtle MOLGANG logo watermark (top-left)
 	- Zone compass with direction arrows (bottom-center)
-	- "Full game coming 2026" badge
+	- OTAP teststraat status and navigation
 	- Quick navigation hints showing nearest zone distances
 ]]
 
@@ -299,4 +299,4 @@ task.delay(10, function()
 	end)
 end)
 
-print("[MOLGANG] Teaser overlay active — branding + compass + daily claim")
+print("[MOLGANG] OTAP overlay active — branding + compass + daily claim")

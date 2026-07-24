@@ -1,6 +1,6 @@
 --[[
 	TutorialGui.client.lua
-	MOLGANG Teaser — Interactive Tutorial Overlay
+	MOLGANG OTAP — Interactive Tutorial Overlay
 
 	Guides new players through their first 5 minutes:
 	1. Welcome + explain the world

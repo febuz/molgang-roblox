@@ -283,13 +283,13 @@ task.spawn(function()
 	end
 end)
 
--- ── Teaser version badge ──
+-- ── OTAP test version badge ──
 
 local versionLabel = Instance.new("TextLabel")
 versionLabel.Size = UDim2.new(1, -16, 0, 16)
 versionLabel.Position = UDim2.new(0, 8, 1, -18)
 versionLabel.BackgroundTransparency = 1
-versionLabel.Text = "MOLGANG ChemEng Sim Beta"
+versionLabel.Text = "MOLGANG OTAP Teststraat"
 versionLabel.TextColor3 = Color3.fromRGB(70, 75, 90)
 versionLabel.TextScaled = true
 versionLabel.Font = Enum.Font.Gotham
