@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local FactoryEquipment = require(ReplicatedStorage.Modules.FactoryEquipment)
+local CarbonScore = require(ReplicatedStorage.Modules.CarbonScore)
 local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
@@ -253,6 +254,11 @@ local function sendFactoryUpdate(player, userId)
 
 	-- Calculate stats
 	local powerDraw, powerAvail, powerBalance = FactoryEquipment.CalculatePower(factory.placements)
+	local carbonScore = CarbonScore.CalculateScore({
+		factory_rent = 1,
+		equipment_power = powerDraw,
+	})
+	local carbonRating = select(1, CarbonScore.GetRating(carbonScore))
 	local eventEffects = WorldEvents.GetActiveEffects()
 	local operatingCostMultiplier = eventEffects.factoryOpCostMult or 1
 	local operatingCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
@@ -291,6 +297,8 @@ local function sendFactoryUpdate(player, userId)
 		rent = rent,
 		maintenance = maintenance,
 		carbonTax = carbonTax,
+		carbonScore = carbonScore,
+		carbonRating = carbonRating,
 		bonuses = bonuses,
 		placementCount = #factory.placements,
 		maxPlacements = FactoryEquipment.FloorConfig.maxEquipment,

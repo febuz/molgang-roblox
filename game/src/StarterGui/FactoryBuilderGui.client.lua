@@ -533,12 +533,16 @@ if factoryEvent then
 		local carbonTaxText = (data.carbonTax or 0) > 0
 			and string.format(" | Carbon tax: %d", data.carbonTax)
 			or ""
+		local carbonScoreText = data.carbonRating
+			and string.format(" | Carbon: %s (%d)", data.carbonRating, data.carbonScore or 0)
+			or ""
 		statsLabel.Text = string.format(
-			"Power: %d/%dkW | Cost: %d MC/mo%s | Items: %d/%d",
+			"Power: %d/%dkW | Cost: %d MC/mo%s%s | Items: %d/%d",
 			data.powerDraw or 0,
 			data.powerAvailable or 100,
 			data.monthlyCost or 0,
 			carbonTaxText,
+			carbonScoreText,
 			data.placementCount or 0,
 			data.maxPlacements or 30
 		)
