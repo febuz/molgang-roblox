@@ -20,6 +20,7 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local Quests = require(ReplicatedStorage.Modules.Quests)
 local PlayerDataLoaded = Remotes:WaitForChild("PlayerDataLoaded")
+local RequestQuestInfo = Remotes:WaitForChild("RequestQuestInfo")
 
 -- COLOR PALETTE
 local COLORS = {
@@ -382,16 +383,34 @@ local function displayModalQuests()
 		createCorner(acceptBtn, 4)
 
 		acceptBtn.MouseButton1Click:Connect(function()
-			Quests.AcceptQuest(questProgress, quest.id)
-			displayModalQuests()
-			updateCompactTracker()
+			acceptBtn.Text = "REQUESTING..."
+			acceptBtn.Active = false
+			Remotes.RequestAcceptQuest:FireServer(quest.id)
 		end)
 	end
 end
 
+Remotes.QuestState.OnClientEvent:Connect(function(data)
+	if not data or type(data.questProgress) ~= "table" then return end
+	questProgress = data.questProgress
+	if playerData then playerData.questProgress = questProgress end
+	updateCompactTracker()
+	if modalGui.Enabled then displayModalQuests() end
+end)
+
+Remotes.QuestCompleted.OnClientEvent:Connect(function()
+	RequestQuestInfo:FireServer()
+end)
+
 -- Event listeners
 PlayerDataLoaded.OnClientEvent:Connect(function()
 	updateCompactTracker()
+end)
+
+modalGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if modalGui.Enabled then
+		RequestQuestInfo:FireServer()
+	end
 end)
 
 -- Throttled to every 60 frames (#92)

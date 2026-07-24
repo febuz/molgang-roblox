@@ -205,10 +205,15 @@ end
 
 function Quests.GetAvailableQuests(progress)
 	local available = {}
+	local active = progress.active or {}
+	local completedSet = progress.completed or {}
+	local lastDaily = progress.lastDaily or {}
 	for questId, quest in pairs(Quests.AllQuests) do
-		local completed = not quest.repeatable and progress.completed[questId]
-		local missingPrerequisite = quest.requires and not progress.completed[quest.requires]
-		local alreadyActive = progress.active[questId]
+		local completedToday = quest.repeatable
+			and lastDaily[questId] == os.date("%Y-%m-%d")
+		local completed = (not quest.repeatable and completedSet[questId]) or completedToday
+		local missingPrerequisite = quest.requires and not completedSet[quest.requires]
+		local alreadyActive = active[questId]
 		if not completed and not missingPrerequisite and not alreadyActive then
 			table.insert(available, quest)
 		end
@@ -217,9 +222,27 @@ function Quests.GetAvailableQuests(progress)
 	return available
 end
 
+function Quests.CanAccept(progress, questId)
+	local quest = Quests.GetQuest(questId)
+	if not quest or type(progress) ~= "table" then return false, "Unknown quest" end
+	progress.active = progress.active or {}
+	progress.completed = progress.completed or {}
+	progress.lastDaily = progress.lastDaily or {}
+	if progress.active[questId] then return false, "Quest already active" end
+	if not quest.repeatable and progress.completed[questId] then return false, "Quest already completed" end
+	if quest.repeatable and progress.lastDaily[questId] == os.date("%Y-%m-%d") then
+		return false, "Daily quest already completed"
+	end
+	if quest.requires and not progress.completed[quest.requires] then
+		return false, "Prerequisite quest incomplete"
+	end
+	return true, "OK"
+end
+
 function Quests.AcceptQuest(progress, questId)
 	local quest = Quests.GetQuest(questId)
-	if not quest then return false end
+	local canAccept = Quests.CanAccept(progress, questId)
+	if not canAccept then return false end
 
 	progress.active[questId] = true
 	progress.inProgress[questId] = {progress = 0, target = quest.condition.target}
@@ -231,9 +254,10 @@ function Quests.CompleteQuest(progress, questId)
 	if not quest then return false end
 
 	progress.active[questId] = nil
-	progress.completed[questId] = true
 	if quest.repeatable then
 		progress.lastDaily[questId] = os.date("%Y-%m-%d")
+	else
+		progress.completed[questId] = true
 	end
 	return true
 end

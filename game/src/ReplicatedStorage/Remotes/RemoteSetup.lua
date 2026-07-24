@@ -93,6 +93,10 @@ local serverToClientEvents = {
 	"ResearchStarted",       -- {nodeId, name, completesAt, duration}
 	"ResearchCompleted",     -- {nodeId, name, unlocked}
 	"ResearchFailed",        -- {reason}
+	-- General quest progression
+	"QuestState",            -- {questProgress}
+	"QuestCompleted",        -- {questId, reward}
+	"QuestFailed",            -- {reason}
 }
 
 -- ══════════════════════════════════════════════
@@ -165,6 +169,9 @@ local clientToServerEvents = {
 	-- Research and technology
 	"RequestResearchInfo",     -- {} load persistent research state
 	"RequestStartResearch",    -- {nodeId} start one validated research job
+	-- General quest progression
+	"RequestQuestInfo",        -- {} load persistent quest state
+	"RequestAcceptQuest",      -- {questId} accept one validated quest
 	-- Logistics System
 	"RequestBuildRoute",       -- {fromId, toId, modeId} build a transport route
 	"RequestUpgradeRoute",     -- {routeId} upgrade route to next level
