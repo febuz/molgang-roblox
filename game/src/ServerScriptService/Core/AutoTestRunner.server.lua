@@ -148,6 +148,16 @@ timeTest("Nexus platform keeps grounded material values", function()
 	assert(nexus.Color.R < 0.35 and nexus.Color.G < 0.40 and nexus.Color.B < 0.45,
 		"NexusPlatform color is too bright: " .. tostring(nexus.Color))
 	print("  Nexus material: " .. tostring(nexus.Material) .. " color: " .. tostring(nexus.Color))
+
+	local bridge = Workspace:FindFirstChild("BridgeSegment_1", true)
+	assert(bridge and bridge:IsA("BasePart"), "BridgeSegment_1 is missing")
+	assert(bridge.Material == Enum.Material.Metal, "Bridge must use grounded Metal material")
+	assert(bridge.Color.R < 0.35 and bridge.Color.G < 0.40 and bridge.Color.B < 0.45,
+		"Bridge color is too bright: " .. tostring(bridge.Color))
+	local underGlow = Workspace:FindFirstChild("NexusPlatform_UnderGlow", true)
+	assert(underGlow and underGlow:IsA("BasePart"), "NexusPlatform_UnderGlow is missing")
+	assert(underGlow.Material ~= Enum.Material.Neon, "Platform underlay must not be emissive Neon")
+	print("  Bridge material: " .. tostring(bridge.Material) .. " underlay: " .. tostring(underGlow.Material))
 end)
 
 timeTest("Teleport pads have valid targets", function()
