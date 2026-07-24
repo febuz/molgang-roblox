@@ -309,13 +309,4 @@ if ratingEvent then
 	end)
 end
 
--- ? key to open (Shift+/ = ?)
--- Actually use period key for feedback since / is settings
-UserInputService.InputBegan:Connect(function(input, gp)
-	if gp then return end
-	if input.KeyCode == Enum.KeyCode.Period then
-		screenGui.Enabled = not screenGui.Enabled
-	end
-end)
-
-print("[MOLGANG] FeedbackGui loaded — press . (period) to submit feedback")
+print("[MOLGANG] FeedbackGui loaded — GUIManager owns the . shortcut")

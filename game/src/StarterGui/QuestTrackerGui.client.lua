@@ -424,17 +424,6 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
--- Keyboard shortcuts
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.Q then
-		modalGui.Enabled = not modalGui.Enabled
-		if modalGui.Enabled then
-			displayModalQuests()
-		end
-	end
-end)
-
 closeBtn.Activated:Connect(function()
 	modalGui.Enabled = false
 end)

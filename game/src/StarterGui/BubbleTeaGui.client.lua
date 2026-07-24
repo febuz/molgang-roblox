@@ -298,16 +298,4 @@ screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	end
 end)
 
--- B key toggle (only when near bar)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.B then
-		screenGui.Enabled = not screenGui.Enabled
-		if screenGui.Enabled then
-			local remote = Remotes:FindFirstChild("RequestDrinkList")
-			if remote then remote:FireServer() end
-		end
-	end
-end)
-
-print("[MOLGANG] Bubble Tea GUI loaded — B key to open menu")
+print("[MOLGANG] Bubble Tea GUI loaded — GUIManager owns the B shortcut")

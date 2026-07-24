@@ -328,15 +328,9 @@ closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 
--- Keyboard shortcut
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.I then
-		screenGui.Enabled = not screenGui.Enabled
-		if screenGui.Enabled then
-			updateInventoryDisplay()
-		end
-	end
+-- GUIManager owns the I shortcut; refresh when any opener enables this GUI.
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if screenGui.Enabled then updateInventoryDisplay() end
 end)
 
 _G.InventoryGuiToggle = function()

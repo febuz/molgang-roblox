@@ -327,15 +327,9 @@ closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 
--- Keyboard shortcut
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.A then
-		screenGui.Enabled = not screenGui.Enabled
-		if screenGui.Enabled then
-			updateDisplay()
-		end
-	end
+-- GUIManager owns the A shortcut; refresh when any opener enables this GUI.
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if screenGui.Enabled then updateDisplay() end
 end)
 
 _G.AchievementsGuiToggle = function()

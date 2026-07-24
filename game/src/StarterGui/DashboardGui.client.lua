@@ -704,21 +704,6 @@ playMahjongBtn.Activated:Connect(function()
 	end
 end)
 
--- ════════════════════════════════════════════════
--- KEYBOARD SHORTCUT: TAB TO TOGGLE DASHBOARD
--- ════════════════════════════════════════════════
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-
-	-- D = Toggle Dashboard
-	if input.KeyCode == Enum.KeyCode.D then
-		-- Use the actual ScreenGui state; other buttons and the modal
-		-- coordinator can change it independently of this shortcut.
-		screenGui.Enabled = not screenGui.Enabled
-	end
-end)
-
 -- Set active button color on start
 tabButtons["dashboard"].BackgroundColor3 = COLORS.tabActive
 tabButtons["dashboard"].TextColor3 = COLORS.textPrimary

@@ -1032,17 +1032,6 @@ AtomCollected.OnClientEvent:Connect(function(data)
 end)
 
 --------------------------------------------------------------------------------
--- KEYBOARD SHORTCUT: P to toggle
---------------------------------------------------------------------------------
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.P then
-		screenGui.Enabled = not screenGui.Enabled
-	end
-end)
-
---------------------------------------------------------------------------------
 -- RESPONSIVE SCALING
 --------------------------------------------------------------------------------
 

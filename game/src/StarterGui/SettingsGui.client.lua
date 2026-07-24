@@ -209,14 +209,6 @@ closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 
--- Keyboard shortcut
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.Slash then
-		screenGui.Enabled = not screenGui.Enabled
-	end
-end)
-
 _G.SettingsGuiToggle = function()
 	screenGui.Enabled = not screenGui.Enabled
 end
