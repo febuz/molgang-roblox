@@ -1,0 +1,27 @@
+name: MOLGANG Assets & Demo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Verify asset manifest
+        run: |
+          python tools/build_asset_manifest.py
+          git diff --exit-code -- assets/manifest.json
+      - name: Verify tracked binary assets
+        run: |
+          test -s MOLGANG_Demo.rbxl
+          test "$(find assets/models -type f \( -name '*.fbx' -o -name '*.glb' \) | wc -l)" -gt 0
+          git lfs ls-files

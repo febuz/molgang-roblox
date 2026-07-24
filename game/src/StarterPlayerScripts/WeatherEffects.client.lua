@@ -14,6 +14,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local frameCount = 0
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local SoundService = game:GetService("SoundService")

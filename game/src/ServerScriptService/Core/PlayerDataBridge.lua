@@ -68,6 +68,14 @@ function PlayerDataBridge.GetEconomyData(userId)
 	return playerEconomy[userId]
 end
 
+-- Canonical accessor used by gameplay systems that need to inspect the
+-- server-owned player state (inventory, facilities, progression, etc.).
+-- Keep this as an alias to the economy store so all systems share the same
+-- table that EconomyManager loads and saves.
+function PlayerDataBridge.GetPlayerData(userId)
+	return playerEconomy[userId]
+end
+
 function PlayerDataBridge.AddMolCoins(userId, amount)
 	local data = playerEconomy[userId]
 	if data then

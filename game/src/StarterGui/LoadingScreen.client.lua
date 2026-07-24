@@ -17,6 +17,13 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- StarterGui can recreate LocalScripts after a character reset. The intro is
+-- a session gate, not a respawn screen, so never show it a second time.
+if player:GetAttribute("MOLGANGIntroShown") then
+	return
+end
+player:SetAttribute("MOLGANGIntroShown", true)
+
 -- COLOR PALETTE
 local COLORS = {
 	background    = Color3.fromRGB(8, 10, 18),
@@ -278,20 +285,21 @@ local controlsData = {
 }
 
 local controlsFrame = Instance.new("Frame")
-controlsFrame.Size = UDim2.new(1, -30, 0, 340)  -- taller for 20 controls (#23)
+-- Four compact columns keep all shortcuts inside the outlined panel.
+controlsFrame.Size = UDim2.new(1, -30, 0, 150)
 controlsFrame.Position = UDim2.new(0, 15, 0, 125)
 controlsFrame.BackgroundTransparency = 1
 controlsFrame.Parent = contentPanel
 
 local controlLabels = {}
 for i, ctrl in ipairs(controlsData) do
-	local col = (i - 1) % 2
-	local row = math.floor((i - 1) / 2)
+	local col = (i - 1) % 4
+	local row = math.floor((i - 1) / 4)
 
 	-- Key badge
 	local keyBadge = Instance.new("TextLabel")
-	keyBadge.Size = UDim2.fromOffset(50, 24)
-	keyBadge.Position = UDim2.new(col * 0.5, 0, 0, row * 32)
+	keyBadge.Size = UDim2.fromOffset(42, 22)
+	keyBadge.Position = UDim2.new(col * 0.25, 0, 0, row * 28)
 	keyBadge.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
 	keyBadge.BackgroundTransparency = 0.3
 	keyBadge.Text = ctrl[1]
@@ -307,8 +315,8 @@ for i, ctrl in ipairs(controlsData) do
 
 	-- Action label
 	local actionLabel = Instance.new("TextLabel")
-	actionLabel.Size = UDim2.new(0.5, -65, 0, 24)
-	actionLabel.Position = UDim2.new(col * 0.5, 55, 0, row * 32)
+	actionLabel.Size = UDim2.new(0.25, -48, 0, 22)
+	actionLabel.Position = UDim2.new(col * 0.25, 47, 0, row * 28)
 	actionLabel.BackgroundTransparency = 1
 	actionLabel.Text = ctrl[2]
 	actionLabel.TextColor3 = COLORS.textSecondary
@@ -364,13 +372,16 @@ loadingText.Parent = bg
 local playBtn = Instance.new("TextButton")
 playBtn.Name = "PlayBtn"
 playBtn.Size = UDim2.fromOffset(220, 50)
-playBtn.Position = UDim2.new(0.5, -110, 1, -75)
+playBtn.Position = UDim2.new(0.5, -110, 1, -82)
 playBtn.BackgroundColor3 = COLORS.accent
 playBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
 playBtn.Text = "ENTER MOLECULIA"
 playBtn.Font = Enum.Font.GothamBold
 playBtn.TextScaled = true
 playBtn.Visible = false
+playBtn.Active = true
+playBtn.Selectable = true
+playBtn.ZIndex = 25
 playBtn.Parent = bg
 local playCorner = Instance.new("UICorner")
 playCorner.CornerRadius = UDim.new(0, 10)
@@ -491,13 +502,7 @@ local function fadeOutAndDestroy()
 	end)
 end
 
-playBtn.MouseButton1Click:Connect(fadeOutAndDestroy)
-
--- Auto-dismiss after 20 seconds
-task.delay(20, function()
-	if screenGui.Parent then
-		fadeOutAndDestroy()
-	end
-end)
+-- Activated works consistently for mouse, touch and gamepad in Studio.
+playBtn.Activated:Connect(fadeOutAndDestroy)
 
 print("[MOLGANG] Teaser loading screen displayed")

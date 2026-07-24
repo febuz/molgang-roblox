@@ -383,7 +383,9 @@ local function setupLighting()
 	Lighting.Brightness = 0.2                              -- slightly brighter base
 	Lighting.ClockTime = 5.5                               -- dawn twilight (realistic)
 	Lighting.GlobalShadows = true
-	Lighting.Technology = Enum.Technology.Future
+	-- Technology is configured by default.project.json. Studio blocks server
+	-- scripts from changing this property at runtime; attempting to write it
+	-- aborts the entire world build before zones and the spawn are created.
 	Lighting.EnvironmentDiffuseScale = 0.35                -- more environment reflection
 	Lighting.EnvironmentSpecularScale = 0.25               -- specular on wet/metal surfaces
 	Lighting.ExposureCompensation = 0.25                   -- balanced exposure

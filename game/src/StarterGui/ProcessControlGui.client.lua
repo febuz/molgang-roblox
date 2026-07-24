@@ -24,6 +24,7 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
 
 local C = {

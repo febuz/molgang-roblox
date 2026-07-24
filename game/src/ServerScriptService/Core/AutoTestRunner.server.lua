@@ -285,7 +285,7 @@ end)
 timeTest("Quests: first_atom quest exists", function()
 	local Quests = require(ReplicatedStorage.Modules.Quests)
 	assert(Quests.AllQuests.first_atom, "first_atom quest missing")
-	assert(Quests.AllQuests.first_atom.reward.molCoins == 100)
+	assert(Quests.AllQuests.first_atom.reward.molCoins == 100, "first_atom reward should be 100 MolCoins")
 end)
 
 timeTest("Practice mine costs 200 MC", function()
@@ -356,7 +356,7 @@ end)
 timeTest("Dutch translation works", function()
 	local L = require(ReplicatedStorage.Modules.Localization)
 	L.SetLanguage("nl")
-	assert(L.Get("slag_processing") == "Slakverwerking")
+	assert(L.Get("slag_processing") == "Slakverwerking", "Dutch slag_processing localization should exist")
 	L.SetLanguage("en") -- reset
 end)
 

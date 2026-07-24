@@ -99,6 +99,7 @@ createCorner(closeBtn, 6)
 
 -- Sort buttons (#70)
 local currentSort = "name" -- "name", "quantity", "rarity"
+local gridContainer
 local sortFrame = Instance.new("Frame")
 sortFrame.Size = UDim2.new(0.5, 0, 0, 28)
 sortFrame.Position = UDim2.new(0.48, 0, 0, 60)
@@ -150,7 +151,7 @@ for si, sortMode in ipairs({"name", "quantity", "rarity"}) do
 end
 
 -- Atom grid container
-local gridContainer = Instance.new("ScrollingFrame")
+gridContainer = Instance.new("ScrollingFrame")
 gridContainer.Name = "GridContainer"
 gridContainer.Size = UDim2.new(1, -20, 1, -110)
 gridContainer.Position = UDim2.new(0, 10, 0, 100)

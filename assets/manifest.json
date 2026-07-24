@@ -1,0 +1,810 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "path": "MOLGANG_Demo.rbxl",
+      "bytes": 558106,
+      "sha256": "0a5dd695568e3ea706f0a5755dec65f8bc1c84a175bec9de8c8a9ee661c0a3bf"
+    },
+    {
+      "path": "assets/models/anvil_hammer.fbx",
+      "bytes": 32316,
+      "sha256": "d92f9876c8745868abc59d47d492a5b7634cbb620786e410b9913549fcb6c1f3"
+    },
+    {
+      "path": "assets/models/anvil_hammer.glb",
+      "bytes": 15152,
+      "sha256": "437cc9db4e3b5f70afbcebe05fb9fff6727f31b51ee9bd30cf0df46ff048d4ad"
+    },
+    {
+      "path": "assets/models/ball_mill.fbx",
+      "bytes": 40636,
+      "sha256": "a3115f552d1720328c6c617ecb834d2793c3ff054aa693eda7aee9362b8767a1"
+    },
+    {
+      "path": "assets/models/ball_mill.glb",
+      "bytes": 22780,
+      "sha256": "8f90fce91a9fbac5a8d0eec305490ad7a4a6fd7e0c96092820212f4ef37178d7"
+    },
+    {
+      "path": "assets/models/banner_pole.fbx",
+      "bytes": 113532,
+      "sha256": "e415f1c0c488953e25e5e69ab2e7accb581beaff19db9651297a64ee851ac62c"
+    },
+    {
+      "path": "assets/models/banner_pole.glb",
+      "bytes": 300128,
+      "sha256": "343357d1a24109ddd785fc6faf18b450c49f423da701fb3e1d1af7823a6487f8"
+    },
+    {
+      "path": "assets/models/beaker_1L.fbx",
+      "bytes": 47292,
+      "sha256": "4d24b64a7f9891879d20e02afde432f6dee9e893f89bb1a28089bc9c3a6e0991"
+    },
+    {
+      "path": "assets/models/beaker_1L.glb",
+      "bytes": 30852,
+      "sha256": "a7e93789f1be41420054e25c2fa72c5381965c9aa71e86919a859c6f70f85a59"
+    },
+    {
+      "path": "assets/models/boba_brewing_station.fbx",
+      "bytes": 66140,
+      "sha256": "2eac8255ffe8e6ea1b2becbf2f8b60184c90c7bbbcf1ab3bf6b1b282d7e3a98a"
+    },
+    {
+      "path": "assets/models/boba_brewing_station.glb",
+      "bytes": 68384,
+      "sha256": "f2a63899b5a14ae42c9a3e8f398cad099555ab74a856400418806932af3c2582"
+    },
+    {
+      "path": "assets/models/boba_tea_cup.fbx",
+      "bytes": 153724,
+      "sha256": "259a8e454a43b4eebe2b215cf20fc95fe6b8be070e7e7154cdfc831f31b323e2"
+    },
+    {
+      "path": "assets/models/boba_tea_cup.glb",
+      "bytes": 444376,
+      "sha256": "32fc195c84e95b4f3e4c14301fa36cda89fee5b5779d0194f07fc5f778837a06"
+    },
+    {
+      "path": "assets/models/bof_converter.fbx",
+      "bytes": 48572,
+      "sha256": "346de4821e7f677919902f703cda852bcf0629a399c509e566fd6253a7410631"
+    },
+    {
+      "path": "assets/models/bof_converter.glb",
+      "bytes": 48408,
+      "sha256": "208994fb8f3b0450e8e4c3ff28d70f81ef92508ed7d5c41bf7d09f2cfb5f8b38"
+    },
+    {
+      "path": "assets/models/bunsen_burner.fbx",
+      "bytes": 36348,
+      "sha256": "09319b7878577586b45d35e24e5fb856165b193569a40e2bc717ca9ee579b944"
+    },
+    {
+      "path": "assets/models/bunsen_burner.glb",
+      "bytes": 32972,
+      "sha256": "fcf8bd08412b933d07acbc0f036bda8bf806c93defc2d4e1503d7000d6e1d96e"
+    },
+    {
+      "path": "assets/models/cafe_bar_stool.fbx",
+      "bytes": 70108,
+      "sha256": "15a7c4612d3a28b4829a5dc8b273b4cf107ce67b3078bb171a7e0c1d0af3803e"
+    },
+    {
+      "path": "assets/models/cafe_bar_stool.glb",
+      "bytes": 132728,
+      "sha256": "1dda26d5a492a75b448d55feab0a809e7273e8ecbbf3451236d1183e6c85cd54"
+    },
+    {
+      "path": "assets/models/cafe_bistro_table.fbx",
+      "bytes": 32396,
+      "sha256": "39b0e47e98d6f92273dbf0174d210dbafc6436b6cbfe6eb8391fd01564cdf48f"
+    },
+    {
+      "path": "assets/models/cafe_bistro_table.glb",
+      "bytes": 29276,
+      "sha256": "5e22ebb201eeaedd78120540345be87de4b5908e0f8d2c923ec27d26569a365b"
+    },
+    {
+      "path": "assets/models/cafe_counter.fbx",
+      "bytes": 33340,
+      "sha256": "73005c0dedb0794227273ab5fdb1b3838b98248d0b5fe8dc9e03b66bf2d5798a"
+    },
+    {
+      "path": "assets/models/cafe_counter.glb",
+      "bytes": 10048,
+      "sha256": "6759541a03f733d8fa081fa4c1956af8a047ec8f86d4403f04c1776ab65fb00e"
+    },
+    {
+      "path": "assets/models/cafe_menu_board.fbx",
+      "bytes": 47340,
+      "sha256": "70e8b08e05e873d3e3d45f61a50c74ce4434aef93f0dc9c22a3aab46aba5b832"
+    },
+    {
+      "path": "assets/models/cafe_menu_board.glb",
+      "bytes": 27028,
+      "sha256": "34d055d7f340e1efe82f2b579a28bc32912833bdbd378529a73205c092547e6f"
+    },
+    {
+      "path": "assets/models/cafe_planter.fbx",
+      "bytes": 56556,
+      "sha256": "cb4e4f7d3363b165b53c64c54047ec4875e3fe79b93495dc3d1af51a30573c5d"
+    },
+    {
+      "path": "assets/models/cafe_planter.glb",
+      "bytes": 67488,
+      "sha256": "dfdac09f71fe6b5d9578fed18ba2ccc34723b25f33e5a6223ae6c32b28f58c34"
+    },
+    {
+      "path": "assets/models/centrifugal_pump.fbx",
+      "bytes": 50476,
+      "sha256": "04223a5304fd4cf7c1c151430252ee32cd8f6c85ef5a707e7a8430db24a911ff"
+    },
+    {
+      "path": "assets/models/centrifugal_pump.glb",
+      "bytes": 41944,
+      "sha256": "d8506a30284c05e038c50f4d7c59a273821c8e61eb51eca73d2675c90dad058b"
+    },
+    {
+      "path": "assets/models/centrifuge.fbx",
+      "bytes": 35180,
+      "sha256": "b4bf3c220813afbf7bb6659ab34fd2f831657ac297b4b13ee27a92b2f4afc4c6"
+    },
+    {
+      "path": "assets/models/centrifuge.glb",
+      "bytes": 20112,
+      "sha256": "c3e81c7e7d2529de622888c77f3fa8dcdbb2c36f937a3093ec6a1011e803455d"
+    },
+    {
+      "path": "assets/models/combat_arena_floor.fbx",
+      "bytes": 37756,
+      "sha256": "db1c0a76babd66f54f6e72260736b15e95e816a534a3709d4b2c550e00ae6e2d"
+    },
+    {
+      "path": "assets/models/combat_arena_floor.glb",
+      "bytes": 84708,
+      "sha256": "d25856efba0732711a2173bb27abb398b9e1313396cc155f5945b274e9c73e0a"
+    },
+    {
+      "path": "assets/models/cone_crusher.fbx",
+      "bytes": 41900,
+      "sha256": "d36576ff576d34b9ae3a7e8f1d38760378dddef2c1bc019f9ac004d5e00db6cb"
+    },
+    {
+      "path": "assets/models/cone_crusher.glb",
+      "bytes": 45244,
+      "sha256": "31b8910318d953c73438b9e60be3bea02a6c5a6f30f35e8f588bfec89905d386"
+    },
+    {
+      "path": "assets/models/conveyor_belt.fbx",
+      "bytes": 64332,
+      "sha256": "28520159ae2ca6baca662057452b5ad3c25a86ed050503d0b871ace5eb1635f2"
+    },
+    {
+      "path": "assets/models/conveyor_belt.glb",
+      "bytes": 45376,
+      "sha256": "7a3ea5ce4e6fe31ead24c15138b50ea47cfd0bbfef877272b8da386477f32212"
+    },
+    {
+      "path": "assets/models/cooling_pit.fbx",
+      "bytes": 32172,
+      "sha256": "e37baa53b80fa037e8d20f981d7438243d6f0b38b8f1a70dcfab4ea6332ad78f"
+    },
+    {
+      "path": "assets/models/cooling_pit.glb",
+      "bytes": 10476,
+      "sha256": "8a1d35c2d46891145b062b3e808308ea63611894a8477ccecf4218545cdddeb3"
+    },
+    {
+      "path": "assets/models/crate_stack.fbx",
+      "bytes": 44396,
+      "sha256": "36fb085490f7a42a1fc724cdb28c4a302c8c54034b840faa72d31b817b0b1c0b"
+    },
+    {
+      "path": "assets/models/crate_stack.glb",
+      "bytes": 15484,
+      "sha256": "c6ff4d3a9dda66439920ab23692731b7952a9dc652471521bf0cc74fc65d7f74"
+    },
+    {
+      "path": "assets/models/cyclone_separator.fbx",
+      "bytes": 35708,
+      "sha256": "0d3641893ac942ff3ab312559ab02cdf711131b9af1e1aa036846ee49f9d405e"
+    },
+    {
+      "path": "assets/models/cyclone_separator.glb",
+      "bytes": 22364,
+      "sha256": "48e2e97da4f9ba2ffbed4c5e23bff2c2c234e808563c82cbc711800b7db3ac44"
+    },
+    {
+      "path": "assets/models/diploma_frame.fbx",
+      "bytes": 23740,
+      "sha256": "fdc27ef61d19fb3c8fa346e2a0288ae66bd105a7d37c117a4079604a1b430f38"
+    },
+    {
+      "path": "assets/models/diploma_frame.glb",
+      "bytes": 11068,
+      "sha256": "03b5eef8e883345ef42b1ca3e783383aa0a4c872471ef75cb044a6c8ee7ed80e"
+    },
+    {
+      "path": "assets/models/directory_signpost.fbx",
+      "bytes": 40284,
+      "sha256": "005ad72275e0f961db32682a136f01afdee3aabe4d58d20aee6dcfb390f142f6"
+    },
+    {
+      "path": "assets/models/directory_signpost.glb",
+      "bytes": 24228,
+      "sha256": "b098262de130648e343528d416b454d0822afde82dec576e5bbf0205b00b6027"
+    },
+    {
+      "path": "assets/models/distillation_column.fbx",
+      "bytes": 89660,
+      "sha256": "599dae033daa8aa3b16b6626b306c959d4157c84373d19e21564978d12a07c5c"
+    },
+    {
+      "path": "assets/models/distillation_column.glb",
+      "bytes": 75784,
+      "sha256": "70411e6ab859e4ab8ce70716c9cdcc41af54ecafc2627b1f6ddfeec58102cd0d"
+    },
+    {
+      "path": "assets/models/drill_rig.fbx",
+      "bytes": 36716,
+      "sha256": "17173df6103b8ec7ab19f2ca35fa334c15fd9d04ddc9854b65370517caa25a14"
+    },
+    {
+      "path": "assets/models/drill_rig.glb",
+      "bytes": 18828,
+      "sha256": "1ae81526838f03d08c7930dfb575f030789cd303db9047a9e9cfb0921ef11d36"
+    },
+    {
+      "path": "assets/models/drink_display_fridge.fbx",
+      "bytes": 108412,
+      "sha256": "2695399eafacdec5c22d1f1228fb9a2d50b27b8cecf29a3acf5dda949f8657f5"
+    },
+    {
+      "path": "assets/models/drink_display_fridge.glb",
+      "bytes": 60604,
+      "sha256": "20f427b5b126e7406a76dc3c7ec1cf70fa4981f54612165a9d4f439c9de2fafa"
+    },
+    {
+      "path": "assets/models/erlenmeyer_flask.fbx",
+      "bytes": 26860,
+      "sha256": "458bc2ccad81baf444f7b03c318b69898270701e7fa737ddd1964852cba9b706"
+    },
+    {
+      "path": "assets/models/erlenmeyer_flask.glb",
+      "bytes": 16728,
+      "sha256": "49c44eb6d33ce5e8c8f41a5966a5a6383252425fe406a704b9b5d8bab788a7a7"
+    },
+    {
+      "path": "assets/models/excavator.fbx",
+      "bytes": 32716,
+      "sha256": "68b6c6a7b145eaa83b04d3b32920ff82eee6541272866c869f80d3a4c2246a61"
+    },
+    {
+      "path": "assets/models/excavator.glb",
+      "bytes": 11772,
+      "sha256": "c41a640365e49bd8a712fdd2ae045ca260d75b5e4146d2a40e9f847aaed69202"
+    },
+    {
+      "path": "assets/models/filtration_press.fbx",
+      "bytes": 63692,
+      "sha256": "40ffa305d8c3db17c200bf3dbe5bd5c2e27d7c715a04db5ead8d1ab60430e7ee"
+    },
+    {
+      "path": "assets/models/filtration_press.glb",
+      "bytes": 30460,
+      "sha256": "435fbc90ff3418997004fe3eea9319f3f7e509bdedb80d513e0d545876d7b77d"
+    },
+    {
+      "path": "assets/models/fume_hood.fbx",
+      "bytes": 44316,
+      "sha256": "2e4c9cba12bb51bfc84b0b2358e1400548eb6ca54bfb8b243a1caadc22258552"
+    },
+    {
+      "path": "assets/models/fume_hood.glb",
+      "bytes": 14784,
+      "sha256": "12af90237e2880cacba9a98204dadd17f6df4f651e5bfe016c3749969dc7a761"
+    },
+    {
+      "path": "assets/models/gate_valve.fbx",
+      "bytes": 80348,
+      "sha256": "645c6abad767c5708ed36ca66cbfda4717e046641cc0b66517025b7d2b52feb0"
+    },
+    {
+      "path": "assets/models/gate_valve.glb",
+      "bytes": 99784,
+      "sha256": "db289fda519d7419b25b66971d740664f297d911286cacd783b097b9039eb257"
+    },
+    {
+      "path": "assets/models/graduated_cylinder.fbx",
+      "bytes": 189324,
+      "sha256": "78fc4ec8957aa90a06db94beb045b2f7bd0763eea2dfdef883500a3b233dce0f"
+    },
+    {
+      "path": "assets/models/graduated_cylinder.glb",
+      "bytes": 559064,
+      "sha256": "00fe735c24400874cc5adb2db0b6f60664eaed8bf5da66abe3e9d78813074d6d"
+    },
+    {
+      "path": "assets/models/haul_truck.fbx",
+      "bytes": 47932,
+      "sha256": "1f0f8e27d74bb0d908de77c20067ae762bbe1ffa0d303524726a4f643e9fa7e0"
+    },
+    {
+      "path": "assets/models/haul_truck.glb",
+      "bytes": 29680,
+      "sha256": "1d708b0b11a0cfa6aaa783e84a77baaa051c2f1cdecd1393e377e42a62e24614"
+    },
+    {
+      "path": "assets/models/heat_exchanger.fbx",
+      "bytes": 68236,
+      "sha256": "4b451987c8ac0fe963bce1e2b2202699793d7b8eabc80c7b8cd88c4bd79972ac"
+    },
+    {
+      "path": "assets/models/heat_exchanger.glb",
+      "bytes": 54820,
+      "sha256": "f757fed0eb1e01676625021ce3924b91b2375cb6d29f9f01b90704a8358de26c"
+    },
+    {
+      "path": "assets/models/hero_shield_generator.fbx",
+      "bytes": 58700,
+      "sha256": "7df64ef663954742e67d02c9db75b419bab49558f8e3bf78e4276c28e1f2babc"
+    },
+    {
+      "path": "assets/models/hero_shield_generator.glb",
+      "bytes": 148700,
+      "sha256": "557082f2890e4344c320b9ff038694690e4751bd1360ce98062d0893454a55b3"
+    },
+    {
+      "path": "assets/models/holo_map_stand.fbx",
+      "bytes": 110444,
+      "sha256": "7afd0e056e45c6844c05b588b2617cb8f3f7d82c541838facbf1df4ac5b87d20"
+    },
+    {
+      "path": "assets/models/holo_map_stand.glb",
+      "bytes": 317056,
+      "sha256": "d69f33123eeea8cae96f0e1674d9f2513d492c033bfa549be936ce4f1929fe08"
+    },
+    {
+      "path": "assets/models/info_kiosk.fbx",
+      "bytes": 31324,
+      "sha256": "8ce8982a7016862e9fd328b6e7a35e7707a46aa71fdb2611078ad19e8bedd691"
+    },
+    {
+      "path": "assets/models/info_kiosk.glb",
+      "bytes": 15172,
+      "sha256": "e730ba946bb82be6c5e6a8fd6b1c5786d8f358acaa286e5aad96cf6938efdeaa"
+    },
+    {
+      "path": "assets/models/jaw_crusher.fbx",
+      "bytes": 43036,
+      "sha256": "8ad24a7e11ba19361ce206525bb188604340477edd902fb11371acf6a9e8a6ca"
+    },
+    {
+      "path": "assets/models/jaw_crusher.glb",
+      "bytes": 18828,
+      "sha256": "4e9386bcea3df78422e5fc2fa6d1f6f3203f8000af1de9c52d22f6d0eac22873"
+    },
+    {
+      "path": "assets/models/lab_bench.fbx",
+      "bytes": 66028,
+      "sha256": "453378001c66367bbbbcd7a323cd88fbe657044bc5f1801233ba1ecfd47ba237"
+    },
+    {
+      "path": "assets/models/lab_bench.glb",
+      "bytes": 45720,
+      "sha256": "d8c7d40ca31822142449692714eda5b050f43d67831b6eb2a1217bdc0244a0b1"
+    },
+    {
+      "path": "assets/models/lamp_post.fbx",
+      "bytes": 78300,
+      "sha256": "eb280b4393e9d12fbfbf4616b286773bf200d746884d9e396b54b082f55f511a"
+    },
+    {
+      "path": "assets/models/lamp_post.glb",
+      "bytes": 162604,
+      "sha256": "44a4d4d190f0567e1304927ea085f675b78c526626ce39e7e66401c1bb8d9d4e"
+    },
+    {
+      "path": "assets/models/leaching_tank.fbx",
+      "bytes": 61004,
+      "sha256": "dd0da8250c8a2f37328f4af874cc6dacb59ba74db3d5d354cd5fdae84a20debd"
+    },
+    {
+      "path": "assets/models/leaching_tank.glb",
+      "bytes": 41416,
+      "sha256": "5a0d9eb3dae220b9eab338388fbb2eb769172d0d341f4c906d8f75a42f87d4ea"
+    },
+    {
+      "path": "assets/models/leaching_tank_500L_from_photo.fbx",
+      "bytes": 32716,
+      "sha256": "133e7ed78d729b5db5beeea3c69af62ce8734933e14abe0dad58039818bc14bd"
+    },
+    {
+      "path": "assets/models/leaching_tank_500L_from_photo.glb",
+      "bytes": 47352,
+      "sha256": "bceb6b7627202a17687163d073e51bf5b99935a3f2359ea703ba6f8e1fa0c547"
+    },
+    {
+      "path": "assets/models/magnetic_separator.fbx",
+      "bytes": 51500,
+      "sha256": "bfe10ef1f6a27aa8276a02fdbd0c485b017318c55f635432951c5e21d990105d"
+    },
+    {
+      "path": "assets/models/magnetic_separator.glb",
+      "bytes": 23136,
+      "sha256": "f071f5254c97cc2ca0e320274833032f0bca53da69b90117ebdfac3ddceb2199"
+    },
+    {
+      "path": "assets/models/microscope.fbx",
+      "bytes": 48604,
+      "sha256": "bc1f5939b469e8b452a26d5aea7ba3c7a3d3c634e3483bfa65d50639918af8bf"
+    },
+    {
+      "path": "assets/models/microscope.glb",
+      "bytes": 41724,
+      "sha256": "b631fb91631c0cb406736b4ab608d0b1b19eeb1454d46b730316e941df4c9504"
+    },
+    {
+      "path": "assets/models/mine_lantern.fbx",
+      "bytes": 70332,
+      "sha256": "81b64fdbeb10b34fde32314463b70b8c01349bac769eba57ff0a1fe9163ff3a3"
+    },
+    {
+      "path": "assets/models/mine_lantern.glb",
+      "bytes": 38956,
+      "sha256": "d78dee70ac972083fd763e0c4b1c217b4586b7b337ca3dfbf9de91df5574b0ab"
+    },
+    {
+      "path": "assets/models/mine_rail.fbx",
+      "bytes": 44108,
+      "sha256": "c1e8da4bc93482ce47976f7cc7d71c00cdd2d0547daf609385157ce5671d03ca"
+    },
+    {
+      "path": "assets/models/mine_rail.glb",
+      "bytes": 15108,
+      "sha256": "e29d3c81dd4a5a3c5e39f408b72e955f6a3d5c08cb0bdac5802284b036bcbe84"
+    },
+    {
+      "path": "assets/models/mine_support_frame.fbx",
+      "bytes": 40508,
+      "sha256": "585b055e4e756e1f893be5967cd8891feb12224cc5d0f627843620b33989d79c"
+    },
+    {
+      "path": "assets/models/mine_support_frame.glb",
+      "bytes": 13332,
+      "sha256": "9363c37346fcdf257c17e90f142c2c5ac2e7d456ac4f053ec729106c6349fc75"
+    },
+    {
+      "path": "assets/models/molecule_model.fbx",
+      "bytes": 147708,
+      "sha256": "950a63b4142e9269f5296a62b851763f68f0d4441790afce4e2c6490d8b7cb72"
+    },
+    {
+      "path": "assets/models/molecule_model.glb",
+      "bytes": 395556,
+      "sha256": "54521896e824a08b41612b54f97cb36d193edbfaf672535f9181eca58973e5df"
+    },
+    {
+      "path": "assets/models/nexus_fountain.fbx",
+      "bytes": 153708,
+      "sha256": "e35c6c89eae179ab2a6c07d263767a4171feae0ea14128d1f45b4f5c09e6dd7b"
+    },
+    {
+      "path": "assets/models/nexus_fountain.glb",
+      "bytes": 307324,
+      "sha256": "487d125aefa381a0431dffe78073cfabb6d5fb9a40c9540a358f3af3245d48db"
+    },
+    {
+      "path": "assets/models/ore_cart.fbx",
+      "bytes": 69532,
+      "sha256": "dfc3fdaebb7691344f639c58752493b17b5b717ca741e1213a4d547493dcec28"
+    },
+    {
+      "path": "assets/models/ore_cart.glb",
+      "bytes": 43124,
+      "sha256": "72519687519b16fe467784f6b46d56d7588b24e9fd0670ad248e01ef6780f126"
+    },
+    {
+      "path": "assets/models/ore_pile.fbx",
+      "bytes": 84188,
+      "sha256": "af0d0972d404614b846ecb3d9dc6f53d9c2ecfaff7ed7e99feb518caf732eb62"
+    },
+    {
+      "path": "assets/models/ore_pile.glb",
+      "bytes": 54248,
+      "sha256": "b93db65689972832d7c5049395c1ab3eed6e06e768a1628396414fd85625f34b"
+    },
+    {
+      "path": "assets/models/ore_vein.fbx",
+      "bytes": 60476,
+      "sha256": "b2ba5b151bec9e0aa5ce097c5249f996d4f0fa29cf11b4dffa49a1e7135413ad"
+    },
+    {
+      "path": "assets/models/ore_vein.glb",
+      "bytes": 47160,
+      "sha256": "4f5441fee5b8e93fa31ed8de6098e2b79f5b9cee5a0a098e6cc7063df075c30c"
+    },
+    {
+      "path": "assets/models/periodic_table_display.fbx",
+      "bytes": 170780,
+      "sha256": "e9d08e23a56c4d2e28629c5d8e960cd8e831eab959626e47e3e8ea1a226e1d7a"
+    },
+    {
+      "path": "assets/models/periodic_table_display.glb",
+      "bytes": 84392,
+      "sha256": "4f34e8986a0143d49b2f0725a22a219fe6ef8c41d841ca5e18f7d2bb8734b5b8"
+    },
+    {
+      "path": "assets/models/pickaxe_rack.fbx",
+      "bytes": 41324,
+      "sha256": "a507096af5ae5715da5ee5255a4255f7cf8912e3a0e088654e20b2c5a53dfd3b"
+    },
+    {
+      "path": "assets/models/pickaxe_rack.glb",
+      "bytes": 16260,
+      "sha256": "51eec3240cc639fc48e854eed60f9caf66e345702abc67485fe49626d3cf1069"
+    },
+    {
+      "path": "assets/models/pipe_section.fbx",
+      "bytes": 26700,
+      "sha256": "ef519bd8687c2bec07555c1a1d640c53336acde1c76369df793d21bfbfd5492b"
+    },
+    {
+      "path": "assets/models/pipe_section.glb",
+      "bytes": 13036,
+      "sha256": "f21c853b658393bd7e29ac33b46ea6392be3c27a0611bbc5cba39a92bde08cb6"
+    },
+    {
+      "path": "assets/models/plaza_bench.fbx",
+      "bytes": 36956,
+      "sha256": "2cf052cc7ed44e7a952d8248bc2eac21c92c027985dd7ff7da0bb6b84772e4f5"
+    },
+    {
+      "path": "assets/models/plaza_bench.glb",
+      "bytes": 11588,
+      "sha256": "16bb7979e2f915167fd42d0dc3bada706b1cd1dc4f77813e2edd01d09d30764d"
+    },
+    {
+      "path": "assets/models/pressure_vessel.fbx",
+      "bytes": 56156,
+      "sha256": "c0b54a6e63c1efe5454e61878c258ff81d882cbe7fc852392a86af3b3922e093"
+    },
+    {
+      "path": "assets/models/pressure_vessel.glb",
+      "bytes": 56444,
+      "sha256": "b3372f0f7f77e494fede5d9d838632a074d6eb54dd4d19cb00e0e99d26a411c6"
+    },
+    {
+      "path": "assets/models/quantum_dot.fbx",
+      "bytes": 91628,
+      "sha256": "3cb07569412156e3863eb2e8d8a98e13ec8158cb05d39e7f62a0eda209d27140"
+    },
+    {
+      "path": "assets/models/quantum_dot.glb",
+      "bytes": 265300,
+      "sha256": "58db007d9b2395b54ef3d795c5e00fa8d1f80a1601c347205f0f31ad17d25830"
+    },
+    {
+      "path": "assets/models/quantum_tunnel_ring.fbx",
+      "bytes": 37836,
+      "sha256": "b96b9521fa99bfd0538a50c191108c9fe66d51f3175aeedc55a470e7c1b04334"
+    },
+    {
+      "path": "assets/models/quantum_tunnel_ring.glb",
+      "bytes": 84164,
+      "sha256": "63be414d9f249e3ff98b42d4b8b411ed7aa6ff7546e639e285372f65fedecf84"
+    },
+    {
+      "path": "assets/models/race_checkpoint.fbx",
+      "bytes": 28876,
+      "sha256": "a6323456c20c2b6cdc6db943a9ee7bcadc486ee959733a99dc802622778566f3"
+    },
+    {
+      "path": "assets/models/race_checkpoint.glb",
+      "bytes": 18096,
+      "sha256": "98003023e1e3161b123cea8bb55e53b4dd63f89e1b76cf20b59091a9d86620b4"
+    },
+    {
+      "path": "assets/models/rail_cart.fbx",
+      "bytes": 58620,
+      "sha256": "6b32cae329cce1314e995d4b5a4db1c925467e0727333dae99d4c5e02f7865c8"
+    },
+    {
+      "path": "assets/models/rail_cart.glb",
+      "bytes": 100728,
+      "sha256": "19aeb8e9c563a0ad82399e2a73f1644353a22d54f650e5465bd7b8004400c793"
+    },
+    {
+      "path": "assets/models/reagent_shelf.fbx",
+      "bytes": 181148,
+      "sha256": "f2bcdf12f0baa41fa0b6a5202cbe63761fb1ecd0132e2b473b89f6fd94979a2f"
+    },
+    {
+      "path": "assets/models/reagent_shelf.glb",
+      "bytes": 119496,
+      "sha256": "fc12e420b14c3c9b87d1c37075ec4441dd6769c08efb7987c03779beb9195f1d"
+    },
+    {
+      "path": "assets/models/roasting_kiln.fbx",
+      "bytes": 76892,
+      "sha256": "ca19e4db530adae5d1518055a517fe07f6802c4900e01fee3bf7eacbb624de7f"
+    },
+    {
+      "path": "assets/models/roasting_kiln.glb",
+      "bytes": 104344,
+      "sha256": "2dffde2dfd571dc91f23097a6be67aa46a6646807a8e47392322fad3601cfbcf"
+    },
+    {
+      "path": "assets/models/safety_fence_post.fbx",
+      "bytes": 43084,
+      "sha256": "5e0e4c806723d6e11ce1b3260cf8f59fe6ef5dda11eceb03e4e317c129aec824"
+    },
+    {
+      "path": "assets/models/safety_fence_post.glb",
+      "bytes": 85372,
+      "sha256": "b1a3645f820a039416481ebfc13a044e6e55d1ed1cf245e6fc1c085c3b2ab4c5"
+    },
+    {
+      "path": "assets/models/screw_conveyor.fbx",
+      "bytes": 121900,
+      "sha256": "1c2f24dd889f9ddd9e9b3f5bf99f9d05f4881804f3f61d777a30f145f4c8db1b"
+    },
+    {
+      "path": "assets/models/screw_conveyor.glb",
+      "bytes": 102828,
+      "sha256": "215a1aca90d0a128daa618b230e4b547486e97e30857d8a53a41758ee8ee2c9b"
+    },
+    {
+      "path": "assets/models/slag_chunk.fbx",
+      "bytes": 26940,
+      "sha256": "58a25a40fa480cb6d8a1b4c45e5ea75bee7440bbb21b5ee39210ae3e050f3f3b"
+    },
+    {
+      "path": "assets/models/slag_chunk.glb",
+      "bytes": 17536,
+      "sha256": "33a2200276ce526e9d0a35aa6faedf3aec46df79bcf8c61da9d6a669cb21a7cb"
+    },
+    {
+      "path": "assets/models/slag_ladle.fbx",
+      "bytes": 32364,
+      "sha256": "5af7e61b846e106c56f109ea6ca3fb33d4b1df6134638378738ebd33258e2c4c"
+    },
+    {
+      "path": "assets/models/slag_ladle.glb",
+      "bytes": 29384,
+      "sha256": "54f23b40d88da80c9c0180281daee2b35c523632530c4ffabcbe607de8bea420"
+    },
+    {
+      "path": "assets/models/solar_panel.fbx",
+      "bytes": 20444,
+      "sha256": "f0dd79a916dc61243a945b0c5aa39137909398c6adeb236601d92600fb898029"
+    },
+    {
+      "path": "assets/models/solar_panel.glb",
+      "bytes": 9924,
+      "sha256": "f4ec9526d15e000cc846d6754a939c1ca4f1a4bb0f9300d0452585b1f8587038"
+    },
+    {
+      "path": "assets/models/speed_boost_pad.fbx",
+      "bytes": 30508,
+      "sha256": "aac2e1405b7e5561d99200cb79d4108e8456b71fc26c8c1f5bc09ac6dd118968"
+    },
+    {
+      "path": "assets/models/speed_boost_pad.glb",
+      "bytes": 24060,
+      "sha256": "d5680c9b60e83795c3c8899bc58d9e9e0e9cc694e4fe8c84ac051a6eb3ac36fd"
+    },
+    {
+      "path": "assets/models/spray_dryer.fbx",
+      "bytes": 60540,
+      "sha256": "5dc6a9c70e60bf5bc1058c269f40382b6c3a7580cb729a60b03a88866789f02b"
+    },
+    {
+      "path": "assets/models/spray_dryer.glb",
+      "bytes": 58148,
+      "sha256": "46835fcc5c69bee584319a90676d7df7c20001770f1d4d97c585b86790c1eb61"
+    },
+    {
+      "path": "assets/models/storage_silo.fbx",
+      "bytes": 62508,
+      "sha256": "066e37907edf6d6cc608361a979f3fd19f1bb2578158222bd66c03e908c2e151"
+    },
+    {
+      "path": "assets/models/storage_silo.glb",
+      "bytes": 35868,
+      "sha256": "f71d6bfec867c305ab1991a8a3974d8af13e562862a772996d078ee2691b9888"
+    },
+    {
+      "path": "assets/models/tapioca_pearl_jar.fbx",
+      "bytes": 32572,
+      "sha256": "512a4987a702552fb7ff14694282ee9f3d8dbb9f52fcb77f46946d91c50f5b7a"
+    },
+    {
+      "path": "assets/models/tapioca_pearl_jar.glb",
+      "bytes": 29500,
+      "sha256": "5c035b0208e8c836c07b6b9079f4ffa9286501bc0069dae0978be020419cb9f1"
+    },
+    {
+      "path": "assets/models/teleport_pad.fbx",
+      "bytes": 63132,
+      "sha256": "eb19e235094510b893fa9dab88851c25c31bad450926d89077889813b24f752a"
+    },
+    {
+      "path": "assets/models/teleport_pad.glb",
+      "bytes": 120336,
+      "sha256": "fdf756c922999aee8c790fdec68e810cfc5742589bbe03a42ef22d6c81e2758f"
+    },
+    {
+      "path": "assets/models/test_tube_rack.fbx",
+      "bytes": 182300,
+      "sha256": "d4381358693c20a3d042abf3a1d6de59a52031fa47b396284831dc992db000cf"
+    },
+    {
+      "path": "assets/models/test_tube_rack.glb",
+      "bytes": 399104,
+      "sha256": "604a442526c27b030a6bc78cdc20d7a45181dff2ae141ac730ccb6770cd29d8f"
+    },
+    {
+      "path": "assets/models/thickener_tank.fbx",
+      "bytes": 66236,
+      "sha256": "000ff3b725958610d4ea200de1e8088a0b7315d11a8e151d011f41ee3deb66f9"
+    },
+    {
+      "path": "assets/models/thickener_tank.glb",
+      "bytes": 73328,
+      "sha256": "3922b79f159d83e5465772dfafb16f991bb6479d65bd90deedf3dddf55199be7"
+    },
+    {
+      "path": "assets/models/vibrating_screen.fbx",
+      "bytes": 42988,
+      "sha256": "a7f039739ec0b9a306f7b0f353d9d0315f43a4bd8737e4a857aa1f68753c7d06"
+    },
+    {
+      "path": "assets/models/vibrating_screen.glb",
+      "bytes": 23760,
+      "sha256": "3b3a47b0e20d081104e0df1e27e4e1b96734d5aada9b92c431d0782e66a8aeee"
+    },
+    {
+      "path": "assets/models/victory_trophy.fbx",
+      "bytes": 75948,
+      "sha256": "547eb07187a70fd30376388db4ab9bfa2fb7215a95391262437a703081aa374d"
+    },
+    {
+      "path": "assets/models/victory_trophy.glb",
+      "bytes": 181812,
+      "sha256": "6f92a1f3d3eb27631bcf826a3d3f1c6a20a9c9a6b04a9eba9a5df9e1ceebf2c3"
+    },
+    {
+      "path": "assets/models/villain_pedestal.fbx",
+      "bytes": 65100,
+      "sha256": "2a41452f3e5a4938c80784c5936ce62dac5892c1ddcf94610f7557aadfeff9e9"
+    },
+    {
+      "path": "assets/models/villain_pedestal.glb",
+      "bytes": 114700,
+      "sha256": "4ed921e72e997a29d140bdc2d9e6ebdc9889b8605cd346fe6f9e52dc06a0779b"
+    },
+    {
+      "path": "assets/models/warning_beacon.fbx",
+      "bytes": 43068,
+      "sha256": "67415342b934f6a7c7f4a29463670aa9ca6050425035675033788f75863619de"
+    },
+    {
+      "path": "assets/models/warning_beacon.glb",
+      "bytes": 85616,
+      "sha256": "1edd8bee1e55e7a5590232eb3e0bba2fdf721dde33f7beb74f8141ce3cd5118b"
+    },
+    {
+      "path": "assets/models/welcome_arch.fbx",
+      "bytes": 69084,
+      "sha256": "9fdfd2b89b73c2a9b0cca65c4c02e22d45858b8e914d0a01547cb61845195182"
+    },
+    {
+      "path": "assets/models/welcome_arch.glb",
+      "bytes": 36804,
+      "sha256": "426ca952a34835e7ba53a2060a6651ed27803296f9d04de09994f0d3bc42178c"
+    }
+  ]
+}

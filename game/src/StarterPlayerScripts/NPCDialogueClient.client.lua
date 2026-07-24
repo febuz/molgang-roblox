@@ -96,6 +96,7 @@ continueHint.Parent = dialogueFrame
 -- ══════════════════════════════════════════════
 
 local typewriterTask = nil
+local hideDialogue
 
 local function showDialogue(npcName, text, trustLevel)
 	-- Cancel previous typewriter
@@ -140,7 +141,7 @@ local function showDialogue(npcName, text, trustLevel)
 	end)
 end
 
-local function hideDialogue()
+hideDialogue = function()
 	TweenService:Create(dialogueFrame, TweenInfo.new(0.3), {
 		Position = UDim2.new(0.2, 0, 1, 0),
 	}):Play()

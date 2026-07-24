@@ -6,8 +6,15 @@
 	Validates molecule recipes, valence data, and synthesis logic.
 ]]
 
--- Mock require (for standalone testing)
-local Chemistry = require(game.ReplicatedStorage.Modules.Chemistry)
+-- Standalone require for Lune. In Studio this module is normally resolved
+-- through ReplicatedStorage by the Rojo project mapping.
+-- selene: allow(incorrect_standard_library_use)
+Color3 = {
+	fromRGB = function(r, g, b)
+		return { R = r / 255, G = g / 255, B = b / 255 }
+	end,
+}
+local Chemistry = require("../game/src/ReplicatedStorage/Modules/Chemistry")
 
 local passCount = 0
 local failCount = 0

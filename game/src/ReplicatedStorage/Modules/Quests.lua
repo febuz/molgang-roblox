@@ -206,23 +206,12 @@ end
 function Quests.GetAvailableQuests(progress)
 	local available = {}
 	for questId, quest in pairs(Quests.AllQuests) do
-		-- Skip if already completed (non-repeatable)
-		if not quest.repeatable and progress.completed[questId] then
-			goto continue
+		local completed = not quest.repeatable and progress.completed[questId]
+		local missingPrerequisite = quest.requires and not progress.completed[quest.requires]
+		local alreadyActive = progress.active[questId]
+		if not completed and not missingPrerequisite and not alreadyActive then
+			table.insert(available, quest)
 		end
-
-		-- Skip if requires a prerequisite
-		if quest.requires and not progress.completed[quest.requires] then
-			goto continue
-		end
-
-		-- Check if already active
-		if progress.active[questId] then
-			goto continue
-		end
-
-		table.insert(available, quest)
-		::continue::
 	end
 	table.sort(available, function(a, b) return a.order < b.order end)
 	return available

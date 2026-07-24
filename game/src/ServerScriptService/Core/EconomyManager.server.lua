@@ -82,6 +82,9 @@ local function loadPlayerData(player)
 	playerData[userId].lastLoginDate = today
 
 	playerDailyEarned[userId] = 0
+	-- Publish the same server-owned table to the bridge so other server
+	-- systems (market, factory, slag and minigames) see live player state.
+	PlayerDataBridge.SetEconomyData(userId, playerData[userId])
 
 	-- Send initial data to client
 	Remotes.FireClient("PlayerDataLoaded", player, playerData[userId])
@@ -645,6 +648,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	savePlayerData(player)
+	PlayerDataBridge.Cleanup(player.UserId)
 	playerData[player.UserId] = nil
 	playerDailyEarned[player.UserId] = nil
 end)

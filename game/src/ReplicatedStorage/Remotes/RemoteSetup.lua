@@ -2,8 +2,10 @@
 -- RemoteEvents en RemoteFunctions map voor MOLGANG
 -- Alle client<->server communicatie gaat via deze remotes
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local remotesFolder = script
+-- The module lives inside ReplicatedStorage.Remotes. Runtime events must be
+-- siblings of this ModuleScript so clients and server scripts can both find
+-- them at ReplicatedStorage.Remotes.<EventName>.
+local remotesFolder = script.Parent
 
 local Remotes = {}
 

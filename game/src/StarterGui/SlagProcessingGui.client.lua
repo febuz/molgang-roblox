@@ -389,6 +389,10 @@ reagentLayout.Padding = UDim.new(0, 6)
 reagentLayout.Parent = reagentScroll
 
 local selectedReagent = nil
+local selectedSize = nil
+local selectedReagentLabel
+local leachTimeLabel
+local yieldLabel
 local reagentCards = {}
 
 local reagentOrder = {"H2SO4", "HCl", "NaOH", "HNO3", "CitricAcid", "H2O"}
@@ -497,7 +501,7 @@ label(leachPanel, {Name="CompareTitle", Size=UDim2.new(1,-20,0,14), Position=UDi
 	Text="Quick Compare: H2SO4(best yield) | HCl(fast+cheap) | NaOH(selective) | H2O(free, slow)", Color=Color3.fromRGB(140,160,180)})
 
 -- Size buttons
-local selectedSize = nil
+selectedSize = nil
 local sizeBtns = {}
 local sizeBtnY = 348
 
@@ -524,11 +528,11 @@ for i, sizeKey in ipairs(SteelSlag.SizeOrder) do
 end
 
 -- Time estimate and start button
-local leachTimeLabel = label(leachPanel, {Name="TimeEst", Size=UDim2.new(0.5,-10,0,20),
+leachTimeLabel = label(leachPanel, {Name="TimeEst", Size=UDim2.new(0.5,-10,0,20),
 	Position=UDim2.new(0,10,0,390), Text="Select reagent and size to see estimate", Color=C.textDim})
 
 -- Yield preview
-local yieldLabel = label(leachPanel, {Name="Yield", Size=UDim2.new(0.5,-10,0,40),
+yieldLabel = label(leachPanel, {Name="Yield", Size=UDim2.new(0.5,-10,0,40),
 	Position=UDim2.new(0.5,0,0,386), Text="", Color=C.textDim})
 
 local startLeachBtn = btn(leachPanel, {Name="StartLeach", Size=UDim2.new(0.94,0,0,40),

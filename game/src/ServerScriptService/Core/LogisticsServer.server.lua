@@ -40,7 +40,11 @@ local function loadLogisticsState()
 	end)
 	if ok and data then
 		LogisticsNetwork.Deserialize(data)
-		print("[LogisticsServer] Restored", vim and vim.tbl_count and vim.tbl_count(data.routes or {}) or "?", "routes from DataStore")
+		local routeCount = 0
+		for _ in pairs(data.routes or {}) do
+			routeCount += 1
+		end
+		print("[LogisticsServer] Restored", routeCount, "routes from DataStore")
 	else
 		print("[LogisticsServer] No saved logistics state")
 	end
