@@ -36,6 +36,12 @@ local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 local TIME_SCALE = GameClock.DAY_SECONDS / 1440
 local CRUSH_COOLDOWN = 0.3        -- seconds between hammer hits
 local LEACH_UPDATE_INTERVAL = 5   -- seconds between progress updates to client
+local PROCESS_WATER_COST_BY_SIZE = {
+	chunk = 25,
+	crushed = 35,
+	ground = 50,
+	powder = 70,
+}
 
 -- ══════════════════════════════════════════════
 -- STATE
@@ -68,6 +74,17 @@ end
 local function getResearchState(userId)
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 	return playerData and playerData.research or {}
+end
+
+local function hasWaterTreatment(userId)
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	local factory = playerData and playerData.factory
+	for _, placement in ipairs(factory and factory.placements or {}) do
+		if placement.itemId == "water_treatment" then
+			return true
+		end
+	end
+	return false
 end
 
 local function persistProcessState(userId, state)
@@ -384,16 +401,25 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		return
 	end
 
-	-- Deduct reagent cost
-	if reagent.cost > 0 then
-		local success = PlayerDataBridge.SpendMolCoins(userId, reagent.cost)
-		if not success then
-			Remotes.FireClient("ServerAnnounce", player, {
-				message = reagent.name .. " costs " .. reagent.cost .. " MolCoins.",
-				rarity = "common",
-			})
-			return
-		end
+	-- Settle reagent and process-water costs together before consuming slag.
+	-- This prevents a partially paid process from being created.
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local waterCost = ProcessEng.CalculateProcessWaterCost(
+		PROCESS_WATER_COST_BY_SIZE[particleSize],
+		eventEffects.processWaterCostMult,
+		hasWaterTreatment(userId)
+	)
+	local totalProcessCost = math.max(0, reagent.cost or 0) + waterCost
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	if not playerData or (playerData.molCoins or 0) < totalProcessCost then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Process needs " .. totalProcessCost .. " MC (reagent " .. (reagent.cost or 0) .. ", water " .. waterCost .. ").",
+			rarity = "common",
+		})
+		return
+	end
+	if totalProcessCost > 0 and not PlayerDataBridge.SpendMolCoins(userId, totalProcessCost) then
+		return
 	end
 
 	-- Consume 1kg of slag
@@ -409,7 +435,6 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	-- Controls affect rate and residence time, not conservation of mass.
 	local processEfficiency = math.clamp(0.75 + reactionRate * 0.125, 0.75, 0.95)
 	local phFactor = ProcessEng.ReagentPHFactor(reagent, processState.pH)
-	local eventEffects = WorldEvents.GetActiveEffects()
 	local eventEfficiency = math.max(0, tonumber(eventEffects.leachingEfficiencyMult) or 1)
 	local recoveryFactor = ProcessEng.CalculateRecoveryFactor(processEfficiency, phFactor, eventEfficiency)
 	local yield = ProcessEng.ApplyRecovery(idealYield, recoveryFactor)
@@ -429,6 +454,8 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		processEfficiency = processEfficiency,
 		phFactor = phFactor,
 		recoveryFactor = recoveryFactor,
+		waterCost = waterCost,
+		waterTreatment = hasWaterTreatment(userId),
 		massBalance = massBalance,
 		complete = false,
 		extracted = false,
@@ -445,11 +472,13 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		durationDisplay = timeStr,
 		yield = yield,
 		massBalance = massBalance,
+		waterCost = waterCost,
+		waterTreatment = hasWaterTreatment(userId),
 		reagentColor = {reagent.color.R * 255, reagent.color.G * 255, reagent.color.B * 255},
 	})
 
 	Remotes.FireClient("ServerAnnounce", player, {
-		message = "Leaching started: " .. sizeData.name .. " + " .. reagent.name .. " (" .. timeStr .. ")",
+		message = "Leaching started: " .. sizeData.name .. " + " .. reagent.name .. " (" .. timeStr .. ", water " .. waterCost .. " MC)",
 		rarity = "rare",
 	})
 

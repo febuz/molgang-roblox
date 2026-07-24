@@ -63,4 +63,13 @@ assert(pipeline.lossKg >= -0.001 and pipeline.lossKg <= 0.001,
 	"full slag pipeline must conserve mass")
 assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
 
-print("Process Engineering Tests: 21 passed, 0 failed")
+assert(ProcessEngineering.CalculateProcessWaterCost(50, 1, false) == 50,
+	"normal leaching must charge base process-water cost")
+assert(ProcessEngineering.CalculateProcessWaterCost(50, 1.8, false) == 90,
+	"drought must increase process-water cost")
+assert(ProcessEngineering.CalculateProcessWaterCost(50, 1.8, true) == 45,
+	"water treatment must recycle half the drought-adjusted cost")
+assert(ProcessEngineering.CalculateProcessWaterCost(-1, 1, false) == 0,
+	"invalid water cost must not charge coins")
+
+print("Process Engineering Tests: 25 passed, 0 failed")

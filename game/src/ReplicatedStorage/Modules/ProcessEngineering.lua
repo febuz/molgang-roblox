@@ -346,6 +346,24 @@ function ProcessEngineering.CalculateRecoveryFactor(processEfficiency, phFactor,
 	return math.clamp(process * ph * math.max(0, event), 0.15, 0.95)
 end
 
+-- Water is a real consumable operating cost in the leaching circuit. A
+-- treatment unit recycles half of the make-up water; regional events can
+-- multiply the remaining cost. Keep the calculation pure for server and test
+-- use, with integer MolCoin settlement.
+function ProcessEngineering.CalculateProcessWaterCost(baseCost, eventMultiplier, hasTreatment)
+	local base = tonumber(baseCost) or 0
+	if base ~= base or base == math.huge or base == -math.huge or base < 0 then
+		return 0
+	end
+	local multiplier = tonumber(eventMultiplier)
+	if not multiplier or multiplier ~= multiplier or multiplier == math.huge or multiplier == -math.huge then
+		multiplier = 1
+	end
+	multiplier = math.max(0, multiplier)
+	local treatmentFactor = hasTreatment and 0.5 or 1
+	return math.max(0, math.ceil(base * multiplier * treatmentFactor))
+end
+
 -- Apply recovery without creating a product that the recovered mass cannot
 -- support. Sub-atom yields remain process loss instead of rounding upward.
 function ProcessEngineering.ApplyRecovery(yield, recoveryFactor)
