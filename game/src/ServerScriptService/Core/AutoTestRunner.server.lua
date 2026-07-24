@@ -260,6 +260,18 @@ timeTest("H2O is free (cost=0)", function()
 	assert(h2o.cost == 0, "H2O cost: " .. h2o.cost)
 end)
 
+timeTest("Leaching safety interlock rejects overpressure", function()
+	local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
+	local safe, code = ProcessEng.ValidateOperatingEnvelope({temperature = 25, pressure = 300, pH = 7, flowRate = 10})
+	assert(not safe and code == "OVERPRESSURE", "Overpressure was not blocked")
+end)
+
+timeTest("Safe leaching envelope accepts normal conditions", function()
+	local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
+	local safe = ProcessEng.ValidateOperatingEnvelope({temperature = 65, pressure = 101.325, pH = 2, flowRate = 10})
+	assert(safe, "Normal leach conditions were rejected")
+end)
+
 -- ═══════════════════════════════════════════════
 -- TEST 7: ECONOMY BALANCE
 -- ═══════════════════════════════════════════════

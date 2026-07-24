@@ -301,12 +301,19 @@ end)
 Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, particleSize)
 	local userId = player.UserId
 	local slag = getPlayerSlag(userId)
+	local processState = getProcessState(userId)
 
 	-- Validate inputs
 	if type(reagentId) ~= "string" or type(particleSize) ~= "string" then return end
 	local reagent = SteelSlag.Reagents[reagentId]
 	local sizeData = SteelSlag.ParticleSizes[particleSize]
 	if not reagent or not sizeData then return end
+
+	local safe, _, safetyMessage = ProcessEng.ValidateOperatingEnvelope(processState)
+	if not safe then
+		Remotes.FireClient("ServerAnnounce", player, {message = safetyMessage, rarity = "common"})
+		return
+	end
 
 	-- Check slag available
 	if slag[particleSize] <= 0 then
@@ -347,12 +354,8 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local leachRealSeconds = leachMinutes * TIME_SCALE
 	local yield = SteelSlag.CalculateYield(particleSize, reagentId, SteelSlag.BATCH_WEIGHT_KG)
 
-	-- Process controls boost yield slightly when reaction rate is high
-	if reactionRate > 2.0 then
-		for _, entry in ipairs(yield) do
-			entry.atomCount = math.floor(entry.atomCount * math.min(reactionRate / 2, 1.5))
-		end
-	end
+	-- Controls affect rate and residence time, not conservation of mass.
+	local processEfficiency = math.clamp(0.75 + reactionRate * 0.125, 0.75, 0.95)
 
 	-- Create leach record
 	local leachId = generateLeachId()
@@ -366,6 +369,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		durationSeconds = leachRealSeconds,
 		durationMinutes = leachMinutes,
 		yield = yield,
+		processEfficiency = processEfficiency,
 		complete = false,
 		extracted = false,
 	}

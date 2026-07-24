@@ -271,6 +271,32 @@ function ProcessEngineering.UpdateDerivedValues(state)
 	return state
 end
 
+-- Conservative safety envelope for aqueous leaching in the OTAP teststraat.
+function ProcessEngineering.ValidateOperatingEnvelope(state)
+	if not state then
+		return false, "NO_STATE", "Process state is unavailable."
+	end
+	if state.temperature > 120 then
+		return false, "HIGH_TEMPERATURE", "Interlock: cool the leach tank below 120°C."
+	end
+	if state.temperature < 5 then
+		return false, "LOW_TEMPERATURE", "Interlock: heat the leach tank above 5°C."
+	end
+	if state.pressure > 250 then
+		return false, "OVERPRESSURE", "Interlock: reduce vessel pressure below 250 kPa."
+	end
+	if state.pressure < 80 then
+		return false, "LOW_PRESSURE", "Interlock: restore vessel pressure above 80 kPa."
+	end
+	if state.flowRate < 1 or state.flowRate > 50 then
+		return false, "FLOW_OUT_OF_RANGE", "Interlock: set flow between 1 and 50 L/min."
+	end
+	if state.pH < 0 or state.pH > 14 then
+		return false, "PH_OUT_OF_RANGE", "Interlock: pH must remain between 0 and 14."
+	end
+	return true, "OK", "Operating envelope safe."
+end
+
 -- ═══════════════════════════════════════════════
 -- DISPLAY HELPERS
 -- ═══════════════════════════════════════════════
