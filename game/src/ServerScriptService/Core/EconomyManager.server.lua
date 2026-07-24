@@ -17,6 +17,7 @@ local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
 local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
+local MarketTransactionLedger = require(ReplicatedStorage.Modules.MarketTransactionLedger)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 -- ══════════════════════════════════════════════
@@ -538,6 +539,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 			totalCost = totalCost,
 			newBalance = data.molCoins,
 		})
+		MarketTransactionLedger.Record(itemName, "buy", quantity)
 
 		print("[EconomyManager]", player.Name, "bought", quantity, itemName, "for", totalCost)
 
@@ -567,6 +569,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 			totalRevenue = totalRevenue,
 			newBalance = data.molCoins,
 		})
+		MarketTransactionLedger.Record(itemName, "sell", quantity)
 
 		print("[EconomyManager]", player.Name, "sold", quantity, itemName, "for", totalRevenue)
 	end
