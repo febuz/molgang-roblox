@@ -212,9 +212,13 @@ let arOn = params.get('ar') === '1';
 let arLabels = {};
 const humanize = (ref) => ref.replace(/\.glb$/, '').replace(/_/g, ' ');
 function labelFor(o) {
+  if (o.t === 'player') return { text: `${o.ref} · player`, kind: 'player' };
   if (o.t === 'asset') return { text: humanize(o.ref), kind: 'id' };
   const y = arLabels[o.ref];
-  if (y && y.yolo && y.conf >= 0.5) return { text: `${y.yolo} · YOLO ${(y.conf * 100) | 0}%`, kind: 'yolo' };
+  if (y && y.yolo && y.conf >= 0.5) {
+    const tag = o.t === 'agent' ? 'YOLO·live' : 'YOLO';
+    return { text: `${y.yolo} · ${tag} ${(y.conf * 100) | 0}%`, kind: 'yolo' };
+  }
   return { text: `${o.ref.replace(/_/g, ' ')} · diffusion`, kind: 'gen' };
 }
 const arToggle = document.getElementById('ar-toggle');
@@ -248,8 +252,12 @@ function drawAR() {
   };
   for (const [i, obj] of live) if (obj !== 'pending') consider(objects[i]);   // streamed models
   for (const o of impPlacements) consider(o);                                 // instanced impostors
+  for (const m of agentMeshes.values())                                       // live moving traffic/peds
+    consider({ x: m.sprite.position.x, z: m.sprite.position.z, s: agentSize[m.kind] || 3.2, t: 'agent', ref: m.kind });
+  for (const [id, m] of playerMeshes)                                          // other players
+    consider({ x: m.sprite.position.x, z: m.sprite.position.z, s: 3.4, t: 'player', ref: id });
   items.sort((a, b) => a.dist - b.dist);
-  const COL = { id: '#6fe0ff', yolo: '#7fffb0', gen: '#ffcf7f' };
+  const COL = { id: '#6fe0ff', yolo: '#7fffb0', gen: '#ffcf7f', player: '#ff7fe0' };
   for (const it of items.slice(0, 46)) {
     const { o, sx, sy, dist } = it;
     const lab = labelFor(o);
@@ -338,7 +346,7 @@ async function pollSim() {
         sp.center.set(0.5, 0);
         const s = agentSize[a.k] || 3.2; sp.scale.set(s, s, 1);
         scene.add(sp);
-        m = { sprite: sp, from: { x: a.x, z: a.z }, to: { x: a.x, z: a.z }, t: 0 };
+        m = { sprite: sp, kind: a.k, from: { x: a.x, z: a.z }, to: { x: a.x, z: a.z }, t: 0 };
         agentMeshes.set(a.id, m);
       } else {
         m.from = { x: m.sprite.position.x, z: m.sprite.position.z };
