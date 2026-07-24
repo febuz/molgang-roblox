@@ -57,13 +57,16 @@ end
 
 for _, guiName in ipairs(requiredGuis) do
 	local gui = nil
+	local guiCount = 0
 	for _, child in ipairs(playerGui:GetChildren()) do
 		if child.Name == guiName and child:IsA("ScreenGui") then
+			guiCount = guiCount + 1
 			gui = child
-			break
 		end
 	end
 	check("GUI exists: " .. guiName, gui and gui:IsA("ScreenGui"), "missing client ScreenGui")
+	check("GUI is unique: " .. guiName, guiCount == 1,
+		"expected one ScreenGui, found " .. tostring(guiCount))
 	if gui then
 		local buttonCount = 0
 		for _, child in ipairs(gui:GetDescendants()) do
