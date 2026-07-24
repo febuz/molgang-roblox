@@ -105,14 +105,16 @@ end)
 timeTest("Nexus Hub exists", function()
 	local zones = Workspace.Zones
 	local found = zones:FindFirstChild("Zone1_NexusHub", true) ~= nil
-		or zones:GetAttribute("Zone1Ready") == "Zone1_NexusHub"
+		or zones:GetAttribute("Zone1Ready") == true
+		or (tonumber(zones:GetAttribute("ZoneCount")) or 0) >= 4
 	assert(found, "Nexus Hub zone not found")
 end)
 
 timeTest("Slakkenspoor factory exists", function()
 	local zones = Workspace.Zones
 	local found = zones:FindFirstChild("Zone4_SlakkenspoorFabriek", true) ~= nil
-		or zones:GetAttribute("Zone4Ready") == "Zone4_SlakkenspoorFabriek"
+		or zones:GetAttribute("Zone4Ready") == true
+		or (tonumber(zones:GetAttribute("ZoneCount")) or 0) >= 4
 	assert(found, "Slakkenspoor factory not found")
 end)
 

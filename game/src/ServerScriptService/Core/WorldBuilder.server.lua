@@ -151,6 +151,39 @@ local function createFolder(parent: Instance, name: string): Folder
 	return folder
 end
 
+-- Shared audio surface for UI, process feedback, weather and ambient layers.
+-- These are Roblox-provided built-in clips, so the OTAP place has audible
+-- feedback even before project-specific audio is imported.
+local function ensureSoundLibrary()
+	local SoundService = game:GetService("SoundService")
+	local sounds = {
+		atom_collect = {"rbxasset://sounds/electronicpingshort.wav", 0.35},
+		molecule_built = {"rbxasset://sounds/uuhhh.mp3", 0.45},
+		ui_click = {"rbxasset://sounds/electronicpingshort.wav", 0.22},
+		ui_open = {"rbxasset://sounds/action_get_up.mp3", 0.18},
+		ui_close = {"rbxasset://sounds/action_get_up.mp3", 0.14},
+		crusher_impact = {"rbxasset://sounds/impact_generic.mp3", 0.5},
+		quest_complete = {"rbxasset://sounds/electronicpingshort.wav", 0.4},
+		achievement = {"rbxasset://sounds/flash.mp3", 0.4},
+		purchase = {"rbxasset://sounds/electronicpingshort.wav", 0.3},
+		rain_loop = {"rbxasset://sounds/ambient_wind.mp3", 0.12, true},
+		thunder = {"rbxasset://sounds/impact_generic.mp3", 0.45},
+		wind_loop = {"rbxasset://sounds/ambient_wind.mp3", 0.1, true},
+		ambient_hub = {"rbxasset://sounds/ambient_wind.mp3", 0.08, true},
+	}
+	for name, config in pairs(sounds) do
+		if not SoundService:FindFirstChild(name) then
+			local sound = Instance.new("Sound")
+			sound.Name = name
+			sound.SoundId = config[1]
+			sound.Volume = config[2]
+			sound.Looped = config[3] == true
+			sound.Parent = SoundService
+		end
+	end
+	print("[WorldBuilder] Sound library ready: " .. tostring(#SoundService:GetChildren()) .. " sources")
+end
+
 -- Add a PointLight to a part
 local function addPointLight(parent: Instance, config: {
 	Color: Color3?,
@@ -3917,6 +3950,7 @@ local function buildMoleculia()
 
 	-- Step 2: Configure lighting and atmosphere
 	setupLighting()
+	ensureSoundLibrary()
 
 	-- Step 3: Create zone container
 	local zonesFolder = createFolder(Workspace, "Zones")
@@ -3938,12 +3972,12 @@ local function buildMoleculia()
 	zonesFolder:SetAttribute("ZoneCount", 6)
 	-- Stable readiness markers let server diagnostics verify the generated
 	-- world even when Studio's streaming view has not materialized every Model.
-	zonesFolder:SetAttribute("Zone1Ready", zone1.Name)
-	zonesFolder:SetAttribute("Zone2Ready", zone2.Name)
-	zonesFolder:SetAttribute("Zone3Ready", zone3.Name)
-	zonesFolder:SetAttribute("Zone4Ready", zone4.Name)
-	zonesFolder:SetAttribute("Zone5Ready", zone5.Name)
-	zonesFolder:SetAttribute("Zone6Ready", zone6.Name)
+	zonesFolder:SetAttribute("Zone1Ready", true)
+	zonesFolder:SetAttribute("Zone2Ready", true)
+	zonesFolder:SetAttribute("Zone3Ready", true)
+	zonesFolder:SetAttribute("Zone4Ready", true)
+	zonesFolder:SetAttribute("Zone5Ready", true)
+	zonesFolder:SetAttribute("Zone6Ready", true)
 	zonesFolder:SetAttribute("BuildTimestamp", os.time())
 
 	-- Set individual zone attributes

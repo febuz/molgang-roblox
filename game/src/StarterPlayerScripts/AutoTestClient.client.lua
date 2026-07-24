@@ -40,7 +40,13 @@ local function check(name, condition, detail)
 end
 
 for _, guiName in ipairs(requiredGuis) do
-	local gui = playerGui:FindFirstChild(guiName, true)
+	local gui = nil
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == guiName and child:IsA("ScreenGui") then
+			gui = child
+			break
+		end
+	end
 	check("GUI exists: " .. guiName, gui and gui:IsA("ScreenGui"), "missing client ScreenGui")
 	if gui then
 		local buttonCount = 0
