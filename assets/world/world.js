@@ -815,6 +815,96 @@ function openFertLab() {
   addEventListener('keydown', (e) => { if (e.code === 'KeyF') openFertLab(); });
 })();
 
+// ---------- Farm: apply fertilizers to crops under Liebig's Law ----------
+// Yield is capped by the scarcest nutrient relative to the crop's ideal N-P-K —
+// so over-applying one nutrient can't make up for a missing one. Closes the loop:
+// process -> fertilizer -> crop.
+let crops = [];
+const fertById = new Map();
+let currentCrop = null;
+let plot = { N: 0, P: 0, K: 0 };
+const HARVEST_KEY = 'molgang.harvests';
+let harvests = {};
+try { harvests = JSON.parse(localStorage.getItem(HARVEST_KEY) || '{}'); } catch (e) { /* fresh */ }
+
+function liebig() {
+  if (!currentCrop) return { yield: 0, limit: -1 };
+  const id = currentCrop.idealNPK;
+  const ratios = [plot.N / id[0], plot.P / id[1], plot.K / id[2]];
+  let limit = 0;
+  for (let i = 1; i < 3; i++) if (ratios[i] < ratios[limit]) limit = i;
+  return { yield: Math.max(0, Math.min(1, ratios[limit])), limit, ratios };
+}
+function renderPlot() {
+  if (!currentCrop) return;
+  const id = currentCrop.idealNPK, L = liebig();
+  document.getElementById('pl-crop').textContent = currentCrop.name;
+  document.getElementById('pl-ideal').textContent = id.join('-');
+  const names = ['N', 'P', 'K'], applied = [plot.N, plot.P, plot.K];
+  document.getElementById('npk-bars').innerHTML = names.map((n, i) => {
+    const ratio = applied[i] / id[i], pct = Math.min(1, ratio) * 100;
+    const col = ratio >= 1 ? '#7fe0a0' : '#e0b57f';
+    return `<div class="bar ${i === L.limit ? 'limit' : ''}"><span class="lbl">${n} ${applied[i]}/${id[i]}</span>`
+      + `<span class="track"><span class="fill" style="width:${pct}%;background:${col}"></span></span>`
+      + `<span class="num">${(ratio * 100) | 0}%</span></div>`;
+  }).join('');
+  document.getElementById('pl-yield').textContent = `${(L.yield * 100) | 0}%`;
+  document.getElementById('pl-limit').textContent = L.yield < 1 && L.limit >= 0 ? `· limited by ${names[L.limit]}` : (L.yield >= 1 ? '· fully fed!' : '');
+  document.getElementById('pl-harvest').disabled = L.yield <= 0;
+}
+function renderApplyList() {
+  const list = document.getElementById('apply-list'); if (!list) return;
+  const avail = fertilizers.filter((f) => (fertInv[f.id] || 0) > 0);
+  list.innerHTML = avail.length ? '' : '<div class="fl-sub">No fertilizers yet — synthesize some in the Fertilizer Lab (🌱).</div>';
+  for (const f of avail) {
+    const row = document.createElement('div'); row.className = 'appl';
+    row.innerHTML = `<div class="info"><div class="nm">${f.name}</div><div class="np">NPK ${f.npk.join('-')}</div></div>`
+      + `<div class="cnt">×${fertInv[f.id]}</div><button type="button">Apply</button>`;
+    row.querySelector('button').addEventListener('click', () => {
+      if ((fertInv[f.id] || 0) <= 0 || !currentCrop) return;
+      fertInv[f.id]--; try { localStorage.setItem(FERT_KEY, JSON.stringify(fertInv)); } catch (e) { /* quota */ }
+      plot.N += f.npk[0]; plot.P += f.npk[1]; plot.K += f.npk[2];
+      renderPlot(); renderApplyList();
+    });
+    list.appendChild(row);
+  }
+}
+function selectCrop(c) {
+  currentCrop = c; plot = { N: 0, P: 0, K: 0 };
+  for (const b of document.querySelectorAll('#crop-row button')) b.classList.toggle('on', b.dataset.id === c.id);
+  renderPlot();
+}
+function buildFarm() {
+  for (const f of fertilizers) fertById.set(f.id, f);
+  const row = document.getElementById('crop-row'); if (!row) return;
+  row.innerHTML = '';
+  for (const c of crops) {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.id = c.id;
+    b.innerHTML = `<b>${c.name}</b>NPK ${c.idealNPK.join('-')} · ${c.growthDays}d`;
+    b.addEventListener('click', () => selectCrop(c));
+    row.appendChild(b);
+  }
+  document.getElementById('pl-harvest').addEventListener('click', () => {
+    const L = liebig(); if (L.yield <= 0 || !currentCrop) return;
+    harvests[currentCrop.id] = (harvests[currentCrop.id] || 0) + 1;
+    try { localStorage.setItem(HARVEST_KEY, JSON.stringify(harvests)); } catch (e) { /* quota */ }
+    const y = (L.yield * 100) | 0;
+    plot = { N: 0, P: 0, K: 0 }; renderPlot(); renderApplyList();
+    const pl = document.getElementById('pl-limit'); if (pl) pl.textContent = `· harvested ${currentCrop.name} at ${y}% ✓`;
+  });
+  if (crops.length) selectCrop(crops[0]);
+}
+function openFarm() {
+  renderApplyList(); renderPlot();
+  document.getElementById('farm').style.display = 'flex';
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+(function wireFarm() {
+  const btn = document.getElementById('farm-btn'), close = document.getElementById('fm-close');
+  if (btn) btn.addEventListener('click', openFarm);
+  if (close) close.addEventListener('click', () => { document.getElementById('farm').style.display = 'none'; });
+})();
+
 // ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
@@ -858,13 +948,25 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     buildElements();
     fertilizers = w.meta.fertilizers || [];
     buildFertilizerLab();
+    crops = w.meta.crops || [];
+    buildFarm();
     { const fb = document.getElementById('fert-btn'); if (fb) fb.style.display = 'block'; }
+    { const mb = document.getElementById('farm-btn'); if (mb) mb.style.display = 'block'; }
     if (params.get('collectall')) {          // sandbox: skip the grind (demo/verify)
       for (const o of elements) collected.add(o.num);
       for (const [, rec] of elementSprites) { rec.sprite.material.map.dispose(); rec.sprite.material.map = elementTexture(rec.o, true); rec.sprite.material.needsUpdate = true; }
       updateElementHUD();
     }
     if (params.get('lab')) setTimeout(openFertLab, 400);
+    if (params.get('stockfert') || params.get('farmdemo')) {
+      for (const f of fertilizers) fertInv[f.id] = 6;
+    }
+    if (params.get('farmdemo')) {              // Liebig demo: N+P fed, K forgotten -> 0% yield
+      selectCrop(crops.find((c) => c.id === 'wheat') || crops[0]);
+      for (const id of ['urea', 'urea', 'dap']) { const f = fertById.get(id); if (f) { plot.N += f.npk[0]; plot.P += f.npk[1]; plot.K += f.npk[2]; fertInv[id]--; } }
+      renderPlot();
+    }
+    if (params.get('farm')) setTimeout(openFarm, 400);
     initControls();
     $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
       + `the web continuation of the Roblox teaser`;

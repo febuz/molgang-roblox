@@ -22,6 +22,36 @@
   #fert-btn { position: fixed; top: 92px; right: 12px; z-index: 12; cursor: pointer;
     background: rgba(14,18,26,.82); color: #9be08a; border: 1px solid #3a7a2c;
     border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #farm-btn { position: fixed; top: 132px; right: 12px; z-index: 12; cursor: pointer;
+    background: rgba(14,18,26,.82); color: #e0c98a; border: 1px solid #7a6a2c;
+    border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #farm { position: fixed; inset: 0; z-index: 18; display: none; align-items: center;
+    justify-content: center; background: rgba(4,6,13,.72); }
+  #crop-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  #crop-row button { cursor: pointer; flex: 1; min-width: 90px; padding: 8px 6px; border-radius: 9px;
+    background: rgba(30,40,60,.5); border: 1px solid #26344a; color: #cfe0f0; font: 11px system-ui; }
+  #crop-row button.on { background: #1a2a1a; color: #e0c98a; border-color: #7a6a2c; }
+  #crop-row button b { display: block; font-size: 12.5px; margin-bottom: 2px; color: #fff; }
+  #plot { padding: 12px; border-radius: 10px; background: rgba(30,40,60,.4); border: 1px solid #26344a; margin-bottom: 12px; }
+  .pl-head { font-size: 13px; margin-bottom: 8px; } .pl-head b { color: #e0c98a; }
+  #npk-bars .bar { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+  #npk-bars .bar .lbl { width: 78px; color: #cfe0f0; }
+  #npk-bars .bar .track { flex: 1; height: 12px; border-radius: 6px; background: #1a2230; overflow: hidden; position: relative; }
+  #npk-bars .bar .fill { height: 100%; border-radius: 6px; }
+  #npk-bars .bar .num { width: 78px; text-align: right; color: #9fb0c6; font-variant-numeric: tabular-nums; }
+  #npk-bars .bar.limit .lbl { color: #ff9a6f; font-weight: 700; }
+  .pl-yield { margin-top: 10px; font-size: 13px; } .pl-yield b { color: #6ffcda; font-size: 18px; }
+  .pl-yield #pl-limit { color: #ff9a6f; font-size: 11px; }
+  #pl-harvest { margin-top: 10px; cursor: pointer; padding: 8px 14px; border-radius: 8px; border: 0;
+    background: #7a6a2c; color: #fff; font: 600 12px system-ui; }
+  #pl-harvest:disabled { background: #333a44; color: #7a8698; cursor: not-allowed; }
+  .fl-sub { font-size: 12px; color: #9fb0c6; margin-bottom: 6px; }
+  .appl { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px;
+    background: rgba(30,40,60,.5); border: 1px solid #26344a; margin-bottom: 6px; }
+  .appl .info { flex: 1; } .appl .nm { font-size: 12.5px; } .appl .np { color: #ffd479; font-size: 11px; }
+  .appl .cnt { color: #9be08a; font-size: 11px; }
+  .appl button { cursor: pointer; padding: 6px 12px; border-radius: 8px; border: 0; background: #2f6bd0; color: #fff; font: 600 11px system-ui; }
+  .appl button:disabled { background: #333a44; color: #7a8698; cursor: not-allowed; }
   #fertlab { position: fixed; inset: 0; z-index: 18; display: none; align-items: center;
     justify-content: center; background: rgba(4,6,13,.72); }
   #fertlab .fl-card { width: min(760px, 94vw); max-height: 84vh; overflow: auto; margin: 16px;
@@ -132,6 +162,23 @@
       <span>Synthesize fertilizers from the elements you collect · <span id="fl-made">0</span> made</span>
       <button id="fl-close" type="button">✕</button></div>
     <div id="fert-list"></div>
+  </div>
+</div>
+<button id="farm-btn" style="display:none">🌾 Farm</button>
+<div id="farm">
+  <div class="fl-card">
+    <div class="fl-head"><b>🌾 Farm — Liebig's Law</b>
+      <span>Yield is capped by the scarcest nutrient. Balance N-P-K to the crop's need.</span>
+      <button id="fm-close" type="button">✕</button></div>
+    <div id="crop-row"></div>
+    <div id="plot">
+      <div class="pl-head"><span id="pl-crop">—</span> · ideal <b id="pl-ideal">—</b></div>
+      <div id="npk-bars"></div>
+      <div class="pl-yield">Predicted yield: <b id="pl-yield">0%</b> <span id="pl-limit"></span></div>
+      <button id="pl-harvest" type="button" disabled>Harvest</button>
+    </div>
+    <div class="fl-sub">Your fertilizers — apply to the plot:</div>
+    <div id="apply-list"></div>
   </div>
 </div>
 <div id="controls">

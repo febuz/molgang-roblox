@@ -25,6 +25,40 @@ ELEMENTS_LUA = os.path.join(HERE, "..", "..", "game", "src", "ReplicatedStorage"
 FERTILIZER_LUA = os.path.join(HERE, "..", "..", "game", "src", "ReplicatedStorage", "Modules", "FertilizerTrack.lua")
 
 
+def parse_crops():
+    """Extract the crops (real ideal NPK + pH + growth days) from FertilizerTrack.lua.
+    Used for Liebig's-Law farming: yield is limited by the scarcest nutrient."""
+    try:
+        txt = open(FERTILIZER_LUA, encoding="utf-8").read()
+    except OSError:
+        return []
+    # only the Crops table section (entries carry idealNPK)
+    start = txt.find("FertilizerTrack.Crops")
+    if start < 0:
+        return []
+    section = txt[start:]
+    end = section.find("FertilizerTrack.StoryQuests")
+    if end > 0:
+        section = section[:end]
+    ids = list(re.finditer(r"id\s*=\s*['\"]([^'\"]*)['\"]", section))
+    out = []
+    for i, m in enumerate(ids):
+        block = section[m.start(): ids[i + 1].start() if i + 1 < len(ids) else len(section)]
+        npk = re.search(r"idealNPK\s*=\s*\{(\d+),\s*(\d+),\s*(\d+)\}", block)
+        if not npk:
+            continue
+        ph = re.search(r"idealPH\s*=\s*\{([\d.]+),\s*([\d.]+)\}", block)
+        gd = re.search(r"growthDays\s*=\s*(\d+)", block)
+        nm = re.search(r"name\s*=\s*['\"]([^'\"]*)['\"]", block)
+        out.append({
+            "id": m.group(1), "name": nm.group(1) if nm else m.group(1),
+            "idealNPK": [int(npk.group(1)), int(npk.group(2)), int(npk.group(3))],
+            "idealPH": [float(ph.group(1)), float(ph.group(2))] if ph else [5.5, 7.0],
+            "growthDays": int(gd.group(1)) if gd else 5,
+        })
+    return out
+
+
 def parse_fertilizers():
     """Extract the 10 fertilizers from the game's FertilizerTrack.lua (real data:
     name, formula, NPK, and the atom recipe that links them to element collection)."""
@@ -175,10 +209,11 @@ def build():
                 add("asset", lm + (".glb" if not lm.endswith(".glb") else ""), lx, lz, ang, 12 if big else 6)
 
     fertilizers = parse_fertilizers()
+    crops = parse_crops()
     world = {
         "meta": {"world": 460, "space": True, "zones": zmeta,
                  "processLine": [p[0] for p in PROCESS_LINE],
-                 "fertilizers": fertilizers,
+                 "fertilizers": fertilizers, "crops": crops,
                  "vision": "MOLGANG — Chemical Engineering Simulator (Moleculia archipelago)"},
         "objects": objs,
     }
