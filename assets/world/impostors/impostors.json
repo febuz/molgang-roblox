@@ -1,0 +1,79 @@
+{
+  "model": "stabilityai/sd-turbo",
+  "style": "low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+  "count": 12,
+  "impostors": {
+    "tree": {
+      "file": "tree.png",
+      "prompt": "a single lone pine tree, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 868078456
+    },
+    "car": {
+      "file": "car.png",
+      "prompt": "a single parked stylized sedan car, side view, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 4214002326
+    },
+    "pedestrian": {
+      "file": "pedestrian.png",
+      "prompt": "a single standing person character, front view, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 4134554893
+    },
+    "fire_hydrant": {
+      "file": "fire_hydrant.png",
+      "prompt": "a single red fire hydrant, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 3211008365
+    },
+    "shipping_container": {
+      "file": "shipping_container.png",
+      "prompt": "a single steel shipping cargo container, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 537398924
+    },
+    "factory_facade": {
+      "file": "factory_facade.png",
+      "prompt": "a large industrial factory building facade with windows and a chimney, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 187620114
+    },
+    "billboard_sign": {
+      "file": "billboard_sign.png",
+      "prompt": "a tall blank advertising billboard on a pole, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 1966148114
+    },
+    "dumpster": {
+      "file": "dumpster.png",
+      "prompt": "a single green metal dumpster bin, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 2554435423
+    },
+    "bus_stop": {
+      "file": "bus_stop.png",
+      "prompt": "a single bus stop shelter with a bench, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 1265324468
+    },
+    "power_pylon": {
+      "file": "power_pylon.png",
+      "prompt": "a single tall electricity transmission pylon tower, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 2998227635
+    },
+    "shrub": {
+      "file": "shrub.png",
+      "prompt": "a single round green bush shrub, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 3507114637
+    },
+    "traffic_cone": {
+      "file": "traffic_cone.png",
+      "prompt": "a single orange traffic cone, low-poly stylized game asset, isometric view, centered, cutout, isolated on a solid magenta background, no ground, no floor, no shadow, no text",
+      "model": "stabilityai/sd-turbo",
+      "seed": 998388946
+    }
+  }
+}
