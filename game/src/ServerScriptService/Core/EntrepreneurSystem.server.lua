@@ -31,6 +31,42 @@ local FACTORY_ORIGIN = Vector3.new(-1750, 10, -150)
 local FACTORY_FLOOR_Y = 10
 local CELL_SIZE_STUDS = 10  -- each grid cell = 10 studs (1m scaled up for game)
 
+local function persistFactory(userId, factory)
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	if not playerData then return end
+	playerData.factory = {
+		rented = factory.rented == true,
+		hasRentedBefore = factory.hasRentedBefore == true,
+		rentStartTime = factory.rentStartTime or 0,
+		placements = {},
+		equipmentInventory = {},
+		totalSpent = factory.totalSpent or 0,
+		monthsPaid = factory.monthsPaid or 0,
+	}
+	for _, placement in ipairs(factory.placements) do
+		table.insert(playerData.factory.placements, {
+			itemId = placement.itemId,
+			gridX = placement.gridX,
+			gridY = placement.gridY,
+			rotation = placement.rotation or 0,
+			placedTime = placement.placedTime or 0,
+		})
+	end
+	for itemId, count in pairs(factory.equipmentInventory) do
+		playerData.factory.equipmentInventory[itemId] = count
+	end
+end
+
+local function rebuildFactoryGrid(factory)
+	factory.grid = {}
+	for _, placement in ipairs(factory.placements) do
+		local item = FactoryEquipment.GetItem(placement.itemId)
+		if item then
+			FactoryEquipment.Place(factory.grid, placement.itemId, placement.gridX, placement.gridY, placement.rotation or 0)
+		end
+	end
+end
+
 -- ═══════════════════════════════════════════════
 -- 3D VISUALIZATION: Create real Parts in factory hall
 -- ═══════════════════════════════════════════════
@@ -188,15 +224,24 @@ end
 
 local function getFactory(userId)
 	if not playerFactories[userId] then
+		local saved = PlayerDataBridge.GetPlayerData(userId)
+		local savedFactory = saved and saved.factory
 		playerFactories[userId] = {
-			rented = false,
-			rentStartTime = 0,
+			rented = savedFactory and savedFactory.rented == true or false,
+			hasRentedBefore = savedFactory and savedFactory.hasRentedBefore == true or false,
+			rentStartTime = savedFactory and savedFactory.rentStartTime or 0,
 			grid = {},                -- {[x] = {[y] = itemId}}
-			placements = {},          -- {{itemId, gridX, gridY, rotation, placedTime}}
-			equipmentInventory = {},  -- {[itemId] = count} — bought but not yet placed
-			totalSpent = 0,
-			monthsPaid = 0,
+			placements = savedFactory and savedFactory.placements or {},
+			equipmentInventory = savedFactory and savedFactory.equipmentInventory or {},
+			totalSpent = savedFactory and savedFactory.totalSpent or 0,
+			monthsPaid = savedFactory and savedFactory.monthsPaid or 0,
 		}
+		rebuildFactoryGrid(playerFactories[userId])
+		if playerFactories[userId].rented then
+			for _, placement in ipairs(playerFactories[userId].placements) do
+				createEquipment3D(userId, placement)
+			end
+		end
 	end
 	return playerFactories[userId]
 end
@@ -279,6 +324,7 @@ Remotes.RequestRentFactory.OnServerEvent:Connect(function(player)
 	factory.hasRentedBefore = true
 	factory.rentStartTime = tick()
 	factory.monthsPaid = 1
+	persistFactory(userId, factory)
 
 	player:SetAttribute("IsIndoors", true)
 	player:SetAttribute("HasFactory", true)
@@ -328,6 +374,7 @@ Remotes.RequestBuyEquipment.OnServerEvent:Connect(function(player, itemId)
 
 	factory.equipmentInventory[itemId] = (factory.equipmentInventory[itemId] or 0) + 1
 	factory.totalSpent = factory.totalSpent + item.cost
+	persistFactory(userId, factory)
 
 	Remotes.FireClient("ServerAnnounce", player, {
 		message = "Purchased " .. item.name .. " (" .. item.cost .. " MC). Open Factory Builder to place it.",
@@ -404,6 +451,7 @@ Remotes.RequestPlaceEquipment.OnServerEvent:Connect(function(player, itemId, gri
 		rotation = rotation or 0,
 		placedTime = tick(),
 	})
+	persistFactory(userId, factory)
 
 	-- Create 3D model in factory hall
 	local placementData = factory.placements[#factory.placements]
@@ -477,6 +525,7 @@ Remotes.RequestRemoveEquipment.OnServerEvent:Connect(function(player, gridX, gri
 
 	-- Remove from placements list
 	table.remove(factory.placements, foundIdx)
+	persistFactory(userId, factory)
 
 	Remotes.FireClient("EquipmentRemoved", player, {
 		gridX = gridX,
@@ -512,6 +561,7 @@ task.spawn(function()
 				local success = PlayerDataBridge.SpendMolCoins(userId, totalCost)
 				if success then
 					factory.monthsPaid = factory.monthsPaid + 1
+					persistFactory(userId, factory)
 					Remotes.FireClient("ServerAnnounce", player, {
 						message = "Monthly factory costs paid: " .. totalCost .. " MC (rent + maintenance)",
 						rarity = "common",
@@ -533,7 +583,12 @@ end)
 -- ═══════════════════════════════════════════════
 
 Players.PlayerRemoving:Connect(function(player)
-	-- Keep factory state for session (would persist via DataStore in production)
+	local factory = playerFactories[player.UserId]
+	if factory then
+		persistFactory(player.UserId, factory)
+		playerFactories[player.UserId] = nil
+	end
+	factoryWorldModels[player.UserId] = nil
 end)
 
 print("[MOLGANG] EntrepreneurSystem initialized — 1000m² factory rental, " .. #FactoryEquipment.Items .. " equipment items")

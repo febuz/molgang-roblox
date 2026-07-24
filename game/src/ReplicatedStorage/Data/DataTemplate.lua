@@ -34,6 +34,17 @@ return {
 		totalOreValue = 0,
 	},
 
+	-- Rentable factory layout and equipment (persisted through EconomyManager)
+	factory = {
+		rented = false,
+		hasRentedBefore = false,
+		rentStartTime = 0,
+		placements = {},
+		equipmentInventory = {},
+		totalSpent = 0,
+		monthsPaid = 0,
+	},
+
 	-- Quests & Achievements
 	questProgress = {
 		active = {},
