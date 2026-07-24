@@ -32,5 +32,11 @@ assert(FertilizerTrack.ApplyYieldMultiplier(100, 1.4) == 140,
 	"ideal growing season must increase crop yield")
 assert(FertilizerTrack.ApplyYieldMultiplier(150, 2) == 200,
 	"event stacking must respect the crop yield cap")
+assert(FertilizerTrack.ApplyDemandMultiplier(100, 1) == 100,
+	"normal fertilizer demand must preserve sale price")
+assert(FertilizerTrack.ApplyDemandMultiplier(100, 1.6) == 160,
+	"high fertilizer demand must increase sale price")
+assert(FertilizerTrack.ApplyDemandMultiplier(100, 0.8) == 80,
+	"low fertilizer demand must reduce sale price")
 
-print("Fertilizer Tests: 10 passed, 0 failed")
+print("Fertilizer Tests: 13 passed, 0 failed")

@@ -253,7 +253,11 @@ Remotes.RequestSellFertilizer.OnServerEvent:Connect(function(player, fertilizerI
 	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
 	if not fert then return end
 
-	local sellPrice = math.floor(fert.points * 0.5)
+	local baseSellPrice = math.floor(fert.points * 0.5)
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local sellPrice = FertilizerTrack.ApplyDemandMultiplier(
+		baseSellPrice, eventEffects.fertilizerDemandMult
+	)
 	farm.fertilizerInventory[fertilizerId] = farm.fertilizerInventory[fertilizerId] - 1
 	PlayerDataBridge.AddEarnedMolCoins(userId, sellPrice)
 

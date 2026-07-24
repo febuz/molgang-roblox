@@ -458,6 +458,12 @@ function FertilizerTrack.ApplyYieldMultiplier(yieldPct, cropYieldMultiplier)
 	return math.clamp(math.floor(baseYield * multiplier), 0, 200)
 end
 
+function FertilizerTrack.ApplyDemandMultiplier(basePrice, demandMultiplier)
+	local price = math.max(0, tonumber(basePrice) or 0)
+	local multiplier = math.max(0, tonumber(demandMultiplier) or 1)
+	return math.max(1, math.floor(price * multiplier))
+end
+
 -- Stoichiometric input validation for the Fertilizer Lab.
 -- The server uses these helpers so crafting consumes real atom inventory,
 -- rather than minting a fertilizer after only charging currency.
