@@ -60,9 +60,13 @@ echo "      Studio launching (PID: $STUDIO_PID)"
 # graphics/WebView startup. Do not call that a healthy playtest launch.
 STUDIO_DETECTED=0
 for _ in $(seq 1 20); do
-  if pgrep -af 'RobloxStudioBeta|wine.*Roblox' >/dev/null 2>&1; then
+  # Vinegar and wineserver can remain alive after Studio itself has crashed.
+  # Only the actual Studio executable proves that a window/playtest can work.
+  if pgrep -x 'RobloxStudioBeta.exe' >/dev/null 2>&1; then
     STUDIO_DETECTED=1
-    break
+  else
+    # Do not turn a short-lived process into a false-positive launch.
+    STUDIO_DETECTED=0
   fi
   sleep 1
 done
@@ -71,6 +75,8 @@ if [ "$STUDIO_DETECTED" -eq 1 ]; then
 else
   echo "      WARNING: Studio process was not detected after 20s"
   echo "      Check Vinegar logs for Wine/D3D/WebView startup failures"
+  kill "$ROJO_PID" 2>/dev/null || true
+  exit 1
 fi
 
 echo ""
