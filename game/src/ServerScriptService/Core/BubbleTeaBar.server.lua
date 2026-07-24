@@ -20,6 +20,7 @@ local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local SeasonalDrinks = require(ReplicatedStorage.Modules.GameObjects.SeasonalDrinks)
 
 -- ═══════════════════════════════════════════════
 -- DRINK DEFINITIONS
@@ -93,6 +94,14 @@ local DRINKS = {
 		cupColor = Color3.fromRGB(255, 220, 220),
 	},
 }
+
+-- ═══════════════════════════════════════════════
+-- SEASONAL DRINKS (data-driven archetypes — see Modules/GameObjects)
+-- ═══════════════════════════════════════════════
+
+for _, seasonalDrink in ipairs(SeasonalDrinks.GetActiveSeasonalDrinks(os.date("*t").month)) do
+	table.insert(DRINKS, seasonalDrink)
+end
 
 -- ═══════════════════════════════════════════════
 -- STATE
