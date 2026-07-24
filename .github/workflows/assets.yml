@@ -1,4 +1,4 @@
-name: MOLGANG Assets & Demo
+name: MOLGANG Assets & OTAP Test
 
 on:
   push:
@@ -22,6 +22,6 @@ jobs:
           git diff --exit-code -- assets/manifest.json
       - name: Verify tracked binary assets
         run: |
-          test -s MOLGANG_Demo.rbxl
+          test -s MOLGANG_OTAP_Test.rbxl
           test "$(find assets/models -type f \( -name '*.fbx' -o -name '*.glb' \) | wc -l)" -gt 0
           git lfs ls-files

@@ -1,8 +1,8 @@
-# Roblox build output (the named demo is intentionally versioned)
+# Roblox build output (the OTAP test handoff is intentionally versioned)
 *.rbxl
 *.rbxlx
 *.rbxm
-!MOLGANG_Demo.rbxl
+!MOLGANG_OTAP_Test.rbxl
 
 /build/
 

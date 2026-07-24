@@ -2,9 +2,9 @@
   "schema": 1,
   "files": [
     {
-      "path": "MOLGANG_Demo.rbxl",
-      "bytes": 560845,
-      "sha256": "080ef8e08e4d7512a4fd17fd693eb5eeb0f4c8d36a8ad10bc9895b94d3b3cb60"
+      "path": "MOLGANG_OTAP_Test.rbxl",
+      "bytes": 562027,
+      "sha256": "22e46199a1600d4c4dfc6a778289f699fd530d9a19cf5dc331fb07985d0e65d4"
     },
     {
       "path": "assets/models/anvil_hammer.fbx",
