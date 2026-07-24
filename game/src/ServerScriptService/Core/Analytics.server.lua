@@ -52,8 +52,9 @@ local function trackEvent(userId, eventName, value)
 	end
 end
 
--- Track atom collection
-Remotes.AtomCollected.Event:Connect(function(player, data)
+-- Track collection requests on the client→server contract. AtomCollected is
+-- deliberately server→client and therefore has no server-side Event signal.
+Remotes.RequestAtomCollect.OnServerEvent:Connect(function(player, atomName)
 	trackEvent(player.UserId, "atomsCollected", 1)
 end)
 

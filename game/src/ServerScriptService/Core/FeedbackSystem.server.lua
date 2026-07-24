@@ -178,12 +178,6 @@ local function trackSystemUsage(player, systemName)
 	end
 end
 
--- Listen for atom collections
-local atomEvent = ReplicatedStorage.Remotes:FindFirstChild("AtomCollected")
-if atomEvent then
-	atomEvent.OnServerEvent = nil -- this is a server→client event, track differently
-end
-
 -- Track via global function hooks
 _G.TrackFeedbackMetric = function(userId, metric, value)
 	local session = playerSessions[userId]
