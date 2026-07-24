@@ -137,6 +137,13 @@ end
 -- MOLCOIN TRANSACTIONS
 -- ══════════════════════════════════════════════
 
+local function rejectRequest(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {
+		message = message,
+		rarity = "common",
+	})
+end
+
 local function addMolCoins(player, amount, reason)
 	local userId = player.UserId
 	local data = playerData[userId]
@@ -180,7 +187,10 @@ end
 local function processAtomCollect(player, collectData)
 	local userId = player.UserId
 	local data = playerData[userId]
-	if not data then return end
+	if not data then
+		rejectRequest(player, "Your economy data is still loading. Try again shortly.")
+		return
+	end
 
 	local elementZ = collectData.elementZ
 	local symbol = collectData.symbol
@@ -446,17 +456,22 @@ end)
 Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityName)
 	local userId = player.UserId
 	local data = playerData[userId]
-	if not data then return end
+	if not data then
+		rejectRequest(player, "Your economy data is still loading. Try again shortly.")
+		return
+	end
 
 	local facility = Facilities.GetFacility(facilityName)
 	if not facility then
 		print("[EconomyManager] Invalid facility:", facilityName)
+		rejectRequest(player, "Unknown facility. Refresh the dashboard and try again.")
 		return
 	end
 
 	-- Check funds
 	if data.molCoins < facility.cost then
 		print("[EconomyManager] Insufficient funds for", facilityName)
+		rejectRequest(player, "Not enough MolCoins for " .. facilityName .. " (need " .. facility.cost .. ").")
 		return
 	end
 
@@ -464,6 +479,7 @@ Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityName
 	local canBuild, msg = Facilities.CanBuild(data.facilities, facilityName)
 	if not canBuild then
 		print("[EconomyManager] Cannot build", facilityName, ":", msg)
+		rejectRequest(player, msg or "Facility cannot be built yet.")
 		return
 	end
 
@@ -495,7 +511,10 @@ local COMMODITY_PRICES = CommodityMarket.GetBasePrices()
 Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemName, quantity, offeredPrice)
 	local userId = player.UserId
 	local data = playerData[userId]
-	if not data then return end
+	if not data then
+		rejectRequest(player, "Your economy data is still loading. Try again shortly.")
+		return
+	end
 
 	local valid, parsedQuantity, currentPriceOrError = TradeRules.Validate(
 		action, itemName, quantity, offeredPrice, COMMODITY_PRICES
@@ -511,7 +530,10 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 	-- offeredPrice is deliberately ignored for settlement. It is a client UI
 	-- hint; the shared server market state is the only authoritative price.
 	local currentPrice = CommodityMarket.GetCurrentPrice(itemName)
-	if not currentPrice then return end
+	if not currentPrice then
+		rejectRequest(player, "Market price unavailable. Try again shortly.")
+		return
+	end
 
 	if action == "buy" then
 		local totalCost = currentPrice * quantity
@@ -524,6 +546,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 		end
 		if data.molCoins < totalCost then
 			print("[EconomyManager]", player.Name, "insufficient funds for", itemName)
+			rejectRequest(player, "Not enough MolCoins to buy " .. itemName .. " (need " .. totalCost .. ").")
 			return
 		end
 
@@ -547,6 +570,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 		local itemCount = data.atoms[itemName] or 0
 		if itemCount < quantity then
 			print("[EconomyManager]", player.Name, "doesn't have enough", itemName)
+			rejectRequest(player, "You do not have enough " .. itemName .. " to sell.")
 			return
 		end
 
@@ -554,6 +578,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 		local totalRevenue = currentPrice * quantity
 		if playerDailyEarned[userId] + totalRevenue > MAX_MOLCOINS_PER_DAY then
 			print("[EconomyManager]", player.Name, "daily earning limit reached for", itemName)
+			rejectRequest(player, "Daily market income limit reached. Try again after the next reset.")
 			return
 		end
 		data.atoms[itemName] = itemCount - quantity
