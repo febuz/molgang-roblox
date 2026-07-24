@@ -87,7 +87,6 @@ function PlayerDataBridge.AddMolCoins(userId, amount)
 	local data = playerEconomy[userId]
 	if data and type(amount) == "number" and amount >= 0 and amount == amount and amount < math.huge then
 		data.molCoins = (data.molCoins or 0) + amount
-		data.totalMolCoinsEarned = (data.totalMolCoinsEarned or 0) + amount
 		return true, data.molCoins
 	end
 	return false, 0
@@ -105,7 +104,13 @@ function PlayerDataBridge.AddEarnedMolCoins(userId, amount)
 	if _G.GetPlayerBuff then
 		multiplier = _G.GetPlayerBuff(userId, "coinBonus")
 	end
-	return PlayerDataBridge.AddMolCoins(userId, math.floor(amount * multiplier))
+	local earnedAmount = math.floor(amount * multiplier)
+	local success, balance = PlayerDataBridge.AddMolCoins(userId, earnedAmount)
+	if success then
+		local data = playerEconomy[userId]
+		data.totalMolCoinsEarned = (data.totalMolCoinsEarned or 0) + earnedAmount
+	end
+	return success, balance
 end
 
 function PlayerDataBridge.SpendMolCoins(userId, amount)

@@ -41,7 +41,7 @@ local treasuryStore = DataStoreService:GetDataStore("ANK_Treasury_v1")
 -- ══════════════════════════════════════════════
 
 local function requestLoan(borrower, lenderId, amount, duration)
-	if type(amount) ~= "number" or type(duration) ~= "number" then
+	if type(amount) ~= "number" or type(duration) ~= "number" or amount ~= amount or duration ~= duration or amount == math.huge or duration == math.huge or amount == -math.huge or duration == -math.huge then
 		return false, "Invalid input types"
 	end
 
