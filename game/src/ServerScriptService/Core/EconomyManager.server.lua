@@ -298,6 +298,19 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	end
 	data.molecules[molName] = data.molecules[molName] + 1
 
+	-- Confirm the authoritative build so every HUD/client system can update
+	-- from the same server result. Keep both legacy and current field names
+	-- because older widgets still consume the former contract.
+	Remotes.FireClient("MoleculeBuilt", player, {
+		name = molName,
+		molName = molName,
+		moleculeName = molName,
+		formula = molName,
+		molCoinsEarned = recipe.points,
+		points = recipe.points,
+		chainTokensEarned = 0,
+	})
+
 	-- Track molecule discovery
 	if not data.moleculesBuilt[molName] then
 		data.moleculesBuilt[molName] = true
