@@ -420,6 +420,29 @@ local selectedSize = nil
 local selectedReagentLabel
 local leachTimeLabel
 local yieldLabel
+local processTemperature = tonumber(player:GetAttribute("ProcessTemp")) or 25
+
+local function updateYieldPreview()
+	if not yieldLabel or not selectedReagent or not selectedSize then return end
+	local yield = SteelSlag.CalculateYield(selectedSize, selectedReagent, 1.0, processTemperature)
+	local yieldStr = ""
+	for j, item in ipairs(yield) do
+		if j <= 5 then
+			yieldStr = yieldStr .. item.oxide .. ":" .. item.atomCount .. " "
+		end
+	end
+	yieldLabel.Text = string.format("Yield @ %d°C: %s", math.floor(processTemperature + 0.5), yieldStr)
+end
+
+Remotes.ProcessControlState.OnClientEvent:Connect(function(data)
+	if type(data) ~= "table" or type(data.temperature) ~= "number" then return end
+	processTemperature = data.temperature
+	updateYieldPreview()
+end)
+local processStateRemote = Remotes:FindFirstChild("RequestProcessControlState")
+if processStateRemote then
+	processStateRemote:FireServer()
+end
 local reagentCards = {}
 
 local reagentOrder = {"H2SO4", "HCl", "NaOH", "HNO3", "CitricAcid", "H2O"}
@@ -500,13 +523,7 @@ for _, rId in ipairs(reagentOrder) do
 			local mins = SteelSlag.CalculateLeachTime(selectedSize, rId)
 			leachTimeLabel.Text = "Est. time: " .. SteelSlag.FormatLeachTime(mins)
 			leachTimeLabel.TextColor3 = C.text
-			-- Show yield preview
-			local yield = SteelSlag.CalculateYield(selectedSize, rId, 1.0)
-			local yieldStr = ""
-			for j, y in ipairs(yield) do
-				if j <= 5 then yieldStr = yieldStr .. y.oxide .. ":" .. y.atomCount .. " " end
-			end
-			yieldLabel.Text = "Yield: " .. yieldStr
+			updateYieldPreview()
 		end
 	end)
 
@@ -550,6 +567,7 @@ for i, sizeKey in ipairs(SteelSlag.SizeOrder) do
 			local mins = SteelSlag.CalculateLeachTime(sizeKey, selectedReagent)
 			leachTimeLabel.Text = "Est. time: " .. SteelSlag.FormatLeachTime(mins)
 		end
+		updateYieldPreview()
 	end)
 	sizeBtns[sizeKey] = sBtn
 end
