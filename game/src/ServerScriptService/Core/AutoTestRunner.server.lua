@@ -141,6 +141,15 @@ timeTest("Spawn is above the hub platform", function()
 	assert(spawn.Position.Y > 0, "Spawn is below the safe world plane")
 end)
 
+timeTest("Void recovery safety is installed", function()
+	local serverScriptService = game:GetService("ServerScriptService")
+	local voidKillZone = serverScriptService:FindFirstChild("VoidKillZone", true)
+	assert(voidKillZone and voidKillZone:IsA("Script"), "VoidKillZone is missing")
+	local spawn = Workspace:FindFirstChild("MolGangSpawn", true)
+	assert(spawn and spawn:IsA("BasePart") and spawn.CanCollide,
+		"Void recovery has no collidable safe spawn")
+end)
+
 timeTest("Nexus platform keeps grounded material values", function()
 	local nexus = Workspace:FindFirstChild("NexusPlatform", true)
 	assert(nexus and nexus:IsA("BasePart"), "NexusPlatform is missing")

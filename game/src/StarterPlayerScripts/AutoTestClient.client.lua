@@ -81,6 +81,8 @@ end
 local loadingScreen = findScreenGui("LoadingScreen")
 if loadingScreen then
 	local playButton = loadingScreen:FindFirstChild("PlayBtn", true)
+	check("LoadingScreen survives respawn", loadingScreen.ResetOnSpawn == false,
+		"intro ScreenGui would be recreated on character reset")
 	check("LoadingScreen enter control exists", playButton ~= nil,
 		"PlayBtn was not created")
 	if playButton then
@@ -91,6 +93,10 @@ if loadingScreen then
 		print("[AutoTestClient][PASS] LoadingScreen enter control: intro gate already active")
 		passCount = passCount + 1
 	end
+	check("Intro session gate is retained",
+		player:GetAttribute("MOLGANGIntroShown") == true
+			or ReplicatedStorage:FindFirstChild("MOLGANGIntroGate") ~= nil,
+		"intro gate marker disappeared after the loading screen closed")
 
 -- Exercise the three flows that previously looked clickable but could resolve
 -- a same-named LocalScript instead of the real ScreenGui. These are intentionally
