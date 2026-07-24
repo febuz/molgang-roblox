@@ -130,6 +130,7 @@ function PlayerDataBridge.SpendMolCoins(userId, amount)
 	local data = playerEconomy[userId]
 	if data and type(amount) == "number" and amount >= 0 and amount == amount and amount < math.huge and (data.molCoins or 0) >= amount then
 		data.molCoins = data.molCoins - amount
+		data.totalMolCoinsSpent = (data.totalMolCoinsSpent or 0) + amount
 		return true, data.molCoins
 	end
 	return false, 0

@@ -450,6 +450,7 @@ Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityName
 
 	-- Deduct cost
 	data.molCoins = data.molCoins - facility.cost
+	data.totalMolCoinsSpent = (data.totalMolCoinsSpent or 0) + facility.cost
 
 	-- Add facility
 	Facilities.BuildFacility(data.facilities, facilityName)
@@ -508,6 +509,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 
 		-- Deduct MolCoins, add to inventory
 		data.molCoins = data.molCoins - totalCost
+		data.totalMolCoinsSpent = (data.totalMolCoinsSpent or 0) + totalCost
 		data.atoms[itemName] = (data.atoms[itemName] or 0) + quantity
 
 		Remotes.FireClient("MarketTrade", player, {
