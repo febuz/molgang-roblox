@@ -75,6 +75,8 @@ local function createPart(parent: Instance, config: {
 	Shape: Enum.PartType?,
 	Anchored: boolean?,
 	CanCollide: boolean?,
+	CanTouch: boolean?,
+	CanQuery: boolean?,
 }): Part
 	local part = Instance.new("Part")
 	part.Name = config.Name or "Part"
@@ -86,6 +88,12 @@ local function createPart(parent: Instance, config: {
 	part.Shape = config.Shape or Enum.PartType.Block
 	part.Anchored = if config.Anchored ~= nil then config.Anchored else true
 	part.CanCollide = if config.CanCollide ~= nil then config.CanCollide else true
+	-- Purely visual non-collidable geometry does not need physics touch/query
+	-- participation. Keeping it out of those broadphase checks is important in
+	-- the floating archipelago, while explicit overrides preserve future
+	-- trigger volumes.
+	part.CanTouch = if config.CanTouch ~= nil then config.CanTouch else part.CanCollide
+	part.CanQuery = if config.CanQuery ~= nil then config.CanQuery else part.CanCollide
 	part.Parent = parent
 	return part
 end
