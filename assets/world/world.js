@@ -924,14 +924,38 @@ function flashCantAfford() {
   const m = document.getElementById('molcoins'); if (!m) return;
   m.style.borderColor = '#ff7a6f'; setTimeout(() => { m.style.borderColor = '#b58a2c'; }, 450);
 }
+let hasSold = false;
+try { hasSold = JSON.parse(localStorage.getItem('molgang.sold') || 'false'); } catch (e) { /* fresh */ }
 (function wireSell() {
   const b = document.getElementById('sell-btn');
   if (b) b.addEventListener('click', () => {
     fetch(SIM_BASE + '/reactor/sell', { method: 'POST' }).then((r) => r.json()).then((d) => {
-      if (d && d.coins > 0) earn(d.coins);
+      if (d && d.coins > 0) { earn(d.coins); hasSold = true; try { localStorage.setItem('molgang.sold', 'true'); } catch (e) { /* quota */ } }
     }).catch(() => {});
   });
 })();
+
+// Onboarding: surface the connected loop and tick each step off live, read from
+// the systems' own state — no new bookkeeping, just legibility for new players.
+function updateGoals() {
+  const el = document.getElementById('goals'); if (!el || el.style.display === 'none') return;
+  const done = {
+    collect: collected.size >= 1,
+    fertilize: Object.values(fertInv).reduce((a, b) => a + b, 0) >= 1,
+    harvest: Object.values(harvests).reduce((a, b) => a + b, 0) >= 1,
+    sell: hasSold,
+    build: factoryGrid.some(Boolean),
+  };
+  let n = 0;
+  for (const item of el.querySelectorAll('.g-item')) {
+    const ok = done[item.dataset.goal]; if (ok) n++;
+    item.classList.toggle('done', ok);
+    item.querySelector('.tick').textContent = ok ? '✓' : '○';
+  }
+  el.querySelector('#g-count').textContent = `${n}/5`;
+  el.classList.toggle('all-done', n === 5);
+  if (n === 5) el.querySelector('.g-head').firstChild.textContent = '🎉 Full loop complete ';
+}
 
 // ---------- Factory Builder: place equipment, chase adjacency bonuses ----------
 // The game's factory pillar: rent a floor, place equipment, and lay the
@@ -1039,7 +1063,7 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
   step(dt);
   updateAgents(dt);
-  if (now - lastStream > 180) { lastStream = now; stream(); checkCollect(); }
+  if (now - lastStream > 180) { lastStream = now; stream(); checkCollect(); updateGoals(); }
   const xr = renderer.xr.isPresenting;
   if (xr) {
     const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons();
@@ -1083,6 +1107,7 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     { const mb = document.getElementById('farm-btn'); if (mb) mb.style.display = 'block'; }
     { const bb = document.getElementById('build-btn'); if (bb) bb.style.display = 'block'; }
     { const mc = document.getElementById('molcoins'); if (mc) mc.style.display = 'block'; updateMcHUD(false); }
+    { const g = document.getElementById('goals'); if (g) g.style.display = 'block'; updateGoals(); }
     if (params.get('collectall')) {          // sandbox: skip the grind (demo/verify)
       for (const o of elements) collected.add(o.num);
       for (const [, rec] of elementSprites) { rec.sprite.material.map.dispose(); rec.sprite.material.map = elementTexture(rec.o, true); rec.sprite.material.needsUpdate = true; }

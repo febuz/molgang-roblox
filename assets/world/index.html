@@ -143,6 +143,18 @@
     padding: 6px 16px; font-size: 13px; color: #ffd479; }
   #molcoins b { color: #fff; font-variant-numeric: tabular-nums; }
   #molcoins.flash { box-shadow: 0 0 16px rgba(255,212,121,.6); }
+  #goals { position: fixed; bottom: 12px; left: 12px; z-index: 11; width: 260px;
+    background: rgba(14,18,26,.82); border: 1px solid #26344a; border-radius: 10px;
+    padding: 10px 12px; backdrop-filter: blur(6px); font-size: 11.5px; }
+  #goals .g-head { font-size: 12.5px; margin-bottom: 6px; color: #cfe0f0; }
+  #goals .g-head span { color: #6ffcda; float: right; }
+  #goals .g-item { color: #9fb0c6; margin: 3px 0; }
+  #goals .g-item.done { color: #7fe0a0; }
+  #goals .g-item .tick { display: inline-block; width: 14px; }
+  #goals .g-item.done .tick { color: #7fe0a0; }
+  #goals .g-item.done .g-hint { display: none; }
+  #goals .g-hint { color: #67788c; font-size: 10px; }
+  #goals.all-done { border-color: #3a7a2c; }
   #elements { color: #cdb6ff; font-size: 11px; margin-top: 1px; }
   #elpop { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 13;
     display: none; min-width: 220px; text-align: center; padding: 12px 18px; border-radius: 12px;
@@ -171,6 +183,14 @@
 <body>
 <div id="stage"></div>
 <div id="molcoins" style="display:none">💰 <b id="mc-val">0</b> MolCoins</div>
+<div id="goals" style="display:none">
+  <div class="g-head">🎯 First steps <span id="g-count">0/5</span></div>
+  <div class="g-item" data-goal="collect"><span class="tick">○</span> Collect an element <span class="g-hint">(walk the Periodic Table Biome)</span></div>
+  <div class="g-item" data-goal="fertilize"><span class="tick">○</span> Synthesize a fertilizer <span class="g-hint">(🌱 Lab)</span></div>
+  <div class="g-item" data-goal="harvest"><span class="tick">○</span> Harvest a crop <span class="g-hint">(🌾 Farm, feed N-P-K)</span></div>
+  <div class="g-item" data-goal="sell"><span class="tick">○</span> Sell V₂O₅ <span class="g-hint">(run the plant → Sell)</span></div>
+  <div class="g-item" data-goal="build"><span class="tick">○</span> Place factory equipment <span class="g-hint">(🏭 Factory)</span></div>
+</div>
 <div id="intro">
   <div class="card">
     <h1>MOLGANG · Moleculia</h1>
