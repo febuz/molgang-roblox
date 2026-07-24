@@ -110,7 +110,7 @@ Remotes.RequestStartSiliconStage.OnServerEvent:Connect(function(player, stageId)
 
 			-- Reward
 			if stage.mcReward then
-				PlayerDataBridge.AddMolCoins(userId, stage.mcReward)
+				PlayerDataBridge.AddEarnedMolCoins(userId, stage.mcReward)
 			end
 
 			Remotes.FireClient("SiliconStageComplete", player, {
@@ -163,7 +163,7 @@ Remotes.RequestBuildQuantumComputer.OnServerEvent:Connect(function(player)
 
 	-- Award
 	local qc = SiliconPurification.QuantumComputer
-	PlayerDataBridge.AddMolCoins(userId, qc.reward.molCoins)
+	PlayerDataBridge.AddEarnedMolCoins(userId, qc.reward.molCoins)
 
 	Remotes.FireClient("ServerAnnounce", player, {
 		message = "QUANTUM COMPUTER BUILT! You are now a Quantum Pioneer! +" .. qc.reward.molCoins .. " MC!",

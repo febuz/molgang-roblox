@@ -76,6 +76,21 @@ function PlayerDataBridge.AddMolCoins(userId, amount)
 	return false, 0
 end
 
+-- Like AddMolCoins, but boosted by an active "coinBonus" drink buff
+-- (Classic Boba, +25% by default). Only call this for MolCoins a player
+-- genuinely EARNS from the game economy (selling to a market/NPC price,
+-- quest/mission/minigame rewards) — never for refunds or loan/collateral
+-- payouts, where one player's gain must equal another's loss; boosting
+-- only one side of a player-to-player transfer would mint MolCoins from
+-- nothing (see molgang-roblox#13).
+function PlayerDataBridge.AddEarnedMolCoins(userId, amount)
+	local multiplier = 1.0
+	if _G.GetPlayerBuff then
+		multiplier = _G.GetPlayerBuff(userId, "coinBonus")
+	end
+	return PlayerDataBridge.AddMolCoins(userId, math.floor(amount * multiplier))
+end
+
 function PlayerDataBridge.SpendMolCoins(userId, amount)
 	local data = playerEconomy[userId]
 	if data and (data.molCoins or 0) >= amount then

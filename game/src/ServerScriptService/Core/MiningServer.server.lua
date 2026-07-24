@@ -307,7 +307,7 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	end
 
 	-- Award MolCoins for ore value
-	PlayerDataBridge.AddMolCoins(userId, math.floor(value / 10))
+	PlayerDataBridge.AddEarnedMolCoins(userId, math.floor(value / 10))
 
 	local pm = getPlayerMining(userId)
 	pm.totalOreMined = pm.totalOreMined + oreKg

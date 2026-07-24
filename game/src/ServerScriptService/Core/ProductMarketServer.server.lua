@@ -73,7 +73,7 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	local totalRevenue = unitPrice * quantity
 
 	-- Add MolCoins
-	PlayerDataBridge.AddMolCoins(userId, totalRevenue)
+	PlayerDataBridge.AddEarnedMolCoins(userId, totalRevenue)
 
 	-- Record in P&L
 	local ledger = getLedger(userId)

@@ -320,7 +320,7 @@ function completeMission(player, userId, victory)
 	local elapsed = tick() - mission.startTime
 
 	if reward > 0 then
-		PlayerDataBridge.AddMolCoins(userId, reward)
+		PlayerDataBridge.AddEarnedMolCoins(userId, reward)
 	end
 
 	-- Cleanup arena

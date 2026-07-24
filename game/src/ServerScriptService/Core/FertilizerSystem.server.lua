@@ -204,7 +204,7 @@ Remotes.RequestSellFertilizer.OnServerEvent:Connect(function(player, fertilizerI
 
 	local sellPrice = math.floor(fert.points * 0.5)
 	farm.fertilizerInventory[fertilizerId] = farm.fertilizerInventory[fertilizerId] - 1
-	PlayerDataBridge.AddMolCoins(userId, sellPrice)
+	PlayerDataBridge.AddEarnedMolCoins(userId, sellPrice)
 
 	Remotes.FireClient("ServerAnnounce", player, {
 		message = "Sold " .. fert.name .. " for " .. sellPrice .. " MC",
@@ -365,7 +365,7 @@ Remotes.RequestHarvestCrop.OnServerEvent:Connect(function(player, plotId)
 	coins = math.max(coins, 10)  -- minimum 10 coins
 
 	-- Award coins
-	PlayerDataBridge.AddMolCoins(userId, coins)
+	PlayerDataBridge.AddEarnedMolCoins(userId, coins)
 
 	-- Track progress
 	farm.totalHarvests = farm.totalHarvests + 1
@@ -507,7 +507,7 @@ local function checkQuestProgress(player, userId)
 
 			-- Award reward
 			if quest.reward.molCoins then
-				PlayerDataBridge.AddMolCoins(userId, quest.reward.molCoins)
+				PlayerDataBridge.AddEarnedMolCoins(userId, quest.reward.molCoins)
 			end
 
 			-- Update act
