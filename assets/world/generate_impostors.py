@@ -59,10 +59,23 @@ def knockout_background(img):
     import numpy as np
     rgb = img.convert("RGB")
     w, h = rgb.size
-    arr = np.array(rgb).astype(np.int16)
+    arr = np.array(rgb).astype(np.float32)
     r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
-    # Magenta = high red + high blue + low green.
-    magenta = (r > 120) & (b > 120) & (g < r - 40) & (g < b - 40)
+    # Hue-based magenta key: catches every magenta/pink shade (light fringe
+    # included) without touching red (hue~0), green or grey. Magenta hue ~300°.
+    mx = np.maximum(np.maximum(r, g), b)
+    mn = np.minimum(np.minimum(r, g), b)
+    chroma = mx - mn
+    sat = np.where(mx > 0, chroma / np.maximum(mx, 1), 0)
+    # hue in degrees, only meaningful where chroma > 0
+    hue = np.zeros_like(r)
+    m_r = (mx == r) & (chroma > 0)
+    m_g = (mx == g) & (chroma > 0)
+    m_b = (mx == b) & (chroma > 0)
+    hue[m_r] = (60 * ((g - b) / np.maximum(chroma, 1)))[m_r] % 360
+    hue[m_g] = (60 * ((b - r) / np.maximum(chroma, 1)) + 120)[m_g]
+    hue[m_b] = (60 * ((r - g) / np.maximum(chroma, 1)) + 240)[m_b]
+    magenta = (hue > 270) & (hue < 345) & (sat > 0.12)
     # Also flood from the border to catch anti-aliased fringe.
     keyimg = rgb.copy()
     seeds = [(1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2),

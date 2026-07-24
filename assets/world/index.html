@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOLGANG · Open World (diffusion gap-fill)</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #8fb4d6; color: #eef4fb;
+               font: 14px/1.5 system-ui, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { width: 100vw; height: 100vh; display: block; }
+  #hud { position: fixed; top: 12px; left: 12px; z-index: 10; max-width: 320px;
+         background: rgba(14,18,26,.82); border: 1px solid #26344a; border-radius: 10px;
+         padding: 12px 14px; backdrop-filter: blur(6px); }
+  #hud h1 { font-size: 15px; margin: 0 0 6px; }
+  #status { color: #8fd0ff; font-size: 12px; }
+  #resolve { margin-top: 8px; border-top: 1px solid #26344a; padding-top: 8px;
+             display: grid; gap: 3px; font-size: 12px; max-height: 42vh; overflow: auto; }
+  #resolve .a { color: #7fe0a0; } #resolve .i { color: #e0b57f; }
+  .hint { color: #9fb0c6; font-size: 11px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="hud">
+  <h1>MOLGANG · Open World</h1>
+  <div id="status">building district…</div>
+  <div class="hint">Click to look · <b>WASD</b> to move · a factory district where
+    identified assets are real models and everything else is filled by diffusion.</div>
+  <div id="resolve"></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "../viewer/vendor/three/three.module.js",
+    "three/addons/": "../viewer/vendor/three/jsm/"
+} }
+</script>
+<script type="module" src="./world.js"></script>
+</body>
+</html>
