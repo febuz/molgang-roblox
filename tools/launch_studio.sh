@@ -52,10 +52,19 @@ done < <(pgrep -f "[r]ojo serve $PROJECT" || true)
 sleep 1
 "$ROJO" serve "$PROJECT" &
 ROJO_PID=$!
+cleanup() {
+  if [ -n "${STUDIO_PID:-}" ]; then
+    kill "$STUDIO_PID" 2>/dev/null || true
+  fi
+  if [ -n "${ROJO_PID:-}" ]; then
+    kill "$ROJO_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+trap 'cleanup; exit 143' INT TERM
 sleep 2
 if ! curl -fsS http://127.0.0.1:34872/ >/dev/null 2>&1; then
   echo "      WARNING: Rojo did not bind localhost:34872"
-  kill "$ROJO_PID" 2>/dev/null || true
   exit 1
 fi
 echo "      Rojo serve running on localhost:34872 (PID: $ROJO_PID)"
@@ -88,7 +97,6 @@ if [ "$STUDIO_DETECTED" -eq 1 ]; then
 else
   echo "      WARNING: Studio process was not detected after 20s"
   echo "      Check Vinegar logs for Wine/D3D/WebView startup failures"
-  kill "$ROJO_PID" 2>/dev/null || true
   exit 1
 fi
 
@@ -112,4 +120,3 @@ echo "════════════════════════�
 
 # Wait for user to stop
 wait $STUDIO_PID
-kill $ROJO_PID 2>/dev/null
