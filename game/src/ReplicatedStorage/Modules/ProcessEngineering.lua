@@ -149,8 +149,14 @@ function ProcessEngineering.AddStep(balance, stepName, inputKg, outputKg, wasteK
 		wasteKg = math.floor(wasteKg * 1000) / 1000,
 		efficiency = math.floor(efficiency * 10) / 10,
 	})
-	balance.inputKg = balance.inputKg + inputKg
-	balance.outputKg = balance.outputKg + outputKg
+	-- The steps form one serial process.  Only the first step contributes to
+	-- overall feed; later step inputs are transfers inside the plant, not new
+	-- material.  Waste is accumulated, while output is the current product
+	-- stream.  This keeps the plant-level balance physically meaningful.
+	if #balance.steps == 1 then
+		balance.inputKg = inputKg
+	end
+	balance.outputKg = outputKg
 	balance.wasteKg = balance.wasteKg + wasteKg
 	balance.lossKg = balance.inputKg - balance.outputKg - balance.wasteKg
 	balance.recovery = balance.inputKg > 0 and (balance.outputKg / balance.inputKg * 100) or 0
