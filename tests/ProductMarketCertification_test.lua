@@ -20,4 +20,8 @@ assert(ProductMarket.ApplyCertificationPrice(product, 100, effects, {unlocked = 
 	"certified fertilizer must receive the event premium")
 assert(ProductMarket.ApplyCertificationPrice(product, 100, effects, {unlocked = {}}) == 70,
 	"uncertified fertilizer price preview must show the penalty")
-print("ProductMarket certification tests: 4 passed")
+assert(ProductMarket.ApplyMarketPriceMultiplier("V2O5", 100, {V2O5 = 1.45}) == 145,
+	"world price event must change the visible product price")
+assert(ProductMarket.ApplyMarketPriceMultiplier("V2O5", 100, nil) == 100,
+	"no world price event must preserve the base price")
+print("ProductMarket certification tests: 6 passed")

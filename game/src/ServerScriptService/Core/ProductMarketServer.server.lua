@@ -155,7 +155,11 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	end
 
 	-- Calculate revenue
-	local unitPrice = ProductMarket.GetCurrentPrice(productId, currentGameDay)
+	local unitPrice = ProductMarket.ApplyMarketPriceMultiplier(
+		productId,
+		ProductMarket.GetCurrentPrice(productId, currentGameDay),
+		eventEffects.priceMultipliers
+	)
 	unitPrice = math.floor(ProductMarket.ApplyCertificationPrice(
 		product, unitPrice, eventEffects, playerData.research
 	) + 0.5)
@@ -208,7 +212,7 @@ end)
 -- ═══════════════════════════════════════════════
 
 Remotes.RequestProductPrices.OnServerEvent:Connect(function(player)
-	local prices = ProductMarket.GetAllPrices(currentGameDay)
+	local prices = ProductMarket.GetAllPrices(currentGameDay, WorldEvents.GetActiveEffects().priceMultipliers)
 	local ledger = getLedger(player.UserId)
 
 	Remotes.FireClient("ProductPricesUpdate", player, {
@@ -229,7 +233,9 @@ task.spawn(function()
 	while true do
 		task.wait(GameClock.DAY_SECONDS)  -- shared clock: 10 real minutes = 1 game day
 		currentGameDay = currentGameDay + 1
-		local prices = ProductMarket.GetAllPrices(currentGameDay)
+		local prices = ProductMarket.GetAllPrices(
+			currentGameDay, WorldEvents.GetActiveEffects().priceMultipliers
+		)
 
 		for _, player in ipairs(Players:GetPlayers()) do
 			Remotes.FireClient("ProductPricesUpdate", player, {

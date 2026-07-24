@@ -147,6 +147,15 @@ function ProductMarket.GetCurrentPrice(productId, gameDay)
 	return 0
 end
 
+function ProductMarket.ApplyMarketPriceMultiplier(productId, price, multipliers)
+	local basePrice = math.max(0, tonumber(price) or 0)
+	local multiplier = multipliers and tonumber(multipliers[productId]) or 1
+	if not multiplier or multiplier ~= multiplier or multiplier == math.huge or multiplier == -math.huge then
+		multiplier = 1
+	end
+	return math.max(0, basePrice * math.max(0, multiplier))
+end
+
 -- EU certification events affect only agricultural products. Keep the rule
 -- pure so the server can validate before consuming inventory and tests can
 -- prove that premium/penalty paths are symmetric.
@@ -172,10 +181,12 @@ function ProductMarket.ApplyCertificationPrice(product, price, effects, research
 end
 
 -- Get all current prices
-function ProductMarket.GetAllPrices(gameDay)
+function ProductMarket.GetAllPrices(gameDay, multipliers)
 	local prices = {}
 	for _, product in ipairs(ProductMarket.Products) do
-		prices[product.id] = ProductMarket.GetCurrentPrice(product.id, gameDay)
+		prices[product.id] = math.floor(ProductMarket.ApplyMarketPriceMultiplier(
+			product.id, ProductMarket.GetCurrentPrice(product.id, gameDay), multipliers
+		) + 0.5)
 	end
 	return prices
 end
