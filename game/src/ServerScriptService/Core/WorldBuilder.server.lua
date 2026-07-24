@@ -419,9 +419,9 @@ end
 
 local function setupLighting()
 	-- Base lighting — industrial twilight with warm neon accents
-	Lighting.Ambient = Color3.fromRGB(30, 35, 45)        -- cool blue-grey ambient
-	Lighting.OutdoorAmbient = Color3.fromRGB(20, 28, 35)  -- darker outdoors
-	Lighting.Brightness = 0.2                              -- slightly brighter base
+	Lighting.Ambient = Color3.fromRGB(42, 46, 54)        -- readable cool grey
+	Lighting.OutdoorAmbient = Color3.fromRGB(30, 36, 44)  -- darker outdoors
+	Lighting.Brightness = 0.28                             -- preserve material detail
 	Lighting.ClockTime = 5.5                               -- dawn twilight (realistic)
 	Lighting.GlobalShadows = true
 	-- Technology is configured by default.project.json. Studio blocks server
@@ -429,7 +429,7 @@ local function setupLighting()
 	-- aborts the entire world build before zones and the spawn are created.
 	Lighting.EnvironmentDiffuseScale = 0.35                -- more environment reflection
 	Lighting.EnvironmentSpecularScale = 0.25               -- specular on wet/metal surfaces
-	Lighting.ExposureCompensation = 0.25                   -- balanced exposure
+	Lighting.ExposureCompensation = 0.05                   -- avoid clipped neon highlights
 	Lighting.GeographicLatitude = 52.37                    -- IJmuiden, Netherlands latitude
 
 	-- Remove existing post-processing to prevent duplicates
@@ -453,16 +453,16 @@ local function setupLighting()
 
 	-- Bloom — refined glow for neon + molten metal
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 1.4             -- toned down from 1.8 (was too blurry)
-	bloom.Size = 24                   -- tighter bloom
-	bloom.Threshold = 0.8             -- only brightest neons bloom
+	bloom.Intensity = 0.55            -- restrained industrial glow
+	bloom.Size = 18                   -- tighter bloom
+	bloom.Threshold = 1.15            -- only emissive highlights bloom
 	bloom.Parent = Lighting
 
 	-- Color Correction — cinematic industrial color grading
 	local colorCorrection = Instance.new("ColorCorrectionEffect")
-	colorCorrection.Contrast = 0.15   -- slightly lower contrast for detail
-	colorCorrection.Saturation = 0.25 -- reduced from 0.35 (was too vivid/cartoony)
-	colorCorrection.Brightness = 0.02
+	colorCorrection.Contrast = 0.22   -- retain separation in dark materials
+	colorCorrection.Saturation = 0.08 -- grounded industrial palette
+	colorCorrection.Brightness = 0.04
 	colorCorrection.TintColor = Color3.fromRGB(240, 238, 250)  -- neutral warm-white
 	colorCorrection.Parent = Lighting
 
