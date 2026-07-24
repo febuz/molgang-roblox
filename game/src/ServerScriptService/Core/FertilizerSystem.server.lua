@@ -142,13 +142,28 @@ end)
 Remotes.RequestCraftFertilizer.OnServerEvent:Connect(function(player, fertilizerId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
 
 	if type(fertilizerId) ~= "string" then return end
 	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
 	if not fert then return end
 
-	-- Check player has required atoms (via PlayerDataBridge)
-	-- For teaser: simplified — just check MolCoin cost
+	if not playerData then return end
+	local missing = FertilizerTrack.GetMissingAtoms(playerData.atoms, fertilizerId)
+	local missingList = {}
+	for symbol, amount in pairs(missing or {}) do
+		table.insert(missingList, tostring(amount) .. "x " .. symbol)
+	end
+	if #missingList > 0 then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Insufficient feedstock: " .. table.concat(missingList, ", ") .. ". Collect the atoms first.",
+			rarity = "common",
+		})
+		return
+	end
+
+	-- The atom recipe is the material input; MolCoins represent energy and
+	-- plant operating cost. Both are required before the batch is started.
 	local cost = fert.points  -- use points as cost to craft
 	local success = PlayerDataBridge.SpendMolCoins(userId, cost)
 	if not success then
@@ -156,6 +171,13 @@ Remotes.RequestCraftFertilizer.OnServerEvent:Connect(function(player, fertilizer
 			message = fert.name .. " requires " .. cost .. " MolCoins to synthesize.",
 			rarity = "common",
 		})
+		return
+	end
+	local consumed = FertilizerTrack.ConsumeAtoms(playerData.atoms, fertilizerId)
+	if not consumed then
+		-- Defensive rollback if another server action changed the inventory
+		-- between validation and consumption.
+		PlayerDataBridge.AddMolCoins(userId, cost)
 		return
 	end
 

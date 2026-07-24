@@ -294,7 +294,7 @@ for _, fert in ipairs(FertilizerTrack.Fertilizers) do
 
 	-- Cost + craft button
 	lbl(fCard, {N="Cost", S=UDim2.new(0.12,0,0,18), P=UDim2.new(0.7,0,0,6),
-		T=fert.points .. " MC", C=C.gold, F=Enum.Font.GothamBold, A=Enum.TextXAlignment.Center})
+		T=fert.points .. " MC + atoms", C=C.gold, F=Enum.Font.GothamBold, A=Enum.TextXAlignment.Center})
 
 	local craftBtn = Instance.new("TextButton")
 	craftBtn.Size = UDim2.new(0.14, 0, 0, 32)

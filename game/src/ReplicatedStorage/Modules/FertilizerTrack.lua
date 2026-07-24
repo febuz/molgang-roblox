@@ -422,6 +422,37 @@ function FertilizerTrack.CalculateYield(soilNutrients, cropId)
 	return math.clamp(yieldPct, 0, 150), crop.name
 end
 
+-- Stoichiometric input validation for the Fertilizer Lab.
+-- The server uses these helpers so crafting consumes real atom inventory,
+-- rather than minting a fertilizer after only charging currency.
+function FertilizerTrack.GetMissingAtoms(atomInventory, fertilizerId)
+	local fertilizer = FertilizerTrack.GetFertilizer(fertilizerId)
+	if not fertilizer then return nil, "Unknown fertilizer" end
+	atomInventory = atomInventory or {}
+	local missing = {}
+	for symbol, required in pairs(fertilizer.atoms) do
+		local available = atomInventory[symbol] or 0
+		if available < required then
+			missing[symbol] = required - available
+		end
+	end
+	return missing
+end
+
+function FertilizerTrack.ConsumeAtoms(atomInventory, fertilizerId)
+	local missing, err = FertilizerTrack.GetMissingAtoms(atomInventory, fertilizerId)
+	if not missing then return false, err end
+	for _, amount in pairs(missing) do
+		if amount > 0 then return false, missing end
+	end
+	local fertilizer = FertilizerTrack.GetFertilizer(fertilizerId)
+	for symbol, required in pairs(fertilizer.atoms) do
+		atomInventory[symbol] = atomInventory[symbol] - required
+		if atomInventory[symbol] <= 0 then atomInventory[symbol] = nil end
+	end
+	return true
+end
+
 -- Get fertilizer by id
 function FertilizerTrack.GetFertilizer(fertilizerId)
 	for _, f in ipairs(FertilizerTrack.Fertilizers) do
