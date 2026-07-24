@@ -50,6 +50,9 @@
   #prep + .ls { font-size: 10px; color: #9fb0c6; }
   #yield { margin-top: 9px; padding-top: 8px; border-top: 1px solid #26344a; font-size: 12px; }
   #yield b { color: #6ffcda; font-size: 15px; }
+  #product { margin-top: 6px; font-size: 12px; }
+  #product b { color: #ffd479; font-size: 14px; transition: color .2s; }
+  #product b.flash { color: #fff6c0; }
   #elements { color: #cdb6ff; font-size: 11px; margin-top: 1px; }
   #elpop { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 13;
     display: none; min-width: 220px; text-align: center; padding: 12px 18px; border-radius: 12px;
@@ -121,6 +124,7 @@
   <label class="row"><span>pH (V window 1.8–3.0)</span><span class="val" id="v-pH">2.5</span></label>
   <input type="range" id="c-pH" min="1" max="6" step="0.1" value="2.5">
   <div id="yield">V recovery: <b id="y-val">—</b> <span id="y-parts" style="color:#9fb0c6"></span></div>
+  <div id="product">🟡 V₂O₅ produced: <b id="p-val">0.00 kg</b> <span id="p-batches" style="color:#9fb0c6"></span></div>
 </div>
 <div id="elpop">
   <div class="sym" id="ep-sym">—</div>

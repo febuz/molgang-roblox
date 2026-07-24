@@ -439,6 +439,7 @@ const SIM_URL = SIM_BASE + '/state';
 const agentMeshes = new Map();   // id -> { sprite, from, to, t }
 let simOk = false, simPollMs = 150;
 let controlsSynced = false;   // sync the slider panel to the reactor once, on first poll
+let lastBatches = -1;          // detect batch completion to flash the product tally
 
 // Multiplayer presence: a per-tab id; we POST our position and render others.
 const MY_ID = 'p' + Math.random().toString(36).slice(2, 8);
@@ -524,6 +525,16 @@ async function pollSim() {
       if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
       if (rx.particleSize) reflectParticleSize(rx.particleSize, rx.leachSpeed);
       reflectPrep(rx);
+      if (rx.v2o5 != null) {                          // tangible end product
+        const pv = document.getElementById('p-val');
+        if (pv) pv.textContent = `${rx.v2o5.toFixed(2)} kg`;
+        const pb = document.getElementById('p-batches');
+        if (pb) pb.textContent = rx.batches ? `· ${rx.batches} batch${rx.batches === 1 ? '' : 'es'}` : '';
+        if (lastBatches >= 0 && rx.batches > lastBatches && pv) {
+          pv.classList.add('flash'); setTimeout(() => pv.classList.remove('flash'), 500);
+        }
+        lastBatches = rx.batches;
+      }
       if (!controlsSynced && MOLECULIA) {   // reflect the actual reactor in the sliders once
         controlsSynced = true;
         const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,

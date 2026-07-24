@@ -100,6 +100,22 @@ class Sim:
         #  - roasting pre-oxidises the slag to a more soluble form -> faster leach.
         self.reactor["deironized"] = False
         self.reactor["roasted"] = False
+        # Tangible output: each finished batch banks V2O5 flakes (the line's gold
+        # product). BOF slag is ~1.5% V2O5 (SteelSlag), so a 100 kg batch yields
+        # up to 1.5 kg, scaled by the selective recovery the player achieves.
+        self.reactor["v2o5_kg"] = 0.0
+        self.reactor["batches"] = 0
+
+    BATCH_SLAG_KG = 100.0
+    V2O5_FRACTION = 0.015
+
+    def _v_recovery(self, rx):
+        pH = rx["pH"]
+        fe_penalty = 1.0 if rx.get("deironized") else (1.0 - process_sim.precipitation_fraction("Fe", pH))
+        return (rx["conversion"]
+                * process_sim.precipitation_fraction("V", pH)
+                * fe_penalty
+                * (1.0 - process_sim.precipitation_fraction("Al", pH)))
 
     RANGES = {"temperature": (25.0, 95.0), "pressure": (100.0, 300.0),
               "flowRate": (1.0, 10.0), "pH": (1.0, 6.0)}
@@ -139,12 +155,15 @@ class Sim:
             else:
                 self.reactor["temperature"] = 70.0 + 18.0 * math.sin(self._rt * 0.15)
             # finer feed leaches faster: k scales with 1 / leachMultiplier;
-            # roasting pre-oxidises the slag to a more soluble form (~1.6x faster).
+            # roasting pre-oxidises the slag to a more soluble form (game: +25%).
             k = 0.05 / self.LEACH_MULT.get(self.reactor.get("particleSize", "ground"), 1.0)
             if self.reactor.get("roasted"):
-                k *= 1.6
+                k *= 1.25
             process_sim.step_reactor(self.reactor, dt * 1.0, k)
             if self.reactor["conversion"] >= 0.995:
+                # batch complete: bank the V2O5 product at the recovery achieved
+                self.reactor["v2o5_kg"] += self.BATCH_SLAG_KG * self.V2O5_FRACTION * self._v_recovery(self.reactor)
+                self.reactor["batches"] += 1
                 self.reactor["conversion"] = 0.0   # next batch
 
     def state(self):
@@ -164,17 +183,9 @@ class Sim:
             # Vanadium is the valuable metal in BOF slag. The teachable point is
             # SELECTIVE precipitation: recover V while Fe and Al stay dissolved.
             # V precipitates in pH 1.8-3.0, Fe only above 3.0, Al above 4.0 — so
-            # too-high pH co-precipitates Fe/Al and contaminates the product.
-            # Selective yield = leached x V-precip x (Fe still dissolved) x (Al still
-            # dissolved), giving a real optimum near the top of V's window (~2.9).
-            pH = rx["pH"]
-            # If iron was removed upstream (magnetic separation), it can't
-            # co-precipitate, so drop the Fe purity penalty -> higher pH stays clean.
-            fe_penalty = 1.0 if rx.get("deironized") else (1.0 - process_sim.precipitation_fraction("Fe", pH))
-            v_recovery = (rx["conversion"]
-                          * process_sim.precipitation_fraction("V", pH)
-                          * fe_penalty
-                          * (1.0 - process_sim.precipitation_fraction("Al", pH)))
+            # too-high pH co-precipitates Fe/Al and contaminates the product, unless
+            # iron was removed upstream (magnetic separation drops the Fe penalty).
+            v_recovery = self._v_recovery(rx)
             reactor = {"temperature": round(rx["temperature"], 1), "pressure": round(rx["pressure"], 1),
                        "flowRate": rx["flowRate"], "pH": rx["pH"],
                        "conversion": round(rx["conversion"], 3),
@@ -182,7 +193,8 @@ class Sim:
                        "yield": round(v_recovery, 3), "manual": self.manual,
                        "particleSize": rx.get("particleSize", "ground"),
                        "leachSpeed": round(1.0 / self.LEACH_MULT.get(rx.get("particleSize", "ground"), 1.0), 2),
-                       "deironized": bool(rx.get("deironized")), "roasted": bool(rx.get("roasted"))}
+                       "deironized": bool(rx.get("deironized")), "roasted": bool(rx.get("roasted")),
+                       "v2o5": round(rx.get("v2o5_kg", 0.0), 2), "batches": rx.get("batches", 0)}
             return {"t": round(time.time() - self.t0, 2), "n": len(out), "agents": out,
                     "reactor": reactor}
 
