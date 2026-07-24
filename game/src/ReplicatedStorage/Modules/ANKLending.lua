@@ -10,6 +10,9 @@
 ]]
 
 local ANKLending = {}
+local GameClock = require(script.Parent.GameClock)
+local GAME_DAY_SECONDS = GameClock.DAY_SECONDS
+local DAILY_INTEREST_RATE = 0.05
 
 -- ═══════════════════════════════════════════════
 -- LOAN STRUCTURE
@@ -22,11 +25,11 @@ function ANKLending.CreateLoan(borrowerId, lenderId, principal, duration)
 		borrower = borrowerId,
 		lender = lenderId,
 		principal = principal,
-		interest = math.floor(principal * 0.05),  -- 5% interest
-		total = principal + math.floor(principal * 0.05),
+		interest = math.floor(principal * DAILY_INTEREST_RATE * duration),
+		total = principal + math.floor(principal * DAILY_INTEREST_RATE * duration),
 		collateral = math.floor(principal * 1.2),  -- 120% collateral required
 		created = now,
-		due = now + (duration * 86400),  -- duration in days → seconds
+		due = now + (duration * GAME_DAY_SECONDS), -- duration in game-days → OTAP seconds
 		repaid = false,
 		status = "active",
 	}
@@ -55,9 +58,8 @@ end
 -- ═══════════════════════════════════════════════
 
 function ANKLending.CalculateInterest(loan, daysLended)
-	-- Simple interest: 5% annual = 5% / 365 per day
-	local dailyRate = 0.05 / 365
-	return math.floor(loan.principal * dailyRate * daysLended)
+	-- OTAP uses 5% per in-game day, matching the server settlement rule.
+	return math.floor(loan.principal * DAILY_INTEREST_RATE * daysLended)
 end
 
 -- ═══════════════════════════════════════════════
@@ -66,7 +68,7 @@ end
 
 function ANKLending.GetLoanStatus(loan)
 	local now = os.time()
-	local daysRemaining = math.ceil((loan.due - now) / 86400)
+	local daysRemaining = math.ceil((loan.due - now) / GAME_DAY_SECONDS)
 
 	return {
 		id = loan.id,
@@ -95,7 +97,6 @@ function ANKLending.GetPresets()
 		{name = "Starter",  amount = 1000,  duration = 7},
 		{name = "Growth",   amount = 5000,  duration = 14},
 		{name = "Factory",  amount = 10000, duration = 30},
-		{name = "Scale",    amount = 25000, duration = 60},
 	}
 end
 
