@@ -121,6 +121,18 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 	for atom, count in pairs(atomsProduced) do
 		playerData.atoms[atom] = (playerData.atoms[atom] or 0) + count
 	end
+	-- Mine output is a real inventory acquisition, just like a manually
+	-- collected atom. Keep lifetime and daily progress aligned with what the
+	-- player actually received so quests, dashboard totals and achievements do
+	-- not under-report industrial production.
+	local producedAtomCount = 0
+	for _, count in pairs(atomsProduced) do
+		producedAtomCount = producedAtomCount + count
+	end
+	if producedAtomCount > 0 then
+		playerData.totalAtomsCollected = (playerData.totalAtomsCollected or 0) + producedAtomCount
+		DailyStats.Increment(playerData, "atomsCollected", producedAtomCount)
+	end
 
 	-- Produce molecules from factories
 	local moleculesProduced = {}
