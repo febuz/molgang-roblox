@@ -143,6 +143,25 @@ Remotes.RecordAnalyticsEvent.OnServerEvent:Connect(function(player, eventName, v
 	trackEvent(player.UserId, "guisOpened", value)
 end)
 
+local function trackCharacterDeath(player, character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+		or character:WaitForChild("Humanoid", 10)
+	if not humanoid then return end
+	humanoid.Died:Connect(function()
+		trackEvent(player.UserId, "deaths", 1)
+	end)
+end
+
+local function watchPlayer(player)
+	getSession(player.UserId)
+	player.CharacterAdded:Connect(function(character)
+		task.spawn(trackCharacterDeath, player, character)
+	end)
+	if player.Character then
+		task.spawn(trackCharacterDeath, player, player.Character)
+	end
+end
+
 local function persistSession(player, session)
 	if not session or session.saved then return true end
 	if session.saving then
@@ -222,14 +241,12 @@ game:BindToClose(function()
 end)
 
 -- Track player joins
-Players.PlayerAdded:Connect(function(player)
-	getSession(player.UserId)
-end)
+Players.PlayerAdded:Connect(watchPlayer)
 
 -- Server scripts can be required after players already exist (notably in
 -- Studio/OTAP); do not lose those sessions or their initial path sample.
 for _, player in ipairs(Players:GetPlayers()) do
-	getSession(player.UserId)
+	watchPlayer(player)
 end
 
 print("[MOLGANG] Analytics initialized — tracking session events")
