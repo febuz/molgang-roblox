@@ -12,6 +12,8 @@ local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ShortcutOverlay"
@@ -19,6 +21,7 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 95
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 700, 520)
 
 local overlay = Instance.new("Frame")
 overlay.Size = UDim2.new(1, 0, 1, 0)
@@ -28,7 +31,8 @@ overlay.Parent = screenGui
 
 local panel = Instance.new("Frame")
 panel.Size = UDim2.new(0, 700, 0, 520)
-panel.Position = UDim2.new(0.5, -350, 0.5, -260)
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = UDim2.fromScale(0.5, 0.5)
 panel.BackgroundColor3 = Color3.fromRGB(12, 14, 24)
 panel.BackgroundTransparency = 0.05
 panel.Parent = overlay

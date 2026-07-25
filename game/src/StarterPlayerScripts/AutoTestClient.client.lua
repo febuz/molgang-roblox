@@ -160,7 +160,11 @@ local craftRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestBuildMolecu
 check("Recipe crafting is wired", craftButton ~= nil and craftRemote ~= nil,
 	"Recipe Book needs a CraftBtn and RequestBuildMolecule remote")
 
-for _, guiName in ipairs({"InventoryGui", "LeaderboardGui", "AchievementsGui"}) do
+for _, guiName in ipairs({
+	"InventoryGui", "LeaderboardGui", "AchievementsGui", "WalletGui",
+	"SuperheroGui", "GuildGui", "FeedbackGui", "BubbleTeaGui", "AtomTradeGui",
+	"QuantumRacingGui", "NPCDialogueGui", "ShortcutOverlay", "QuestModal",
+}) do
 	local responsiveGui = findScreenGui(guiName)
 	local scale = responsiveGui and responsiveGui:FindFirstChild("ResponsiveScale")
 	check(guiName .. " scales to viewport", scale ~= nil and scale:IsA("UIScale")

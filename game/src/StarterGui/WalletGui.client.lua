@@ -11,6 +11,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -64,6 +65,7 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 -- Wallet is a full-screen interactive modal; keep it above HUD/status layers.
 gui.DisplayOrder = 23
 gui.Parent = playerGui
+ResponsiveGui.Attach(gui, 580, 480)
 
 -- Background
 local bg = Instance.new("Frame")
@@ -76,7 +78,8 @@ bg.Parent = gui
 -- Panel
 local panel = Instance.new("Frame")
 panel.Size = UDim2.fromOffset(580, 480)
-panel.Position = UDim2.new(0.5, -290, 0.5, -240)
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = UDim2.fromScale(0.5, 0.5)
 panel.BackgroundColor3 = C.panel
 panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel = 0

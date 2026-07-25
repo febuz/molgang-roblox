@@ -13,6 +13,7 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 
@@ -42,6 +43,7 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 25
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 600, 300)
 
 -- Semi-transparent background (for focus)
 local bgOverlay = Instance.new("Frame")
@@ -55,7 +57,8 @@ bgOverlay.Parent = screenGui
 local dialogueBox = Instance.new("Frame")
 dialogueBox.Name = "DialogueBox"
 dialogueBox.Size = UDim2.new(0, 600, 0, 300)
-dialogueBox.Position = UDim2.new(0.5, -300, 0.5, -150)
+dialogueBox.AnchorPoint = Vector2.new(0.5, 0.5)
+dialogueBox.Position = UDim2.fromScale(0.5, 0.5)
 dialogueBox.BackgroundColor3 = COLORS.panel
 dialogueBox.BackgroundTransparency = 0.05
 dialogueBox.Parent = screenGui

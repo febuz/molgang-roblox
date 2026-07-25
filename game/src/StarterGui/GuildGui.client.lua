@@ -15,6 +15,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GuildSystem = require(ReplicatedStorage.Modules.GuildSystem)
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local C = {
 	bg = Color3.fromRGB(12, 8, 20),
@@ -42,10 +43,12 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 19
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 550, 450)
 
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 550, 0, 450)
-main.Position = UDim2.new(0.5, -275, 0.5, -225)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui

@@ -14,6 +14,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local SafetyTrack = require(ReplicatedStorage.Modules.SuperheroTrack) -- module renamed internally
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local C = {
 	bg = Color3.fromRGB(10, 10, 15),
@@ -34,10 +35,12 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 22
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 620, 500)
 
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 620, 0, 500)
-main.Position = UDim2.new(0.5, -310, 0.5, -250)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui

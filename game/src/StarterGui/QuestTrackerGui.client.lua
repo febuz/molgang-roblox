@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local Quests = require(ReplicatedStorage.Modules.Quests)
 local PlayerDataLoaded = Remotes:WaitForChild("PlayerDataLoaded")
@@ -97,6 +98,7 @@ modalGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 modalGui.DisplayOrder = 16
 modalGui.Enabled = false
 modalGui.Parent = playerGui
+ResponsiveGui.Attach(modalGui, 700, 600)
 
 -- Modal background
 local modalBg = Instance.new("Frame")
@@ -109,7 +111,8 @@ modalBg.Parent = modalGui
 local modalPanel = Instance.new("Frame")
 modalPanel.Name = "ModalPanel"
 modalPanel.Size = UDim2.new(0, 700, 0, 600)
-modalPanel.Position = UDim2.new(0.5, -350, 0.5, -300)
+modalPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+modalPanel.Position = UDim2.fromScale(0.5, 0.5)
 modalPanel.BackgroundColor3 = COLORS.panel
 modalPanel.BackgroundTransparency = 0.1
 modalPanel.Parent = modalGui
