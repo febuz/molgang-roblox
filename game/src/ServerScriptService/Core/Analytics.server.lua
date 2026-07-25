@@ -40,6 +40,7 @@ local function getSession(userId)
 				questsCompleted = 0,
 				deaths = 0,
 				chatMessages = 0,
+				zoneVisits = {},
 		})
 		playerSessions[userId].analyticsKey = "session_" .. userId .. "_" .. sessionId
 		playerSessions[userId].pathKey = "path_" .. userId .. "_" .. sessionId

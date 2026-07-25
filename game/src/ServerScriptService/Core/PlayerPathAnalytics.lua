@@ -20,6 +20,7 @@ function PlayerPathAnalytics.NewSession(joinTime, clockStart, sessionId, events)
 		sessionId = sessionId,
 		events = events or {},
 		path = {},
+		lastZone = nil,
 		lastPathSample = -PlayerPathAnalytics.PATH_SAMPLE_INTERVAL,
 		saving = false,
 		saved = false,
@@ -40,12 +41,21 @@ function PlayerPathAnalytics.AppendSample(session, now, position, zone)
 		return math.floor(value * 2 + 0.5) / 2
 	end
 	session.lastPathSample = now
+	local normalizedZone = type(zone) == "string" and zone or "unknown"
+	if normalizedZone ~= session.lastZone then
+		session.events.zoneVisits = session.events.zoneVisits or {}
+		table.insert(session.events.zoneVisits, {
+			zone = normalizedZone,
+			t = math.floor(now - session.clockStart),
+		})
+		session.lastZone = normalizedZone
+	end
 	table.insert(session.path, {
 		t = math.floor(now - session.clockStart),
 		x = halfStud(position.x),
 		y = halfStud(position.y),
 		z = halfStud(position.z),
-		zone = type(zone) == "string" and zone or "unknown",
+		zone = normalizedZone,
 	})
 	return true
 end
