@@ -275,10 +275,14 @@ function Quests.CheckProgress(playerData, quest)
 		if quest.condition.daily then
 			return math.min(dailyStats.atomsCollected or 0, target)
 		end
-		local count = 0
+		local inventoryCount = 0
 		if playerData.atoms then
-			for _, c in pairs(playerData.atoms) do count = count + c end
+			for _, c in pairs(playerData.atoms) do inventoryCount = inventoryCount + c end
 		end
+		-- Lifetime quests must remain complete after atoms are consumed. Use
+		-- inventory only as a fallback for legacy data without the lifetime
+		-- counter.
+		local count = math.max(tonumber(playerData.totalAtomsCollected) or 0, inventoryCount)
 		return math.min(count, target)
 
 	elseif condType == "facilitiesBuilt" then

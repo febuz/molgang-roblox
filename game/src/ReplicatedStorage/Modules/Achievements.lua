@@ -159,10 +159,14 @@ function Achievements.CheckProgress(playerData, achievement)
 	local target = achievement.tracker.target
 
 	if trackerType == "atomsCollected" then
-		local count = 0
+		local inventoryCount = 0
 		if playerData.atoms then
-			for _, c in pairs(playerData.atoms) do count = count + c end
+			for _, c in pairs(playerData.atoms) do inventoryCount = inventoryCount + c end
 		end
+		-- Permanent achievements must not regress when atoms are consumed in
+		-- molecules. Keep the inventory count as a migration fallback for old
+		-- saves that predate totalAtomsCollected.
+		local count = math.max(tonumber(playerData.totalAtomsCollected) or 0, inventoryCount)
 		return math.min(count, target)
 
 	elseif trackerType == "facilitiesBuilt" then
