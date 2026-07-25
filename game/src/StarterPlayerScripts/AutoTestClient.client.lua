@@ -187,6 +187,12 @@ check("Mining scales to viewport", miningScale ~= nil and miningScale:IsA("UISca
 	and miningScale.Scale > 0 and miningScale.Scale <= 1,
 	"mining modal must have a bounded ResponsiveScale")
 
+local fertilizer = findScreenGui("FertilizerGui")
+local fertilizerScale = fertilizer and fertilizer:FindFirstChild("ResponsiveScale")
+check("Fertilizer lab scales to viewport", fertilizerScale ~= nil and fertilizerScale:IsA("UIScale")
+	and fertilizerScale.Scale > 0 and fertilizerScale.Scale <= 1,
+	"fertilizer modal must have a bounded ResponsiveScale")
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")

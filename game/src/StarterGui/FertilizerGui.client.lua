@@ -57,9 +57,26 @@ screenGui.DisplayOrder = 17
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local fertilizerCamera = workspace.CurrentCamera
+local function updateFertilizerScale()
+	if not fertilizerCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(fertilizerCamera.ViewportSize.X - 20) / 780,
+		(fertilizerCamera.ViewportSize.Y - 20) / 540
+	), 0.65, 1)
+end
+updateFertilizerScale()
+if fertilizerCamera then
+	fertilizerCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateFertilizerScale)
+end
+
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 780, 0, 540)
-main.Position = UDim2.new(0.5, -390, 0.5, -270)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
