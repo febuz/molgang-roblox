@@ -175,6 +175,12 @@ check("Dashboard scales to viewport", dashboardScale ~= nil and dashboardScale:I
 	and dashboardScale.Scale > 0 and dashboardScale.Scale <= 1,
 	"dashboard modal must have a bounded ResponsiveScale")
 
+local processControl = findScreenGui("ProcessControlGui")
+local processScale = processControl and processControl:FindFirstChild("ResponsiveScale")
+check("Process control scales to viewport", processScale ~= nil and processScale:IsA("UIScale")
+	and processScale.Scale > 0 and processScale.Scale <= 1,
+	"process-control modal must have a bounded ResponsiveScale")
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")

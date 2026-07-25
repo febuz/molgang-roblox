@@ -66,9 +66,26 @@ screenGui.DisplayOrder = 18
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local controlCamera = workspace.CurrentCamera
+local function updateControlScale()
+	if not controlCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(controlCamera.ViewportSize.X - 20) / 860,
+		(controlCamera.ViewportSize.Y - 20) / 520
+	), 0.65, 1)
+end
+updateControlScale()
+if controlCamera then
+	controlCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateControlScale)
+end
+
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 860, 0, 520)
-main.Position = UDim2.new(0.5, -430, 0.5, -260)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.02
 main.Parent = screenGui
