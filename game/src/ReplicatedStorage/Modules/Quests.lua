@@ -123,7 +123,7 @@ Quests.AllQuests = {
 		description = "Build 3 different facilities",
 		category = "advanced",
 		reward = {molCoins = 800},
-		condition = {type = "facilitiesBuilt", target = 3},
+		condition = {type = "distinctFacilitiesBuilt", target = 3},
 		order = 8,
 		requires = "build_factory",
 	},
@@ -327,6 +327,15 @@ function Quests.CheckProgress(playerData, quest)
 					(playerData.facilities.factories or 0) +
 					(playerData.facilities.researchLabs or 0) +
 					(playerData.facilities.offices or 0)
+		end
+		return math.min(count, target)
+
+	elseif condType == "distinctFacilitiesBuilt" then
+		local count = 0
+		if playerData.facilities then
+			for _, key in ipairs({"starterBenches", "mines", "factories", "researchLabs", "offices"}) do
+				if (tonumber(playerData.facilities[key]) or 0) > 0 then count = count + 1 end
+			end
 		end
 		return math.min(count, target)
 

@@ -17,6 +17,15 @@ assert(Quests.GetActiveQuests(progress)[1].id == "collect_atoms",
 	"guided path should activate the next collection objective")
 assert(not Quests.EnsureGuidedQuest(progress), "guided path must not duplicate an active quest")
 
+local facilitiesQuest = Quests.GetQuest("build_three_facilities")
+local sameFacilityData = {facilities = {mines = 3}}
+assert(Quests.CheckProgress(sameFacilityData, facilitiesQuest) == 1,
+	"different-facilities quest must not count duplicate facility types")
+sameFacilityData.facilities.factories = 1
+sameFacilityData.facilities.offices = 1
+assert(Quests.CheckProgress(sameFacilityData, facilitiesQuest) == 3,
+	"different-facilities quest should count distinct facility types")
+
 local sameOrderProgress = Quests.CreateQuestProgress()
 sameOrderProgress.completed.first_atom = true
 sameOrderProgress.completed.collect_atoms = true
@@ -36,4 +45,4 @@ local atomAchievement = Achievements.List.TenAtoms
 assert(Achievements.CheckProgress(consumedAtoms, atomAchievement) == 10,
 	"lifetime achievement progress must survive consumed atoms")
 
-print("Quest Flow Tests: 15 passed, 0 failed")
+print("Quest Flow Tests: 17 passed, 0 failed")
