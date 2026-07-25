@@ -193,6 +193,12 @@ check("Fertilizer lab scales to viewport", fertilizerScale ~= nil and fertilizer
 	and fertilizerScale.Scale > 0 and fertilizerScale.Scale <= 1,
 	"fertilizer modal must have a bounded ResponsiveScale")
 
+local settings = findScreenGui("SettingsGui")
+local settingsScale = settings and settings:FindFirstChild("ResponsiveScale")
+check("Settings scales to viewport", settingsScale ~= nil and settingsScale:IsA("UIScale")
+	and settingsScale.Scale > 0 and settingsScale.Scale <= 1,
+	"settings modal must have a bounded ResponsiveScale")
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")
