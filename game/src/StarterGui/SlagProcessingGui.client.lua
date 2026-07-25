@@ -352,6 +352,36 @@ crushLabel = label(slagPanel, {Name="CrushLabel", Size=UDim2.new(0.9,0,0,16),
 
 -- Crush buttons row
 local crushBtnY = actionY + 126
+local crushRequestBusy = false
+local crushRequestId = 0
+
+local function beginCrushRequest(remote, target, button, pendingText)
+	if crushRequestBusy then
+		crushLabel.Text = "Processing the previous station request…"
+		return false
+	end
+	if not remote then
+		crushLabel.Text = "Slag service is still loading; try again."
+		return false
+	end
+	crushRequestBusy = true
+	crushRequestId += 1
+	local requestId = crushRequestId
+	button.Active = false
+	crushLabel.Text = pendingText
+	remote:FireServer(target)
+	-- A rejected request has no progress event. Release the local lock and
+	-- leave an actionable hint instead of making the button appear dead.
+	task.delay(0.8, function()
+		if requestId ~= crushRequestId then return end
+		crushRequestBusy = false
+		if button.Parent then
+			button.Active = true
+		end
+		crushLabel.Text = "No station response — stand near the marked Crush, Cone or Mill station."
+	end)
+	return true
+end
 
 local hammerBtn = btn(slagPanel, {Name="HammerBtn", Size=UDim2.new(0.28,-4,0,40),
 	Position=UDim2.new(0.02,0,0,crushBtnY), Text="HAMMER\n(Free)", BgColor=C.accent})
@@ -367,12 +397,7 @@ millBtn.TextColor3 = Color3.new(1,1,1)
 hammerBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then
-		crushLabel.Text = "Hammer hit sent — raw chunks are required."
-		remote:FireServer("crushed")
-	else
-		crushLabel.Text = "Slag service is still loading; try again."
-	end
+	beginCrushRequest(remote, "crushed", hammerBtn, "Hammer request sent — checking the Crush Station…")
 	-- Hammer sound (#51)
 	local SoundService = game:GetService("SoundService")
 	local hammerSound = SoundService:FindFirstChild("crusher_impact")
@@ -393,23 +418,13 @@ end)
 grindBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then
-		crushLabel.Text = "Grinding request sent — first hammer raw chunks."
-		remote:FireServer("ground")
-	else
-		crushLabel.Text = "Slag service is still loading; try again."
-	end
+	beginCrushRequest(remote, "ground", grindBtn, "Grinding request sent — checking the Cone Crusher…")
 end)
 
 millBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then
-		crushLabel.Text = "Ball mill request sent — ground slag is required."
-		remote:FireServer("powder")
-	else
-		crushLabel.Text = "Slag service is still loading; try again."
-	end
+	beginCrushRequest(remote, "powder", millBtn, "Ball mill request sent — checking the Ball Mill…")
 end)
 
 -- ═══════════════════════════════════════════════
@@ -841,6 +856,11 @@ local lastCrushTotal = 8
 local crushEvent = Remotes:FindFirstChild("SlagCrushProgress")
 if crushEvent then
 	crushEvent.OnClientEvent:Connect(function(data)
+		crushRequestId += 1
+		crushRequestBusy = false
+		hammerBtn.Active = true
+		grindBtn.Active = true
+		millBtn.Active = true
 		local progress = data.hits / data.totalHits
 		lastCrushProgress = progress
 		lastCrushHits = data.hits
