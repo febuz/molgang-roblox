@@ -162,6 +162,12 @@ if loadingScreen then
 -- short, non-destructive probes: opening/closing UI and sending one free hammer
 -- request cannot grant currency or mutate production without valid inventory.
 local hud = findScreenGui("HUDWidget")
+local mainHud = findScreenGui("MolgangHUD")
+local universalReturn = mainHud and mainHud:FindFirstChild("ReturnToNexus", true)
+local returnRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestReturnToNexus")
+check("HUD has universal Nexus return", universalReturn ~= nil
+	and universalReturn:IsA("GuiButton") and universalReturn.Active and returnRemote ~= nil,
+	"player must be able to return to Nexus without falling or opening mining")
 local dashboard = findScreenGui("DashboardGui")
 local dashboardButton = findButtonByText(hud, "Dash")
 if dashboardButton and dashboardButton:IsA("GuiButton") then

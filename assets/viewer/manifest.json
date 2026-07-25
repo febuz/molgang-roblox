@@ -1,6 +1,6 @@
 {
   "generated_by": "assets/viewer/build_manifest.py",
-  "count": 94,
+  "count": 97,
   "models": [
     {
       "file": "Barrel_01.glb",
@@ -18,6 +18,12 @@
       "file": "ball_mill.glb",
       "stem": "ball_mill",
       "label": "Ball Mill",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "ball_mill_hd.glb",
+      "stem": "ball_mill_hd",
+      "label": "Ball Mill Hd",
       "set": "Industrial & Game"
     },
     {
@@ -261,6 +267,12 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "jaw_crusher_hd.glb",
+      "stem": "jaw_crusher_hd",
+      "label": "Jaw Crusher Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "korean_fire_extinguisher_01.glb",
       "stem": "korean_fire_extinguisher_01",
       "label": "Korean Fire Extinguisher 01",
@@ -456,6 +468,12 @@
       "file": "roasting_kiln.glb",
       "stem": "roasting_kiln",
       "label": "Roasting Kiln",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "roasting_kiln_hd.glb",
+      "stem": "roasting_kiln_hd",
+      "label": "Roasting Kiln Hd",
       "set": "Industrial & Game"
     },
     {
