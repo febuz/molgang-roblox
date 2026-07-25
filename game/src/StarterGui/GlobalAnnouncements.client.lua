@@ -15,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local AnnouncementRouting = require(ReplicatedStorage.Modules.AnnouncementRouting)
 
 local COLORS = {
 	background    = Color3.fromRGB(20, 20, 30),
@@ -298,6 +299,7 @@ end)
 -- Server announcements (from ServerAnnounce event)
 if Remotes:FindFirstChild("ServerAnnounce") then
 	Remotes.ServerAnnounce.OnClientEvent:Connect(function(announcement)
+		if not AnnouncementRouting.IsVisual(announcement) then return end
 		queueAnnouncement({
 			icon = "📣",
 			message = announcement.message or "Server announcement",

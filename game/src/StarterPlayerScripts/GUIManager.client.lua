@@ -465,44 +465,9 @@ end
 
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
 	-- Play quest_complete sound for quest announcements (#35)
-	if data.message and string.find(data.message, "QUEST COMPLETE") then
+	if type(data) == "table" and data.message and string.find(data.message, "QUEST COMPLETE") then
 		playSound("quest_complete")
 	end
-
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "AnnounceTicker"
-	gui.Parent = playerGui
-
-	local rarityColors = {
-		common = Color3.fromRGB(200, 200, 200),
-		uncommon = Color3.fromRGB(100, 200, 100),
-		rare = Color3.fromRGB(68, 136, 255),
-		epic = Color3.fromRGB(180, 68, 255),
-		legendary = Color3.fromRGB(255, 215, 0),
-	}
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 30)
-	label.Position = UDim2.new(0, 0, 0, 0)
-	label.BackgroundColor3 = Color3.fromRGB(5, 10, 8)
-	label.BackgroundTransparency = 0.3
-	label.Text = "  " .. (data.message or "")
-	label.TextColor3 = rarityColors[data.rarity] or Color3.fromRGB(200, 200, 200)
-	label.TextScaled = true
-	label.Font = Enum.Font.GothamBold
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = gui
-
-	-- Fade out after 5 seconds
-	task.delay(5, function()
-		TweenService:Create(label, TweenInfo.new(1), {
-			BackgroundTransparency = 1,
-			TextTransparency = 1,
-		}):Play()
-		task.delay(1.1, function()
-			gui:Destroy()
-		end)
-	end)
 end)
 
 -- Start ambient
