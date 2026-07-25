@@ -18,9 +18,8 @@ local modalNames = {
 	MiniGameGui = true, ShortcutOverlay = true, QuestModal = true,
 	QuizGui = true, TutorialGui = true,
 	-- A world-event banner is transient feedback, not a second permanent HUD.
-	-- Keeping it in the same modal lane prevents it from covering tutorials or
-	-- swallowing clicks intended for an open menu.
-	GlobalAnnouncements = true,
+	-- It must remain enabled while menus are open so queued announcements can
+	-- still render; its panels do not capture input.
 	-- Dynamic confirmation and warning layers must also be exclusive. These
 	-- used to remain above a newly opened menu and could swallow button input.
 	ConfirmRemove = true,

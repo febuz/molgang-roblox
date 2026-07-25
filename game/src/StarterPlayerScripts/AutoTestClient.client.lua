@@ -321,6 +321,15 @@ if modalDashboard and modalQuiz then
 		modalDashboard.Enabled == false and modalQuiz.Enabled == true,
 		"Dashboard and Quiz were enabled at the same time")
 	modalQuiz.Enabled = false
+	local announcements = findScreenGui("GlobalAnnouncements")
+	if announcements then
+		announcements.Enabled = true
+		modalDashboard.Enabled = true
+		task.wait(0.1)
+		check("Announcements remain enabled with modal open", announcements.Enabled,
+			"GuiCoordinator incorrectly disabled the transient announcement layer")
+		modalDashboard.Enabled = false
+	end
 else
 	check("Modal menus are mutually exclusive", false, "DashboardGui or QuizGui is missing")
 end
