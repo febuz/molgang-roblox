@@ -83,11 +83,16 @@ local function samplePlayerPath(player, now)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	local position = root.Position
-	PlayerPathAnalytics.AppendSample(session, now, {
+	local appended = PlayerPathAnalytics.AppendSample(session, now, {
 		x = position.X,
 		y = position.Y,
 		z = position.Z,
 	}, nearestZone(position))
+	if appended then
+		local actionTime = os.time()
+		if not session.firstAction then session.firstAction = actionTime end
+		session.lastAction = actionTime
+	end
 end
 
 RunService.Heartbeat:Connect(function()
