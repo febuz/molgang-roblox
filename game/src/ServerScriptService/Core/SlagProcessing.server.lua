@@ -253,9 +253,23 @@ end
 
 local function sendSlagUpdate(player, userId)
 	local slag = getPlayerSlag(userId)
+	local crushState = playerCrushState[userId]
+	local crushProgress = nil
+	if crushState and tonumber(crushState.currentHits) and crushState.currentHits > 0 then
+		local target = SteelSlag.ParticleSizes[crushState.targetSize]
+		local totalHits = target and target.crushHits or 0
+		if totalHits > 0 then
+			crushProgress = {
+				hits = crushState.currentHits,
+				totalHits = totalHits,
+				targetSize = crushState.targetSize,
+			}
+		end
+	end
 	Remotes.FireClient("SlagInventoryUpdate", player, {
 		slagInventory = slag,
 		activeLeaches = countActiveLeaches(userId),
+		crushProgress = crushProgress,
 	})
 end
 

@@ -863,6 +863,23 @@ if crushEvent then
 	end)
 end
 
+-- Rehydrate hammer progress when the processing window is closed and opened
+-- again. The server owns the hit count; this only restores the visual state.
+if slagInvEvent then
+	slagInvEvent.OnClientEvent:Connect(function(data)
+		local progress = data and data.crushProgress
+		if type(progress) ~= "table" then return end
+		local hits = tonumber(progress.hits) or 0
+		local totalHits = tonumber(progress.totalHits) or 0
+		if totalHits <= 0 then return end
+		lastCrushHits = hits
+		lastCrushTotal = totalHits
+		lastCrushProgress = math.clamp(hits / totalHits, 0, 1)
+		crushBarFill.Size = UDim2.new(lastCrushProgress, 0, 1, 0)
+		crushLabel.Text = "Hammering... " .. hits .. "/" .. totalHits .. " hits"
+	end)
+end
+
 -- Leach progress update (periodic)
 local leachProgressEvent = Remotes:FindFirstChild("SlagLeachProgress")
 if leachProgressEvent then
