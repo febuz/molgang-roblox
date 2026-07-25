@@ -21,6 +21,7 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
 
 local function findScreenGui(name)
 	for _, child in ipairs(playerGui:GetChildren()) do
@@ -425,6 +426,23 @@ end
 PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
 	refreshHUD()
+end)
+
+-- PlayerDataLoaded is a one-shot event and can precede this script under
+-- Studio/Wine startup. Fetch a server-owned snapshot until the HUD is ready.
+task.spawn(function()
+	for _ = 1, 10 do
+		if playerData then return end
+		local ok, data = pcall(function()
+			return GetPlayerData:InvokeServer()
+		end)
+		if ok and type(data) == "table" then
+			playerData = data
+			refreshHUD()
+			return
+		end
+		task.wait(0.5)
+	end
 end)
 
 -- Atom collected: update atoms + elements + molcoins

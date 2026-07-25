@@ -331,6 +331,24 @@ end)
 
 PlayerDataLoaded.OnClientEvent:Connect(updateDashboard)
 
+-- PlayerDataLoaded is a one-shot event and may fire before this LocalScript
+-- finishes constructing its UI. Recover the authoritative snapshot through
+-- the read-only RemoteFunction so the dashboard never remains blank.
+task.spawn(function()
+	for _ = 1, 10 do
+		if playerData then return end
+		local ok, data = pcall(function()
+			return GetPlayerData:InvokeServer()
+		end)
+		if ok and type(data) == "table" then
+			playerData = data
+			updateDashboard()
+			return
+		end
+		task.wait(0.5)
+	end
+end)
+
 -- Update every 30 frames (~0.5s) instead of every frame (#92)
 local dashFrameCount = 0
 RunService.Heartbeat:Connect(function()
