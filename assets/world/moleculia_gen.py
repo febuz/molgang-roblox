@@ -299,5 +299,33 @@ def build():
           f"{len(ZONES)} floating zones, {len(PROCESS_LINE)}-station Slakkenspoor line) -> {OUT}")
 
 
+def check_drift():
+    """Sync protocol: regenerate to memory and compare with the committed
+    moleculia.json. Exits non-zero when the Roblox Lua sources changed without
+    a regen — CI/pre-commit guard keeping web in sync with the game's lines."""
+    import io, sys
+    global OUT
+    committed = json.load(open(OUT))
+    real_out = OUT
+    try:
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tf:
+            OUT = tf.name
+        build()
+        fresh = json.load(open(OUT))
+        os.unlink(OUT)
+    finally:
+        OUT = real_out
+    if fresh != committed:
+        print("DRIFT: moleculia.json is stale vs the Roblox Lua sources — run "
+              "`python3 assets/world/moleculia_gen.py` and commit the result.")
+        sys.exit(1)
+    print("[sync] moleculia.json in sync with the Roblox game data")
+
+
 if __name__ == "__main__":
-    build()
+    import sys
+    if "--check" in sys.argv:
+        check_drift()
+    else:
+        build()

@@ -115,7 +115,7 @@ class Sim:
         with self.lock:
             kg = self.reactor.get("v2o5_kg", 0.0)
             self.reactor["v2o5_kg"] = 0.0
-            return round(kg, 2), int(kg * 500)
+            return round(kg, 2), int(kg * self.V2O5_PRICE)
 
     def _v_recovery(self, rx):
         pH = rx["pH"]
@@ -127,7 +127,11 @@ class Sim:
 
     RANGES = {"temperature": (25.0, 95.0), "pressure": (100.0, 300.0),
               "flowRate": (1.0, 10.0), "pH": (1.0, 6.0)}
+    # SYNC: mirror of SteelSlag.lua ParticleSizes leachMultiplier + roasting
+    # boostFactor + ProductMarket.lua V2O5 basePrice — world_smoke checks parity.
     LEACH_MULT = {"chunk": 7.0, "crushed": 3.0, "ground": 1.0, "powder": 0.3}
+    ROAST_BOOST = 1.25
+    V2O5_PRICE = 500
 
     def set_controls(self, d):
         with self.lock:
@@ -166,7 +170,7 @@ class Sim:
             # roasting pre-oxidises the slag to a more soluble form (game: +25%).
             k = 0.05 / self.LEACH_MULT.get(self.reactor.get("particleSize", "ground"), 1.0)
             if self.reactor.get("roasted"):
-                k *= 1.25
+                k *= self.ROAST_BOOST
             process_sim.step_reactor(self.reactor, dt * 1.0, k)
             if self.reactor["conversion"] >= 0.995:
                 # batch complete: bank the V2O5 product at the recovery achieved
