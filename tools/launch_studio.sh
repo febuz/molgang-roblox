@@ -133,6 +133,9 @@ if [ "$PLACE_READY" -ne 1 ]; then
     || { [ -n "$LATEST_VINEGAR_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_VINEGAR_LOG"; }; then
     KEEP_STUDIO=1
     echo "      Studio authentication is unavailable; sign in to Roblox Studio/Vinegar and retry"
+    echo "      Browser flow: open Vinegar Settings → Log in via browser → Continue → Open Vinegar"
+    echo "      If WebView is blank, disable Web Pages in Vinegar Settings and use browser login"
+    echo "      CLI settings: flatpak run org.vinegarhq.Vinegar manage"
     echo "      Studio is being left open so the browser-login flow can complete"
     echo "      This launcher remains attached until Studio is closed"
     wait "$STUDIO_PID" 2>/dev/null || true
