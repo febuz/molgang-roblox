@@ -499,10 +499,15 @@ end)
 
 Remotes.RequestListPlotForSale.OnServerEvent:Connect(function(player, plotId, askPrice)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) or not isFiniteNumber(askPrice) then return end
+	if not isValidPlotId(plotId) or not isFiniteNumber(askPrice) then
+		reject(player, "Choose a valid plot and asking price.")
+		return
+	end
 
 	local plot = worldPlots[plotId]
-	if not plot or plot.owner ~= userId then return end
+	if not plot then reject(player, "Mining plot not found."); return end
+	if plot.owner ~= userId then reject(player, "You can only sell plots you own."); return end
+	if plot.forSale then reject(player, "This plot is already listed for sale."); return end
 
 	plot.forSale = true
 	plot.askPrice = math.max(askPrice, 100)
@@ -523,11 +528,12 @@ end)
 
 Remotes.RequestBuyPlotFromMarket.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Choose a valid market plot."); return end
 
 	local plot = worldPlots[plotId]
-	if not plot or not plot.forSale then return end
-	if plot.owner == userId then return end -- can't buy own plot
+	if not plot then reject(player, "Mining plot not found."); return end
+	if not plot.forSale then reject(player, "This mining plot is not currently for sale."); return end
+	if plot.owner == userId then reject(player, "You cannot buy your own mining plot."); return end
 
 	local success = PlayerDataBridge.SpendMolCoins(userId, plot.askPrice)
 	if not success then
