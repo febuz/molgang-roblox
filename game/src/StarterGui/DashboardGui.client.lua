@@ -541,8 +541,16 @@ for _, item in ipairs(marketItems) do
 	buyBtn.TextScaled = true
 	buyBtn.Parent = itemFrame
 	createCorner(buyBtn, 6)
+	local buyBusy = false
 
 	buyBtn.Activated:Connect(function()
+		if buyBusy then return end
+		buyBusy = true
+		buyBtn.Active = false
+		task.delay(0.75, function()
+			buyBusy = false
+			if buyBtn.Parent then buyBtn.Active = true end
+		end)
 		local quotedPrice = dashboardPrices[item.name] or item.basePrice
 		print("[DashboardGui] Buy clicked:", item.name, "Price:", quotedPrice)
 		if playerData and playerData.molCoins < quotedPrice then
@@ -566,11 +574,19 @@ for _, item in ipairs(marketItems) do
 	sellBtn.TextScaled = true
 	sellBtn.Parent = itemFrame
 	createCorner(sellBtn, 6)
+	local sellBusy = false
 
 	sellBtn.Activated:Connect(function()
+		if sellBusy then return end
+		sellBusy = true
+		sellBtn.Active = false
 		local quotedPrice = dashboardPrices[item.name] or item.basePrice
 		print("[DashboardGui] Sell clicked:", item.name, "Price:", quotedPrice)
 		RequestMarketTrade:FireServer("sell", item.name, 1, quotedPrice)
+		task.delay(0.75, function()
+			sellBusy = false
+			if sellBtn.Parent then sellBtn.Active = true end
+		end)
 	end)
 end
 
