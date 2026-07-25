@@ -1,5 +1,5 @@
 --[[
-	TeaserOverlay.client.lua
+	OTAPNavigationOverlay.client.lua
 	MOLGANG OTAP — Persistent Branding & Navigation
 
 	Features:
@@ -39,7 +39,7 @@ local COLORS = {
 -- ═══════════════════════════════════════════════
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TeaserOverlay"
+screenGui.Name = "OTAPNavigationOverlay"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling

@@ -396,7 +396,7 @@ if isTouch and not isVR then
 		end)
 
 		if arSupported then
-			-- Show AR hint in teaser overlay
+			-- Show AR hint in the OTAP navigation overlay
 			local arHint = Instance.new("TextLabel")
 			arHint.Size = UDim2.fromOffset(260, 36)
 			arHint.Position = UDim2.new(0.5, -130, 0, 90)
@@ -406,7 +406,7 @@ if isTouch and not isVR then
 			arHint.Text = "AR Mode: Point camera at flat surface!"
 			arHint.TextScaled = true
 			arHint.Font = Enum.Font.GothamBold
-			arHint.Parent = findScreenGui("TeaserOverlay") or playerGui
+			arHint.Parent = findScreenGui("OTAPNavigationOverlay") or playerGui
 
 			local corner = Instance.new("UICorner")
 			corner.CornerRadius = UDim.new(0, 8)

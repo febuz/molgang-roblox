@@ -1,6 +1,6 @@
 --[[
 	LoadingScreen.client.lua
-	MOLGANG Teaser — Animated Loading & Welcome Screen
+	MOLGANG OTAP Teststraat — Animated Loading & Welcome Screen
 
 	Features:
 	- Animated molecule logo with orbiting electrons
@@ -61,7 +61,7 @@ local COLORS = {
 	textPrimary   = Color3.fromRGB(240, 240, 250),
 	textSecondary = Color3.fromRGB(160, 165, 185),
 	gold          = Color3.fromRGB(255, 215, 0),
-	teaserBadge   = Color3.fromRGB(255, 80, 60),
+	otapBadge     = Color3.fromRGB(255, 80, 60),
 	molBlue       = Color3.fromRGB(80, 180, 255),
 	molPurple     = Color3.fromRGB(160, 100, 255),
 }
@@ -209,25 +209,25 @@ tagline.TextTransparency = 1
 tagline.Parent = bg
 
 -- OTAP test badge
-local teaserBadge = Instance.new("TextLabel")
-teaserBadge.Name = "TeaserBadge"
-teaserBadge.Size = UDim2.fromOffset(110, 26)
-teaserBadge.Position = UDim2.new(0.5, 50, 0, 205)
-teaserBadge.BackgroundColor3 = COLORS.teaserBadge
-teaserBadge.BackgroundTransparency = 0.1
-teaserBadge.Text = "OTAP TEST"
-teaserBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
-teaserBadge.TextScaled = true
-teaserBadge.Font = Enum.Font.GothamBold
-teaserBadge.TextTransparency = 1
-teaserBadge.Parent = bg
+local otapBadge = Instance.new("TextLabel")
+otapBadge.Name = "OTAPBadge"
+otapBadge.Size = UDim2.fromOffset(110, 26)
+otapBadge.Position = UDim2.new(0.5, 50, 0, 205)
+otapBadge.BackgroundColor3 = COLORS.otapBadge
+otapBadge.BackgroundTransparency = 0.1
+otapBadge.Text = "OTAP TEST"
+otapBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+otapBadge.TextScaled = true
+otapBadge.Font = Enum.Font.GothamBold
+otapBadge.TextTransparency = 1
+otapBadge.Parent = bg
 local badgeCorner = Instance.new("UICorner")
 badgeCorner.CornerRadius = UDim.new(0, 6)
-badgeCorner.Parent = teaserBadge
+badgeCorner.Parent = otapBadge
 local badgePad = Instance.new("UIPadding")
 badgePad.PaddingLeft = UDim.new(0, 6)
 badgePad.PaddingRight = UDim.new(0, 6)
-badgePad.Parent = teaserBadge
+badgePad.Parent = otapBadge
 
 -- ═══════════════════════════════════════════════
 -- DESCRIPTION & TIPS PANEL
@@ -446,7 +446,7 @@ local tweenSlow = TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection
 -- Phase 1: Title fade in (0.3s delay)
 task.delay(0.3, function()
 	TweenService:Create(title, tweenMedium, {TextTransparency = 0}):Play()
-	TweenService:Create(teaserBadge, tweenMedium, {TextTransparency = 0, BackgroundTransparency = 0.1}):Play()
+	TweenService:Create(otapBadge, tweenMedium, {TextTransparency = 0, BackgroundTransparency = 0.1}):Play()
 end)
 
 -- Phase 2: Tagline (0.6s delay)
@@ -532,7 +532,7 @@ local function fadeOutAndDestroy()
 	TweenService:Create(bg, fadeTime, {BackgroundTransparency = 1}):Play()
 	TweenService:Create(title, fadeTime, {TextTransparency = 1}):Play()
 	TweenService:Create(tagline, fadeTime, {TextTransparency = 1}):Play()
-	TweenService:Create(teaserBadge, fadeTime, {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+	TweenService:Create(otapBadge, fadeTime, {TextTransparency = 1, BackgroundTransparency = 1}):Play()
 	TweenService:Create(contentPanel, fadeTime, {BackgroundTransparency = 1}):Play()
 	TweenService:Create(cpStroke, fadeTime, {Transparency = 1}):Play()
 	TweenService:Create(description, fadeTime, {TextTransparency = 1}):Play()
