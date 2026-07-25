@@ -560,6 +560,8 @@ RunService.Heartbeat:Connect(function()
 	end
 	table.insert(summaryLines, string.format("RECOVERY: %.1f%%", balance.recovery))
 	table.insert(summaryLines, string.format("Waste: %.3f kg", balance.wasteKg))
+	table.insert(summaryLines, string.format("Saleable: %.3f kg", balance.targetProductKg or balance.outputKg))
+	table.insert(summaryLines, string.format("Byproduct: %.3f kg", balance.byproductKg or 0))
 
 	-- Energy cost
 	local energyKWh, energyMC = ProcessEng.CalculateEnergyCost({

@@ -810,12 +810,18 @@ if slagInvEvent then
 						local outputKg = tonumber(balance.outputKg) or 0
 						local wasteKg = tonumber(balance.wasteKg) or 0
 						local aggregateKg = tonumber(balance.aggregateKg) or wasteKg
+						local targetProductKg = tonumber(balance.targetProductKg) or outputKg
+						local byproductKg = tonumber(balance.byproductKg) or 0
 						local recovery = tonumber(balance.recovery) or 0
 						label(card, {Name="MassBalance", Size=UDim2.new(0.58,0,0,14),
 							Position=UDim2.new(0.05,0,0,86),
 							Text=string.format("Mass: %.2f → %.2f kg | aggregate %.2f kg | %.1f%% recovery",
 								balance.inputKg, outputKg, aggregateKg, recovery),
 							Color=C.gold})
+						label(card, {Name="TargetMass", Size=UDim2.new(0.9,0,0,14),
+							Position=UDim2.new(0.05,0,0,102),
+							Text=string.format("Saleable %.3f kg | byproduct %.3f kg", targetProductKg, byproductKg),
+							Color=C.textDim})
 					end
 
 					leachCards[leach.id] = card
