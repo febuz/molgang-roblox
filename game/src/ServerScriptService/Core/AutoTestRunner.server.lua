@@ -403,8 +403,8 @@ timeTest("Leach event bonus stays inside final product mass", function()
 	for _, entry in ipairs(recovered) do
 		grams = grams + (entry.gramsExtracted or 0)
 	end
-	assert(grams <= balance.outputKg * 1000 + 1,
-		"Event bonus created more product than the final mass balance allows")
+	assert(grams <= balance.targetProductKg * 1000 + 1,
+		"Event bonus created more product than saleable target mass allows")
 end)
 
 timeTest("Reagent yield respects declared product selectivity", function()

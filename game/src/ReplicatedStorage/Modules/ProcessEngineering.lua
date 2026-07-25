@@ -143,6 +143,9 @@ function ProcessEngineering.CreateMassBalance()
 		lossKg = 0,       -- unaccounted loss
 		recovery = 0,      -- % recovery
 		aggregateKg = 0,   -- solid leach residue suitable for aggregate sales
+		dissolvedKg = 0,    -- total dissolved oxide stream before downstream losses
+		targetProductKg = 0, -- saleable target-metal stream after downstream losses
+		byproductKg = 0,    -- dissolved non-target stream after downstream losses
 		steps = {},        -- {stepName, inputKg, outputKg, wasteKg, efficiency}
 	}
 end
@@ -201,8 +204,13 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 		-- extraction without allowing a single step to create material.
 		local contactFactor = math.clamp(1 / math.max(leachMultiplier, 0.05), 0.05, 4)
 		local dissolved = 0
+		local targetDissolved = 0
 		local residue = 0
 		local representedPct = 0
+		local targetProducts = {}
+		for _, element in ipairs(reagent.products or {}) do
+			targetProducts[element] = true
+		end
 		for oxide, comp in pairs(SteelSlag.Composition) do
 			local oxideMass = (oxideMasses and oxideMasses[oxide])
 				or afterMagSep * (comp.pct / 100)
@@ -220,7 +228,20 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 			extraction = 1 - ((1 - temperatureExtraction) ^ contactFactor)
 			extraction = math.clamp(extraction, 0, 0.99)
 
-			dissolved = dissolved + oxideMass * extraction
+			local extractedMass = oxideMass * extraction
+			dissolved = dissolved + extractedMass
+			local isTargetProduct = next(targetProducts) == nil
+			local elements = SteelSlag.OxideToElements and SteelSlag.OxideToElements[oxide]
+			if elements and next(targetProducts) ~= nil then
+				isTargetProduct = false
+				for element in pairs(elements) do
+					if targetProducts[element] then
+						isTargetProduct = true
+						break
+					end
+				end
+			end
+			if isTargetProduct then targetDissolved = targetDissolved + extractedMass end
 			residue = residue + oxideMass * (1 - extraction)
 		end
 		-- BOF analyses contain a trace/inert fraction that is not listed as an
@@ -231,6 +252,7 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 		ProcessEngineering.AddStep(balance, "Leaching (" .. (reagent.name or reagentId) .. " @ " .. temperature .. "°C)",
 			afterMagSep, dissolved, residue)
 		balance.aggregateKg = math.floor(residue * 1000 + 0.5) / 1000
+		balance.dissolvedKg = dissolved
 
 		-- Step 4: Filtration (separates solution from residue)
 		local filtLoss = dissolved * 0.02  -- 2% loss in filter cake
@@ -242,6 +264,10 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 		local finalProduct = dissolved - filtLoss - precipLoss
 		ProcessEngineering.AddStep(balance, "Precipitation & Drying",
 			dissolved - filtLoss, finalProduct, precipLoss)
+		balance.targetProductKg = targetDissolved
+			* ProcessEngineering.FILTRATION_RECOVERY
+			* ProcessEngineering.PRECIPITATION_RECOVERY
+		balance.byproductKg = math.max(0, finalProduct - balance.targetProductKg)
 	end
 
 	return balance

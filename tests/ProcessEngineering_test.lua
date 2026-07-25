@@ -55,8 +55,8 @@ local eventYield = ProcessEngineering.ApplyRecovery(
 	SteelSlag.CalculateYield("ground", "H2SO4", 1, 65),
 	ProcessEngineering.CalculateProductRecoveryFactor(0.95, 1, 1.20)
 )
-assert(totalYieldMass(eventYield) <= eventBalance.outputKg * 1000 + 1,
-	"event bonus must not produce more recovered mass than the final product stream")
+assert(totalYieldMass(eventYield) <= eventBalance.targetProductKg * 1000 + 1,
+	"event bonus must not produce more recovered mass than saleable target product")
 assert(not ProcessEngineering.IsFiniteNumber(math.huge), "infinite controls must be rejected")
 assert(not ProcessEngineering.IsFiniteNumber(-math.huge), "negative infinite controls must be rejected")
 assert(not ProcessEngineering.IsFiniteNumber(0 / 0), "NaN controls must be rejected")
@@ -81,6 +81,10 @@ assert(pipeline.lossKg >= -0.001 and pipeline.lossKg <= 0.001,
 assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
 assert(pipeline.aggregateKg > 0 and pipeline.aggregateKg < pipeline.inputKg,
 	"aggregate residue must be a positive substream of the feed")
+assert(pipeline.dissolvedKg > pipeline.targetProductKg and pipeline.targetProductKg > 0,
+	"mass balance must distinguish saleable target product from dissolved stream")
+assert(pipeline.byproductKg > 0,
+	"non-target dissolved species must remain visible as downstream byproduct")
 
 local postSepMasses, postSepTotal, magneticRecovery = SteelSlag.GetPostMagneticSeparationMasses(1)
 assert(math.abs(postSepTotal - 0.87) < 0.000001 and math.abs(magneticRecovery - 0.12) < 0.000001,
