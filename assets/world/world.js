@@ -109,16 +109,78 @@ function setSpace() {
 
 // Each zone is a floating disc platform (a low cylinder) with a glowing rim so
 // the archipelago reads as separate islands in space.
+// A procedural industrial deck texture (radial, so it suits the circular
+// platforms): dark metal with concentric panel seams, radial segments, a
+// hazard-stripe border and grunge. Shared across platforms.
+let _deckTex = null;
+function deckTexture() {
+  if (_deckTex) return _deckTex;
+  const S = 1024, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d'); const cx = S / 2, cy = S / 2, R = S / 2;
+  g.fillStyle = '#232b37'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 26000; i++) {                 // grunge
+    const a = Math.random() * 7, r = Math.random() * R, x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    g.fillStyle = `rgba(${Math.random() < 0.5 ? '10,14,20' : '60,70,86'},${Math.random() * 0.14})`;
+    g.fillRect(x, y, 2, 2);
+  }
+  g.strokeStyle = 'rgba(10,14,20,0.7)'; g.lineWidth = 3;    // concentric panel seams
+  for (let k = 1; k <= 8; k++) { g.beginPath(); g.arc(cx, cy, R * k / 9, 0, 7); g.stroke(); }
+  g.lineWidth = 2;                                          // radial segments
+  for (let a = 0; a < 16; a++) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a * Math.PI / 8) * R, cy + Math.sin(a * Math.PI / 8) * R); g.stroke(); }
+  for (let a = 0; a < 360; a += 12) {                       // hazard-stripe border
+    g.save(); g.translate(cx, cy); g.rotate(a * Math.PI / 180);
+    g.fillStyle = (a / 12) % 2 ? '#c9a227' : '#1a1d24';
+    g.fillRect(R * 0.9, -R * 0.11, R * 0.1 * 1.1, R * 0.11 * 2); g.restore();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  _deckTex = t; return t;
+}
 function buildPlatform(o) {
   const rad = o.s;
   const disc = new THREE.Mesh(
     new THREE.CylinderGeometry(rad, rad * 0.92, 2.4, 64),
     new THREE.MeshStandardMaterial({ color: 0x28313f, roughness: 0.55, metalness: 0.65 }));
   disc.position.set(o.x, -1.2, o.z); disc.receiveShadow = true; disc.castShadow = true; scene.add(disc);
+  const deck = new THREE.Mesh(
+    new THREE.CircleGeometry(rad * 0.985, 64),
+    new THREE.MeshStandardMaterial({ map: deckTexture(), roughness: 0.62, metalness: 0.5 }));
+  deck.rotation.x = -Math.PI / 2; deck.position.set(o.x, 0.06, o.z); deck.receiveShadow = true; scene.add(deck);
   const rim = new THREE.Mesh(
     new THREE.TorusGeometry(rad, 0.35, 12, 96),
     new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0x3f8bff, emissiveIntensity: 1.6, roughness: 0.3, metalness: 0.4 }));
   rim.rotation.x = Math.PI / 2; rim.position.set(o.x, 0.05, o.z); scene.add(rim);
+}
+
+// Factory atmosphere: warm work lighting + rising vapour so the Slakkenspoor
+// reads as a live, lit plant rather than models on a dark disc.
+const steam = [];
+let _steamTex = null;
+function steamTexture() {
+  if (_steamTex) return _steamTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); const rg = g.createRadialGradient(64, 64, 2, 64, 64, 62);
+  rg.addColorStop(0, 'rgba(230,238,250,0.9)'); rg.addColorStop(0.5, 'rgba(210,222,240,0.4)'); rg.addColorStop(1, 'rgba(210,222,240,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; _steamTex = t; return t;
+}
+function buildFactoryAtmosphere(cx, cz) {
+  for (const [dx, dz] of [[-24, 0], [0, 6], [22, -6]]) {           // warm work lamps (cheap, no shadows)
+    const pl = new THREE.PointLight(0xffcf96, 60, 70, 2); pl.position.set(cx + dx, 12, cz + dz); scene.add(pl);
+  }
+  const tex = steamTexture();
+  for (let i = 0; i < 30; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false }));
+    sp.userData = { bx: cx - 42 + Math.random() * 84, bz: cz - 9 + Math.random() * 18, t: Math.random() };
+    scene.add(sp); steam.push(sp);
+  }
+}
+function updateSteam(dt) {
+  for (const sp of steam) {
+    const u = sp.userData; u.t += dt * 0.12; if (u.t > 1) u.t -= 1;
+    const s = 5 + u.t * 9;
+    sp.position.set(u.bx, 2 + u.t * 13, u.bz); sp.scale.set(s, s, 1);
+    sp.material.opacity = Math.sin(u.t * Math.PI) * 0.2;
+  }
 }
 
 // A floating name label above each zone (canvas sprite), so the player can see
@@ -1129,6 +1191,7 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
   step(dt);
   updateAgents(dt);
+  if (steam.length) updateSteam(dt);
   if (!simOk && MOLECULIA) crClientActive = true;   // no server reached -> run chemistry in-browser
   if (crClientActive && !simOk) crTick(dt);
   if (now - lastStream > 180) {
@@ -1166,7 +1229,10 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
   if (MOLECULIA) {
     setSpace();
     for (const o of objects) if (o.t === 'platform') buildPlatform(o);
-    for (const z of (w.meta.zones || [])) buildZoneLabel(z);
+    for (const z of (w.meta.zones || [])) {
+      buildZoneLabel(z);
+      if (/Slakkenspoor/.test(z.name)) buildFactoryAtmosphere(z.x, z.z);
+    }
     const line = (w.meta.processLine || []);
     elements = objects.filter((o) => o.t === 'element');
     buildElements();
