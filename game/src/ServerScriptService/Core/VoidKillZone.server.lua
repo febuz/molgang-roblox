@@ -6,8 +6,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SpawnSafety = require(ReplicatedStorage.Modules.SpawnSafety)
 
-local KILL_Y = -80  -- below all platforms (lowest is ~-15 at Lanthanide Reef)
-local CHECK_INTERVAL = 1  -- seconds between checks
+local KILL_Y = -35  -- recover before a normal traversal becomes a long void fall
+local CHECK_INTERVAL = 0.25  -- responsive without adding meaningful server load
 local SAFE_OFFSET = Vector3.new(0, 5, 0)
 
 local function findSafeSpawn()

@@ -42,6 +42,7 @@ local MoleculeBuilt = Remotes:WaitForChild("MoleculeBuilt")
 local ChainEntryAdded = Remotes:WaitForChild("ChainEntryAdded")
 local AchievementUnlocked = Remotes:WaitForChild("AchievementUnlocked")
 local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
+local RequestReturnToNexus = Remotes:WaitForChild("RequestReturnToNexus")
 
 --------------------------------------------------------------------------------
 -- COLOR PALETTE
@@ -428,6 +429,42 @@ walletBtn.TextScaled = true
 walletBtn.Font = Enum.Font.GothamBold
 walletBtn.Parent = walletFrame
 createCorner(walletBtn, 6)
+
+-- Always-visible safety route. Players should never need to walk off a
+-- floating island (or open the mining panel) just to get back to the Nexus.
+local returnNexusBtn = Instance.new("TextButton")
+returnNexusBtn.Name = "ReturnToNexus"
+returnNexusBtn.Size = UDim2.fromOffset(180, 34)
+returnNexusBtn.Position = UDim2.new(1, -192, 0, 112)
+returnNexusBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 125)
+returnNexusBtn.BackgroundTransparency = 0.08
+returnNexusBtn.Text = "← NEXUS  [H]"
+returnNexusBtn.TextColor3 = Color3.fromRGB(235, 255, 248)
+returnNexusBtn.TextScaled = true
+returnNexusBtn.Font = Enum.Font.GothamBold
+returnNexusBtn.Parent = screenGui
+createCorner(returnNexusBtn, 8)
+createStroke(returnNexusBtn, Color3.fromRGB(0, 255, 190), 1.5)
+
+local returnBusy = false
+local function returnToNexus()
+
+	if returnBusy then return end
+	returnBusy = true
+	returnNexusBtn.Text = "Returning…"
+	RequestReturnToNexus:FireServer()
+	task.delay(1.2, function()
+		returnBusy = false
+		if returnNexusBtn.Parent then returnNexusBtn.Text = "← NEXUS  [H]" end
+	end)
+end
+
+returnNexusBtn.Activated:Connect(returnToNexus)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or UserInputService:GetFocusedTextBox() then return end
+	if input.KeyCode == Enum.KeyCode.H then returnToNexus() end
+end)
 
 --------------------------------------------------------------------------------
 -- 4. CHAIN TOKENS COUNTER (RIGHT-CENTER)

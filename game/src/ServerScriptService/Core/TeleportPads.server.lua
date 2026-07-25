@@ -16,12 +16,20 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
 local function returnToNexus(player)
+	local now = os.clock()
+	if playerCooldowns[player.UserId] and now - playerCooldowns[player.UserId] < COOLDOWN then
+		return
+	end
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not hrp or not humanoid or humanoid.Health <= 0 then return end
 	-- Fixed server-owned destination; the client cannot supply an arbitrary CFrame.
-	hrp.CFrame = CFrame.new(0, 15, 0)
+	playerCooldowns[player.UserId] = now
+	character:PivotTo(CFrame.new(0, 15, 0))
+	hrp.AssemblyLinearVelocity = Vector3.zero
+	hrp.AssemblyAngularVelocity = Vector3.zero
+	humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 	print("[TeleportPads] " .. player.Name .. " returned to Nexus Hub")
 end
 
