@@ -26,7 +26,7 @@
    - Collect 5 atoms (press E or proximity)
    - Verify HUD atoms counter increments
 
-5. **Open Dashboard (D key)**
+5. **Open Dashboard (U key)**
    - Tabs: Dashboard, Build, Trade, Research, Mahjong
    - Verify all tabs have content
    - Close with ESC
@@ -390,7 +390,7 @@
 1. Load game → LoadingScreen appears ✓
 2. Collect 5 atoms → HUD updates ✓
 3. Build 1 facility → cost deducted ✓
-4. Open Dashboard (D) → all tabs functional ✓
+4. Open Dashboard (U) → all tabs functional ✓
 5. Check Leaderboards (L) → displays ✓
 
 **Full Regression (30 minutes)**

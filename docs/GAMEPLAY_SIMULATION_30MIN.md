@@ -113,7 +113,7 @@
 | 0:00-1:30 | Tutorial + daily claim | various | +300 MC | 800 MC |
 | 1:30 | Walk to Slakkenspoor (-2000 studs) | WASD | 0 | 800 MC |
 | 3:35 | Arrive at factory zone | — | 0 | 800 MC |
-| 3:35 | Open Slag Processing | S key | 0 | 800 MC |
+| 3:35 | Open Slag Processing | J key | 0 | 800 MC |
 | 3:40 | Buy raw slag | click Buy | -50 MC | 750 MC |
 | 3:45 | Hammer crush (8 clicks) | click hammer ×8 | 0 | 750 MC |
 | 4:00 | Select HCl reagent | click Select | 0 | 750 MC |
@@ -122,7 +122,7 @@
 | 4:10 | **Leach timer starts** (3600 game min; duration follows the OTAP clock and process controls) | — | 0 | 670 MC |
 | 4:10-24:00 | Collect atoms while leaching | WASD | +80 atoms (~268 MC) | 938 MC |
 | 24:00 | Leach complete! | auto notification | 0 | 938 MC |
-| 24:05 | Extract products | S key → Monitor → Extract | 0 | 938 MC |
+| 24:05 | Extract products | J key -> Monitor -> Extract | 0 | 938 MC |
 | 24:10 | Open Product Exchange | X key | 0 | 938 MC |
 | 24:15 | Sell Fe2O3 (from HCl leach) | click Sell | +50 MC | 988 MC |
 | 24:15 | Sell other products | click Sell | +30 MC | 1018 MC |
@@ -358,13 +358,13 @@ TIME    KEY/MOUSE           ACTION                          SCREEN STATE
 0:14    —                   Auto-collect (proximity)        "+1 H (COMMON) +1 MC" popup
 0:15    P key               Open Periodic Table             Tutorial Step 3 clears
 0:16    P key               Close Periodic Table            Back to 3D view
-0:17    D key               Open Dashboard                  Tutorial Step 4
-0:18    D key               Close Dashboard                 
+0:17    U key               Open Dashboard                  Tutorial Step 4
+0:18    U key               Close Dashboard                 
 0:19    W+A keys            Walk toward next atoms          Collecting 3 more
 0:30    W key               Walking, auto-collecting        Tutorial Step 5 completes
 0:31    R key               Open Recipe Book                Tutorial Step 6 "Build a Molecule!"
 0:32    R key               Close Recipe Book               
-0:33    S key               Open Slag Processing            Tutorial Step 7
+0:33    J key               Open Slag Processing            Tutorial Step 7
 0:34    Esc key             Close all overlays              
 0:35    C key               Process Control Panel           Tutorial Step 8
 0:36    Esc key             Close                           
@@ -373,7 +373,7 @@ TIME    KEY/MOUSE           ACTION                          SCREEN STATE
 0:52    —                   "First Atom" quest auto         "+100 MC", total: 813 MC
 0:55    W key (hold)        Walk toward teleport pad        Pad at (30, 14, -20)
 1:00    —                   Step on pad                     Teleported to Slakkenspoor!
-1:03    S key               Open Slag Processing GUI        3-tab interface appears
+1:03    J key               Open Slag Processing GUI        3-tab interface appears
 1:05    click "Buy"         Buy raw slag chunk              -50 MC, slag in inventory
 1:07    click hammer ×1     Hammer the slag                 CLANG sound, progress 1/8
 1:08    click hammer ×2     Continue                        Progress 2/8
@@ -398,7 +398,7 @@ TIME    KEY/MOUSE           ACTION                          SCREEN STATE
 5:10    W+D keys            Walk and collect with bonus     +25% MC on all atoms for 5 min
 10:00   —                   Buff expires                    Cup disappears from hand
 13:10   —                   NOTIFICATION: "Leach complete!" Fanfare sound plays
-13:12   S key               Open Slag Processing            
+13:12   J key               Open Slag Processing            
 13:13   click Monitor tab   Switch to monitor               Leach shows "COMPLETE!"
 13:15   click "EXTRACT"     Extract products                V, Fe, Ca, Mn atoms appear!
 13:17   Esc key             Close Slag GUI                  
@@ -407,7 +407,7 @@ TIME    KEY/MOUSE           ACTION                          SCREEN STATE
 13:22   click Fe2O3 "Sell"  Sell iron oxide                 +50 MC
 13:23   click TiO2 "Sell"   Sell titanium dioxide           +200 MC (if had Ti atoms)
 13:25   Esc key             Close Product Exchange          
-13:26   S key               Start 2nd leach cycle           Repeat: buy→crush→grind→leach
+13:26   J key               Start 2nd leach cycle           Repeat: buy->crush->grind->leach
 13:40   Esc key             Close, continue collecting      2nd leach running (~12 min)
 25:30   —                   2nd leach complete!             
 25:32   S→Extract→X→Sell    Extract and sell again          +620 MC

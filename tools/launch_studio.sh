@@ -1,7 +1,7 @@
 #!/bin/bash
 # MOLGANG — Launch Roblox Studio with the latest build
 #
-# Usage: ./launch_studio.sh [--software-render]
+# Usage: ./launch_studio.sh [--software-render] [--playtest]
 #
 # 1. Builds the .rbxl from Rojo
 # 2. Copies to Wine Documents folder
@@ -16,24 +16,30 @@ WINE_DOCS="/home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/prefixes/st
 WINE_PLACE="Z:/home/knight2/Documents/MOLGANG_OTAP_Test.rbxl"
 PARENT_SESSION_GUID=$(cat /proc/sys/kernel/random/uuid)
 KEEP_STUDIO=0
+RUN_PLAYTEST=0
 
-case "${1:-}" in
-  --software-render)
-    MOLGANG_SOFTWARE_RENDER=1
-    ;;
-  --help|-h)
-    echo "Usage: $0 [--software-render]"
-    echo "  --software-render  use llvmpipe fallback for EGL/DRI3 hosts"
-    echo "  Set KEEP_STUDIO=1 to keep Studio open when the launcher exits"
-    exit 0
-    ;;
-  "")
-    ;;
-  *)
-    echo "Unknown option: $1 (use --help)" >&2
-    exit 2
-    ;;
-esac
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --software-render)
+      MOLGANG_SOFTWARE_RENDER=1
+      ;;
+    --playtest)
+      RUN_PLAYTEST=1
+      ;;
+    --help|-h)
+      echo "Usage: $0 [--software-render] [--playtest]"
+      echo "  --software-render  use llvmpipe fallback for EGL/DRI3 hosts"
+      echo "  --playtest         attempt Play Solo automatically after OpenPlaceSuccess"
+      echo "  Set KEEP_STUDIO=1 to keep Studio open when the launcher exits"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1 (use --help)" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 
 echo "=== MOLGANG Studio Launcher ==="
 echo ""
@@ -183,6 +189,43 @@ if [ "$PLACE_READY" -ne 1 ]; then
   exit 1
 fi
 
+focus_studio_and_play() {
+  local studio_windows
+  studio_windows=$(xdotool search --name "MOLGANG_OTAP_Test.rbxl" 2>/dev/null || true)
+  [ -n "$studio_windows" ] || return 1
+
+  while read -r studio_window; do
+    [ -n "$studio_window" ] || continue
+    xdotool windowraise "$studio_window" 2>/dev/null || true
+    xdotool windowactivate "$studio_window" 2>/dev/null || true
+    xdotool key --window "$studio_window" F5 2>/dev/null || true
+    xdotool mousemove --window "$studio_window" 112 75 click 1 2>/dev/null || true
+  done <<EOF
+$studio_windows
+EOF
+  return 0
+}
+
+if [ "$RUN_PLAYTEST" -eq 1 ]; then
+  echo "      Attempting Play Solo automation..."
+  PLAYTEST_STARTED=0
+  for _ in $(seq 1 6); do
+    focus_studio_and_play
+    sleep 3
+    LATEST_STUDIO_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/appdata/Roblox/logs/*Studio*_last.log 2>/dev/null | head -1)
+    if [ -n "$LATEST_STUDIO_LOG" ] && rg -q "State: PlaySoloSuccess|PlaySoloSuccess" "$LATEST_STUDIO_LOG"; then
+      PLAYTEST_STARTED=1
+      break
+    fi
+  done
+
+  if [ "$PLAYTEST_STARTED" -eq 1 ]; then
+    echo "      Play Solo reported PlaySoloSuccess"
+  else
+    echo "      WARNING: automatic Play Solo start was not confirmed"
+  fi
+fi
+
 echo ""
 echo "═══════════════════════════════════════════════"
 echo "  MOLGANG STUDIO READY"
@@ -192,7 +235,11 @@ echo "  In Roblox Studio:"
 echo "  1. File → Open from File"
 echo "  2. Navigate to: Documents"
 echo "  3. Open: MOLGANG_OTAP_Test.rbxl"
-echo "  4. Press F5 to playtest"
+if [ "$RUN_PLAYTEST" -eq 1 ]; then
+  echo "  4. Play Solo auto-start attempted for this session"
+else
+  echo "  4. Press F5 to playtest"
+fi
 echo "  5. AutoTestRunner prints results to Output"
 echo ""
 echo "  Rojo live sync: localhost:34872"

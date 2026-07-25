@@ -82,7 +82,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 ### Phase 4: Slag Processing (1:05 - 1:30)
 
 ```
-1:05    Open Slag Processing    S key               3-tab interface (Slag/Leach/Monitor)
+1:05    Open Slag Processing    J key               3-tab interface (Slag/Leach/Monitor)
                                                     UI click sound plays
 1:07    Click "Buy Raw Slag"    left click          -50 MC (763 MC)
                                                     Purchase sound
