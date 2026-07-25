@@ -162,7 +162,7 @@ local function restoreLeachState(leachId, saved)
 			local copy = {}
 			for key, value in pairs(entry) do copy[key] = value end
 			copy.atomCount = math.floor(entry.atomCount)
-			copy.gramsExtracted = math.max(0, tonumber(entry.gramsExtracted) or 0)
+			copy.gramsExtracted = SlagPersistence.FiniteNonNegative(entry.gramsExtracted)
 			table.insert(yield, copy)
 		end
 	end
@@ -175,6 +175,7 @@ local function restoreLeachState(leachId, saved)
 	restored.startTime = startTime
 	restored.durationSeconds = durationSeconds
 	restored.yield = yield
+	restored.massBalance = SlagPersistence.SanitizeMassBalance(saved.massBalance)
 	restored.extracted = saved.extracted == true
 	restored.complete = saved.complete == true
 	return restored

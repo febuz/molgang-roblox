@@ -18,4 +18,18 @@ assert(safe.powder == 2.5 and safe.residue == 0,
 assert(SlagPersistence.SanitizeInventory("corrupt") == nil,
 	"non-table slag state must be rejected")
 
-print("Slag Persistence Tests: 6 passed, 0 failed")
+local balance = SlagPersistence.SanitizeMassBalance({
+	inputKg = 1,
+	outputKg = math.huge,
+	lossKg = -4,
+	aggregateKg = 0.25,
+	steps = {{name = 42, inputKg = 0.5, efficiency = math.huge}, "corrupt"},
+})
+assert(balance and balance.inputKg == 1 and balance.outputKg == 0 and balance.lossKg == 0,
+	"leach mass balance must reject non-finite and negative recovery data")
+assert(balance.aggregateKg == 0.25 and #balance.steps == 1 and balance.steps[1].efficiency == 0,
+	"valid mass balance fields must survive recovery sanitization")
+assert(SlagPersistence.SanitizeMassBalance("corrupt") == nil,
+	"non-table mass balance must be rejected")
+
+print("Slag Persistence Tests: 10 passed, 0 failed")
