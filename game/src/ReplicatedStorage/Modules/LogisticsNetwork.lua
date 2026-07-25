@@ -105,9 +105,62 @@ local function newRouteId()
 	return id
 end
 
+local function isFiniteNumber(value)
+	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
+local function sanitiseRoute(routeId, raw)
+	if type(raw) ~= "table" then return nil end
+	if type(routeId) ~= "string" or routeId == "" then return nil end
+	if type(raw.ownerId) ~= "string" or raw.ownerId == "" then return nil end
+	if type(raw.from) ~= "string" or raw.from == "" or type(raw.to) ~= "string" or raw.to == "" or raw.from == raw.to then
+		return nil
+	end
+	if type(raw.mode) ~= "string" then return nil end
+	local mode = LogisticsNetwork.TransportModes[string.upper(raw.mode)]
+	if not mode then return nil end
+
+	local level = raw.level
+	local capacity = raw.capacity
+	local utilisation = raw.utilisation
+	local opCost = raw.opCostPerMin
+	if not isFiniteNumber(level) or level < 1 or level % 1 ~= 0 then return nil end
+	if not isFiniteNumber(capacity) or capacity <= 0 then return nil end
+	if not isFiniteNumber(utilisation) or utilisation < 0 then
+		utilisation = 0
+	end
+	if not isFiniteNumber(opCost) or opCost < 0 then
+		opCost = mode.opCostPerMin
+	end
+
+	return {
+		id           = routeId,
+		ownerId      = raw.ownerId,
+		payerId      = raw.payerId,
+		from         = raw.from,
+		to           = raw.to,
+		mode         = raw.mode,
+		level        = level,
+		capacity     = capacity,
+		utilisation  = math.min(utilisation, capacity),
+		opCostPerMin = opCost,
+		active       = raw.active == true,
+		createdAt    = isFiniteNumber(raw.createdAt) and raw.createdAt or os.time(),
+	}
+end
+
 -- Validate whether a route can be built between two territories
 -- Returns: canBuild (bool), reason (string), cost (number)
 function LogisticsNetwork.ValidateBuild(fromId, toId, modeId, hexDistance, ownerBonuses)
+	if type(fromId) ~= "string" or type(toId) ~= "string" or fromId == "" or toId == "" then
+		return false, "Territory IDs are required", 0
+	end
+	if not isFiniteNumber(hexDistance) or hexDistance < 0 then
+		return false, "Invalid territory distance", 0
+	end
+	if type(modeId) ~= "string" then
+		return false, "Transport mode is required", 0
+	end
 	local mode = LogisticsNetwork.TransportModes[string.upper(modeId)]
 	if not mode then
 		return false, "Unknown transport mode: " .. tostring(modeId), 0
@@ -133,6 +186,7 @@ function LogisticsNetwork.BuildRoute(ownerId, fromId, toId, modeId, level, payer
 	local id = newRouteId()
 	level = level or 1
 
+	if type(modeId) ~= "string" then return nil, "Invalid mode" end
 	local mode = LogisticsNetwork.TransportModes[string.upper(modeId)]
 	if not mode then return nil, "Invalid mode" end
 
@@ -220,6 +274,12 @@ end
 -- demand: units/min needed
 -- cargo: cargo type string
 function LogisticsNetwork.Route(fromId, toId, cargoType, demand)
+	if type(fromId) ~= "string" or type(toId) ~= "string" or fromId == toId then
+		return 0, { type = "invalid_route_request", from = fromId, to = toId }
+	end
+	if type(cargoType) ~= "string" or not isFiniteNumber(demand) or demand <= 0 then
+		return 0, { type = "invalid_shipment", from = fromId, to = toId, cargo = cargoType, demand = demand }
+	end
 	-- Find all valid routes for this pair
 	local viable = {}
 	for _, route in pairs(LogisticsNetwork._routes) do
@@ -231,9 +291,14 @@ function LogisticsNetwork.Route(fromId, toId, cargoType, demand)
 			if mode then
 				local cargoOk = false
 				for _, c in ipairs(mode.cargo) do
-					if c == cargoType then cargoOk = true; break end
+					if c == cargoType then
+						cargoOk = true
+						break
+					end
 				end
-				if cargoOk then table.insert(viable, route) end
+				if cargoOk then
+					table.insert(viable, route)
+				end
 			end
 		end
 	end
@@ -408,9 +473,27 @@ end
 
 -- Restore from DataStore
 function LogisticsNetwork.Deserialize(data)
-	if not data then return end
-	LogisticsNetwork._routes = data.routes or {}
-	_nextRouteId = data.nextId or 1
+	if type(data) ~= "table" or type(data.routes) ~= "table" then return 0 end
+	local restored = {}
+	local highestId = 0
+	for routeId, raw in pairs(data.routes) do
+		local route = sanitiseRoute(routeId, raw)
+		if route then
+			restored[route.id] = route
+			local suffix = string.match(route.id, "^ROUTE_(%d+)$")
+			if suffix then
+				highestId = math.max(highestId, tonumber(suffix))
+			end
+		end
+	end
+	local requestedNext = isFiniteNumber(data.nextId) and math.floor(data.nextId) or 1
+	_nextRouteId = math.max(1, requestedNext, highestId + 1)
+	LogisticsNetwork._routes = restored
+	local count = 0
+	for _ in pairs(restored) do
+		count += 1
+	end
+	return count
 end
 
 return LogisticsNetwork
