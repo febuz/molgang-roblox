@@ -339,6 +339,7 @@ local pathOptions = {
 	{key = "engineer", title = "Ingenieur", age = "±16+ jaar", text = "Direct naar chemie, fabriek en processturing."},
 }
 local showStep
+local selectedPathFromInput = false
 for index, option in ipairs(pathOptions) do
 	local button = Instance.new("TextButton")
 	button.Name = option.key .. "Path"
@@ -346,7 +347,7 @@ for index, option in ipairs(pathOptions) do
 	button.Position = UDim2.fromOffset(16, 88 + (index - 1) * 58)
 	button.BackgroundColor3 = index == 1 and COLORS.accent or Color3.fromRGB(35, 48, 65)
 	button.TextColor3 = index == 1 and Color3.fromRGB(8, 20, 24) or COLORS.text
-	button.Text = option.title .. "  ·  " .. option.age .. "\n" .. option.text
+	button.Text = tostring(index) .. "  " .. option.title .. "  ·  " .. option.age .. "\n" .. option.text
 	button.TextScaled = true
 	button.TextWrapped = true
 	button.Font = Enum.Font.GothamBold
@@ -354,7 +355,9 @@ for index, option in ipairs(pathOptions) do
 	local optionCorner = Instance.new("UICorner")
 	optionCorner.CornerRadius = UDim.new(0, 8)
 	optionCorner.Parent = button
-	button.Activated:Connect(function()
+	local function choosePath()
+		if selectedPathFromInput or not pathSelector.Visible then return end
+		selectedPathFromInput = true
 		selectedPath = option.key
 		STEPS = PATHS[selectedPath]
 		currentStep = 1
@@ -365,8 +368,29 @@ for index, option in ipairs(pathOptions) do
 		TweenService:Create(panel, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 			Position = UDim2.new(0.5, -250, 1, -120),
 		}):Play()
-	end)
+	end
+	-- Keep both button paths: Vinegar's embedded Studio surface can swallow
+	-- Activated while ordinary desktop Roblox still uses it reliably.
+	button.Activated:Connect(choosePath)
+	button.MouseButton1Click:Connect(choosePath)
 end
+
+-- Keyboard fallback makes the age route selectable even when the embedded
+-- surface does not deliver mouse activation. It also gives each age route a
+-- stable, discoverable input for automated/manual OTAP testing.
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or selectedPathFromInput or not pathSelector.Visible then return end
+	local indexByKey = {
+		[Enum.KeyCode.One] = 1,
+		[Enum.KeyCode.Two] = 2,
+		[Enum.KeyCode.Three] = 3,
+	}
+	local index = indexByKey[input.KeyCode]
+	if index then
+		local optionButton = pathSelector:FindFirstChild(pathOptions[index].key .. "Path")
+		if optionButton then optionButton:Activate() end
+	end
+end)
 
 -- ═══════════════════════════════════════════════
 -- TUTORIAL LOGIC
@@ -450,7 +474,7 @@ end
 
 -- Listen for key presses (for tutorial steps)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if tutorialComplete then return end
+	if tutorialComplete or gameProcessed then return end
 
 	local step = STEPS[currentStep]
 	if step and step.condition == "press_key" and input.KeyCode == step.key then
