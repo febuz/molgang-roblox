@@ -106,6 +106,10 @@ local playerMining = {}  -- {userId = {ownedPlots = {}, miningEquipment = {}}}
 local hydratedMining = {}
 local ownerNameCache = {}
 
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
+
 local function getOwnerName(userId)
 	local onlinePlayer = Players:GetPlayerByUserId(userId)
 	if onlinePlayer then
@@ -164,10 +168,10 @@ end
 
 Remotes.RequestBuyExplorationLicense.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Choose a valid mining plot."); return end
 
 	local plot = worldPlots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Mining plot not found."); return end
 
 	-- Already owned?
 	if plot.owner then
@@ -215,10 +219,10 @@ end)
 
 Remotes.RequestExplorePlot.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Choose a valid mining plot to explore."); return end
 
 	local plot = worldPlots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Mining plot not found."); return end
 
 	-- Must own it
 	if plot.owner ~= userId then
@@ -309,10 +313,10 @@ end)
 
 Remotes.RequestBuyMiningEquip.OnServerEvent:Connect(function(player, equipId)
 	local userId = player.UserId
-	if type(equipId) ~= "string" then return end
+	if type(equipId) ~= "string" then reject(player, "Choose valid mining equipment."); return end
 
 	local equip = MiningSystem.GetEquipment(equipId)
-	if not equip then return end
+	if not equip then reject(player, "Unknown mining equipment."); return end
 
 	if equip.cost > 0 then
 		local success = PlayerDataBridge.SpendMolCoins(userId, equip.cost)
@@ -342,10 +346,14 @@ end)
 
 Remotes.RequestDeployEquipment.OnServerEvent:Connect(function(player, plotId, equipId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) or type(equipId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(equipId) ~= "string" then
+		reject(player, "Choose a valid plot and equipment item.")
+		return
+	end
 
 	local plot = worldPlots[plotId]
-	if not plot or plot.owner ~= userId then return end
+	if not plot then reject(player, "Mining plot not found."); return end
+	if plot.owner ~= userId then reject(player, "You must own this plot before deploying equipment."); return end
 
 	local pm = getPlayerMining(userId)
 	if (pm.equipment[equipId] or 0) <= 0 then
@@ -376,12 +384,13 @@ end)
 
 Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Choose a valid mining plot."); return end
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
-	if not playerData then return end
+	if not playerData then reject(player, "Player inventory is still loading."); return end
 
 	local plot = worldPlots[plotId]
-	if not plot or plot.owner ~= userId then return end
+	if not plot then reject(player, "Mining plot not found."); return end
+	if plot.owner ~= userId then reject(player, "You must own this plot before collecting ore."); return end
 
 	if plot.oreStockpile <= 0 then
 		Remotes.FireClient("ServerAnnounce", player, {
@@ -453,6 +462,7 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 		})
 	end
 	if pendingAtomTotal > 0 and not PlayerDataBridge.RecordAtomCollectMultiBatch(userId, batchEntries) then
+		reject(player, "Ore collection could not be recorded; your stockpile was kept safe.")
 		return
 	end
 
