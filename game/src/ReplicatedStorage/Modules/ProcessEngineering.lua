@@ -174,9 +174,10 @@ function ProcessEngineering.AddStep(balance, stepName, inputKg, outputKg, wasteK
 end
 
 -- Calculate full slag processing mass balance for 1kg input
-function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, temperature, slagModule)
+function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, temperature, slagModule, phFactor)
 	local balance = ProcessEngineering.CreateMassBalance()
 	local SteelSlag = slagModule or require(script.Parent.SteelSlag)
+	local selectivityFactor = isFiniteNumber(phFactor) and math.clamp(phFactor, 0.25, 1) or 1
 
 	local inputKg = 1.0
 	temperature = temperature or 25
@@ -226,7 +227,9 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 			-- First-order contact model: repeated surface exposure approaches
 			-- complete extraction asymptotically, never exceeding 99%.
 			extraction = 1 - ((1 - temperatureExtraction) ^ contactFactor)
-			extraction = math.clamp(extraction, 0, 0.99)
+			-- Off-spec pH reduces effective dissolution in the same way as the
+			-- server's recovered atom yield. Keep the displayed balance honest.
+			extraction = math.clamp(extraction * selectivityFactor, 0, 0.99)
 
 			local extractedMass = oxideMass * extraction
 			dissolved = dissolved + extractedMass

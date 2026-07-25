@@ -98,6 +98,10 @@ assert(pipeline.dissolvedKg > pipeline.targetProductKg and pipeline.targetProduc
 	"mass balance must distinguish saleable target product from dissolved stream")
 assert(pipeline.byproductKg > 0,
 	"non-target dissolved species must remain visible as downstream byproduct")
+local offSpecPH = ProcessEngineering.CalculateSlagMassBalance("powder", "H2SO4", 65, SteelSlag, 0.25)
+assert(offSpecPH.dissolvedKg < pipeline.dissolvedKg
+	and offSpecPH.targetProductKg < pipeline.targetProductKg,
+	"off-spec pH must reduce the visible dissolved and target product streams")
 
 local postSepMasses, postSepTotal, magneticRecovery = SteelSlag.GetPostMagneticSeparationMasses(1)
 assert(math.abs(postSepTotal - 0.87) < 0.000001 and math.abs(magneticRecovery - 0.12) < 0.000001,
