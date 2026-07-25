@@ -413,7 +413,7 @@ function showAchievementBanner(data)
 	icon.Size = UDim2.fromOffset(50, 50)
 	icon.Position = UDim2.fromOffset(15, 15)
 	icon.BackgroundTransparency = 1
-	icon.Text = "T"  -- Trophy symbol placeholder
+	icon.Text = "🏆"
 	icon.TextColor3 = Color3.fromRGB(255, 215, 0)
 	icon.TextScaled = true
 	icon.Font = Enum.Font.GothamBold
