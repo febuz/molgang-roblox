@@ -3,6 +3,24 @@
 
 local StationAccess = {}
 
+-- Keep the physical stations and their interaction envelopes in one shared
+-- contract. WorldBuilder owns the geometry; server handlers and tests consume
+-- these identifiers so a rename cannot silently break the production loop.
+StationAccess.Stations = {
+	crush = {
+		partName = "CrushPlatform",
+		interactionType = "SlagCrushStation",
+		radius = 28,
+		label = "Crushing Station",
+	},
+	leach = {
+		partName = "LeachPlatform",
+		interactionType = "SlagLeachStation",
+		radius = 42,
+		label = "Leaching Station",
+	},
+}
+
 function StationAccess.WithinRange(playerPosition, stationPosition, radius)
 	if type(playerPosition) ~= "table" or type(stationPosition) ~= "table" then
 		return false

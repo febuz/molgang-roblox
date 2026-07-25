@@ -56,7 +56,6 @@ local playerProcessState = {}     -- {userId = ProcessEngineering.CreateProcessS
 local recentLeachRequests = {}    -- {userId = {key, timestamp}}; duplicate guard
 local lastProcessControlUpdate = {} -- {userId = monotonic timestamp}; request guard
 local leachIdCounter = 0
-local STATION_RADIUS = {crush = 28, leach = 42}
 
 local function requireStation(player, stationName, radius, actionName)
 	local character = player.Character
@@ -303,7 +302,8 @@ end)
 Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 	local userId = player.UserId
 	local slag = getPlayerSlag(userId)
-	if not requireStation(player, "CrushPlatform", STATION_RADIUS.crush, "Crushing Station") then return end
+	local station = StationAccess.Stations.crush
+	if not requireStation(player, station.partName, station.radius, station.label) then return end
 
 	-- Validate target size
 	if type(targetSize) ~= "string" then return end
@@ -416,7 +416,8 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local userId = player.UserId
 	local slag = getPlayerSlag(userId)
 	local processState = getProcessState(userId)
-	if not requireStation(player, "LeachPlatform", STATION_RADIUS.leach, "Leaching Station") then return end
+	local station = StationAccess.Stations.leach
+	if not requireStation(player, station.partName, station.radius, station.label) then return end
 
 	-- Validate inputs
 	if type(reagentId) ~= "string" or type(particleSize) ~= "string" then return end
@@ -558,7 +559,8 @@ end)
 
 Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	local userId = player.UserId
-	if not requireStation(player, "LeachPlatform", STATION_RADIUS.leach, "Leaching Station") then return end
+	local station = StationAccess.Stations.leach
+	if not requireStation(player, station.partName, station.radius, station.label) then return end
 	if type(leachId) ~= "string" then return end
 
 	local leaches = getPlayerLeaches(userId)

@@ -29,6 +29,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
+local StationAccess = require(ReplicatedStorage.Modules.StationAccess)
 
 -- Wait for the asynchronous world builder instead of testing a half-built
 -- Workspace. Studio may take considerably longer under Wine/D3D11.
@@ -120,6 +121,19 @@ timeTest("Slakkenspoor factory exists", function()
 		or (tonumber(zones:GetAttribute("ZoneCount")) or 0) >= 4
 		or generatedZoneCount >= 4
 	assert(found, "Slakkenspoor factory not found")
+end)
+
+timeTest("Slag stations exist and match the interaction contract", function()
+	for stationKey, contract in pairs(StationAccess.Stations) do
+		local station = Workspace:FindFirstChild(contract.partName, true)
+		assert(station and station:IsA("BasePart"),
+			stationKey .. " station is missing: " .. contract.partName)
+		assert(station:GetAttribute("Interactable") == true,
+			stationKey .. " station is not interactable")
+		assert(station:GetAttribute("InteractionType") == contract.interactionType,
+			stationKey .. " station interaction type drifted")
+		assert(contract.radius > 0, stationKey .. " station has no positive access radius")
+	end
 end)
 
 timeTest("Spawn location exists", function()
