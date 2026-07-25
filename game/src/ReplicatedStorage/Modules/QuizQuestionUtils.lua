@@ -4,6 +4,22 @@
 
 local QuizQuestionUtils = {}
 
+-- Shared by dashboard quizzes and in-world quiz pillars. Keeping this list in
+-- the pure helper makes subject routing testable without a Roblox server.
+QuizQuestionUtils.ValidZones = {
+	any = true,
+	biome = true,
+	hub = true,
+	quantum = true,
+	factory = true,
+	chain = true,
+	ank = true,
+}
+
+function QuizQuestionUtils.IsValidZone(zone)
+	return type(zone) == "string" and QuizQuestionUtils.ValidZones[zone] == true
+end
+
 function QuizQuestionUtils.UniqueWrongAtomicNumbers(correctNumber, amount)
 	local wrong = {}
 	local seen = {[correctNumber] = true}

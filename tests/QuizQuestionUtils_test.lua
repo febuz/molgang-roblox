@@ -23,4 +23,10 @@ local high = QuizQuestionUtils.UniqueWrongAtomicNumbers(118, 3)
 assertUniqueOptions("118", high)
 assert(high[1] == "117", "Z=118 should stay within the periodic table")
 
-print("Quiz Question Utils Tests: 3 passed, 0 failed")
+for _, zone in ipairs({"any", "biome", "hub", "quantum", "factory", "chain", "ank"}) do
+	assert(QuizQuestionUtils.IsValidZone(zone), "quiz pillar zone must be accepted: " .. zone)
+end
+assert(not QuizQuestionUtils.IsValidZone("forged_zone"), "unknown quiz zone must be rejected")
+assert(not QuizQuestionUtils.IsValidZone(nil), "non-string quiz zone must be rejected")
+
+print("Quiz Question Utils Tests: 6 passed, 0 failed")

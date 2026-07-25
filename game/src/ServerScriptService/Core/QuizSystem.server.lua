@@ -161,15 +161,6 @@ local questionBank = generateQuestions()
 
 -- Keep the zone selector server-authoritative, while allowing the zones used
 -- by the in-world quiz pillars to reach the matching question subset.
-local validQuizZones = {
-	any = true,
-	biome = true,
-	hub = true,
-	quantum = true,
-	factory = true,
-	chain = true,
-	ank = true,
-}
 
 -- ══════════════════════════════════════════════
 -- QUIZ SESSION MANAGEMENT
@@ -222,7 +213,7 @@ local function startQuiz(player, zone)
 	-- Pick 3 random
 	local selected = {}
 	local used = {}
-	for i = 1, 3 do
+	for _ = 1, 3 do
 		local idx
 		repeat
 			idx = math.random(#zoneQuestions)
@@ -278,7 +269,7 @@ Remotes.RequestQuizStart.OnServerEvent:Connect(function(player, zone)
 	if type(zone) ~= "string" then
 		zone = "any"
 	end
-	if not validQuizZones[zone] then
+	if not QuizQuestionUtils.IsValidZone(zone) then
 		zone = "any"
 	end
 	startQuiz(player, zone)
