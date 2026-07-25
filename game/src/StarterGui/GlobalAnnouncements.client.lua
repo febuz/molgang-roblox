@@ -23,6 +23,7 @@ local COLORS = {
 	legendary     = Color3.fromRGB(255, 215, 0),
 	epic          = Color3.fromRGB(200, 100, 255),
 	rare          = Color3.fromRGB(100, 150, 255),
+	common        = Color3.fromRGB(255, 180, 80),
 	textPrimary   = Color3.fromRGB(240, 240, 250),
 }
 
@@ -292,6 +293,19 @@ Remotes.ProductionCycleComplete.OnClientEvent:Connect(function(data)
 			icon = "⚙️",
 			message = msg,
 			color = COLORS.rare,
+		})
+	elseif data.atomCapacityLimited or data.factoryBlocked then
+		local reasons = {}
+		if data.atomCapacityLimited then
+			table.insert(reasons, "atom storage is full")
+		end
+		if data.factoryBlocked then
+			table.insert(reasons, "factory has no compatible feedstock/recipe")
+		end
+		queueAnnouncement({
+			icon = "⚠️",
+			message = "Production blocked: " .. table.concat(reasons, "; ") .. ".",
+			color = COLORS.common,
 		})
 	end
 end)

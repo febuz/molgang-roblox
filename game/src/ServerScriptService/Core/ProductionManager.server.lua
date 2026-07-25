@@ -56,7 +56,7 @@ local function produceAtoms(facilities, playerData, outdoorPenalty, productionSp
 		produced[atom] = (produced[atom] or 0) + 1
 	end
 
-	return produced, remainder
+	return produced, remainder, atomCount < wholeDue
 end
 
 local function produceMolecules(playerData, facilities)
@@ -117,7 +117,7 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 	local productionSpeedMultiplier = math.max(0, tonumber(activeEffects.productionSpeedMult) or 1)
 
 	-- Produce atoms from mines
-	local atomsProduced, nextRemainder = produceAtoms(
+	local atomsProduced, nextRemainder, atomCapacityLimited = produceAtoms(
 		facilities,
 		playerData,
 		player:GetAttribute("OutdoorPenalty"),
@@ -156,6 +156,13 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 		DailyStats.Increment(playerData, "moleculesBuilt", count)
 	end
 
+	-- A completed factory cycle with no molecule output is a real blocked
+	-- state, not a successful zero-output cycle: the player needs feedstock or
+	-- a compatible recipe. Keep this visible without inventing production.
+	local factoryBlocked = factoryCycles > 0
+		and (facilities.factories or 0) > 0
+		and next(moleculesProduced) == nil
+
 	-- Award MolCoins for production
 	local productionBonus = 0
 	for _, count in pairs(atomsProduced) do
@@ -174,13 +181,16 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 	end
 
 	-- Notify client
-	if next(atomsProduced) or next(moleculesProduced) or productionBonus > 0 then
+	if next(atomsProduced) or next(moleculesProduced) or productionBonus > 0
+		or atomCapacityLimited or factoryBlocked then
 		Remotes.FireClient("ProductionCycleComplete", player, {
 			atomsProduced = atomsProduced,
 			moleculesProduced = moleculesProduced,
 			bonusMolCoins = productionBonus,
 			outdoorPenalty = player:GetAttribute("OutdoorPenalty") or 1,
 			productionBonusMultiplier = tonumber(activeEffects.productionBonusMult) or 1,
+			atomCapacityLimited = atomCapacityLimited == true,
+			factoryBlocked = factoryBlocked,
 			totalAtoms = (function()
 				local count = 0
 				for _, c in pairs(playerData.atoms) do
