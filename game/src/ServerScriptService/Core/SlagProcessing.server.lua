@@ -702,8 +702,13 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	local userId = player.UserId
-	-- Keep leach data alive (persists via DataStore through EconomyManager)
-	-- Only clean up runtime state
+	-- Persist first, then clear all per-player runtime caches. If the same user
+	-- rejoins this server, getPlayerLeaches must restore the current saved
+	-- snapshot instead of reusing a stale Lua table from the prior session.
+	persistLeachState(userId)
+	playerLeaches[userId] = nil
+	playerSlagData[userId] = nil
+	playerProcessState[userId] = nil
 	playerCrushState[userId] = nil
 	recentLeachRequests[userId] = nil
 	lastProcessControlUpdate[userId] = nil
