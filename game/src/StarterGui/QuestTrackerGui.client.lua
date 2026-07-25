@@ -55,7 +55,9 @@ screenGui.Parent = playerGui
 local compactTracker = Instance.new("Frame")
 compactTracker.Name = "CompactTracker"
 compactTracker.Size = UDim2.fromOffset(260, 38)
-compactTracker.Position = UDim2.new(0, 10, 0, 60)
+-- The atom inventory occupies the first 200px on the left. Keep the compact
+-- quest affordance beneath it so status widgets never cover atom controls.
+compactTracker.Position = UDim2.new(0, 10, 0, 260)
 compactTracker.BackgroundColor3 = COLORS.panel
 compactTracker.BackgroundTransparency = 0.2
 compactTracker.Parent = screenGui
