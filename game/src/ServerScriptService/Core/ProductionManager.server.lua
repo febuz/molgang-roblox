@@ -21,6 +21,7 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 local ProductionState = require(ReplicatedStorage.Modules.ProductionState)
 local ProductionProfiles = require(ReplicatedStorage.Modules.ProductionProfiles)
+local ProductionFeedback = require(ReplicatedStorage.Modules.ProductionFeedback)
 
 -- ═══════════════════════════════════════════════
 -- PRODUCTION CONFIGURATION
@@ -191,6 +192,7 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 			productionBonusMultiplier = tonumber(activeEffects.productionBonusMult) or 1,
 			atomCapacityLimited = atomCapacityLimited == true,
 			factoryBlocked = factoryBlocked,
+			blockedReason = ProductionFeedback.GetBlockedReason(atomCapacityLimited, factoryBlocked),
 			totalAtoms = (function()
 				local count = 0
 				for _, c in pairs(playerData.atoms) do

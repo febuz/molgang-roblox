@@ -16,6 +16,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AnnouncementRouting = require(ReplicatedStorage.Modules.AnnouncementRouting)
+local ProductionFeedback = require(ReplicatedStorage.Modules.ProductionFeedback)
 
 local COLORS = {
 	background    = Color3.fromRGB(20, 20, 30),
@@ -295,16 +296,11 @@ Remotes.ProductionCycleComplete.OnClientEvent:Connect(function(data)
 			color = COLORS.rare,
 		})
 	elseif data.atomCapacityLimited or data.factoryBlocked then
-		local reasons = {}
-		if data.atomCapacityLimited then
-			table.insert(reasons, "atom storage is full")
-		end
-		if data.factoryBlocked then
-			table.insert(reasons, "factory has no compatible feedstock/recipe")
-		end
+		local reason = data.blockedReason or ProductionFeedback.GetBlockedReason(
+			data.atomCapacityLimited, data.factoryBlocked)
 		queueAnnouncement({
 			icon = "⚠️",
-			message = "Production blocked: " .. table.concat(reasons, "; ") .. ".",
+			message = "Production blocked: " .. (reason or "check storage and feedstock."),
 			color = COLORS.common,
 		})
 	end
