@@ -234,8 +234,12 @@ badgePad.Parent = teaserBadge
 
 local contentPanel = Instance.new("Frame")
 contentPanel.Name = "ContentPanel"
-contentPanel.Size = UDim2.new(0, 600, 0, 280)
-contentPanel.Position = UDim2.new(0.5, -300, 0, 310)
+-- Keep the intro panel inside the viewport on narrow Studio/Wine windows.
+-- The four-column shortcut grid below uses relative positions, so it can
+-- shrink with the panel instead of extending beyond the rounded outline.
+contentPanel.Size = UDim2.new(0.88, 0, 0, 280)
+contentPanel.Position = UDim2.new(0.06, 0, 0, 310)
+contentPanel.ClipsDescendants = true
 contentPanel.BackgroundColor3 = COLORS.panel
 contentPanel.BackgroundTransparency = 1
 contentPanel.Parent = bg

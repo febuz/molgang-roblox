@@ -87,10 +87,13 @@ end
 local loadingScreen = findScreenGui("LoadingScreen")
 if loadingScreen then
 	local playButton = loadingScreen:FindFirstChild("PlayBtn", true)
+	local contentPanel = loadingScreen:FindFirstChild("ContentPanel", true)
 	check("LoadingScreen survives respawn", loadingScreen.ResetOnSpawn == false,
 		"intro ScreenGui would be recreated on character reset")
 	check("LoadingScreen enter control exists", playButton ~= nil,
 		"PlayBtn was not created")
+	check("LoadingScreen content stays inside viewport", contentPanel ~= nil and contentPanel.ClipsDescendants,
+		"ContentPanel must clip its responsive shortcut grid at the rounded outline")
 	if playButton then
 		check("LoadingScreen enter control is ready", playButton.Visible and playButton.Active,
 			"PlayBtn is not visible/active after the loading phase")
