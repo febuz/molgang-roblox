@@ -266,6 +266,12 @@ else
 	check("Start Chemistry Quiz is wired", false, "quiz start button not found")
 end
 
+local quizResponsive = findScreenGui("QuizGui")
+local quizScale = quizResponsive and quizResponsive:FindFirstChild("ResponsiveScale")
+check("Quiz modal scales to viewport", quizScale ~= nil and quizScale:IsA("UIScale")
+	and quizScale.Scale > 0 and quizScale.Scale <= 1,
+	"quiz modal must keep its answer controls inside narrow viewports")
+
 local slagGui = findScreenGui("SlagProcessingGui")
 if slagGui then
 		slagGui.Enabled = true

@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -18,6 +19,31 @@ gui.DisplayOrder = 80
 gui.Enabled = false
 gui.Parent = playerGui
 
+-- Keep the quiz card usable in the narrow embedded Studio/Wine viewport.
+-- Scale the complete modal so its buttons remain inside the backdrop while
+-- preserving the desktop layout at normal resolutions.
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = gui
+
+local function updateQuizScale()
+	local camera = workspace.CurrentCamera
+	if not camera then return end
+	local viewport = camera.ViewportSize
+	local scale = math.min(viewport.X / 720, viewport.Y / 520)
+	responsiveScale.Scale = math.clamp(scale, 0.65, 1)
+end
+
+updateQuizScale()
+local cameraConnection
+cameraConnection = RunService.RenderStepped:Connect(function()
+	if not gui.Parent then
+		cameraConnection:Disconnect()
+		return
+	end
+	updateQuizScale()
+end)
+
 local backdrop = Instance.new("TextButton")
 backdrop.Name = "Backdrop"
 backdrop.Size = UDim2.fromScale(1, 1)
@@ -31,7 +57,8 @@ backdrop.Parent = gui
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.Size = UDim2.new(0, 620, 0, 430)
-panel.Position = UDim2.new(0.5, -310, 0.5, -215)
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = UDim2.fromScale(0.5, 0.5)
 panel.BackgroundColor3 = Color3.fromRGB(24, 28, 42)
 panel.Parent = gui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
