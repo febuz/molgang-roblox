@@ -109,8 +109,15 @@ titleBar.Size = UDim2.new(1, 0, 0, 42)
 titleBar.BackgroundColor3 = C.panel
 titleBar.Parent = main
 corner(titleBar, 14)
-lbl(titleBar, {N="Title", S=UDim2.new(0.6,0,1,0), P=UDim2.new(0,14,0,0),
+lbl(titleBar, {N="Title", S=UDim2.new(0.6,0,0,22), P=UDim2.new(0,14,0,0),
 	T="VANADIUM MINING — Exploration & Extraction", C=C.accent, F=Enum.Font.GothamBold})
+
+local actionStatusLabel = lbl(titleBar, {N="ActionStatus", S=UDim2.new(0.6,0,0,16), P=UDim2.new(0,14,0,23),
+	T="Ready — choose a mining action", C=C.textDim, F=Enum.Font.Gotham})
+local function setActionStatus(text, color)
+	actionStatusLabel.Text = tostring(text or "")
+	actionStatusLabel.TextColor3 = color or C.textDim
+end
 
 local statsL = lbl(titleBar, {N="Stats", S=UDim2.new(0.35,0,1,0), P=UDim2.new(0.6,0,0,0),
 	T="Ore: 0 kg | Value: 0 MC", C=C.textDim, A=Enum.TextXAlignment.Right})
@@ -230,8 +237,9 @@ for _, equip in ipairs(MiningSystem.Equipment) do
 		eb.Parent = equipFrame; corner(eb, 4)
 		equipX = equipX + 0.14
 		eb.Activated:Connect(function()
+			setActionStatus("Buying " .. equip.name .. "…", C.accent)
 			local r = Remotes:FindFirstChild("RequestBuyMiningEquip")
-			if r then r:FireServer(equip.id) end
+			if r then r:FireServer(equip.id) else setActionStatus("Equipment service unavailable.", C.red) end
 		end)
 	end
 end
@@ -295,8 +303,9 @@ if miningEvent then
 				buyBtn.TextScaled = true; buyBtn.Parent = card; corner(buyBtn, 4)
 				local pid = plot.id
 				buyBtn.Activated:Connect(function()
+					setActionStatus("Buying exploration license for Plot #" .. pid .. "…", C.accent)
 					local r = Remotes:FindFirstChild("RequestBuyExplorationLicense")
-					if r then r:FireServer(pid) end
+					if r then r:FireServer(pid) else setActionStatus("Mining service unavailable.", C.red) end
 				end)
 			end
 			exploreScroll.CanvasSize = UDim2.new(0, 0, 0, #data.availablePlots * 54)
@@ -353,9 +362,10 @@ if miningEvent then
 					explBtn.Font = Enum.Font.GothamBold; explBtn.TextScaled = true
 					explBtn.Parent = card; corner(explBtn, 4)
 					local pid = plot.id
-				explBtn.Activated:Connect(function()
+					explBtn.Activated:Connect(function()
+						setActionStatus("Exploring Plot #" .. pid .. "…", C.rare)
 						local r = Remotes:FindFirstChild("RequestExplorePlot")
-						if r then r:FireServer(pid) end
+						if r then r:FireServer(pid) else setActionStatus("Exploration service unavailable.", C.red) end
 					end)
 				end
 
@@ -392,10 +402,11 @@ if miningEvent then
 				deployBtn.Parent = card; corner(deployBtn, 4)
 				local pid2 = plot.id
 				deployBtn.Activated:Connect(function()
-					if #deployChoices == 0 then return end
+					if #deployChoices == 0 then setActionStatus("Buy equipment before deploying it.", C.red); return end
 					local equipId = deployChoices[deployIndex]
+					setActionStatus("Deploying " .. equipId .. " on Plot #" .. pid2 .. "…", C.accent)
 					local r = Remotes:FindFirstChild("RequestDeployEquipment")
-					if r then r:FireServer(pid2, equipId) end
+					if r then r:FireServer(pid2, equipId) else setActionStatus("Mining service unavailable.", C.red) end
 					deployIndex = (deployIndex % #deployChoices) + 1
 					local nextEquip = deployChoices[deployIndex]
 					deployBtn.Text = "Deploy\n" .. (MiningSystem.GetEquipment(nextEquip).name or nextEquip)
@@ -410,8 +421,9 @@ if miningEvent then
 				collectBtn.Font = Enum.Font.GothamBold; collectBtn.TextScaled = true
 				collectBtn.Parent = card; corner(collectBtn, 4)
 				collectBtn.Activated:Connect(function()
+					setActionStatus("Hauling ore from Plot #" .. pid2 .. "…", C.gold)
 					local r = Remotes:FindFirstChild("RequestCollectOre")
-					if r then r:FireServer(pid2) end
+					if r then r:FireServer(pid2) else setActionStatus("Ore service unavailable.", C.red) end
 				end)
 
 				-- Sell button
@@ -424,8 +436,9 @@ if miningEvent then
 				sellBtn.Font = Enum.Font.GothamBold; sellBtn.TextScaled = true
 				sellBtn.Parent = card; corner(sellBtn, 4)
 				sellBtn.Activated:Connect(function()
+					setActionStatus("Listing Plot #" .. pid2 .. " for sale…", C.gold)
 					local r = Remotes:FindFirstChild("RequestListPlotForSale")
-					if r then r:FireServer(pid2, (plot.vanadiumPct or 0.5) * 20000) end
+					if r then r:FireServer(pid2, (plot.vanadiumPct or 0.5) * 20000) else setActionStatus("Market service unavailable.", C.red) end
 				end)
 			end
 			minesScroll.CanvasSize = UDim2.new(0, 0, 0, #data.ownedPlots * 106)
@@ -467,11 +480,29 @@ if miningEvent then
 				buyBtn.Parent = card; corner(buyBtn, 4)
 				local pid = listing.id
 				buyBtn.Activated:Connect(function()
+					setActionStatus("Buying mining Plot #" .. pid .. "…", C.gold)
 					local r = Remotes:FindFirstChild("RequestBuyPlotFromMarket")
-					if r then r:FireServer(pid) end
+					if r then r:FireServer(pid) else setActionStatus("Market service unavailable.", C.red) end
 				end)
 			end
 			marketScroll.CanvasSize = UDim2.new(0, 0, 0, #data.marketListings * 54)
+		end
+	end)
+end
+
+local announceEvent = Remotes:FindFirstChild("ServerAnnounce")
+if announceEvent then
+	announceEvent.OnClientEvent:Connect(function(data)
+		local message = type(data) == "table" and data.message or data
+		if type(message) ~= "string" then return end
+		local lower = string.lower(message)
+		if lower:find("plot", 1, true) or lower:find("mining", 1, true)
+			or lower:find("ore", 1, true) or lower:find("haul", 1, true)
+			or lower:find("equipment", 1, true) or lower:find("explor", 1, true)
+			or lower:find("drill", 1, true) then
+			local isFailure = lower:find("not", 1, true) or lower:find("reject", 1, true)
+				or lower:find("cannot", 1, true) or lower:find("unavailable", 1, true)
+			setActionStatus(message, isFailure and C.red or C.green)
 		end
 	end)
 end
