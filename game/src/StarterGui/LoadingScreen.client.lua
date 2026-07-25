@@ -15,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local WorldReadiness = require(ReplicatedStorage.Modules.WorldReadiness)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -478,8 +479,10 @@ task.delay(1.5, function()
 	}):Play()
 end)
 
--- Phase 6: Show play button (3.5s — after progress bar fills)
-task.delay(3.5, function()
+-- Phase 6: Show play button after the progress animation and actual world
+-- readiness. A fixed timer allowed players to enter while WorldBuilder was
+-- still constructing the floating zones.
+local function showPlayButton()
 	loadingText.Text = "Ready!"
 	TweenService:Create(loadingText, tweenFast, {TextTransparency = 1}):Play()
 	TweenService:Create(progressContainer, tweenFast, {BackgroundTransparency = 1}):Play()
@@ -492,6 +495,18 @@ task.delay(3.5, function()
 		Size = UDim2.fromOffset(220, 50),
 		BackgroundTransparency = 0,
 	}):Play()
+end
+
+task.spawn(function()
+	task.wait(3.5)
+	while not WorldReadiness.CanEnter(
+		workspace:GetAttribute("MoleculiaReady"),
+		workspace:FindFirstChild("MolGangSpawn", true) ~= nil
+	) do
+		loadingText.Text = "Building Moleculia..."
+		task.wait(0.25)
+	end
+	showPlayButton()
 end)
 
 -- ═══════════════════════════════════════════════
@@ -569,8 +584,15 @@ playBtn.Activated:Connect(fadeOutAndDestroy)
 -- paths where Activated can be swallowed by the embedded game surface.
 playBtn.MouseButton1Click:Connect(fadeOutAndDestroy)
 
--- Never strand a player on the intro if input focus is lost. The button is
--- still shown and clickable, but the session gate always releases eventually.
-task.delay(20, fadeOutAndDestroy)
+-- Never auto-release before the world gate has opened. If input focus is lost
+-- after the world is ready, the visible button may still release the intro.
+task.delay(20, function()
+	if playBtn.Visible and WorldReadiness.CanEnter(
+		workspace:GetAttribute("MoleculiaReady"),
+		workspace:FindFirstChild("MolGangSpawn", true) ~= nil
+	) then
+		fadeOutAndDestroy()
+	end
+end)
 
 print("[MOLGANG] OTAP test loading screen displayed")

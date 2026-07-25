@@ -4023,6 +4023,10 @@ local function buildMoleculia()
 	zone6:SetAttribute("ZoneName", "ANK Kredietunie")
 	zone6:SetAttribute("ZoneType", "Finance")
 
+	-- Publish readiness only after every zone, global element and safe spawn
+	-- exists. The loading gate uses this marker instead of a fixed delay.
+	Workspace:SetAttribute("MoleculiaReady", true)
+
 	local elapsed = os.clock() - startTime
 	print("=============================================================")
 	print(string.format("[WorldBuilder] MOLECULIA construction complete in %.2fs", elapsed))
