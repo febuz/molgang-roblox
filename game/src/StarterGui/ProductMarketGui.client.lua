@@ -154,6 +154,29 @@ local saCorner = Instance.new("UICorner")
 saCorner.CornerRadius = UDim.new(0, 6)
 saCorner.Parent = sellAllBtn
 
+-- Order book entry point: the competitive bid/sell market must be reachable
+-- from the exchange itself, not only through an undocumented shortcut.
+local orderBookBtn = Instance.new("TextButton")
+orderBookBtn.Name = "OrderBookBtn"
+orderBookBtn.Size = UDim2.new(0, 120, 0, 26)
+orderBookBtn.Position = UDim2.new(1, -266, 0, 60)
+orderBookBtn.BackgroundColor3 = C.panelLight
+orderBookBtn.Text = "ORDER BOOK"
+orderBookBtn.TextColor3 = C.accent
+orderBookBtn.Font = Enum.Font.GothamBold
+orderBookBtn.TextScaled = true
+orderBookBtn.Parent = main
+corner(orderBookBtn, 6)
+
+orderBookBtn.Activated:Connect(function()
+	playUIClick()
+	local orderBook = playerGui:FindFirstChild("MarketBiddingGui")
+	if orderBook and orderBook:IsA("ScreenGui") then
+		screenGui.Enabled = false
+		orderBook.Enabled = true
+	end
+end)
+
 local sellAllBusy = false
 
 sellAllBtn.Activated:Connect(function()

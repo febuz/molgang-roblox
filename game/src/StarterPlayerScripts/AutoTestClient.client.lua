@@ -229,6 +229,10 @@ local marketBiddingScale = marketBidding and marketBidding:FindFirstChild("Respo
 check("Market bidding scales to viewport", marketBiddingScale ~= nil and marketBiddingScale:IsA("UIScale")
 	and marketBiddingScale.Scale > 0 and marketBiddingScale.Scale <= 1,
 	"market-bidding modal must have a bounded ResponsiveScale")
+local orderBookEntry = findButtonByText(productMarket, "ORDER BOOK")
+check("Product exchange opens order book", orderBookEntry ~= nil and orderBookEntry.Active
+		and marketBidding ~= nil,
+	"order book entry point is missing from ProductMarketGui")
 local placeSell = findButtonByText(marketBidding, "PLACE SELL")
 local placeSellRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestPlaceSell")
 local cancelSellRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestCancelSell")
