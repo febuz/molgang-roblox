@@ -95,6 +95,16 @@ if loadingScreen then
 		"PlayBtn was not created")
 	check("LoadingScreen content stays inside viewport", contentPanel ~= nil and contentPanel.ClipsDescendants,
 		"ContentPanel must clip its responsive shortcut grid at the rounded outline")
+	if contentPanel then
+		local introControlCount = 0
+		for _, child in ipairs(contentPanel:GetDescendants()) do
+			if child:IsA("TextLabel") and child.Parent and child.Parent.Name == "ControlsFrame" then
+				introControlCount = introControlCount + 1
+			end
+		end
+		check("LoadingScreen keeps the first step simple", introControlCount <= 8,
+			"intro exposes more than four basic actions")
+	end
 	local footer = loadingScreen:FindFirstChild("Footer", true)
 	check("LoadingScreen identifies the OTAP build", footer ~= nil
 		and string.find(footer.Text, "MOLGANG OTAP teststraat", 1, true) ~= nil
@@ -114,6 +124,23 @@ if loadingScreen then
 		print("[AutoTestClient][PASS] LoadingScreen enter control: intro gate already active")
 		passCount = passCount + 1
 	end
+
+	local tutorial = findScreenGui("TutorialGui")
+	if tutorial then
+		local routeSelector = tutorial:FindFirstChild("PathSelector", true)
+		check("Tutorial presents age-aware route selector", routeSelector ~= nil,
+			"PathSelector is missing from the first-run tutorial")
+		for _, routeKey in ipairs({"explorer", "scientist", "engineer"}) do
+			local routeButton = routeSelector and routeSelector:FindFirstChild(routeKey .. "Path", true)
+			check("Tutorial route exists: " .. routeKey,
+				routeButton ~= nil and routeButton:IsA("GuiButton") and routeButton.Active,
+				"age-aware route button is missing or inactive")
+		end
+	else
+		print("[AutoTestClient][PASS] Tutorial route selector: onboarding already completed")
+		passCount = passCount + 1
+	end
+
 	check("Intro session gate is retained",
 		player:GetAttribute("MOLGANGIntroShown") == true
 			or ReplicatedStorage:FindFirstChild("MOLGANGIntroGate") ~= nil,
