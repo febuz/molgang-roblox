@@ -361,6 +361,16 @@ timeTest("V2O5 is high value", function()
 	assert(v2o5 and v2o5.points >= 1000, "V2O5 should be >= 1000 points")
 end)
 
+timeTest("Practice mining is an affordable first loop", function()
+	local MiningSystem = require(ReplicatedStorage.Modules.MiningSystem)
+	local practice = MiningSystem.PlotTypes[1]
+	assert(practice and practice.id == "practice_outcrop", "practice outcrop catalog entry is missing")
+	assert(MiningSystem.GetExplorationLicenseCost(practice) == 200,
+		"practice outcrop license must remain 200 MolCoins")
+	assert(MiningSystem.GetManualExplorationCost({plotType = "practice_outcrop", depth = 0}) == 0,
+		"surface practice exploration must be free")
+end)
+
 -- ═══════════════════════════════════════════════
 -- TEST 5B: FERTILIZER / ACT 3 CHEMISTRY
 -- ═══════════════════════════════════════════════
