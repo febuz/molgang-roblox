@@ -813,6 +813,11 @@ Remotes.RequestProcessControlState.OnServerEvent:Connect(function(player)
 	local state = getProcessState(player.UserId)
 	ProcessEng.UpdateDerivedValues(state)
 	local operatingSafe, interlockCode, interlockMessage = ProcessEng.ValidateOperatingEnvelope(state)
+	player:SetAttribute("ProcessTemp", state.temperature)
+	player:SetAttribute("ProcessPressure", state.pressure)
+	player:SetAttribute("ProcessPH", state.pH)
+	player:SetAttribute("ProcessFlowRate", state.flowRate)
+	player:SetAttribute("ReactionRate", state.reactionRate)
 	Remotes.FireClient("ProcessControlState", player, {
 		temperature = state.temperature,
 		pressure = state.pressure,
