@@ -326,6 +326,14 @@ if quizStart and quizStart:IsA("GuiButton") then
 			"RequestQuizStart produced no ServerAnnounce.quizData response")
 		check("Start Chemistry Quiz opens quiz modal", quizGui ~= nil and quizGui.Enabled,
 			"QuizGui did not become visible after the server response")
+		if quizGui and quizGui.Enabled then
+			-- A quiz is an answer-state modal. Probe a competing menu opening and
+			-- verify it cannot dismiss the active question.
+			dashboard.Enabled = true
+			task.wait(0.15)
+			check("Active quiz resists competing menus", quizGui.Enabled and not dashboard.Enabled,
+				"a competing menu closed or covered the active quiz")
+		end
 		if quizGui then
 			local quizOptions = {}
 			for _, child in ipairs(quizGui:GetDescendants()) do

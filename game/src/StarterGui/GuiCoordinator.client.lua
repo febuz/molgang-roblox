@@ -27,6 +27,16 @@ local modalNames = {
 local busy = false
 local function closeOthers(openGui)
 	if busy then return end
+	-- A live quiz is an answer-state modal. Do not let a shortcut or a delayed
+	-- GUI response close it before the player can answer; reject the competing
+	-- menu instead and keep the question on screen.
+	local activeQuiz = playerGui:FindFirstChild("QuizGui")
+	if activeQuiz and activeQuiz:IsA("ScreenGui") and activeQuiz.Enabled and openGui ~= activeQuiz then
+		if openGui and openGui:IsA("ScreenGui") then
+			openGui.Enabled = false
+		end
+		return
+	end
 	busy = true
 	for _, child in ipairs(playerGui:GetChildren()) do
 		if child:IsA("ScreenGui") and child ~= openGui and modalNames[child.Name] and child.Enabled then
