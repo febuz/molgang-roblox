@@ -89,8 +89,16 @@ titleBar.Size = UDim2.new(1, 0, 0, 42)
 titleBar.BackgroundColor3 = C.panel
 titleBar.Parent = main
 corner(titleBar, 12)
-lbl(titleBar, {N="Title", S=UDim2.new(0.8,0,1,0), P=UDim2.new(0,14,0,0),
+lbl(titleBar, {N="Title", S=UDim2.new(0.8,0,0,22), P=UDim2.new(0,14,0,0),
 	T="FERTILIZER CHEMISTRY LAB", C=C.accent, F=Enum.Font.GothamBold})
+
+local actionStatusLabel = lbl(titleBar, {N="ActionStatus", S=UDim2.new(0.8,0,0,16), P=UDim2.new(0,14,0,23),
+	T="Ready — choose a farm, lab, or quest action", C=C.textDim, F=Enum.Font.Gotham, A=Enum.TextXAlignment.Left})
+
+local function setActionStatus(text, color)
+	actionStatusLabel.Text = tostring(text or "")
+	actionStatusLabel.TextColor3 = color or C.textDim
+	end
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 0, 7)
@@ -226,8 +234,9 @@ for i = 1, 4 do
 
 	-- Wire buttons
 	testBtn.Activated:Connect(function()
+		setActionStatus("Testing soil at Plot " .. i .. "…", C.waterBlue)
 		local r = Remotes:FindFirstChild("RequestTestSoil")
-		if r then r:FireServer(i) end
+		if r then r:FireServer(i) else setActionStatus("Soil test service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 
 	-- Simple crop picker: cycle through available crops
@@ -236,13 +245,15 @@ for i = 1, 4 do
 	plantBtn.Activated:Connect(function()
 		cropIdx = (cropIdx % #availCrops) + 1
 		local crop = availCrops[cropIdx]
+		setActionStatus("Planting " .. crop.name .. " at Plot " .. i .. "…", C.accent)
 		local r = Remotes:FindFirstChild("RequestPlantCrop")
-		if r then r:FireServer(i, crop.id) end
+		if r then r:FireServer(i, crop.id) else setActionStatus("Plant service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 
 	harvestBtn.Activated:Connect(function()
+		setActionStatus("Harvesting Plot " .. i .. "…", C.gold)
 		local r = Remotes:FindFirstChild("RequestHarvestCrop")
-		if r then r:FireServer(i) end
+		if r then r:FireServer(i) else setActionStatus("Harvest service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 
 	-- Simple fertilizer picker
@@ -251,8 +262,9 @@ for i = 1, 4 do
 	fertBtn.Activated:Connect(function()
 		fertIdx = (fertIdx % #availFerts) + 1
 		local fert = availFerts[fertIdx]
+		setActionStatus("Applying " .. fert.name .. " at Plot " .. i .. "…", C.soilBrown)
 		local r = Remotes:FindFirstChild("RequestApplyFertilizer")
-		if r then r:FireServer(i, fert.id) end
+		if r then r:FireServer(i, fert.id) else setActionStatus("Fertilizer service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 
 	plotCards[i] = {
@@ -321,8 +333,9 @@ for _, fert in ipairs(FertilizerTrack.Fertilizers) do
 	craftBtn.TextScaled = true; craftBtn.Parent = fCard; corner(craftBtn, 6)
 
 	craftBtn.Activated:Connect(function()
+		setActionStatus("Synthesizing " .. fert.name .. "…", C.accent)
 		local r = Remotes:FindFirstChild("RequestCraftFertilizer")
-		if r then r:FireServer(fert.id) end
+		if r then r:FireServer(fert.id) else setActionStatus("Fertilizer lab service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 end
 
@@ -395,6 +408,39 @@ end
 -- ═══════════════════════════════════════════════
 -- SERVER EVENT HANDLERS
 -- ═══════════════════════════════════════════════
+
+local function connectStatusEvent(name, message)
+	local event = Remotes:FindFirstChild(name)
+	if event then
+		event.OnClientEvent:Connect(function(data)
+			setActionStatus(message(data), C.ready)
+		end)
+	end
+end
+
+connectStatusEvent("SoilTestResult", function(data)
+	return string.format("Soil test complete: %s, pH %.1f", tostring(data.soilType or "sample"), tonumber(data.pH) or 0)
+end)
+connectStatusEvent("FertilizerCrafted", function(data)
+	return "Crafted " .. tostring(data.name or data.fertilizerId or "fertilizer") .. "."
+end)
+connectStatusEvent("CropHarvested", function(data)
+	return string.format("Harvest complete: %s × %s (+%s MC)", tostring(data.cropName or "crop"), tostring(data.yield or 0), tostring(data.coins or 0))
+end)
+
+local announceEvent = Remotes:FindFirstChild("ServerAnnounce")
+if announceEvent then
+	announceEvent.OnClientEvent:Connect(function(data)
+		local message = type(data) == "table" and data.message or data
+		if type(message) ~= "string" then return end
+		local lower = string.lower(message)
+		if lower:find("soil", 1, true) or lower:find("fertilizer", 1, true) or lower:find("fertiliser", 1, true)
+			or lower:find("plot", 1, true) or lower:find("crop", 1, true) or lower:find("harvest", 1, true)
+			or lower:find("plant", 1, true) or lower:find("synth", 1, true) then
+			setActionStatus(message, Color3.fromRGB(255, 120, 120))
+		end
+	end)
+end
 
 local fertUpdateEvent = Remotes:FindFirstChild("FertilizerUpdate")
 if fertUpdateEvent then
