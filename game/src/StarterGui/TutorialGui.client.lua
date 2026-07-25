@@ -46,7 +46,21 @@ local COLORS = {
 -- TUTORIAL STEPS
 -- ═══════════════════════════════════════════════
 
-local STEPS = {
+local PATHS = {
+	explorer = {
+		{title = "Welkom, ontdekker!", text = "Beweeg met WASD. Zoek één gloeiende bol en raak hem aan.", condition = "collect_atom"},
+		{title = "Je eerste element!", text = "Goed gevonden. Druk P om te zien welk element je hebt ontdekt.", condition = "press_key", key = Enum.KeyCode.P},
+		{title = "Kies je volgende stap", text = "Verken rustig verder. Met D open je later je dashboard.", condition = "auto", delay = 5},
+		{title = "Klaar om te ontdekken", text = "Je kunt nu vrij rondlopen. Vraag hulp bij een NPC als je vastloopt.", condition = "auto", delay = 6, isFinal = true},
+	},
+	scientist = {
+		{title = "Welkom, jonge onderzoeker!", text = "Verzamel drie elementen en gebruik P om de Periodieke Tabel te lezen.", condition = "collect_atoms", target = 3},
+		{title = "Lees je meetresultaat", text = "Open P en vergelijk symbool, atoomnummer en zeldzaamheid.", condition = "press_key", key = Enum.KeyCode.P},
+		{title = "Bouw een molecule", text = "Open R en combineer alleen de elementen die een recept vraagt.", condition = "press_key", key = Enum.KeyCode.R},
+		{title = "Test je kennis", text = "Open D voor je dashboard en start daarna een quiz bij een quizpunt.", condition = "press_key", key = Enum.KeyCode.D},
+		{title = "Klaar voor experimenten", text = "Probeer daarna de farm of het laboratorium. Je kunt altijd terug naar de basis.", condition = "auto", delay = 7, isFinal = true},
+	},
+	engineer = {
 	{
 		title = "Welcome to Moleculia!",
 		text = "You're floating in space on an archipelago of science. Walk around with WASD and explore!",
@@ -107,7 +121,10 @@ local STEPS = {
 		delay = 10,
 		isFinal = true,
 	},
+	},
 }
+
+local STEPS = PATHS.explorer
 
 -- ═══════════════════════════════════════════════
 -- STATE
@@ -116,6 +133,7 @@ local STEPS = {
 local currentStep = 1
 local atomsCollected = 0
 local tutorialComplete = false
+local selectedPath = "explorer"
 
 -- ═══════════════════════════════════════════════
 -- GUI SETUP
@@ -163,7 +181,11 @@ dotsLayout.Padding = UDim.new(0, 8)
 dotsLayout.Parent = dotsFrame
 
 local dots = {}
-for i = 1, #STEPS do
+local maxStepCount = 0
+for _, pathSteps in pairs(PATHS) do
+	maxStepCount = math.max(maxStepCount, #pathSteps)
+end
+for i = 1, maxStepCount do
 	local dot = Instance.new("Frame")
 	dot.Name = "Dot_" .. i
 	dot.Size = UDim2.fromOffset(8, 8)
@@ -232,6 +254,77 @@ local skipCorner = Instance.new("UICorner")
 skipCorner.CornerRadius = UDim.new(0, 6)
 skipCorner.Parent = skipBtn
 
+-- First-run route selector: keep the opening small and age/experience aware.
+-- Exact age is never requested; players choose the amount of guidance they want.
+local pathSelector = Instance.new("Frame")
+pathSelector.Name = "PathSelector"
+pathSelector.Size = UDim2.fromOffset(560, 290)
+pathSelector.AnchorPoint = Vector2.new(0.5, 0.5)
+pathSelector.Position = UDim2.fromScale(0.5, 0.5)
+pathSelector.BackgroundColor3 = COLORS.panel
+pathSelector.Parent = screenGui
+local selectorCorner = Instance.new("UICorner")
+selectorCorner.CornerRadius = UDim.new(0, 14)
+selectorCorner.Parent = pathSelector
+local selectorStroke = Instance.new("UIStroke")
+selectorStroke.Color = COLORS.panelEdge
+selectorStroke.Thickness = 2
+selectorStroke.Parent = pathSelector
+
+local selectorTitle = Instance.new("TextLabel")
+selectorTitle.Size = UDim2.new(1, -32, 0, 38)
+selectorTitle.Position = UDim2.fromOffset(16, 16)
+selectorTitle.BackgroundTransparency = 1
+selectorTitle.Text = "Hoe wil je Moleculia ontdekken?"
+selectorTitle.TextColor3 = COLORS.accent
+selectorTitle.TextScaled = true
+selectorTitle.Font = Enum.Font.GothamBold
+selectorTitle.Parent = pathSelector
+
+local selectorHint = Instance.new("TextLabel")
+selectorHint.Size = UDim2.new(1, -32, 0, 28)
+selectorHint.Position = UDim2.fromOffset(16, 55)
+selectorHint.BackgroundTransparency = 1
+selectorHint.Text = "Kies een route; je kunt later alles spelen."
+selectorHint.TextColor3 = COLORS.textDim
+selectorHint.TextScaled = true
+selectorHint.Font = Enum.Font.Gotham
+selectorHint.Parent = pathSelector
+
+local pathOptions = {
+	{key = "explorer", title = "Ontdekker", age = "±8–11 jaar", text = "Korte stappen, bewegen en verzamelen."},
+	{key = "scientist", title = "Jonge onderzoeker", age = "±12–15 jaar", text = "Elementen, recepten en eenvoudige quiz."},
+	{key = "engineer", title = "Ingenieur", age = "±16+ jaar", text = "Direct naar chemie, fabriek en processturing."},
+}
+local showStep
+for index, option in ipairs(pathOptions) do
+	local button = Instance.new("TextButton")
+	button.Name = option.key .. "Path"
+	button.Size = UDim2.new(1, -32, 0, 50)
+	button.Position = UDim2.fromOffset(16, 88 + (index - 1) * 58)
+	button.BackgroundColor3 = index == 1 and COLORS.accent or Color3.fromRGB(35, 48, 65)
+	button.TextColor3 = index == 1 and Color3.fromRGB(8, 20, 24) or COLORS.text
+	button.Text = option.title .. "  ·  " .. option.age .. "\n" .. option.text
+	button.TextScaled = true
+	button.TextWrapped = true
+	button.Font = Enum.Font.GothamBold
+	button.Parent = pathSelector
+	local optionCorner = Instance.new("UICorner")
+	optionCorner.CornerRadius = UDim.new(0, 8)
+	optionCorner.Parent = button
+	button.Activated:Connect(function()
+		selectedPath = option.key
+		STEPS = PATHS[selectedPath]
+		currentStep = 1
+		pathSelector.Visible = false
+		panel.Visible = true
+		showStep(1)
+		TweenService:Create(panel, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, -250, 1, -120),
+		}):Play()
+	end)
+end
+
 -- ═══════════════════════════════════════════════
 -- TUTORIAL LOGIC
 -- ═══════════════════════════════════════════════
@@ -248,7 +341,7 @@ local function updateDots()
 	end
 end
 
-local function showStep(stepIdx)
+showStep = function(stepIdx)
 	if stepIdx > #STEPS then
 		-- Tutorial complete — slide out and destroy
 		tutorialComplete = true
@@ -302,15 +395,12 @@ local atomCollectedEvent = Remotes:FindFirstChild("AtomCollected")
 if atomCollectedEvent then
 	atomCollectedEvent.OnClientEvent:Connect(function(data)
 		atomsCollected = atomsCollected + 1
-
-		-- Step 2: collect first atom
-		if currentStep == 2 and not tutorialComplete then
-			advanceStep()
-		end
-
-		-- Step 5: collect 4 total atoms
-		if currentStep == 5 and atomsCollected >= 4 and not tutorialComplete then
-			advanceStep()
+		local step = STEPS[currentStep]
+		if step and not tutorialComplete then
+			if step.condition == "collect_atom"
+				or (step.condition == "collect_atoms" and atomsCollected >= (step.target or 1)) then
+				advanceStep()
+			end
 		end
 	end)
 end
@@ -352,12 +442,8 @@ end)
 
 panel.Position = UDim2.new(0.5, -250, 1, 20) -- start off-screen
 
--- Wait for loading screen to close
-task.delay(1, function()
-	showStep(1)
-	TweenService:Create(panel, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, -250, 1, -120),
-	}):Play()
-end)
+-- Wait for the player to choose a route before showing any controls.
+panel.Visible = false
+pathSelector.Visible = true
 
-print("[MOLGANG] Tutorial system initialized — 6 guided steps")
+print("[MOLGANG] Tutorial system initialized — age-aware route selector")
