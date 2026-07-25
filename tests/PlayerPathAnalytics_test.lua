@@ -2,6 +2,8 @@ local PlayerPathAnalytics = require("../game/src/ServerScriptService/Core/Player
 
 local events = {atomsCollected = 2, guisOpened = {"MiningGui"}}
 local session = PlayerPathAnalytics.NewSession(100, 10, "100_123", events)
+session.firstAction = 104
+session.lastAction = 112
 
 assert(PlayerPathAnalytics.AppendSample(session, 10, {x = 1.24, y = 2.76, z = -3.26}, "Nexus"),
 	"the first short-session sample should be accepted")
@@ -15,6 +17,8 @@ assert(PlayerPathAnalytics.AppendSample(session, 13, {x = 4, y = 5, z = 6}, "Nor
 local payload = PlayerPathAnalytics.BuildPayload(session, 42, "tester", 13)
 assert(payload.schemaVersion == 2 and payload.sessionId == "100_123",
 	"payload should identify its schema and session")
+assert(payload.firstAction == 104 and payload.lastAction == 112,
+	"payload should retain the first and last action timestamps")
 assert(payload.events.atomsCollected == 2 and payload.events.guisOpened[1] == "MiningGui",
 	"payload should retain behavior events")
 payload.events.guisOpened[1] = "changed"

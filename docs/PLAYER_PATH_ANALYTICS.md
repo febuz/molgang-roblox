@@ -12,6 +12,6 @@ collection path, not by the client collection request. Rejected requests and
 Quantum Dot captures therefore cannot inflate normal atom-production metrics.
 ```
 
-The record contains `schemaVersion`, `sessionId`, `userId`, `playerName`, `startedAt`, `duration`, `events`, and `samples`. Each sample has `t`, `x`, `y`, `z`, and the nearest generated zone name. The event summary is copied into the same record so route segments can be correlated with actions such as validated atom collection. Missing characters or short sessions simply produce fewer samples.
+The record contains `schemaVersion`, `sessionId`, `userId`, `playerName`, `startedAt`, `duration`, `firstAction`, `lastAction`, `events`, and `samples`. Each sample has `t`, `x`, `y`, `z`, and the nearest generated zone name. The event summary and action bounds are copied into the same record so route segments can be correlated with actions such as validated atom collection. Missing characters or short sessions simply produce fewer samples.
 
 The existing `Analytics_v1` OrderedDataStore remains the lightweight session-duration index; path records are kept in the normal DataStore because they are structured tables. The two stores retry independently up to three times, using stable per-session keys. A temporary failure in the lightweight index therefore cannot prevent the route from being archived. Both stores flush through `BindToClose`, so short sessions and normal server shutdowns do not silently lose the route.

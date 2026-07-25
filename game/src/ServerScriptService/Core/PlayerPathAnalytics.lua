@@ -58,6 +58,8 @@ function PlayerPathAnalytics.BuildPayload(session, userId, playerName, duration)
 		playerName = playerName,
 		startedAt = session.joinTime,
 		duration = duration,
+		firstAction = session.firstAction,
+		lastAction = session.lastAction,
 		events = clone(session.events),
 		samples = clone(session.path),
 	}
