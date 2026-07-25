@@ -46,6 +46,7 @@ local function getSession(userId)
 				questIds = {},
 				deaths = 0,
 				voidRecoveries = 0,
+				voidRecoveryY = {},
 				chatMessages = 0,
 				zoneVisits = {},
 		})
