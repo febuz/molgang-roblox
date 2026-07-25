@@ -39,6 +39,7 @@ local playerDataStore = DataStoreProvider.GetDataStore("MolGang_PlayerData_v1")
 local playerData = {}       -- {userId = data}
 local playerDailyEarned = {} -- {userId = earned today}
 local lastDayAdvance = {}   -- {userId = os.time() of last active-session advance}
+local recentTradeRequests = {} -- {userId = {key, timestamp}}; duplicate guard
 
 -- ══════════════════════════════════════════════
 -- PLAYER DATA LOAD / SAVE
@@ -528,6 +529,11 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 		rejectRequest(player, "Market price unavailable. Try again shortly.")
 		return
 	end
+	local requestKey = action .. ":" .. itemName .. ":" .. tostring(quantity)
+	local recentTrade = recentTradeRequests[userId]
+	if recentTrade and recentTrade.key == requestKey and os.clock() - recentTrade.timestamp < 0.75 then
+		return
+	end
 
 	if action == "buy" then
 		local totalCost = currentPrice * quantity
@@ -543,6 +549,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 			rejectRequest(player, "Not enough MolCoins to buy " .. itemName .. " (need " .. totalCost .. ").")
 			return
 		end
+		recentTradeRequests[userId] = {key = requestKey, timestamp = os.clock()}
 
 		-- Deduct MolCoins, add to inventory
 		data.molCoins = data.molCoins - totalCost
@@ -575,6 +582,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 			rejectRequest(player, "Daily market income limit reached. Try again after the next reset.")
 			return
 		end
+		recentTradeRequests[userId] = {key = requestKey, timestamp = os.clock()}
 		data.atoms[itemName] = itemCount - quantity
 		if data.atoms[itemName] <= 0 then
 			data.atoms[itemName] = nil
@@ -724,6 +732,7 @@ Players.PlayerRemoving:Connect(function(player)
 	playerData[player.UserId] = nil
 	playerDailyEarned[player.UserId] = nil
 	lastDayAdvance[player.UserId] = nil
+	recentTradeRequests[player.UserId] = nil
 end)
 
 -- Auto-save loop
