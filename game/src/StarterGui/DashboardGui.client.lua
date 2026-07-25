@@ -471,6 +471,33 @@ tradeLayout.FillDirection = Enum.FillDirection.Vertical
 tradeLayout.Padding = UDim.new(0, 8)
 tradeLayout.Parent = tradeScroll
 
+local dashboardPrices = {}
+local marketPriceLabels = {}
+for _, item in ipairs(marketItems) do
+	-- Use the shared module baseline until the server publishes its live quote.
+	dashboardPrices[item.name] = item.basePrice
+end
+
+local marketPricesEvent = Remotes:FindFirstChild("MarketPricesUpdated")
+if marketPricesEvent then
+	marketPricesEvent.OnClientEvent:Connect(function(prices)
+		if type(prices) ~= "table" then return end
+		for itemName, price in pairs(prices) do
+			if type(price) == "number" and dashboardPrices[itemName] then
+				local previous = dashboardPrices[itemName]
+				dashboardPrices[itemName] = price
+				local priceLabel = marketPriceLabels[itemName]
+				if priceLabel then
+					priceLabel.Text = "$" .. price
+					priceLabel.TextColor3 = price >= previous
+						and Color3.fromRGB(100, 200, 100)
+						or Color3.fromRGB(255, 100, 100)
+				end
+			end
+		end
+	end)
+end
+
 for _, item in ipairs(marketItems) do
 	local itemFrame = Instance.new("Frame")
 	itemFrame.Name = item.name
@@ -479,9 +506,8 @@ for _, item in ipairs(marketItems) do
 	itemFrame.Parent = tradeScroll
 	createCorner(itemFrame, 8)
 
-	-- Market dynamic pricing (simulated)
-	local priceVariation = math.random(-20, 20)
-	local currentPrice = item.basePrice + priceVariation
+	-- The server owns the quote; this is only the initial display value.
+	local currentPrice = dashboardPrices[item.name]
 
 	createTextLabel(itemFrame, {
 		Name = "NameLabel",
@@ -493,15 +519,16 @@ for _, item in ipairs(marketItems) do
 		RichText = true,
 	})
 
-	createTextLabel(itemFrame, {
+	local priceLabel = createTextLabel(itemFrame, {
 		Name = "PriceLabel",
 		Size = UDim2.new(0.2, 0, 1, 0),
 		Position = UDim2.new(0.25, 0, 0, 0),
 		Text = "$" .. currentPrice,
 		TextXAlignment = Enum.TextXAlignment.Center,
-		TextColor3 = (priceVariation >= 0) and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(255, 100, 100),
+		TextColor3 = Color3.fromRGB(255, 215, 0),
 		Font = Enum.Font.GothamBold,
 	})
+	marketPriceLabels[item.name] = priceLabel
 
 	local buyBtn = Instance.new("TextButton")
 	buyBtn.Name = "BuyBtn"
@@ -516,15 +543,16 @@ for _, item in ipairs(marketItems) do
 	createCorner(buyBtn, 6)
 
 	buyBtn.Activated:Connect(function()
-		print("[DashboardGui] Buy clicked:", item.name, "Price:", currentPrice)
-		if playerData and playerData.molCoins < currentPrice then
+		local quotedPrice = dashboardPrices[item.name] or item.basePrice
+		print("[DashboardGui] Buy clicked:", item.name, "Price:", quotedPrice)
+		if playerData and playerData.molCoins < quotedPrice then
 			print("[DashboardGui] Insufficient funds!")
 			buyBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
 			task.wait(1)
 			buyBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
 			return
 		end
-		RequestMarketTrade:FireServer("buy", item.name, 1, currentPrice)
+		RequestMarketTrade:FireServer("buy", item.name, 1, quotedPrice)
 	end)
 
 	local sellBtn = Instance.new("TextButton")
@@ -540,8 +568,9 @@ for _, item in ipairs(marketItems) do
 	createCorner(sellBtn, 6)
 
 	sellBtn.Activated:Connect(function()
-		print("[DashboardGui] Sell clicked:", item.name, "Price:", currentPrice)
-		RequestMarketTrade:FireServer("sell", item.name, 1, currentPrice)
+		local quotedPrice = dashboardPrices[item.name] or item.basePrice
+		print("[DashboardGui] Sell clicked:", item.name, "Price:", quotedPrice)
+		RequestMarketTrade:FireServer("sell", item.name, 1, quotedPrice)
 	end)
 end
 
