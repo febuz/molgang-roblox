@@ -28,6 +28,11 @@ local modalNames = {
 local busy = false
 local guiTraceEnabled = RunService:IsStudio() or game:GetAttribute("EnableOtapGuiTrace") == true
 
+local function movementInputActive()
+	local movementLockUntil = Players.LocalPlayer:GetAttribute("MovementGuiLockUntil")
+	return type(movementLockUntil) == "number" and os.clock() < movementLockUntil
+end
+
 local function getOpenModalNames()
 	local names = {}
 	for _, child in ipairs(playerGui:GetChildren()) do
@@ -80,6 +85,11 @@ local function watch(gui)
 	if not gui:IsA("ScreenGui") or not modalNames[gui.Name] then return end
 	gui:GetPropertyChangedSignal("Enabled"):Connect(function()
 		if gui.Enabled then
+			if gui.Name == "AchievementsGui" and movementInputActive() then
+				gui.Enabled = false
+				traceGui("reject-open", gui, "movement lock active")
+				return
+			end
 			traceGui("enabled", gui)
 			closeOthers(gui)
 		else

@@ -462,9 +462,21 @@ if modalDashboard and modalQuiz then
 			"announcements must sit above HUD status but below interactive modals")
 		modalDashboard.Enabled = false
 	end
-	check("Owned overlays are not modal lane members",
-		findScreenGui("CostWarning") == nil or findScreenGui("CostWarning").DisplayOrder > modalDashboard.DisplayOrder,
-		"CostWarning must layer above its owner without closing it")
+check("Owned overlays are not modal lane members",
+	findScreenGui("CostWarning") == nil or findScreenGui("CostWarning").DisplayOrder > modalDashboard.DisplayOrder,
+	"CostWarning must layer above its owner without closing it")
+
+-- A delayed keyboard event must not reopen Achievements immediately after a
+-- movement input. This is the regression probe for the Vinegar/WASD issue.
+local achievementProbe = findScreenGui("AchievementsGui")
+if achievementProbe then
+	player:SetAttribute("MovementGuiLockUntil", os.clock() + 1)
+	achievementProbe.Enabled = true
+	task.wait(0.05)
+	check("Achievements rejects delayed movement opener", not achievementProbe.Enabled,
+		"AchievementsGui reopened while the movement GUI lock was active")
+	player:SetAttribute("MovementGuiLockUntil", 0)
+end
 else
 	check("Modal menus are mutually exclusive", false, "DashboardGui or QuizGui is missing")
 end

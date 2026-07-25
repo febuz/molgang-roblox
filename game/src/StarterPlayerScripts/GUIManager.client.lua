@@ -32,6 +32,11 @@ local movementKeys = {
 	[Enum.KeyCode.D] = true,
 }
 local movementKeysDown = {}
+-- Vinegar/embedded Studio can deliver a delayed keyboard event after the
+-- physical WASD input has already ended. Keep a short movement lock so that
+-- such an event cannot reopen a modal during traversal.
+local MOVEMENT_GUI_LOCK_SECONDS = 0.45
+local movementGuiLockUntil = 0
 
 -- Track which GUI panels are open (for ESC close-all)
 local guiStates = {
@@ -169,6 +174,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 	if movementKeys[input.KeyCode] then
 		movementKeysDown[input.KeyCode] = true
+		movementGuiLockUntil = os.clock() + MOVEMENT_GUI_LOCK_SECONDS
+		player:SetAttribute("MovementGuiLockUntil", movementGuiLockUntil)
 		-- If a stale shortcut or an external script left this modal open, the
 		-- first movement input is an unambiguous signal to return control to play.
 		local achievements = findScreenGui("AchievementsGui")
@@ -308,6 +315,12 @@ local function guardAchievementsGui(gui)
 	if not gui:IsA("ScreenGui") or gui.Name ~= "AchievementsGui" then return end
 	gui:GetPropertyChangedSignal("Enabled"):Connect(function()
 		if not gui.Enabled then return end
+		if os.clock() < movementGuiLockUntil then
+			gui.Enabled = false
+			guiStates.AchievementsGui = false
+			print("[GUIManager] Rejected delayed AchievementsGui after movement input")
+			return
+		end
 		for key, down in pairs(movementKeysDown) do
 			if down and UserInputService:IsKeyDown(key) then
 				gui.Enabled = false
