@@ -428,10 +428,13 @@ end
 
 local function setupLighting()
 	-- Base lighting — industrial twilight with warm neon accents
-	Lighting.Ambient = Color3.fromRGB(42, 46, 54)        -- readable cool grey
-	Lighting.OutdoorAmbient = Color3.fromRGB(30, 36, 44)  -- darker outdoors
-	Lighting.Brightness = 0.28                             -- preserve material detail
-	Lighting.ClockTime = 5.5                               -- dawn twilight (realistic)
+	-- Start the OTAP session in readable morning light. The day/night loop
+	-- still drives realistic dusk/night later, but a new player must be able to
+	-- see the platform beneath the spawn instead of appearing to float in space.
+	Lighting.Ambient = Color3.fromRGB(50, 54, 62)
+	Lighting.OutdoorAmbient = Color3.fromRGB(45, 49, 56)
+	Lighting.Brightness = 0.55
+	Lighting.ClockTime = 8.0
 	Lighting.GlobalShadows = true
 	-- Technology is configured by default.project.json. Studio blocks server
 	-- scripts from changing this property at runtime; attempting to write it
