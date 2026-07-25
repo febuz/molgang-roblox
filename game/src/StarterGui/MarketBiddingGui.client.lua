@@ -192,30 +192,59 @@ sellBtn.Font = Enum.Font.GothamBold
 sellBtn.Parent = main
 corner(sellBtn, 6)
 
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "OrderStatus"
+statusLabel.Size = UDim2.new(1, -16, 0, 18)
+statusLabel.Position = UDim2.new(0, 8, 0, 168)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Choose a product, enter a price and quantity."
+statusLabel.TextColor3 = C.textDim
+statusLabel.TextScaled = true
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = main
+
+local function setStatus(text, color)
+	statusLabel.Text = text
+	statusLabel.TextColor3 = color or C.textDim
+end
+
+local function requestBids()
+	local r = Remotes:FindFirstChild("RequestMarketBids")
+	if r then r:FireServer() else setStatus("Order book service is unavailable; try again shortly.", C.red) end
+end
+
 bidBtn.Activated:Connect(function()
-	if not selectedProduct then return end
+	if not selectedProduct then setStatus("Select a product first.", C.red); return end
 	local price = tonumber(priceBox.Text)
 	local qty = tonumber(qtyBox.Text) or 1
-	if not price or price < 10 then return end
+	if not price or price < 10 then setStatus("A bid must be at least 10 MC per unit.", C.red); return end
+	if qty < 1 then setStatus("Quantity must be at least 1.", C.red); return end
 	local r = Remotes:FindFirstChild("RequestPlaceBid")
-	if r then r:FireServer(selectedProduct, price, qty) end
+	if not r then setStatus("Order service is unavailable; try again shortly.", C.red); return end
+	r:FireServer(selectedProduct, price, qty)
+	setStatus("Bid submitted — checking escrow and matching…", C.gold)
 	priceBox.Text = ""
+	task.delay(0.25, requestBids)
 end)
 
 sellBtn.Activated:Connect(function()
-	if not selectedProduct then return end
+	if not selectedProduct then setStatus("Select a product first.", C.red); return end
 	local price = tonumber(priceBox.Text)
 	local qty = tonumber(qtyBox.Text) or 1
-	if not price or price < 1 or qty < 1 then return end
+	if not price or price < 1 or qty < 1 then setStatus("Enter a positive price and quantity.", C.red); return end
 	local r = Remotes:FindFirstChild("RequestPlaceSell")
-	if r then r:FireServer(selectedProduct, price, qty) end
+	if not r then setStatus("Order service is unavailable; try again shortly.", C.red); return end
+	r:FireServer(selectedProduct, price, qty)
+	setStatus("Sell order submitted — checking inventory and matching…", C.gold)
 	priceBox.Text = ""
+	task.delay(0.25, requestBids)
 end)
 
 -- Active bids list
 local bidsLabel = Instance.new("TextLabel")
 bidsLabel.Size = UDim2.new(1, -16, 0, 20)
-bidsLabel.Position = UDim2.new(0, 8, 0, 173)
+bidsLabel.Position = UDim2.new(0, 8, 0, 188)
 bidsLabel.BackgroundTransparency = 1
 bidsLabel.Text = "Active Orders"
 bidsLabel.TextColor3 = C.gold
@@ -225,8 +254,8 @@ bidsLabel.TextXAlignment = Enum.TextXAlignment.Left
 bidsLabel.Parent = main
 
 local bidsScroll = Instance.new("ScrollingFrame")
-bidsScroll.Size = UDim2.new(1, -16, 0, 220)
-bidsScroll.Position = UDim2.new(0, 8, 0, 196)
+bidsScroll.Size = UDim2.new(1, -16, 0, 205)
+bidsScroll.Position = UDim2.new(0, 8, 0, 211)
 bidsScroll.BackgroundColor3 = C.panel
 bidsScroll.ScrollBarThickness = 4
 bidsScroll.Parent = main
@@ -331,14 +360,14 @@ if bidResponseEvent then
 			end
 		end
 		bidsScroll.CanvasSize = UDim2.new(0, 0, 0, shown * 34)
+		setStatus("Order book refreshed — " .. shown .. " active orders.", C.textDim)
 	end)
 end
 
 -- Refresh on open
 screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	if screenGui.Enabled then
-		local r = Remotes:FindFirstChild("RequestMarketBids")
-		if r then r:FireServer() end
+		requestBids()
 	end
 end)
 
@@ -347,8 +376,7 @@ task.spawn(function()
 	while true do
 		task.wait(10)
 		if screenGui.Enabled then
-			local r = Remotes:FindFirstChild("RequestMarketBids")
-			if r then r:FireServer() end
+			requestBids()
 		end
 	end
 end)
