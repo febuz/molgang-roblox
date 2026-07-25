@@ -252,6 +252,9 @@ const CAMS = {
 const preset = CAMS[params.get('cam')];
 if (preset) { player.pos.set(...preset.pos); player.yaw = preset.yaw; player.pitch = preset.pitch; }
 const keys = {};
+// Analog input from Quest Touch controllers / gamepads (fed by pollGamepads):
+// mx/mz = left-stick move, lx/ly = right-stick look, sprint = stick click.
+const pad = { mx: 0, mz: 0, lx: 0, ly: 0, sprint: false };
 addEventListener('keydown', (e) => { keys[e.code] = true; });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 const canvas = renderer.domElement;
@@ -276,11 +279,18 @@ function step(dt) {
   const fwd = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw)); // look dir (horizontal)
   const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
   const mv = new THREE.Vector3();
-  const sp = player.speed * (keys['ShiftLeft'] ? 2.2 : 1);
+  const sp = player.speed * ((keys['ShiftLeft'] || pad.sprint) ? 2.2 : 1);
   if (keys['KeyW'] || keys['ArrowUp']) mv.add(fwd);      // W = forward
   if (keys['KeyS'] || keys['ArrowDown']) mv.sub(fwd);    // S = backward
   if (keys['KeyD'] || keys['ArrowRight']) mv.add(right);
   if (keys['KeyA'] || keys['ArrowLeft']) mv.sub(right);
+  if (pad.mx || pad.mz) {                                 // gamepad left stick (analog)
+    mv.add(fwd.clone().multiplyScalar(-pad.mz)).add(right.clone().multiplyScalar(pad.mx));
+  }
+  if (pad.lx || pad.ly) {                                 // gamepad right stick = look
+    player.yaw -= pad.lx * dt * 2.6;
+    player.pitch = Math.max(-1.3, Math.min(1.0, player.pitch - pad.ly * dt * 2.0));
+  }
   if (mv.lengthSq() > 0) {
     mv.normalize();
     player.pos.add(mv.clone().multiplyScalar(sp * dt));
@@ -824,7 +834,12 @@ async function enterXR() {
   const toggleAR = () => { xrAR = !xrAR; scene.background = xrAR ? null : skyBg; };
   for (const src of session.inputSources) if (src.gamepad) src._prev = [];
   session.addEventListener('selectstart', toggleAR);           // trigger toggles too
-  session.__pollButtons = () => {
+  // Smooth locomotion: thumbstick walks along the headset gaze (XZ plane),
+  // implemented as a growing reference-space offset so the physical play space
+  // stays intact. Without this the world was explore-by-walking-only on Quest.
+  const loco = { x: 0, z: 0, base: null };
+  const xrFwd = new THREE.Vector3();
+  session.__pollButtons = (dt) => {
     for (const src of session.inputSources) {
       const gp = src.gamepad; if (!gp) continue;
       src._prev = src._prev || [];
@@ -832,12 +847,119 @@ async function enterXR() {
         if (i >= 4 && b.pressed && !src._prev[i]) toggleAR();     // face buttons (A/B/X/Y)
         src._prev[i] = b.pressed;
       });
+      const ax = Math.abs(gp.axes[2] || 0) > 0.16 ? gp.axes[2] : 0;   // xr-standard thumbstick
+      const ay = Math.abs(gp.axes[3] || 0) > 0.16 ? gp.axes[3] : 0;
+      if ((ax || ay) && dt) {
+        camera.getWorldDirection(xrFwd); xrFwd.y = 0; xrFwd.normalize();
+        const right = { x: -xrFwd.z, z: xrFwd.x };
+        const sp = 6 * dt;                                    // m/s, comfortable pace
+        loco.x += (xrFwd.x * -ay + right.x * ax) * sp;
+        loco.z += (xrFwd.z * -ay + right.z * ax) * sp;
+        loco.base = loco.base || renderer.xr.getReferenceSpace();
+        if (loco.base && window.XRRigidTransform) renderer.xr.setReferenceSpace(
+          loco.base.getOffsetReferenceSpace(new XRRigidTransform({ x: -loco.x, y: 0, z: -loco.z })));
+      }
     }
   };
   session.addEventListener('end', () => { scene.background = skyBg; if (xrBtn) xrBtn.disabled = false; });
 }
 if (xrBtn) xrBtn.addEventListener('click', () => { xrBtn.disabled = true; enterXR().catch((e) => { xrBtn.disabled = false; if (xrStat) xrStat.textContent = '🕶️ XR start failed: ' + e.message; }); });
 detectXR();
+
+// ---------- Quest Touch / gamepad in the flat browser + 🎬 cinema mode ----------
+// The Meta Quest Browser exposes the Touch controllers through the Gamepad API
+// but maps nothing to the page, so the game was unplayable on a Quest 3S without
+// a paired mouse. Two modes, switched automatically:
+//  · world mode — left stick walks (analog), right stick looks, stick-click
+//    sprints; plays exactly like WASD + pointer lock.
+//  · cursor mode — whenever a DOM panel is open (intro/fertlab/farm/factory/
+//    chemsim): the sticks drive a virtual cursor and the trigger clicks, i.e.
+//    the controller behaves as a mouse. B/squeeze closes the panel (Escape).
+// Cinema: fullscreen is what makes the Quest Browser expand the page onto its
+// big curved theater screen; on desktop it is a plain fullscreen toggle.
+const OVERLAY_IDS = ['intro', 'fertlab', 'farm', 'factory', 'chemsim'];
+const overlayOpen = () => OVERLAY_IDS.some((id) => {
+  const el = document.getElementById(id);
+  return el && getComputedStyle(el).display !== 'none';
+});
+let gpCursor = null, gpX = innerWidth / 2, gpY = innerHeight / 2, gpSeen = 0;
+const gpPrev = {};                       // per-pad button state for edge detection
+function gpEnsureCursor() {
+  if (gpCursor) return gpCursor;
+  gpCursor = document.createElement('div');
+  gpCursor.style.cssText = 'position:fixed;left:0;top:0;width:20px;height:20px;'
+    + 'margin:-10px 0 0 -10px;border:2px solid #6ffcda;border-radius:50%;'
+    + 'background:rgba(111,252,218,.22);box-shadow:0 0 10px rgba(111,252,218,.6);'
+    + 'pointer-events:none;z-index:99;transition:opacity .3s;opacity:0';
+  document.body.appendChild(gpCursor);
+  return gpCursor;
+}
+function gpClick() {
+  const el = document.elementFromPoint(gpX, gpY);
+  if (!el) return;
+  const init = { bubbles: true, cancelable: true, clientX: gpX, clientY: gpY, view: window, button: 0 };
+  el.dispatchEvent(new PointerEvent('pointerdown', init));
+  el.dispatchEvent(new MouseEvent('mousedown', init));
+  el.dispatchEvent(new PointerEvent('pointerup', init));
+  el.dispatchEvent(new MouseEvent('mouseup', init));
+  el.dispatchEvent(new MouseEvent('click', init));
+}
+const gpDead = (v) => (Math.abs(v) > 0.16 ? v : 0);
+function pollGamepads(dt, now) {
+  pad.mx = pad.mz = pad.lx = pad.ly = 0;
+  if (renderer.xr.isPresenting || !navigator.getGamepads) return;
+  const inPanel = overlayOpen();
+  let active = false;
+  for (const gp of navigator.getGamepads()) {
+    if (!gp || !gp.connected) continue;
+    const ax0 = gpDead(gp.axes[0] || 0), ay0 = gpDead(gp.axes[1] || 0);
+    const ax1 = gpDead(gp.axes[2] || 0), ay1 = gpDead(gp.axes[3] || 0);
+    if (ax0 || ay0 || ax1 || ay1) active = true;
+    if (inPanel) {                       // cursor mode: either stick moves the cursor
+      gpX = Math.max(0, Math.min(innerWidth, gpX + (ax0 + ax1) * 1000 * dt));
+      gpY = Math.max(0, Math.min(innerHeight, gpY + (ay0 + ay1) * 1000 * dt));
+    } else {                             // world mode: move + look
+      pad.mx += ax0; pad.mz += ay0; pad.lx += ax1; pad.ly += ay1;
+    }
+    const prev = gpPrev[gp.index] || (gpPrev[gp.index] = {});
+    gp.buttons.forEach((b, i) => {
+      const was = prev[i] || false; prev[i] = b.pressed;
+      if (b.pressed === was) return;
+      active = true;
+      if (i === 0 && b.pressed && inPanel) gpClick();               // trigger/A = click
+      if (i === 0 && b.pressed && !inPanel) gpX = innerWidth / 2, gpY = innerHeight / 2;
+      if (i === 1 && b.pressed) {                                   // squeeze/B = close panel
+        for (const id of OVERLAY_IDS) {
+          const el = document.getElementById(id);
+          if (el && id !== 'intro' && getComputedStyle(el).display !== 'none') el.style.display = 'none';
+        }
+      }
+      if ((i === 10 || i === 11) && !inPanel) pad.sprint = b.pressed; // stick click = sprint
+    });
+  }
+  if (active && inPanel) {
+    gpSeen = now;
+    gpEnsureCursor().style.opacity = '1';
+    gpCursor.style.left = gpX + 'px'; gpCursor.style.top = gpY + 'px';
+    const el = document.elementFromPoint(gpX, gpY);
+    if (el) el.dispatchEvent(new PointerEvent('pointermove',
+      { bubbles: true, clientX: gpX, clientY: gpY, pointerType: 'mouse' }));
+  } else if (gpCursor && (!inPanel || now - gpSeen > 4000)) {
+    gpCursor.style.opacity = '0';
+  }
+}
+
+// 🎬 cinema-mode button (bottom of the right-hand button stack)
+const cinemaBtn = document.getElementById('cinema-btn');
+if (cinemaBtn) {
+  cinemaBtn.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  });
+  document.addEventListener('fullscreenchange', () => {
+    cinemaBtn.textContent = document.fullscreenElement ? '🎬 Exit cinema' : '🎬 Cinema';
+  });
+}
 
 // ---------- Slakkenspoor process controls (player = plant operator) ----------
 // The player drives the real chemistry: the sliders POST setpoints to the Python
@@ -1357,6 +1479,7 @@ function adaptiveRes(renderMs) {
 function loop(now) {
   now = now || performance.now();
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
+  pollGamepads(dt, now);
   step(dt);
   updateAgents(dt);
   if (steam.length) updateSteam(dt);
@@ -1371,7 +1494,7 @@ function loop(now) {
   sun.target.position.set(player.pos.x, 0, player.pos.z);
   const xr = renderer.xr.isPresenting;
   if (xr) {
-    const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons();
+    const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons(dt);
     renderer.render(scene, camera);                    // headset drives cadence (no post-fx in XR)
   } else if (now - lastRender >= refresh / BUDGET) {
     lastRender = now;
