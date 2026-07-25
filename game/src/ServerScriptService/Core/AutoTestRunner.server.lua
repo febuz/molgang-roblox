@@ -132,6 +132,8 @@ end)
 			stationKey .. " station is not interactable")
 		assert(station:GetAttribute("InteractionType") == contract.interactionType,
 			stationKey .. " station interaction type drifted")
+		assert(station.Material == Enum.Material.Metal,
+			stationKey .. " station platform must use industrial Metal material")
 		assert(contract.radius > 0, stationKey .. " station has no positive access radius")
 		local mapPosition = contract.mapPosition
 		assert(type(mapPosition) == "table"

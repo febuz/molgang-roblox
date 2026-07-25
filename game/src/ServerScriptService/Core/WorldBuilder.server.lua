@@ -2034,7 +2034,7 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Size = Vector3.new(30, 2, 25),
 		Position = Vector3.new(-1850, 10, -40),
 		Color = CONFIG.INDUSTRIAL_GREY,
-		Material = Enum.Material.SmoothPlastic,
+		Material = Enum.Material.Metal,
 	})
 	tagInteractable(crushBase, "SlagCrushStation")
 	tagZone(crushBase, "West")
@@ -2116,7 +2116,7 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Size = Vector3.new(50, 2, 30),
 		Position = Vector3.new(-1850, 10, 40),
 		Color = CONFIG.INDUSTRIAL_GREY,
-		Material = Enum.Material.SmoothPlastic,
+		Material = Enum.Material.Metal,
 	})
 	tagInteractable(leachBase, "SlagLeachStation")
 	tagZone(leachBase, "West")
@@ -2544,7 +2544,7 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Size = Vector3.new(16, 3, 16),
 		Position = Vector3.new(-2090, 10, -55),
 		Color = CONFIG.INDUSTRIAL_GREY,
-		Material = Enum.Material.SmoothPlastic,
+		Material = Enum.Material.Metal,
 	})
 	tagInteractable(coneCrusherBase, "SlagConeCrusher")
 
@@ -2586,7 +2586,7 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Size = Vector3.new(30, 3, 14),
 		Position = Vector3.new(-2050, 10, -40),
 		Color = CONFIG.INDUSTRIAL_GREY,
-		Material = Enum.Material.SmoothPlastic,
+		Material = Enum.Material.Metal,
 	})
 	tagInteractable(millBase, "SlagBallMill")
 
