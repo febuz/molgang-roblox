@@ -144,6 +144,14 @@ timeTest("Spawn location exists", function()
 	assert(spawn, "No SpawnLocation found")
 end)
 
+timeTest("World readiness implies safe spawn", function()
+	if Workspace:GetAttribute("MoleculiaReady") == true then
+		local spawn = Workspace:FindFirstChild("MolGangSpawn", true)
+		assert(spawn and spawn:IsA("BasePart") and spawn.Anchored,
+			"MoleculiaReady was published without an anchored safe spawn")
+	end
+end)
+
 timeTest("Normal gravity is configured", function()
 	assert(math.abs(Workspace.Gravity - 196.2) < 0.01,
 		"Unexpected gravity: " .. tostring(Workspace.Gravity))

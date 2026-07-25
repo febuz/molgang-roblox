@@ -24,6 +24,41 @@ local function recoverPlayer(character, humanoid, hrp, spawn)
 	humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 end
 
+-- A character can be created before WorldBuilder publishes the real spawn.
+-- Stage that character and place it once the complete world is ready; this
+-- closes the startup race that otherwise leaves players falling through the
+-- still-building archipelago.
+local function stageCharacterUntilWorldReady(character)
+	if workspace:GetAttribute("MoleculiaReady") == true then return end
+	task.spawn(function()
+		local deadline = os.clock() + 60
+		while character.Parent and os.clock() < deadline do
+			local spawn = findSafeSpawn()
+			if workspace:GetAttribute("MoleculiaReady") == true and spawn then
+				local hrp = character:FindFirstChild("HumanoidRootPart")
+				local humanoid = character:FindFirstChild("Humanoid")
+				if hrp and humanoid and humanoid.Health > 0 then
+					recoverPlayer(character, humanoid, hrp, spawn)
+				end
+				return
+			end
+			task.wait(0.25)
+		end
+	end)
+end
+
+local function watchPlayer(player)
+	player.CharacterAdded:Connect(stageCharacterUntilWorldReady)
+	if player.Character then
+		stageCharacterUntilWorldReady(player.Character)
+	end
+end
+
+Players.PlayerAdded:Connect(watchPlayer)
+for _, player in ipairs(Players:GetPlayers()) do
+	watchPlayer(player)
+end
+
 task.spawn(function()
 	while true do
 		for _, player in ipairs(Players:GetPlayers()) do
