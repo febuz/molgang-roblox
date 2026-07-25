@@ -297,13 +297,15 @@ function MiningSystem.GeneratePlots()
 			local roll = math.random()
 			local plotType
 			if roll < 0.40 then
-				plotType = MiningSystem.PlotTypes[1]  -- 40% low grade
-			elseif roll < 0.70 then
-				plotType = MiningSystem.PlotTypes[2]  -- 30% medium
-			elseif roll < 0.90 then
-				plotType = MiningSystem.PlotTypes[3]  -- 20% high grade
+				plotType = MiningSystem.PlotTypes[1]  -- 40% practice outcrop
+			elseif roll < 0.65 then
+				plotType = MiningSystem.PlotTypes[2]  -- 25% low grade
+			elseif roll < 0.85 then
+				plotType = MiningSystem.PlotTypes[3]  -- 20% medium grade
+			elseif roll < 0.95 then
+				plotType = MiningSystem.PlotTypes[4]  -- 10% high grade
 			else
-				plotType = MiningSystem.PlotTypes[4]  -- 10% legendary
+				plotType = MiningSystem.PlotTypes[5]  -- 5% chromite-vanadium
 			end
 
 			-- Randomize composition slightly (±20%)
