@@ -25,6 +25,7 @@ local GameClock = require(ReplicatedStorage.Modules.GameClock)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
+local SlagPersistence = require(ReplicatedStorage.Modules.SlagPersistence)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -120,13 +121,15 @@ local function getPlayerSlag(userId)
 		-- Try to load from persistent PlayerDataBridge
 		local persistentData = PlayerDataBridge.GetPlayerData(userId)
 		if persistentData and persistentData.slagInventory then
-			playerSlagData[userId] = persistentData.slagInventory
+			playerSlagData[userId] = SlagPersistence.SanitizeInventory(persistentData.slagInventory)
+			persistentData.slagInventory = playerSlagData[userId]
 		else
 			playerSlagData[userId] = {
 				chunk = 0,
 				crushed = 0,
 				ground = 0,
 				powder = 0,
+				residue = 0,
 			}
 			-- Write back to persistent data so it saves with DataStore
 			if persistentData then
