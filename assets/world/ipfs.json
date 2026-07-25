@@ -1,0 +1,5 @@
+{
+  "description": "Optional P2P asset layer. Empty by default; world.js uses local assets.",
+  "models": null,
+  "impostors": null
+}
