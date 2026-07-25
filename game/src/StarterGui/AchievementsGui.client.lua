@@ -170,6 +170,19 @@ PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
 end)
 
+-- This GUI can be created after the one-shot PlayerDataLoaded event. Recover
+-- the authoritative snapshot so the panel never opens as an empty shell.
+local function refreshPlayerData()
+	local getData = Remotes:FindFirstChild("GetPlayerData")
+	if not getData or not getData:IsA("RemoteFunction") then return false end
+	local ok, data = pcall(function() return getData:InvokeServer() end)
+	if ok and type(data) == "table" then
+		playerData = data
+		return true
+	end
+	return false
+end
+
 local function displayBadges()
 	-- Clear existing badges
 	for _, child in ipairs(badgeGrid:GetChildren()) do
@@ -178,7 +191,24 @@ local function displayBadges()
 		end
 	end
 
-	if not playerData then return end
+	if not playerData then
+		local empty = Instance.new("Frame")
+		empty.Name = "NoBadges"
+		empty.Size = UDim2.new(1, -20, 0, 100)
+		empty.BackgroundColor3 = COLORS.panelLight
+		empty.BackgroundTransparency = 0.35
+		empty.Parent = badgeGrid
+		createCorner(empty, 8)
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Text = "Loading achievement data…"
+		text.TextColor3 = COLORS.textSecondary
+		text.TextScaled = true
+		text.Font = Enum.Font.Gotham
+		text.Parent = empty
+		return
+	end
 
 	-- Get unlocked achievements
 	local unlocked = Achievements.GetAllUnlocked(playerData)
@@ -227,6 +257,23 @@ local function displayProgress()
 
 	-- Get next 5 achievements
 	local next = Achievements.GetNextAchievements(playerData, 5)
+	if #next == 0 then
+		local complete = Instance.new("Frame")
+		complete.Name = "AllAchievementsComplete"
+		complete.Size = UDim2.new(1, 0, 0, 70)
+		complete.BackgroundColor3 = COLORS.panelLight
+		complete.Parent = progressScroll
+		createCorner(complete, 8)
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Text = "All achievements unlocked — you are a certified Moleculia master!"
+		text.TextColor3 = COLORS.gold
+		text.TextScaled = true
+		text.Font = Enum.Font.GothamBold
+		text.Parent = complete
+		return
+	end
 
 	for _, entry in ipairs(next) do
 		local ach = entry.achievement
@@ -346,7 +393,10 @@ end)
 
 -- GUIManager owns the A shortcut; refresh when any opener enables this GUI.
 screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
-	if screenGui.Enabled then updateDisplay() end
+	if screenGui.Enabled then
+		if not playerData then refreshPlayerData() end
+		updateDisplay()
+	end
 end)
 
 _G.AchievementsGuiToggle = function()

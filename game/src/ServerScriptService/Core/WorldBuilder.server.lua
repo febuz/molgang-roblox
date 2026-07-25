@@ -3872,6 +3872,29 @@ local function buildGlobalElements(zonesFolder: Folder)
 			Range = 30,
 		})
 
+		-- Every remote mining outpost needs a visible return route. Previously
+		-- players could teleport north/east/south/west but had no way back to
+		-- Nexus without guessing coordinates or resetting the character.
+		local returnPad = createPart(outpost, {
+			Name = "TeleportPad_ReturnToNexus",
+			Size = Vector3.new(10, 1, 10),
+			Position = region.center + Vector3.new(0, 7, 45),
+			Color = Color3.fromRGB(0, 210, 150),
+			Material = Enum.Material.Neon,
+		})
+		returnPad:SetAttribute("TeleportTarget", Vector3.new(0, 10, 0))
+		returnPad:SetAttribute("TeleportName", "Nexus Hub")
+		addBillboard(returnPad, {
+			Text = "RETURN TO NEXUS\n← Hub / Factory",
+			Size = UDim2.new(8, 0, 2.5, 0),
+			StudsOffset = Vector3.new(0, 4, 0),
+			TextColor = Color3.fromRGB(0, 255, 180),
+			BackgroundColor = Color3.fromRGB(5, 35, 28),
+			BackgroundTransparency = 0.2,
+			MaxDistance = 100,
+		})
+		addPointLight(returnPad, {Color = Color3.fromRGB(0, 255, 180), Brightness = 2, Range = 16})
+
 		-- Additional detail (#48): Safety fences, equipment, ore piles
 		-- Corner fence posts
 		for fx = -1, 1, 2 do

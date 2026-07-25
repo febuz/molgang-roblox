@@ -177,7 +177,7 @@ tabButtons["explore"].BackgroundColor3 = C.tabActive; tabButtons["explore"].Text
 
 local explorePanel = tabPanels["explore"]
 lbl(explorePanel, {N="Info", S=UDim2.new(1,-16,0,36), P=UDim2.new(0,8,0,4),
-	T="Buy an EXPLORATION LICENSE to claim a mining plot. You WON'T know the mineral composition until you drill! Use a Drill Rig to explore, or pay 500 MC for manual survey.",
+	T="MINING LOOP: buy a license → explore the plot → deploy equipment → wait for ore → collect and sell it for MolCoins. Composition stays hidden until you explore. Start with the free hand-pick, then upgrade to a Drill Rig or Haul Truck.",
 	C=C.textDim})
 
 local exploreScroll = Instance.new("ScrollingFrame")
@@ -198,7 +198,7 @@ exploreLayout.Parent = exploreScroll
 
 local minesPanel = tabPanels["mines"]
 lbl(minesPanel, {N="Header", S=UDim2.new(1,-16,0,22), P=UDim2.new(0,8,0,4),
-	T="Your Mining Plots — Deploy equipment, explore, collect ore", C=C.accent, F=Enum.Font.GothamBold})
+	T="YOUR MINING LOOP — Explore → deploy → produce ore → collect → sell", C=C.accent, F=Enum.Font.GothamBold})
 
 local minesScroll = Instance.new("ScrollingFrame")
 minesScroll.Size = UDim2.new(1, -16, 1, -30)
@@ -250,7 +250,7 @@ end
 
 local marketPanel = tabPanels["market"]
 lbl(marketPanel, {N="Header", S=UDim2.new(1,-16,0,22), P=UDim2.new(0,8,0,4),
-	T="Mining Plot Marketplace — Buy and sell explored/unexplored plots", C=C.accent, F=Enum.Font.GothamBold})
+	T="PLOT MARKET — Trade plots when you want to expand or exit a region", C=C.accent, F=Enum.Font.GothamBold})
 
 local marketScroll = Instance.new("ScrollingFrame")
 marketScroll.Size = UDim2.new(1, -16, 1, -30)
