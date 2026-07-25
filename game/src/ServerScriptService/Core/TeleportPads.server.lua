@@ -12,6 +12,21 @@ local COOLDOWN = 3 -- seconds between teleports per player
 local playerCooldowns = {}
 local boundPads = {}
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+
+local function returnToNexus(player)
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not hrp or not humanoid or humanoid.Health <= 0 then return end
+	-- Fixed server-owned destination; the client cannot supply an arbitrary CFrame.
+	hrp.CFrame = CFrame.new(0, 15, 0)
+	print("[TeleportPads] " .. player.Name .. " returned to Nexus Hub")
+end
+
+Remotes.RequestReturnToNexus.OnServerEvent:Connect(returnToNexus)
+
 local function onTouched(hit, pad)
 	local character = hit.Parent
 	if not character then return end

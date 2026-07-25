@@ -1,7 +1,13 @@
 {
   "generated_by": "assets/viewer/build_manifest.py",
-  "count": 80,
+  "count": 93,
   "models": [
+    {
+      "file": "Barrel_01.glb",
+      "stem": "Barrel_01",
+      "label": "Barrel 01",
+      "set": "Industrial & Game"
+    },
     {
       "file": "anvil_hammer.glb",
       "stem": "anvil_hammer",
@@ -19,6 +25,12 @@
       "stem": "banner_pole",
       "label": "Banner Pole",
       "set": "Nexus Hub"
+    },
+    {
+      "file": "barrel_03.glb",
+      "stem": "barrel_03",
+      "label": "Barrel 03",
+      "set": "Industrial & Game"
     },
     {
       "file": "beaker_1L.glb",
@@ -81,6 +93,18 @@
       "set": "Bubble Tea Caf\u00e9"
     },
     {
+      "file": "caged_hanging_light.glb",
+      "stem": "caged_hanging_light",
+      "label": "Caged Hanging Light",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "cement_bag.glb",
+      "stem": "cement_bag",
+      "label": "Cement Bag",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "centrifugal_pump.glb",
       "stem": "centrifugal_pump",
       "label": "Centrifugal Pump",
@@ -90,6 +114,12 @@
       "file": "centrifuge.glb",
       "stem": "centrifuge",
       "label": "Centrifuge",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "chemistry_set.glb",
+      "stem": "chemistry_set",
+      "label": "Chemistry Set",
       "set": "Industrial & Game"
     },
     {
@@ -231,9 +261,21 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "korean_fire_extinguisher_01.glb",
+      "stem": "korean_fire_extinguisher_01",
+      "label": "Korean Fire Extinguisher 01",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "lab_bench.glb",
       "stem": "lab_bench",
       "label": "Lab Bench",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "ladder_sectioned_01.glb",
+      "stem": "ladder_sectioned_01",
+      "label": "Ladder Sectioned 01",
       "set": "Industrial & Game"
     },
     {
@@ -261,6 +303,18 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "metal_jerrycan.glb",
+      "stem": "metal_jerrycan",
+      "label": "Metal Jerrycan",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "metal_toolbox.glb",
+      "stem": "metal_toolbox",
+      "label": "Metal Toolbox",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "microscope.glb",
       "stem": "microscope",
       "label": "Microscope",
@@ -283,6 +337,12 @@
       "stem": "mine_support_frame",
       "label": "Mine Support Frame",
       "set": "Mining Site"
+    },
+    {
+      "file": "modular_industrial_pipes_01.glb",
+      "stem": "modular_industrial_pipes_01",
+      "label": "Modular Industrial Pipes 01",
+      "set": "Industrial & Game"
     },
     {
       "file": "molecule_model.glb",
@@ -339,9 +399,21 @@
       "set": "Nexus Hub"
     },
     {
+      "file": "portable_generator.glb",
+      "stem": "portable_generator",
+      "label": "Portable Generator",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "pressure_vessel.glb",
       "stem": "pressure_vessel",
       "label": "Pressure Vessel",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "propane_tank.glb",
+      "stem": "propane_tank",
+      "label": "Propane Tank",
       "set": "Industrial & Game"
     },
     {
@@ -402,6 +474,12 @@
       "file": "slag_ladle.glb",
       "stem": "slag_ladle",
       "label": "Slag Ladle",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "small_lpg_tank.glb",
+      "stem": "small_lpg_tank",
+      "label": "Small Lpg Tank",
       "set": "Industrial & Game"
     },
     {

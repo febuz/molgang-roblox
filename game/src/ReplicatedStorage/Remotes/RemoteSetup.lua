@@ -159,6 +159,7 @@ local clientToServerEvents = {
 	"RequestListPlotForSale",-- {plotId, askPrice} list mining plot on market
 	"RequestBuyPlotFromMarket", -- {plotId} buy listed mining plot from another player
 	"RequestMiningInfo",     -- {} get all plot data
+	"RequestReturnToNexus",  -- {} safe return from a mining outpost
 	-- Product Market
 	"RequestSellProduct",    -- {productId, quantity} sell refined product
 	"RequestProductPrices",  -- {} get current market prices

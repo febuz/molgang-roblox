@@ -57,6 +57,15 @@ import { initGallery, wireGpuToggle, gpuOptIn } from './viewer-core.js';
 
 wireGpuToggle();
 
+// Chromium's dump-dom exits as soon as the module has no pending browser
+// work, even while initGallery is awaiting a large GLB parse. Keep the
+// dedicated smoke route alive until its async model-load status is complete;
+// normal interactive viewer pages remain unchanged.
+const smokeMode = new URLSearchParams(location.search).get('smoke') === '1';
+if (smokeMode) {
+  window.__molgangSmokeKeepAlive = setTimeout(() => {}, 120000);
+}
+
 // Route to the WebGPU page when the user has opted in and the browser supports
 // it; otherwise render here with WebGL (high-performance if opted in, low-power
 // by default). This mirrors molgang-web/lab3d's index/webgpu split.
@@ -75,6 +84,10 @@ if (gpuOptIn() && 'gpu' in navigator) {
       renderer,
       rendererLabel: optedIn ? 'WebGL high-performance' : 'WebGL courtesy',
       budget: optedIn ? 0.9 : 0.33,
+    }).finally(() => {
+      if (smokeMode && window.__molgangSmokeKeepAlive) {
+        clearTimeout(window.__molgangSmokeKeepAlive);
+      }
     });
   } catch (e) {
     const err = document.querySelector('#err');

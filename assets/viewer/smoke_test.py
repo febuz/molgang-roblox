@@ -85,6 +85,44 @@ def check_viewer_loads(expected):
     try:
         time.sleep(2)
         url = f"http://localhost:{PORT}/viewer/index.html?smoke=1"
+
+        # dump-dom snapshots the page before the sequential async GLB loader
+        # has settled (especially for larger imported props). Use a real
+        # browser wait when the bundled Python Playwright runtime is present.
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            sync_playwright = None
+
+        if sync_playwright:
+            try:
+                with sync_playwright() as playwright:
+                    browser = playwright.chromium.launch(
+                        headless=True,
+                        executable_path=chromium,
+                        args=["--no-sandbox", "--use-gl=swiftshader", "--enable-unsafe-swiftshader"],
+                    )
+                    page = browser.new_page()
+                    page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+                    page.wait_for_function(
+                        "document.querySelector('#status')?.textContent.includes('models loaded')",
+                        timeout=150_000,
+                    )
+                    status = page.locator("#status").inner_text()
+                    browser.close()
+                m = re.search(r"(\d+)/(\d+) models loaded", status)
+                if not m:
+                    fail(f"viewer status was not a model count: {status!r}")
+                loaded, total = int(m.group(1)), int(m.group(2))
+                if loaded != total:
+                    fail(f"viewer loaded only {loaded}/{total} models")
+                if total != expected:
+                    fail(f"viewer total {total} != manifest count {expected}")
+                print(f"OK  viewer loaded {loaded}/{total} models in a real browser")
+                return
+            except Exception as exc:
+                fail(f"Playwright viewer load failed: {exc}")
+
         browser = subprocess.Popen(
             [chromium, "--headless=new", "--no-sandbox", "--use-gl=swiftshader",
              "--enable-unsafe-swiftshader", "--virtual-time-budget=120000",

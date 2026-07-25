@@ -129,6 +129,24 @@ closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
 closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
+local returnBtn = Instance.new("TextButton")
+returnBtn.Name = "ReturnToNexusBtn"
+returnBtn.Size = UDim2.fromOffset(118, 28)
+returnBtn.Position = UDim2.new(1, -162, 0, 7)
+returnBtn.BackgroundColor3 = C.green
+returnBtn.Text = "← NEXUS"
+returnBtn.TextColor3 = Color3.fromRGB(5, 20, 18)
+returnBtn.Font = Enum.Font.GothamBold
+returnBtn.TextScaled = true
+returnBtn.Parent = titleBar
+corner(returnBtn, 6)
+returnBtn.Activated:Connect(function()
+	playUIClick()
+	setActionStatus("Returning to Nexus Hub…", C.green)
+	local r = Remotes:FindFirstChild("RequestReturnToNexus")
+	if r then r:FireServer() else setActionStatus("Return service unavailable.", C.red) end
+end)
+
 -- Tabs
 local tabFrame = Instance.new("Frame")
 tabFrame.Size = UDim2.new(1, 0, 0, 34)
