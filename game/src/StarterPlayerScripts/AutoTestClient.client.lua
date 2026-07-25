@@ -239,6 +239,11 @@ local cancelSellRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestCancel
 check("Sell orders have playable controls", placeSell ~= nil and placeSell.Active
 	and placeSellRemote ~= nil and cancelSellRemote ~= nil,
 	"sell order placement/cancellation is not wired")
+local productSelector = marketBidding and marketBidding:FindFirstChild("ProductSelector", true)
+check("Order book includes byproduct routes", productSelector ~= nil
+	and findButtonByText(productSelector, "BIO ENHANCER") ~= nil
+	and findButtonByText(productSelector, "AGGREGATE") ~= nil,
+	"bio-enhancer or aggregate product selector is missing")
 
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then

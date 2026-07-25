@@ -88,7 +88,7 @@ local newBidLabel = Instance.new("TextLabel")
 newBidLabel.Size = UDim2.new(1, -16, 0, 20)
 newBidLabel.Position = UDim2.new(0, 8, 0, 44)
 newBidLabel.BackgroundTransparency = 1
-newBidLabel.Text = "Place a New Bid"
+newBidLabel.Text = "Place a Market Order"
 newBidLabel.TextColor3 = C.accent
 newBidLabel.TextScaled = true
 newBidLabel.Font = Enum.Font.GothamBold
@@ -99,18 +99,38 @@ newBidLabel.Parent = main
 local productBtns = {}
 local selectedProduct = nil
 local productFrame = Instance.new("Frame")
-productFrame.Size = UDim2.new(1, -16, 0, 32)
+productFrame.Name = "ProductSelector"
+productFrame.Size = UDim2.new(1, -16, 0, 58)
 productFrame.Position = UDim2.new(0, 8, 0, 66)
 productFrame.BackgroundTransparency = 1
 productFrame.Parent = main
 
-local productNames = {"V2O5", "TiO2", "Fe2O3", "Cr2O3", "MnO2", "Al2O3"}
-for i, pName in ipairs(productNames) do
+local productChoices = {}
+for _, product in ipairs(ProductMarket.Products) do
+	local label = product.formula
+	if product.id == "SlagBioEnhancer" then label = "BIO ENHANCER" end
+	if product.id == "ConstructionAggregate" then label = "AGGREGATE" end
+	table.insert(productChoices, {id = product.id, label = label})
+end
+
+local function selectProduct(productId)
+	selectedProduct = productId
+	for id, b in pairs(productBtns) do
+		b.BackgroundColor3 = id == productId and C.accent or C.panel
+		b.TextColor3 = id == productId and Color3.new(0,0,0) or C.text
+	end
+end
+
+for i, choice in ipairs(productChoices) do
+	local pName = choice.id
 	local pb = Instance.new("TextButton")
-	pb.Size = UDim2.new(1/#productNames, -3, 1, 0)
-	pb.Position = UDim2.new((i-1)/#productNames, 1, 0, 0)
+	pb.Name = pName .. "Button"
+	local col = (i - 1) % 4
+	local row = math.floor((i - 1) / 4)
+	pb.Size = UDim2.new(0.25, -3, 0, 26)
+	pb.Position = UDim2.new(col * 0.25, 1, 0, row * 29)
 	pb.BackgroundColor3 = C.panel
-	pb.Text = pName
+	pb.Text = choice.label
 	pb.TextColor3 = C.text
 	pb.TextScaled = true
 	pb.Font = Enum.Font.GothamBold
@@ -118,18 +138,15 @@ for i, pName in ipairs(productNames) do
 	corner(pb, 4)
 	productBtns[pName] = pb
 	pb.Activated:Connect(function()
-		selectedProduct = pName
-		for k, b in pairs(productBtns) do
-			b.BackgroundColor3 = k == pName and C.accent or C.panel
-			b.TextColor3 = k == pName and Color3.new(0,0,0) or C.text
-		end
+		selectProduct(pName)
 	end)
 end
+selectProduct(productChoices[1].id)
 
 -- Price + quantity inputs
 local priceBox = Instance.new("TextBox")
 priceBox.Size = UDim2.new(0.3, -4, 0, 32)
-priceBox.Position = UDim2.new(0, 8, 0, 104)
+priceBox.Position = UDim2.new(0, 8, 0, 132)
 priceBox.BackgroundColor3 = C.panel
 priceBox.PlaceholderText = "Price (MC)"
 priceBox.Text = ""
@@ -142,7 +159,7 @@ corner(priceBox, 6)
 
 local qtyBox = Instance.new("TextBox")
 qtyBox.Size = UDim2.new(0.2, -4, 0, 32)
-qtyBox.Position = UDim2.new(0.32, 4, 0, 104)
+qtyBox.Position = UDim2.new(0.32, 4, 0, 132)
 qtyBox.BackgroundColor3 = C.panel
 qtyBox.PlaceholderText = "Qty"
 qtyBox.Text = "1"
@@ -155,7 +172,7 @@ corner(qtyBox, 6)
 
 local bidBtn = Instance.new("TextButton")
 bidBtn.Size = UDim2.new(0.21, -4, 0, 32)
-bidBtn.Position = UDim2.new(0.54, 4, 0, 104)
+bidBtn.Position = UDim2.new(0.54, 4, 0, 132)
 bidBtn.BackgroundColor3 = C.green
 bidBtn.Text = "PLACE BID"
 bidBtn.TextColor3 = Color3.new(1,1,1)
@@ -166,7 +183,7 @@ corner(bidBtn, 6)
 
 local sellBtn = Instance.new("TextButton")
 sellBtn.Size = UDim2.new(0.21, -4, 0, 32)
-sellBtn.Position = UDim2.new(0.77, 4, 0, 104)
+sellBtn.Position = UDim2.new(0.77, 4, 0, 132)
 sellBtn.BackgroundColor3 = C.accent
 sellBtn.Text = "PLACE SELL"
 sellBtn.TextColor3 = Color3.new(1, 1, 1)
@@ -198,7 +215,7 @@ end)
 -- Active bids list
 local bidsLabel = Instance.new("TextLabel")
 bidsLabel.Size = UDim2.new(1, -16, 0, 20)
-bidsLabel.Position = UDim2.new(0, 8, 0, 145)
+bidsLabel.Position = UDim2.new(0, 8, 0, 173)
 bidsLabel.BackgroundTransparency = 1
 bidsLabel.Text = "Active Orders"
 bidsLabel.TextColor3 = C.gold
@@ -209,7 +226,7 @@ bidsLabel.Parent = main
 
 local bidsScroll = Instance.new("ScrollingFrame")
 bidsScroll.Size = UDim2.new(1, -16, 0, 220)
-bidsScroll.Position = UDim2.new(0, 8, 0, 168)
+bidsScroll.Position = UDim2.new(0, 8, 0, 196)
 bidsScroll.BackgroundColor3 = C.panel
 bidsScroll.ScrollBarThickness = 4
 bidsScroll.Parent = main
