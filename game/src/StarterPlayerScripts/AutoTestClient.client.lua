@@ -156,6 +156,14 @@ check("Recipe book stays inside viewport", recipePanel ~= nil and recipePanel.Cl
 	and recipePanel.Size.Y.Scale > 0 and recipePanel.Size.Y.Scale <= 1,
 	"RecipeBook MainPanel must use bounded responsive scale dimensions")
 
+for _, guiName in ipairs({"InventoryGui", "LeaderboardGui", "AchievementsGui"}) do
+	local responsiveGui = findScreenGui(guiName)
+	local scale = responsiveGui and responsiveGui:FindFirstChild("ResponsiveScale")
+	check(guiName .. " scales to viewport", scale ~= nil and scale:IsA("UIScale")
+		and scale.Scale > 0 and scale.Scale <= 1,
+		"large modal must have a bounded ResponsiveScale")
+end
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")

@@ -48,11 +48,28 @@ screenGui.DisplayOrder = 14
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local achievementsCamera = workspace.CurrentCamera
+local function updateAchievementsScale()
+	if not achievementsCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(achievementsCamera.ViewportSize.X - 20) / 900,
+		(achievementsCamera.ViewportSize.Y - 20) / 750
+	), 0.65, 1)
+end
+updateAchievementsScale()
+if achievementsCamera then
+	achievementsCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateAchievementsScale)
+end
+
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 900, 0, 750)
-mainPanel.Position = UDim2.new(0.5, -450, 0.5, -375)
+mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanel.Position = UDim2.fromScale(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui

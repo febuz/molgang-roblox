@@ -51,11 +51,28 @@ screenGui.DisplayOrder = 13
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local inventoryCamera = workspace.CurrentCamera
+local function updateInventoryScale()
+	if not inventoryCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(inventoryCamera.ViewportSize.X - 20) / 900,
+		(inventoryCamera.ViewportSize.Y - 20) / 700
+	), 0.65, 1)
+end
+updateInventoryScale()
+if inventoryCamera then
+	inventoryCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateInventoryScale)
+end
+
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 900, 0, 700)
-mainPanel.Position = UDim2.new(0.5, -450, 0.5, -350)
+mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanel.Position = UDim2.fromScale(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui
