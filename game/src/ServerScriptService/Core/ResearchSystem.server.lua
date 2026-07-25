@@ -20,7 +20,30 @@ local function getResearchData(userId)
 	if not playerData then return nil end
 
 	playerData.research = playerData.research or {}
-	playerData.research.unlocked = playerData.research.unlocked or {}
+	if type(playerData.research.unlocked) ~= "table" then
+		playerData.research.unlocked = {}
+	end
+	local active = playerData.research.active
+	if active ~= nil then
+		local nodeId = type(active) == "table" and active.nodeId or nil
+		local completesAt = type(active) == "table" and tonumber(active.completesAt) or nil
+		if type(nodeId) ~= "string" or not ResearchTree.GetNode(nodeId)
+			or not completesAt or completesAt ~= completesAt
+			or completesAt == math.huge or completesAt == -math.huge or completesAt < 0 then
+			-- A malformed or removed job must not permanently lock the research tree.
+			playerData.research.active = nil
+		else
+			local startedAt = tonumber(active.startedAt) or os.time()
+			if startedAt ~= startedAt or startedAt == math.huge or startedAt == -math.huge then
+				startedAt = os.time()
+			end
+			playerData.research.active = {
+				nodeId = nodeId,
+				startedAt = math.floor(startedAt),
+				completesAt = math.floor(completesAt),
+			}
+		end
+	end
 
 	-- Migrate the free starting technologies into the persisted set.
 	for _, node in ipairs(ResearchTree.Nodes) do
