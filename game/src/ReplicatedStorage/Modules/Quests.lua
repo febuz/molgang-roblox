@@ -100,7 +100,7 @@ Quests.AllQuests = {
 		description = "Craft 5 different molecules",
 		category = "intermediate",
 		reward = {molCoins = 750},
-		condition = {type = "moleculesBuilt", target = 5},
+		condition = {type = "distinctMoleculesBuilt", target = 5},
 		order = 6,
 		requires = "craft_molecule",
 	},
@@ -344,6 +344,13 @@ function Quests.CheckProgress(playerData, quest)
 			return math.min(dailyStats.moleculesBuilt or 0, target)
 		end
 		return math.min(playerData.totalMoleculesBuilt or 0, target)
+
+	elseif condType == "distinctMoleculesBuilt" then
+		local count = 0
+		if playerData.moleculesBuilt then
+			for _ in pairs(playerData.moleculesBuilt) do count = count + 1 end
+		end
+		return math.min(count, target)
 
 	elseif condType == "molCoinsEarned" then
 		if quest.condition.daily then

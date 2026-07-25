@@ -26,6 +26,14 @@ sameFacilityData.facilities.offices = 1
 assert(Quests.CheckProgress(sameFacilityData, facilitiesQuest) == 3,
 	"different-facilities quest should count distinct facility types")
 
+local moleculesQuest = Quests.GetQuest("craft_five_molecules")
+local repeatedMoleculeData = {totalMoleculesBuilt = 5, moleculesBuilt = {H2O = true}}
+assert(Quests.CheckProgress(repeatedMoleculeData, moleculesQuest) == 1,
+	"different-molecules quest must not count repeated recipes")
+repeatedMoleculeData.moleculesBuilt = {H2O = true, CO2 = true, NH3 = true, NaCl = true, CH4 = true}
+assert(Quests.CheckProgress(repeatedMoleculeData, moleculesQuest) == 5,
+	"different-molecules quest should count unique recipes")
+
 local sameOrderProgress = Quests.CreateQuestProgress()
 sameOrderProgress.completed.first_atom = true
 sameOrderProgress.completed.collect_atoms = true
@@ -45,4 +53,4 @@ local atomAchievement = Achievements.List.TenAtoms
 assert(Achievements.CheckProgress(consumedAtoms, atomAchievement) == 10,
 	"lifetime achievement progress must survive consumed atoms")
 
-print("Quest Flow Tests: 17 passed, 0 failed")
+print("Quest Flow Tests: 19 passed, 0 failed")
