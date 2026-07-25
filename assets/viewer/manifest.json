@@ -1,6 +1,6 @@
 {
   "generated_by": "assets/viewer/build_manifest.py",
-  "count": 93,
+  "count": 94,
   "models": [
     {
       "file": "Barrel_01.glb",
@@ -294,6 +294,12 @@
       "file": "leaching_tank_500L_from_photo.glb",
       "stem": "leaching_tank_500L_from_photo",
       "label": "Leaching Tank 500L From Photo",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "leaching_tank_hd.glb",
+      "stem": "leaching_tank_hd",
+      "label": "Leaching Tank Hd",
       "set": "Industrial & Game"
     },
     {
