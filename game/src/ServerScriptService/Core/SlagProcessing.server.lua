@@ -529,22 +529,18 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	playerData.slagInventory = playerData.slagInventory or {}
 	playerData.slagInventory.residue = (playerData.slagInventory.residue or 0) + 1
 
+	local Elements = require(ReplicatedStorage.Data.Elements)
 	for elem, count in pairs(atoms) do
-		-- Add atoms via PlayerDataBridge
-		for i = 1, count do
-			-- Find element Z for this symbol
-			local Elements = require(ReplicatedStorage.Data.Elements)
-			local elementZ = nil
-			for z, data in pairs(Elements.Table) do
-				if data.sym == elem then
-					elementZ = z
-					break
-				end
+		-- Queue one secure production batch per element, not one item per atom.
+		local elementZ = nil
+		for z, data in pairs(Elements.Table) do
+			if data.sym == elem then
+				elementZ = z
+				break
 			end
-			if elementZ then
-				PlayerDataBridge.RecordAtomCollect(userId, elementZ, elem, 5)
-				bonusCoins = bonusCoins + 5
-			end
+		end
+		if elementZ and PlayerDataBridge.RecordAtomCollectBatch(userId, elementZ, elem, count, 5) then
+			bonusCoins = bonusCoins + count * 5
 		end
 	end
 

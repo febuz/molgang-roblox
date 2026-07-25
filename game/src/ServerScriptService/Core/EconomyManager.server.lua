@@ -182,9 +182,11 @@ local function processAtomCollect(player, collectData)
 	local elementZ = collectData.elementZ
 	local symbol = collectData.symbol
 	local coinReward = collectData.coinReward
+	local amount = math.floor(tonumber(collectData.amount) or 1)
 
-	if not elementZ or not symbol then return end
-	if not InventoryLimits.CanAddAtoms(data.atoms, data.facilities, 1) then
+	if not elementZ or not symbol or amount < 1 then return end
+	local acceptedAmount = math.min(amount, InventoryLimits.GetFreeAtomSlots(data.atoms, data.facilities))
+	if acceptedAmount < 1 then
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Atom storage full. Build an Office or use existing atoms first.",
 			rarity = "common",
@@ -196,7 +198,7 @@ local function processAtomCollect(player, collectData)
 	if not data.atoms[symbol] then
 		data.atoms[symbol] = 0
 	end
-	data.atoms[symbol] = data.atoms[symbol] + 1
+	data.atoms[symbol] = data.atoms[symbol] + acceptedAmount
 
 	-- Track element discovery
 	if not data.elementsFound[tostring(elementZ)] then
@@ -204,11 +206,11 @@ local function processAtomCollect(player, collectData)
 	end
 
 	-- Add MolCoins
-	addMolCoins(player, coinReward, "atom_collect")
+	addMolCoins(player, (coinReward or 0) * acceptedAmount, "atom_collect")
 
 	-- Update statistics
-	data.totalAtomsCollected = data.totalAtomsCollected + 1
-	DailyStats.Increment(data, "atomsCollected", 1)
+	data.totalAtomsCollected = data.totalAtomsCollected + acceptedAmount
+	DailyStats.Increment(data, "atomsCollected", acceptedAmount)
 
 	-- Check for badge milestones
 	local totalElements = 0

@@ -2,6 +2,11 @@ local PlayerDataBridge = require("../game/src/ServerScriptService/Core/PlayerDat
 
 PlayerDataBridge.RecordAtomCollect(42, 1, "H", 2)
 PlayerDataBridge.RecordAtomCollect(42, 8, "O", 2)
+assert(PlayerDataBridge.RecordAtomCollectBatch(47, 23, "V", 12, 5),
+	"atom production batches should queue as one secure collection")
+local batch = PlayerDataBridge.GetPendingCollect(47)
+assert(batch and batch.amount == 12 and batch.symbol == "V",
+	"atom production batch must preserve amount and symbol")
 local first = PlayerDataBridge.GetPendingCollect(42)
 local second = PlayerDataBridge.GetPendingCollect(42)
 assert(first and first.symbol == "H", "pending atom collections must preserve FIFO order")

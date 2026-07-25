@@ -42,6 +42,24 @@ function PlayerDataBridge.RecordAtomCollect(userId, elementZ, symbol, coinReward
 	})
 end
 
+-- Queue trusted server-side production as one item instead of one queue entry
+-- per atom. The EconomyManager still validates storage and applies rewards.
+function PlayerDataBridge.RecordAtomCollectBatch(userId, elementZ, symbol, amount, coinReward)
+	amount = tonumber(amount)
+	if not amount or amount ~= math.floor(amount) or amount < 1 or amount > 10000 then return false end
+	if not pendingCollections[userId] then
+		pendingCollections[userId] = {}
+	end
+	table.insert(pendingCollections[userId], {
+		elementZ = elementZ,
+		symbol = symbol,
+		amount = amount,
+		coinReward = coinReward,
+		timestamp = tick and tick() or os.clock(),
+	})
+	return true
+end
+
 function PlayerDataBridge.GetPendingCollect(userId)
 	local queue = pendingCollections[userId]
 	if queue and #queue > 0 then
