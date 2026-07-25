@@ -127,6 +127,16 @@ else
 		check("Dashboard quick action is clickable", false, "Dash button not found")
 end
 
+local minimap = findScreenGui("MinimapGui")
+for _, stationKey in ipairs({"crush", "cone", "mill", "leach"}) do
+	local marker = minimap and minimap:FindFirstChild("Station_" .. stationKey, true)
+	local waypointButton = marker and marker:FindFirstChild("SetWaypoint", true)
+	check("Minimap station waypoint: " .. stationKey,
+		marker ~= nil and waypointButton ~= nil and waypointButton:IsA("GuiButton")
+			and waypointButton.Active,
+		"station marker or clickable SetWaypoint control is missing")
+end
+
 local miniGame = findScreenGui("MiniGameGui")
 if miniGame then
 	check("HGMS mini-game is above HUD", miniGame.DisplayOrder > (hud and hud.DisplayOrder or 0),
