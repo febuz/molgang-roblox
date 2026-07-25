@@ -34,11 +34,7 @@ local function loadLogisticsState()
 		return logisticsStore:GetAsync("routes_global")
 	end)
 	if ok and data then
-		LogisticsNetwork.Deserialize(data)
-		local routeCount = 0
-		for _ in pairs(data.routes or {}) do
-			routeCount += 1
-		end
+		local routeCount = LogisticsNetwork.Deserialize(data)
 		print("[LogisticsServer] Restored", routeCount, "routes from DataStore")
 	else
 		print("[LogisticsServer] No saved logistics state")
@@ -292,7 +288,7 @@ Players.PlayerAdded:Connect(function(player)
 	local guildId = player:GetAttribute("Guild") or tostring(player.UserId)
 	Remotes.FireClient("NetworkStatusResponse", player, {
 		routes      = LogisticsNetwork.GetOwnerRoutes(guildId),
-		bottlenecks = {},
+		bottlenecks = LogisticsNetwork.GetBottlenecks(),
 		snapshot    = LogisticsNetwork.GetNetworkSnapshot(),
 	})
 end)
