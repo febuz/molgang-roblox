@@ -78,6 +78,25 @@
   .appl .cnt { color: #9be08a; font-size: 11px; }
   .appl button { cursor: pointer; padding: 6px 12px; border-radius: 8px; border: 0; background: #2f6bd0; color: #fff; font: 600 11px system-ui; }
   .appl button:disabled { background: #333a44; color: #7a8698; cursor: not-allowed; }
+  #chemsim-btn { position: fixed; top: 212px; right: 12px; z-index: 12; cursor: pointer;
+    background: rgba(14,18,26,.82); color: #d0a0ff; border: 1px solid #6a2c7a;
+    border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #chemsim { position: fixed; inset: 0; z-index: 18; display: none; align-items: center;
+    justify-content: center; background: rgba(4,6,13,.72); }
+  #chemsim .fl-card { width: min(520px, 94vw); border-color: #6a2c7a; }
+  .cs-grid label { display: block; font-size: 11px; margin: 6px 0 1px; color: #cfe0f0; }
+  .cs-grid .row { display: flex; justify-content: space-between; }
+  .cs-grid .val { color: #ffd479; }
+  .cs-grid input[type=range] { width: 100%; accent-color: #d0a0ff; margin: 0; }
+  .cs-opts { display: flex; gap: 12px; align-items: center; margin: 10px 0; font-size: 12px; }
+  .cs-opts select { background: #1a2230; color: #cfe0f0; border: 1px solid #26344a; border-radius: 6px; padding: 4px; }
+  .cs-run { display: flex; gap: 8px; margin-bottom: 8px; }
+  .cs-run button { flex: 1; cursor: pointer; padding: 9px; border-radius: 8px; border: 0;
+    background: #6a2c7a; color: #fff; font: 600 12px system-ui; }
+  .cs-run button:hover { background: #7a3c8a; }
+  #cs-result { font-size: 12px; line-height: 1.6; }
+  #cs-result b { color: #6ffcda; }
+  #cs-curve { width: 100%; border-radius: 8px; background: #0c1018; margin-top: 6px; }
   #fertlab { position: fixed; inset: 0; z-index: 18; display: none; align-items: center;
     justify-content: center; background: rgba(4,6,13,.72); }
   #fertlab .fl-card { width: min(760px, 94vw); max-height: 84vh; overflow: auto; margin: 16px;
@@ -233,6 +252,38 @@
   </div>
 </div>
 <button id="farm-btn" style="display:none">🌾 Farm</button>
+<button id="chemsim-btn" style="display:none">🧪 ChemSim</button>
+<div id="chemsim">
+  <div class="fl-card">
+    <div class="fl-head"><b>🧪 ChemSim console</b>
+      <span>Paid process simulator — predict before you run. Console: Quantum Lab.</span>
+      <button id="cs-close" type="button">✕</button></div>
+    <div id="cs-far" class="fl-sub" style="display:none">Walk to the chemistry set in the <b>Quantum Lab</b> to use the console.</div>
+    <div id="cs-body">
+      <div class="cs-grid">
+        <label class="row"><span>Temperature</span><span class="val" id="csv-temperature">85°C</span></label>
+        <input type="range" id="cs-temperature" min="25" max="95" step="1" value="85">
+        <label class="row"><span>Pressure</span><span class="val" id="csv-pressure">220 kPa</span></label>
+        <input type="range" id="cs-pressure" min="100" max="300" step="5" value="220">
+        <label class="row"><span>Flow</span><span class="val" id="csv-flowRate">5.0</span></label>
+        <input type="range" id="cs-flowRate" min="1" max="10" step="0.5" value="5">
+        <label class="row"><span>pH</span><span class="val" id="csv-pH">2.9</span></label>
+        <input type="range" id="cs-pH" min="1" max="6" step="0.1" value="2.9">
+      </div>
+      <div class="cs-opts">
+        <select id="cs-size"><option>chunk</option><option>crushed</option><option selected>ground</option><option>powder</option></select>
+        <label><input type="checkbox" id="cs-deiron"> 🧲 de-iron</label>
+        <label><input type="checkbox" id="cs-roast"> 🔥 roast</label>
+      </div>
+      <div class="cs-run">
+        <button id="cs-run" type="button">Run prediction · 250 💰</button>
+        <button id="cs-sweep" type="button">pH sweep · 400 💰</button>
+      </div>
+      <div id="cs-result" class="fl-sub"></div>
+      <canvas id="cs-curve" width="440" height="130" style="display:none"></canvas>
+    </div>
+  </div>
+</div>
 <div id="farm">
   <div class="fl-card">
     <div class="fl-head"><b>🌾 Farm — Liebig's Law</b>

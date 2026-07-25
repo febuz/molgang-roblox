@@ -1214,6 +1214,86 @@ function openFactory() {
   if (c) c.addEventListener('click', () => { document.getElementById('factory').style.display = 'none'; });
 })();
 
+// ---------- ChemSim: the paid in-game chemical simulator ----------
+// The chemistry-set console in the Quantum Lab. For MolCoins the player runs
+// the process model FORWARD: predicted rate, batch time and V2O5/hour for any
+// hypothetical settings (250), or a full pH sweep that plots the selectivity
+// optimum (400) — pay for foresight instead of wasting slow real batches.
+let chemsimPos = null;
+const CS_RUN = 250, CS_SWEEP = 400;
+function csParams() {
+  return { temperature: +document.getElementById('cs-temperature').value,
+    pressure: +document.getElementById('cs-pressure').value,
+    flowRate: +document.getElementById('cs-flowRate').value,
+    pH: +document.getElementById('cs-pH').value,
+    size: document.getElementById('cs-size').value,
+    deiron: document.getElementById('cs-deiron').checked,
+    roast: document.getElementById('cs-roast').checked };
+}
+function csPredict(p) {
+  const rate = arrheniusM(p.temperature) * pressureM(p.pressure) * residenceM(p.flowRate, 50);
+  let k = 0.05 / (LEACH_MULT[p.size] || 1); if (p.roast) k *= 1.25;
+  const batchMin = 5.3 / (k * rate);                     // ln(200): time to 99.5% conversion
+  const rec = precipF('V', p.pH) * (p.deiron ? 1 : 1 - precipF('Fe', p.pH)) * (1 - precipF('Al', p.pH));
+  const kgBatch = 1.5 * rec, kgHr = batchMin > 0 ? kgBatch * 60 / batchMin : 0;
+  return { rate, batchMin, rec, kgBatch, kgHr, coinsHr: kgHr * 500 };
+}
+function csNearConsole() {
+  if (params.get('chemsim')) return true;                // sandbox bypass
+  if (!chemsimPos) return false;
+  const dx = chemsimPos.x - player.pos.x, dz = chemsimPos.z - player.pos.z;
+  return dx * dx + dz * dz < 22 * 22;
+}
+function openChemSim() {
+  const near = csNearConsole();
+  document.getElementById('cs-far').style.display = near ? 'none' : 'block';
+  document.getElementById('cs-body').style.display = near ? 'block' : 'none';
+  document.getElementById('chemsim').style.display = 'flex';
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+(function wireChemSim() {
+  const btn = document.getElementById('chemsim-btn'), close = document.getElementById('cs-close');
+  if (btn) btn.addEventListener('click', openChemSim);
+  if (close) close.addEventListener('click', () => { document.getElementById('chemsim').style.display = 'none'; });
+  const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
+                flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
+  for (const key of Object.keys(fmt)) {
+    const el = document.getElementById('cs-' + key), lab = document.getElementById('csv-' + key);
+    if (el) el.addEventListener('input', () => { lab.textContent = fmt[key](el.value); });
+  }
+  const out = () => document.getElementById('cs-result');
+  document.getElementById('cs-run').addEventListener('click', () => {
+    if (!spend(CS_RUN)) { flashCantAfford(); out().textContent = 'Not enough MolCoins.'; return; }
+    const p = csParams(), r = csPredict(p);
+    document.getElementById('cs-curve').style.display = 'none';
+    out().innerHTML = `Reaction rate <b>${r.rate.toFixed(2)}×</b> · batch to 99.5% in <b>${r.batchMin.toFixed(1)} min</b><br>`
+      + `Selective V recovery <b>${(r.rec * 100) | 0}%</b> → <b>${r.kgBatch.toFixed(2)} kg</b> V₂O₅/batch · `
+      + `<b>${r.kgHr.toFixed(1)} kg/h</b> ≈ <b>${r.coinsHr | 0} 💰/h</b>`;
+  });
+  document.getElementById('cs-sweep').addEventListener('click', () => {
+    if (!spend(CS_SWEEP)) { flashCantAfford(); out().textContent = 'Not enough MolCoins.'; return; }
+    const p = csParams();
+    const cv = document.getElementById('cs-curve'), g = cv.getContext('2d');
+    cv.style.display = 'block'; g.clearRect(0, 0, cv.width, cv.height);
+    let best = { pH: 0, rec: -1 };
+    g.beginPath();
+    for (let pH = 1; pH <= 6.001; pH += 0.05) {
+      const rec = precipF('V', pH) * (p.deiron ? 1 : 1 - precipF('Fe', pH)) * (1 - precipF('Al', pH));
+      if (rec > best.rec) best = { pH, rec };
+      const x = 20 + (pH - 1) / 5 * (cv.width - 35), y = cv.height - 18 - rec * (cv.height - 34);
+      pH === 1 ? g.moveTo(x, y) : g.lineTo(x, y);
+    }
+    g.strokeStyle = '#d0a0ff'; g.lineWidth = 2; g.stroke();
+    const bx = 20 + (best.pH - 1) / 5 * (cv.width - 35), by = cv.height - 18 - best.rec * (cv.height - 34);
+    g.fillStyle = '#6ffcda'; g.beginPath(); g.arc(bx, by, 4, 0, 7); g.fill();
+    g.fillStyle = '#9fb0c6'; g.font = '10px system-ui';
+    g.fillText('pH 1', 16, cv.height - 5); g.fillText('pH 6', cv.width - 30, cv.height - 5);
+    g.fillStyle = '#6ffcda'; g.fillText(`optimum pH ${best.pH.toFixed(1)} → ${(best.rec * 100) | 0}%`, bx - 50, by - 8);
+    out().innerHTML = `pH sweep${p.deiron ? ' (de-ironed feed)' : ''}: selectivity optimum at <b>pH ${best.pH.toFixed(1)}</b> `
+      + `(${(best.rec * 100) | 0}% V recovery)${p.deiron ? '' : ' — above pH 3 iron co-precipitates and ruins the product'}`;
+  });
+})();
+
 // ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
@@ -1317,6 +1397,9 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     { const mb = document.getElementById('farm-btn'); if (mb) mb.style.display = 'block'; }
     { const bb = document.getElementById('build-btn'); if (bb) bb.style.display = 'block'; }
     { const mc = document.getElementById('molcoins'); if (mc) mc.style.display = 'block'; updateMcHUD(false); }
+    chemsimPos = objects.find((o) => o.console === 'chemsim') || null;
+    { const cb = document.getElementById('chemsim-btn'); if (cb) cb.style.display = 'block'; }
+    if (params.get('chemsim')) setTimeout(openChemSim, 400);
     { const g = document.getElementById('goals'); if (g) g.style.display = 'block'; updateGoals(); }
     if (params.get('collectall')) {          // sandbox: skip the grind (demo/verify)
       for (const o of elements) collected.add(o.num);
