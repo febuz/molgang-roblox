@@ -37,7 +37,8 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 -- Announcements are non-interactive feedback. Keep them in a dedicated top
 -- strip rather than above modal panels: a timed world event must never cover
 -- a menu title bar or steal the player's only visible action button.
-screenGui.DisplayOrder = 6
+-- 9 sits above the status HUD (8) but below modal menus (10+).
+screenGui.DisplayOrder = 9
 screenGui.Parent = playerGui
 
 -- Announcement queue

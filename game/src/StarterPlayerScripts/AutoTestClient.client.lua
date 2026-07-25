@@ -450,9 +450,11 @@ if modalDashboard and modalQuiz then
 		task.wait(0.1)
 		check("Announcements remain enabled with modal open", announcements.Enabled,
 			"GuiCoordinator incorrectly disabled the transient announcement layer")
-		check("Announcements render above normal modals",
-			announcements.DisplayOrder > modalDashboard.DisplayOrder,
-			"announcement DisplayOrder must exceed DashboardGui")
+		local hudWidget = findScreenGui("HUDWidget")
+		check("Announcements occupy a safe notification lane",
+			announcements.DisplayOrder < modalDashboard.DisplayOrder
+				and (not hudWidget or announcements.DisplayOrder > hudWidget.DisplayOrder),
+			"announcements must sit above HUD status but below interactive modals")
 		modalDashboard.Enabled = false
 	end
 	check("Owned overlays are not modal lane members",
