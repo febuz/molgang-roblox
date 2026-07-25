@@ -212,6 +212,25 @@ local function displayBadges()
 
 	-- Get unlocked achievements
 	local unlocked = Achievements.GetAllUnlocked(playerData)
+	if #unlocked == 0 then
+		local empty = Instance.new("Frame")
+		empty.Name = "NoBadgesYet"
+		empty.Size = UDim2.new(1, -20, 0, 100)
+		empty.BackgroundColor3 = COLORS.panelLight
+		empty.BackgroundTransparency = 0.35
+		empty.Parent = badgeGrid
+		createCorner(empty, 8)
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Text = "Nog geen badges — verzamel je eerste atoom om Atom Collector vrij te spelen."
+		text.TextColor3 = COLORS.textSecondary
+		text.TextScaled = true
+		text.TextWrapped = true
+		text.Font = Enum.Font.Gotham
+		text.Parent = empty
+		return
+	end
 
 	-- Display each badge
 	for _, achievement in ipairs(unlocked) do

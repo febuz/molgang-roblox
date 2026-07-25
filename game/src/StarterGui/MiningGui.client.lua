@@ -445,6 +445,12 @@ if miningEvent then
 				end)
 			end
 			minesScroll.CanvasSize = UDim2.new(0, 0, 0, #data.ownedPlots * 106)
+			if #data.ownedPlots == 0 then
+				lbl(minesScroll, {N="NoPlots", S=UDim2.new(1, -16, 0, 92), P=UDim2.new(0, 8, 0, 8),
+					T="Nog geen eigen mijn.\n1) Ga naar Explore & License\n2) Koop een licentie\n3) Explore je plot en plaats equipment om erts te produceren.",
+					C=C.textDim, F=Enum.Font.GothamBold})
+				minesScroll.CanvasSize = UDim2.new(0, 0, 0, 108)
+			end
 		end
 
 		-- TAB 3: Populate market
