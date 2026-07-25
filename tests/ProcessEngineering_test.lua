@@ -65,6 +65,19 @@ assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
 assert(pipeline.aggregateKg > 0 and pipeline.aggregateKg < pipeline.inputKg,
 	"aggregate residue must be a positive substream of the feed")
 
+local postSepMasses, postSepTotal, magneticRecovery = SteelSlag.GetPostMagneticSeparationMasses(1)
+assert(math.abs(postSepTotal - 0.87) < 0.000001 and math.abs(magneticRecovery - 0.12) < 0.000001,
+	"pre-treatment mass stream must remove dust and magnetic iron")
+assert(postSepMasses.FeO < 0.06,
+	"magnetic separation must reduce the FeO mass reaching the leach tank")
+local hotYield = SteelSlag.CalculateYield("powder", "H2SO4", 1, 65)
+for _, entry in ipairs(hotYield) do
+	if entry.oxide == "FeO" then
+		assert(entry.gramsExtracted < 50,
+			"product yield must not recreate magnetically recovered iron")
+	end
+end
+
 local chunk = ProcessEngineering.CalculateSlagMassBalance("chunk", "H2SO4", 65, SteelSlag)
 local crushed = ProcessEngineering.CalculateSlagMassBalance("crushed", "H2SO4", 65, SteelSlag)
 local ground = ProcessEngineering.CalculateSlagMassBalance("ground", "H2SO4", 65, SteelSlag)
@@ -76,7 +89,7 @@ local cold = ProcessEngineering.CalculateSlagMassBalance("ground", "H2SO4", 25, 
 assert(cold.outputKg < ground.outputKg,
 	"higher operating temperature must improve extraction yield")
 local coldYield = SteelSlag.CalculateYield("ground", "H2SO4", 1, 25)
-local hotYield = SteelSlag.CalculateYield("ground", "H2SO4", 1, 65)
+hotYield = SteelSlag.CalculateYield("ground", "H2SO4", 1, 65)
 local function totalExtracted(entries)
 	local total = 0
 	for _, entry in ipairs(entries) do

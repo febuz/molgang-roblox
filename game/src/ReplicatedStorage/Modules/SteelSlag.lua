@@ -424,6 +424,33 @@ SteelSlag.BATCH_WEIGHT_KG = 1.0
 SteelSlag.RAW_SLAG_COST = 50         -- MolCoins per 1kg chunk
 SteelSlag.MAX_ACTIVE_LEACHES = 3     -- max concurrent leaching processes
 SteelSlag.MAX_SLAG_INVENTORY = 20    -- max kg in storage
+SteelSlag.CRUSHING_DUST_FRACTION = 0.01
+SteelSlag.MAGNETIC_IRON_RECOVERY_KG = 0.12
+
+-- Return the oxide masses that actually reach the leach tank after the
+-- physical pre-treatment steps. Keeping this shared prevents the product
+-- yield calculator from creating Fe atoms that magnetic separation already
+-- recovered from the feed.
+function SteelSlag.GetPostMagneticSeparationMasses(batchWeightKg)
+	local batchWeight = tonumber(batchWeightKg) or SteelSlag.BATCH_WEIGHT_KG
+	batchWeight = math.max(0, batchWeight)
+	local afterCrushing = batchWeight * (1 - SteelSlag.CRUSHING_DUST_FRACTION)
+	local oxideMasses = {}
+	local representedMass = 0
+	for oxide, data in pairs(SteelSlag.Composition) do
+		local mass = afterCrushing * ((tonumber(data.pct) or 0) / 100)
+		oxideMasses[oxide] = mass
+		representedMass = representedMass + mass
+	end
+
+	local magneticRecovery = math.min(
+		math.max(0, oxideMasses.FeO or 0),
+		SteelSlag.MAGNETIC_IRON_RECOVERY_KG
+	)
+	oxideMasses.FeO = math.max(0, (oxideMasses.FeO or 0) - magneticRecovery)
+	return oxideMasses, afterCrushing - magneticRecovery, magneticRecovery,
+		math.max(0, afterCrushing - representedMass)
+end
 
 -- ═══════════════════════════════════════════════
 -- CALCULATION FUNCTIONS
@@ -468,6 +495,7 @@ function SteelSlag.CalculateYield(particleSize, reagentId, batchWeightKg, temper
 	local batchWeight = batchWeightKg or SteelSlag.BATCH_WEIGHT_KG
 	temperature = temperature or 25
 	local contactFactor = math.clamp(1 / math.max(size.leachMultiplier, 0.05), 0.05, 4)
+	local oxideMasses = SteelSlag.GetPostMagneticSeparationMasses(batchWeight)
 
 	for oxide, data in pairs(SteelSlag.Composition) do
 		local extraction = reagent.extraction[oxide] or 0
@@ -478,7 +506,7 @@ function SteelSlag.CalculateYield(particleSize, reagentId, batchWeightKg, temper
 			)
 			extraction = math.clamp(1 - ((1 - temperatureExtraction) ^ contactFactor), 0, 0.99)
 			-- Weight of this oxide in the batch (grams)
-			local oxideWeight = batchWeight * 1000 * (data.pct / 100)
+			local oxideWeight = (oxideMasses[oxide] or 0) * 1000
 			-- Amount extracted (grams)
 			local extracted = oxideWeight * extraction
 			-- Convert to game "atoms" (1 atom per 10g extracted, minimum 1 if any)

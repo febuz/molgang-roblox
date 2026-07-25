@@ -179,13 +179,15 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 	temperature = temperature or 25
 
 	-- Step 1: Crushing (mechanical, no mass change but energy cost)
-	local crushLoss = 0.01  -- 1% dust loss
+	local crushLoss = tonumber(SteelSlag.CRUSHING_DUST_FRACTION) or 0.01
 	ProcessEngineering.AddStep(balance, "Crushing (" .. particleSize .. ")",
 		inputKg, inputKg - crushLoss, crushLoss)
 
 	-- Step 2: Magnetic Separation (removes ~17% FeO as metallic iron)
-	local feRemoved = inputKg * 0.12  -- 12% iron recovered
-	local afterMagSep = inputKg - crushLoss - feRemoved
+	local oxideMasses, calculatedAfterMagSep, calculatedFeRemoved, unlistedMass =
+		SteelSlag.GetPostMagneticSeparationMasses(inputKg)
+	local feRemoved = calculatedFeRemoved or inputKg * 0.12
+	local afterMagSep = calculatedAfterMagSep or (inputKg - crushLoss - feRemoved)
 	ProcessEngineering.AddStep(balance, "Magnetic Separation",
 		inputKg - crushLoss, afterMagSep, feRemoved)
 
@@ -202,7 +204,8 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 		local residue = 0
 		local representedPct = 0
 		for oxide, comp in pairs(SteelSlag.Composition) do
-			local oxideMass = afterMagSep * (comp.pct / 100)
+			local oxideMass = (oxideMasses and oxideMasses[oxide])
+				or afterMagSep * (comp.pct / 100)
 			representedPct = representedPct + comp.pct
 			local extraction = reagent.extraction[oxide] or 0
 
@@ -224,7 +227,7 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 		-- extractable oxide. Keep it in the residue instead of silently losing
 		-- mass from the plant balance.
 		local unlistedFraction = math.max(0, 1 - representedPct / 100)
-		residue = residue + afterMagSep * unlistedFraction
+		residue = residue + (unlistedMass or afterMagSep * unlistedFraction)
 		ProcessEngineering.AddStep(balance, "Leaching (" .. (reagent.name or reagentId) .. " @ " .. temperature .. "°C)",
 			afterMagSep, dissolved, residue)
 		balance.aggregateKg = math.floor(residue * 1000 + 0.5) / 1000
