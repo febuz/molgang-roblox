@@ -3,7 +3,8 @@
 -- Prevents infinite falling in the void
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SpawnSafety = require(ReplicatedStorage.Modules.SpawnSafety)
 
 local KILL_Y = -80  -- below all platforms (lowest is ~-15 at Lanthanide Reef)
 local CHECK_INTERVAL = 1  -- seconds between checks
@@ -14,14 +15,7 @@ local function findSafeSpawn()
 	return spawn and spawn:IsA("BasePart") and spawn or nil
 end
 
-local function recoverPlayer(character, humanoid, hrp)
-	local spawn = findSafeSpawn()
-	if not spawn then
-		-- Keep the old fail-safe if world construction has not completed yet.
-		humanoid.Health = 0
-		return
-	end
-
+local function recoverPlayer(character, humanoid, hrp, spawn)
 	-- A fall is a traversal failure, not a player death. Teleporting the live
 	-- character avoids the death/respawn UI cycle and preserves active work.
 	character:PivotTo(spawn.CFrame + SAFE_OFFSET)
@@ -37,8 +31,12 @@ task.spawn(function()
 			if character then
 				local hrp = character:FindFirstChild("HumanoidRootPart")
 				local humanoid = character:FindFirstChild("Humanoid")
-				if hrp and humanoid and hrp.Position.Y < KILL_Y then
-					recoverPlayer(character, humanoid, hrp)
+				local spawn = findSafeSpawn()
+				-- During world construction the player may fall before the safe
+				-- spawn exists. Do not kill the character; the next tick will
+				-- recover it once WorldBuilder has published MolGangSpawn.
+				if hrp and humanoid and SpawnSafety.ShouldRecover(hrp.Position.Y, KILL_Y, spawn ~= nil) then
+					recoverPlayer(character, humanoid, hrp, spawn)
 				end
 			end
 		end
