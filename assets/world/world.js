@@ -162,6 +162,7 @@ function pbrDeckMaps() {
   return _pbrDeck;
 }
 
+const platformMeshes = [];       // hidden in AR so the real floor takes over
 function buildPlatform(o) {
   const rad = o.s;
   const disc = new THREE.Mesh(
@@ -177,6 +178,7 @@ function buildPlatform(o) {
     new THREE.TorusGeometry(rad, 0.35, 12, 96),
     new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0x3f8bff, emissiveIntensity: 1.6, roughness: 0.3, metalness: 0.4 }));
   rim.rotation.x = Math.PI / 2; rim.position.set(o.x, 0.05, o.z); scene.add(rim);
+  platformMeshes.push(disc, deck, rim);
 }
 
 // Factory atmosphere: warm work lighting + rising vapour so the Slakkenspoor
@@ -841,6 +843,41 @@ async function detectXR() {
   if (xrStat) xrStat.textContent = `🕶️ ${ar ? 'AR/VR' : 'VR'} headset detected — Quest-ready`;
   if (xrBtn) { xrBtn.style.display = 'block'; xrBtn.textContent = ar ? '🥽 Enter AR' : '🥽 Enter VR'; }
 }
+// XR settings (persisted; the ⚙ options menu edits these live)
+const XRS_KEY = 'molgang.xr';
+const xrSettings = { hideFloorAR: true, floorOffset: 0, speed: 6 };
+try { Object.assign(xrSettings, JSON.parse(localStorage.getItem(XRS_KEY) || '{}')); } catch (e) { /* fresh */ }
+function saveXrSettings() { try { localStorage.setItem(XRS_KEY, JSON.stringify(xrSettings)); } catch (e) { /* quota */ } }
+function setFloorHidden(h) { for (const m of platformMeshes) m.visible = !h; }
+
+// In-headset toast: DOM overlays are invisible inside an immersive session, so
+// interaction feedback renders as a canvas sprite floating in front of the eyes.
+let xrToastSpr = null, xrToastUntil = 0;
+function xrToastShow(msg) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 112;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(10,14,20,0.85)'; roundRect(g, 4, 4, 1016, 104, 26); g.fill();
+  g.strokeStyle = '#2c704a'; g.lineWidth = 3; roundRect(g, 4, 4, 1016, 104, 26); g.stroke();
+  g.fillStyle = '#eef4fb'; g.font = '38px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(msg.length > 58 ? msg.slice(0, 57) + '…' : msg, 512, 58);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  if (!xrToastSpr) {
+    xrToastSpr = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false }));
+    xrToastSpr.scale.set(1.5, 0.165, 1); xrToastSpr.renderOrder = 999; scene.add(xrToastSpr);
+  }
+  if (xrToastSpr.material.map) xrToastSpr.material.map.dispose();
+  xrToastSpr.material.map = tex; xrToastSpr.material.needsUpdate = true;
+  xrToastSpr.visible = true; xrToastUntil = performance.now() + 3800;
+}
+const _xrFwd = new THREE.Vector3(), _camPos = new THREE.Vector3();
+function tickXrToast(now) {
+  if (!xrToastSpr || !xrToastSpr.visible) return;
+  if (now > xrToastUntil) { xrToastSpr.visible = false; return; }
+  camera.getWorldPosition(_camPos); camera.getWorldDirection(_xrFwd);
+  xrToastSpr.position.set(_camPos.x + _xrFwd.x * 1.5, _camPos.y - 0.18 + _xrFwd.y * 1.5,
+    _camPos.z + _xrFwd.z * 1.5);
+}
+
 async function enterXR() {
   if (!xrMode) return;
   const opts = xrMode === 'immersive-ar'
@@ -851,38 +888,71 @@ async function enterXR() {
   await renderer.xr.setSession(session);
   xrAR = (xrMode === 'immersive-ar');
   scene.background = xrAR ? null : skyBg;      // AR on = passthrough shows through
-  // Controller buttons toggle AR on/off (A/X or trigger).
-  const toggleAR = () => { xrAR = !xrAR; scene.background = xrAR ? null : skyBg; };
+  // In AR the virtual platform floor hides by default so the REAL floor takes
+  // over (it used to float too high and run on forever); ⚙ can re-show it.
+  setFloorHidden(xrAR && xrSettings.hideFloorAR);
+  const toggleAR = () => {
+    xrAR = !xrAR; scene.background = xrAR ? null : skyBg;
+    setFloorHidden(xrAR && xrSettings.hideFloorAR);
+    xrToastShow(xrAR ? 'AR passthrough ON' : 'Full VR — A toggles AR');
+  };
   for (const src of session.inputSources) if (src.gamepad) src._prev = [];
-  session.addEventListener('selectstart', toggleAR);           // trigger toggles too
-  // Smooth locomotion: thumbstick walks along the headset gaze (XZ plane),
-  // implemented as a growing reference-space offset so the physical play space
-  // stays intact. Without this the world was explore-by-walking-only on Quest.
-  const loco = { x: 0, z: 0, base: null };
-  const xrFwd = new THREE.Vector3();
+  // The reference-space offset is the walkable position: the thumbstick and
+  // zone-teleport move it, physical walking moves the camera inside it, and
+  // the loop syncs player.pos to the camera's WORLD position every frame — so
+  // streaming, interactions, element collection and the sun all follow the
+  // headset (they used to stay parked at the spawn point: barely any objects).
+  const xrOff = { x: 0, z: 0, base: null };
+  session.__syncSpace = () => {
+    xrOff.base = xrOff.base || renderer.xr.getReferenceSpace();
+    if (xrOff.base && window.XRRigidTransform) renderer.xr.setReferenceSpace(
+      xrOff.base.getOffsetReferenceSpace(new XRRigidTransform(
+        { x: -xrOff.x, y: -xrSettings.floorOffset, z: -xrOff.z })));
+  };
+  // B/Y teleports through the zones (the "reposition" ask): the next zone's
+  // centre lands ~6 m in front of where you physically stand.
+  let zoneCycle = 0;
+  const teleportNextZone = () => {
+    const zones = (window.__molgangZones || []);
+    if (!zones.length) return;
+    const z = zones[zoneCycle++ % zones.length];
+    camera.getWorldPosition(_camPos); camera.getWorldDirection(_xrFwd);
+    _xrFwd.y = 0; _xrFwd.normalize();
+    const tx = z.x - _xrFwd.x * (z.r ? Math.min(z.r * 0.55, 14) : 6);
+    const tz = z.z - _xrFwd.z * (z.r ? Math.min(z.r * 0.55, 14) : 6);
+    xrOff.x += tx - _camPos.x; xrOff.z += tz - _camPos.z;
+    session.__syncSpace();
+    xrToastShow(`→ ${z.name}`);
+  };
   session.__pollButtons = (dt) => {
     for (const src of session.inputSources) {
       const gp = src.gamepad; if (!gp) continue;
       src._prev = src._prev || [];
       gp.buttons.forEach((b, i) => {
-        if (i >= 4 && b.pressed && !src._prev[i]) toggleAR();     // face buttons (A/B/X/Y)
+        if (b.pressed && !src._prev[i]) {
+          if (i === 4) toggleAR();               // A / X — AR passthrough
+          if (i === 5) teleportNextZone();       // B / Y — reposition to next zone
+        }
         src._prev[i] = b.pressed;
       });
       const ax = Math.abs(gp.axes[2] || 0) > 0.16 ? gp.axes[2] : 0;   // xr-standard thumbstick
       const ay = Math.abs(gp.axes[3] || 0) > 0.16 ? gp.axes[3] : 0;
       if ((ax || ay) && dt) {
-        camera.getWorldDirection(xrFwd); xrFwd.y = 0; xrFwd.normalize();
-        const right = { x: -xrFwd.z, z: xrFwd.x };
-        const sp = 6 * dt;                                    // m/s, comfortable pace
-        loco.x += (xrFwd.x * -ay + right.x * ax) * sp;
-        loco.z += (xrFwd.z * -ay + right.z * ax) * sp;
-        loco.base = loco.base || renderer.xr.getReferenceSpace();
-        if (loco.base && window.XRRigidTransform) renderer.xr.setReferenceSpace(
-          loco.base.getOffsetReferenceSpace(new XRRigidTransform({ x: -loco.x, y: 0, z: -loco.z })));
+        camera.getWorldDirection(_xrFwd); _xrFwd.y = 0; _xrFwd.normalize();
+        const right = { x: -_xrFwd.z, z: _xrFwd.x };
+        const sp = (xrSettings.speed || 6) * dt;
+        xrOff.x += (_xrFwd.x * -ay + right.x * ax) * sp;
+        xrOff.z += (_xrFwd.z * -ay + right.z * ax) * sp;
+        session.__syncSpace();
       }
     }
   };
-  session.addEventListener('end', () => { scene.background = skyBg; if (xrBtn) xrBtn.disabled = false; });
+  session.__syncSpace();                          // apply the saved floor offset
+  xrToastShow('🥽 stick = walk · A = AR · B = next zone');
+  session.addEventListener('end', () => {
+    scene.background = skyBg; setFloorHidden(false);
+    if (xrBtn) xrBtn.disabled = false;
+  });
 }
 if (xrBtn) xrBtn.addEventListener('click', () => { xrBtn.disabled = true; enterXR().catch((e) => { xrBtn.disabled = false; if (xrStat) xrStat.textContent = '🕶️ XR start failed: ' + e.message; }); });
 detectXR();
@@ -1061,6 +1131,7 @@ function updateElementHUD() {
 }
 let _popTimer = null;
 function showElementPopup(o) {
+  if (renderer.xr.isPresenting) xrToastShow(`🧪 ${o.ref} · ${o.name} collected!`);
   const pop = document.getElementById('elpop'); if (!pop) return;
   const [r, g, b] = o.rgb || [180, 190, 210];
   const sym = document.getElementById('ep-sym');
@@ -1408,6 +1479,7 @@ function worldToast(msg) {
   _toastEl.textContent = msg; _toastEl.style.opacity = '1';
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => { _toastEl.style.opacity = '0'; }, 3600);
+  if (renderer.xr.isPresenting) xrToastShow(msg);   // DOM is invisible in-headset
 }
 function checkInteract(now) {
   if (!interactables.length || now - lastInteractAt < 4000) return;
@@ -1573,6 +1645,11 @@ function loop(now) {
   const xr = renderer.xr.isPresenting;
   if (xr) {
     const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons(dt);
+    // player.pos follows the headset's WORLD position (stick + physical walk),
+    // so streaming/interactions/collection/sun track the viewer in XR.
+    camera.getWorldPosition(_camPos);
+    player.pos.x = _camPos.x; player.pos.z = _camPos.z;
+    tickXrToast(now);
     renderer.render(scene, camera);                    // headset drives cadence (no post-fx in XR)
   } else if (now - lastRender >= refresh / BUDGET) {
     lastRender = now;
@@ -1668,6 +1745,7 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
       + `the web continuation of the Roblox teaser`;
     $('#resolve').innerHTML = `<div style="color:#7fe0a0;margin-bottom:3px">⚗️ Slakkenspoor — BOF slag processing line</div>`
       + line.map((s, i) => `<div><span class="a">${String(i + 1).padStart(2, '0')}</span> ${s}</div>`).join('');
+    window.__molgangZones = w.meta.zones || [];      // XR zone-teleport targets
     window.__molgangWorld = { world: 'moleculia', zones: (w.meta.zones || []).length,
       stations: line.length, assets: assetIdx.length, interactables: interactables.length };
     window.__molgangDebug = () => ({ px: player.pos.x, pz: player.pos.z,
