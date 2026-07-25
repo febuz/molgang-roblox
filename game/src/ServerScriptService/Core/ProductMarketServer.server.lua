@@ -28,6 +28,10 @@ local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local currentGameDay = GameClock.DayAt()
 local playerLedgers = {}  -- {userId = ProfitLoss ledger}
 
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
+
 local function persistLedger(userId, ledger)
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 	if not playerData then return end
@@ -84,7 +88,7 @@ end
 
 Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, quantity)
 	local userId = player.UserId
-	if type(productId) ~= "string" then return end
+	if type(productId) ~= "string" then reject(player, "Choose a product to sell."); return end
 	local quantityOk, parsedQuantity = TradeRules.ValidateQuantity(quantity, 1000)
 	if not quantityOk then
 		Remotes.FireClient("ServerAnnounce", player, {message = "Sale rejected: " .. parsedQuantity, rarity = "common"})
@@ -93,13 +97,13 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	quantity = parsedQuantity
 
 	local product = ProductMarket.GetProduct(productId)
-	if not product then return end
+	if not product then reject(player, "Unknown product; sale rejected."); return end
 	local eventEffects = WorldEvents.GetActiveEffects()
 
 	-- Check player has required atoms (via PlayerDataBridge)
 	-- For each unit sold, consume the required atoms
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
-	if not playerData then return end
+	if not playerData then reject(player, "Player inventory is still loading."); return end
 	if product.requiresResearch then
 		local research = playerData.research or {}
 		local unlocked = research.unlocked or {}

@@ -26,6 +26,10 @@ local MAX_BIDS_PER_PLAYER = 5
 local MAX_SELLS_PER_PLAYER = 5
 local ORDER_EXPIRY_SECONDS = 1800
 
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
+
 local function hasRequiredResearch(playerData, product)
 	if not product.requiresResearch then return true end
 	local research = playerData.research or {}
@@ -41,7 +45,10 @@ Remotes.RequestPlaceBid.OnServerEvent:Connect(function(player, productId, bidPri
 
 	local quantityOk, parsedQuantity = TradeRules.ValidateQuantity(quantity, 100)
 	if type(productId) ~= "string" or type(bidPrice) ~= "number" or not quantityOk
-		or bidPrice ~= bidPrice or bidPrice == math.huge or bidPrice == -math.huge then return end
+		or bidPrice ~= bidPrice or bidPrice == math.huge or bidPrice == -math.huge then
+		reject(player, "Bid rejected: enter a valid product, price and quantity.")
+		return
+	end
 	quantity = parsedQuantity
 	if bidPrice < MIN_BID or quantity < 1 or quantity > 100 then
 		Remotes.FireClient("ServerAnnounce", player, {
@@ -128,15 +135,18 @@ Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPr
 	local userId = player.UserId
 	local quantityOk, parsedQuantity = TradeRules.ValidateQuantity(quantity, 100)
 	if type(productId) ~= "string" or type(askPrice) ~= "number" or not quantityOk
-		or askPrice ~= askPrice or askPrice == math.huge or askPrice == -math.huge then return end
+		or askPrice ~= askPrice or askPrice == math.huge or askPrice == -math.huge then
+		reject(player, "Sell order rejected: enter a valid product, price and quantity.")
+		return
+	end
 	quantity = parsedQuantity
-	if askPrice < 1 then return end
+	if askPrice < 1 then reject(player, "Sell order rejected: asking price must be at least 1 MC."); return end
 
 	-- Check player has product atoms to sell
 	local pData = PlayerDataBridge.GetPlayerData(userId)
-	if not pData then return end
+	if not pData then reject(player, "Player inventory is still loading."); return end
 	local product = ProductMarket.GetProduct(productId)
-	if not product then return end
+	if not product then reject(player, "Unknown product; sell order rejected."); return end
 	if not hasRequiredResearch(pData, product) then
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Sell order rejected: required research is not unlocked.",
