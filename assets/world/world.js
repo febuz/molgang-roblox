@@ -65,7 +65,7 @@ scene.add(sun); scene.add(sun.target);
 // stars actually glow — a big perceptual polish in a dark space scene.
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.5, 0.85);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.5, 0.5, 0.85);   // half-res: ~4x cheaper, visually identical
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -205,7 +205,7 @@ function roundRect(g, x, y, w, h, r) {
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false);
-  composer.setSize(w, h); bloom.setSize(w, h);
+  composer.setSize(w, h); bloom.setSize(w / 2, h / 2);   // keep bloom half-res
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
@@ -253,7 +253,11 @@ function step(dt) {
   if (keys['KeyS'] || keys['ArrowDown']) mv.sub(fwd);    // S = backward
   if (keys['KeyD'] || keys['ArrowRight']) mv.add(right);
   if (keys['KeyA'] || keys['ArrowLeft']) mv.sub(right);
-  if (mv.lengthSq() > 0) player.pos.add(mv.normalize().multiplyScalar(sp * dt));
+  if (mv.lengthSq() > 0) {
+    mv.normalize();
+    player.pos.add(mv.clone().multiplyScalar(sp * dt));
+    player.vel = mv.multiplyScalar(sp);          // units/s — feeds predictive prefetch
+  } else if (player.vel) player.vel.multiplyScalar(0.9);
   const half = WORLD / 2 - 2;
   player.pos.x = Math.max(-half, Math.min(half, player.pos.x));
   player.pos.z = Math.max(-half, Math.min(half, player.pos.z));
@@ -728,6 +732,33 @@ function stream() {
       if (live.size >= MAX_LIVE) break;
     }
   }
+  // C&C-style predictive map pre-fill: project the player 4 s along their
+  // velocity and warm the GLB prototypes there, so the next sector's models are
+  // already parsed when you arrive (no pop-in hitch).
+  if (player.vel && player.vel.lengthSq() > 4) {
+    const fx = px + player.vel.x * 4, fz = pz + player.vel.z * 4;
+    for (const i of assetIdx) {
+      const o = objects[i];
+      if (glbProto.has(o.ref)) continue;
+      const dx = o.x - fx, dz = o.z - fz;
+      if (dx * dx + dz * dz > STREAM_IN * STREAM_IN) continue;
+      glbProto.set(o.ref, 'loading');
+      gltfLoader.loadAsync(`${ASSET_BASE.model}${o.ref}`)
+        .then((g) => glbProto.set(o.ref, g.scene)).catch(() => glbProto.delete(o.ref));
+    }
+  }
+  // Doom-style sector culling for the cheap sprite layers: element tiles and
+  // steam only draw when their sector is near the player.
+  if (elementSprites.size) {
+    for (const rec of elementSprites.values()) {
+      const dx = rec.o.x - px, dz = rec.o.z - pz;
+      rec.sprite.visible = dx * dx + dz * dz < 150 * 150;
+    }
+  }
+  for (const sp of steam) {
+    const u = sp.userData, dx = u.bx - px, dz = u.bz - pz;
+    sp.visible = dx * dx + dz * dz < 170 * 170;
+  }
   $('#live').textContent = `streaming ${[...live.values()].filter((v) => v !== 'pending').length} models + ${impCount} instanced impostors`;
 }
 
@@ -1186,6 +1217,35 @@ function openFactory() {
 // ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
+
+// Perf instrumentation (?bench=1): time every improvement. Reports CPU render
+// ms (avg/p95/max), draw calls, triangles and the adaptive pixel ratio into a
+// <pre id="bench"> that headless --dump-dom can read.
+const BENCH = params.get('bench') === '1';
+if (BENCH) renderer.info.autoReset = false;   // accumulate across composer passes
+const benchSamples = [];
+let benchDone = false, benchT0 = performance.now();
+function benchReport() {
+  const s = [...benchSamples].sort((a, b) => a - b);
+  const avg = s.reduce((a, b) => a + b, 0) / s.length;
+  const out = { renderMsAvg: +avg.toFixed(2), p95: +s[(s.length * 0.95) | 0].toFixed(2),
+    max: +s[s.length - 1].toFixed(2), calls: renderer.info.render.calls,
+    tris: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio(),
+    live: live.size, protosWarm: [...glbProto.values()].filter((v) => v !== 'loading').length };
+  const pre = document.createElement('pre'); pre.id = 'bench';
+  pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+  console.log('[bench]', pre.textContent);
+}
+// Adaptive resolution (classic console technique): track an EMA of render cost
+// and step the pixel ratio down/up so frame time stays inside the budget.
+let perfEma = 14, perfN = 0;
+function adaptiveRes(renderMs) {
+  perfEma = perfEma * 0.95 + renderMs * 0.05;
+  if (++perfN % 90 !== 0) return;
+  const pr = renderer.getPixelRatio();
+  if (perfEma > 24 && pr > 0.75) { renderer.setPixelRatio(pr - 0.25); resize(); }
+  else if (perfEma < 10 && pr < Math.min(devicePixelRatio, 1.5)) { renderer.setPixelRatio(pr + 0.25); resize(); }
+}
 function loop(now) {
   now = now || performance.now();
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
@@ -1206,7 +1266,17 @@ function loop(now) {
     const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons();
     renderer.render(scene, camera);                    // headset drives cadence (no post-fx in XR)
   } else if (now - lastRender >= refresh / BUDGET) {
-    lastRender = now; composer.render(); if (arOn) drawAR();   // bloom + tone-mapped
+    lastRender = now;
+    if (BENCH) renderer.info.reset();
+    const t0 = performance.now();
+    composer.render();                                          // bloom + tone-mapped
+    const rMs = performance.now() - t0;
+    adaptiveRes(rMs);
+    if (BENCH && !benchDone && now - benchT0 > 1500) {
+      benchSamples.push(rMs);
+      if (benchSamples.length >= 90 || now - benchT0 > 9000) { benchDone = true; benchReport(); }
+    }
+    if (arOn) drawAR();
   }
 }
 renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
