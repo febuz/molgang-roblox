@@ -57,6 +57,10 @@ local recentLeachRequests = {}    -- {userId = {key, timestamp}}; duplicate guar
 local lastProcessControlUpdate = {} -- {userId = monotonic timestamp}; request guard
 local leachIdCounter = 0
 
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
+
 local function requireStation(player, stationContract)
 	local stationName = stationContract.partName
 	local radius = stationContract.radius
@@ -325,9 +329,15 @@ Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 	local slag = getPlayerSlag(userId)
 
 	-- Validate target size
-	if type(targetSize) ~= "string" then return end
+	if type(targetSize) ~= "string" then
+		reject(player, "Choose a valid slag particle size to process.")
+		return
+	end
 	local sizeData = SteelSlag.ParticleSizes[targetSize]
-	if not sizeData then return end
+	if not sizeData then
+		reject(player, "Unknown slag particle size.")
+		return
+	end
 	local station = targetSize == "ground" and StationAccess.Stations.cone
 		or targetSize == "powder" and StationAccess.Stations.mill
 		or targetSize == "crushed" and StationAccess.Stations.crush
@@ -353,6 +363,7 @@ Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 		sourceSize = "ground"
 		sourceKey = "ground"
 	else
+		reject(player, "Raw chunks cannot be processed directly; choose crushed, ground, or powder.")
 		return -- can't crush to "chunk"
 	end
 
@@ -443,10 +454,16 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	if not requireStation(player, station) then return end
 
 	-- Validate inputs
-	if type(reagentId) ~= "string" or type(particleSize) ~= "string" then return end
+	if type(reagentId) ~= "string" or type(particleSize) ~= "string" then
+		reject(player, "Choose both a reagent and a particle size before starting leaching.")
+		return
+	end
 	local reagent = SteelSlag.Reagents[reagentId]
 	local sizeData = SteelSlag.ParticleSizes[particleSize]
-	if not reagent or not sizeData then return end
+	if not reagent or not sizeData then
+		reject(player, "Unknown reagent or slag particle size.")
+		return
+	end
 
 	local reagentAllowed, reagentRequirement = ResearchAccess.CanUseReagent(getResearchState(userId), reagentId)
 	if not reagentAllowed then
@@ -584,11 +601,17 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	local userId = player.UserId
 	local station = StationAccess.Stations.leach
 	if not requireStation(player, station) then return end
-	if type(leachId) ~= "string" then return end
+	if type(leachId) ~= "string" then
+		reject(player, "Select a leach batch before extracting products.")
+		return
+	end
 
 	local leaches = getPlayerLeaches(userId)
 	local leach = leaches[leachId]
-	if not leach then return end
+	if not leach then
+		reject(player, "Leach batch not found; refresh the process list.")
+		return
+	end
 
 	-- Check if leaching is complete
 	local elapsed = tick() - leach.startTime
