@@ -91,6 +91,14 @@ local function bindPad(obj)
 	if not obj:IsA("BasePart") or not obj.Name:find("TeleportPad") or boundPads[obj] then return end
 	boundPads[obj] = true
 	obj.Touched:Connect(function(hit) onTouched(hit, obj) end)
+	local prompt = obj:FindFirstChild("ReturnToNexusPrompt")
+	if prompt and prompt:IsA("ProximityPrompt") then
+		prompt.Triggered:Connect(function(player)
+			if obj:GetAttribute("TeleportName") == "Nexus Hub" then
+				returnToNexus(player)
+			end
+		end)
+	end
 end
 
 -- Wait for pads to be created by WorldBuilder

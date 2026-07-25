@@ -3877,16 +3877,25 @@ local function buildGlobalElements(zonesFolder: Folder)
 		-- Nexus without guessing coordinates or resetting the character.
 		local returnPad = createPart(outpost, {
 			Name = "TeleportPad_ReturnToNexus",
-			Size = Vector3.new(10, 1, 10),
+			Size = Vector3.new(16, 1, 16),
 			Position = region.center + Vector3.new(0, 7, 45),
 			Color = Color3.fromRGB(0, 210, 150),
 			Material = Enum.Material.Neon,
 		})
+		local returnPrompt = Instance.new("ProximityPrompt")
+		returnPrompt.Name = "ReturnToNexusPrompt"
+		returnPrompt.ActionText = "Return to Nexus"
+		returnPrompt.ObjectText = region.name .. " Exit"
+		returnPrompt.KeyboardKeyCode = Enum.KeyCode.E
+		returnPrompt.HoldDuration = 0.15
+		returnPrompt.MaxActivationDistance = 18
+		returnPrompt.RequiresLineOfSight = false
+		returnPrompt.Parent = returnPad
 		returnPad:SetAttribute("TeleportTarget", Vector3.new(0, 10, 0))
 		returnPad:SetAttribute("TeleportName", "Nexus Hub")
 		addBillboard(returnPad, {
-			Text = "RETURN TO NEXUS\n← Hub / Factory",
-			Size = UDim2.new(8, 0, 2.5, 0),
+			Text = "RETURN TO NEXUS\n[E] Hub / Factory",
+			Size = UDim2.new(10, 0, 3, 0),
 			StudsOffset = Vector3.new(0, 4, 0),
 			TextColor = Color3.fromRGB(0, 255, 180),
 			BackgroundColor = Color3.fromRGB(5, 35, 28),
