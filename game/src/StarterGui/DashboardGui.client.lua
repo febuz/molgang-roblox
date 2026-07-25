@@ -329,17 +329,16 @@ quizBtn.Activated:Connect(function()
 		quizBtn.Active = false
 		quizBtn.Text = "Starting quiz..."
 		r:FireServer("any")
-		screenGui.Enabled = false
-		-- The quiz modal is opened by the authoritative first-question event.
-		-- Keep a recovery path for a delayed/missing server response instead of
-		-- leaving the player with a silently closed dashboard.
-		task.delay(2, function()
+		-- Keep the dashboard visible until the authoritative first-question event
+		-- enables QuizGui. GuiCoordinator then closes this dashboard atomically;
+		-- closing it here made a slow Studio/Wine response look like a vanished
+		-- quiz before the player could answer.
+		task.delay(10, function()
 			if requestId ~= quizStartRequest then return end
 			local quizGui = playerGui:FindFirstChild("QuizGui")
 			if quizGui and quizGui:IsA("ScreenGui") and quizGui.Enabled then return end
 			quizBtn.Text = "Start Chemistry Quiz"
 			quizBtn.Active = true
-			screenGui.Enabled = true
 		end)
 	else
 		warn("[DashboardGui] RequestQuizStart remote is missing")
