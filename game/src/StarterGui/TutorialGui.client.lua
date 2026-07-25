@@ -340,6 +340,7 @@ local pathOptions = {
 }
 local showStep
 local selectedPathFromInput = false
+local choosePathByIndex = {}
 for index, option in ipairs(pathOptions) do
 	local button = Instance.new("TextButton")
 	button.Name = option.key .. "Path"
@@ -369,6 +370,7 @@ for index, option in ipairs(pathOptions) do
 			Position = UDim2.new(0.5, -250, 1, -120),
 		}):Play()
 	end
+	choosePathByIndex[index] = choosePath
 	-- Keep both button paths: Vinegar's embedded Studio surface can swallow
 	-- Activated while ordinary desktop Roblox still uses it reliably.
 	button.Activated:Connect(choosePath)
@@ -386,10 +388,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		[Enum.KeyCode.Three] = 3,
 	}
 	local index = indexByKey[input.KeyCode]
-	if index then
-		local optionButton = pathSelector:FindFirstChild(pathOptions[index].key .. "Path")
-		if optionButton then optionButton:Activate() end
-	end
+	if index and choosePathByIndex[index] then choosePathByIndex[index]() end
 end)
 
 -- ═══════════════════════════════════════════════
