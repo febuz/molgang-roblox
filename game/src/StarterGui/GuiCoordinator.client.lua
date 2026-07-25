@@ -20,10 +20,8 @@ local modalNames = {
 	-- A world-event banner is transient feedback, not a second permanent HUD.
 	-- It must remain enabled while menus are open so queued announcements can
 	-- still render; its panels do not capture input.
-	-- Dynamic confirmation and warning layers must also be exclusive. These
-	-- used to remain above a newly opened menu and could swallow button input.
-	ConfirmRemove = true,
-	CostWarning = true,
+	-- ConfirmRemove and CostWarning are owned transient overlays. They must not
+	-- close the menu that spawned them; their creators assign a higher layer.
 }
 
 local busy = false

@@ -94,9 +94,13 @@ local function toggleGui(guiName)
 		if gui.Enabled and playerData and GUI_COST_HINTS[guiName] then
 			local hint = GUI_COST_HINTS[guiName]
 			if playerData.molCoins < hint.cost then
-				task.defer(function()
-					local warnGui = Instance.new("ScreenGui")
-					warnGui.Name = "CostWarning"; warnGui.Parent = playerGui
+					task.defer(function()
+						local warnGui = Instance.new("ScreenGui")
+						warnGui.Name = "CostWarning"
+						warnGui.IgnoreGuiInset = true
+						warnGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+						warnGui.DisplayOrder = 93
+						warnGui.Parent = playerGui
 					local wl = Instance.new("TextLabel")
 					wl.Size = UDim2.new(0.4, 0, 0, 24)
 					wl.Position = UDim2.new(0.3, 0, 0.12, 0)

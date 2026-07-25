@@ -355,7 +355,12 @@ for x = 1, GRID_W do
 			local isExpensive = cell:GetAttribute("Occupied") and cell:GetAttribute("Cost") and cell:GetAttribute("Cost") > 1000
 			if isExpensive then
 				-- Show confirm dialog
-				local cg = Instance.new("ScreenGui"); cg.Name = "ConfirmRemove"; cg.Parent = playerGui
+				local cg = Instance.new("ScreenGui")
+				cg.Name = "ConfirmRemove"
+				cg.IgnoreGuiInset = true
+				cg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+				cg.DisplayOrder = 94
+				cg.Parent = playerGui
 				local cf = Instance.new("Frame"); cf.Size = UDim2.new(0.3,0,0,60); cf.Position = UDim2.new(0.35,0,0.4,0)
 				cf.BackgroundColor3 = Color3.fromRGB(40,15,15); cf.Parent = cg
 				local cl = Instance.new("TextLabel"); cl.Size = UDim2.new(1,0,0.5,0); cl.BackgroundTransparency = 1

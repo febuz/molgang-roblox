@@ -333,6 +333,9 @@ if modalDashboard and modalQuiz then
 			"announcement DisplayOrder must exceed DashboardGui")
 		modalDashboard.Enabled = false
 	end
+	check("Owned overlays are not modal lane members",
+		findScreenGui("CostWarning") == nil or findScreenGui("CostWarning").DisplayOrder > modalDashboard.DisplayOrder,
+		"CostWarning must layer above its owner without closing it")
 else
 	check("Modal menus are mutually exclusive", false, "DashboardGui or QuizGui is missing")
 end
