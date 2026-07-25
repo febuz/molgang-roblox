@@ -37,6 +37,57 @@ local loanCounter = 0
 local loanStore = DataStoreProvider.GetDataStore("ANK_Loans_v1")
 local treasuryStore = DataStoreProvider.GetDataStore("ANK_Treasury_v1")
 
+local function finite(value)
+	return type(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
+local function restoreLoansForPlayer(userId)
+	local data = PlayerDataBridge.GetEconomyData(userId)
+	local savedLoans = data and data.ankLoans
+	if type(savedLoans) ~= "table" then return end
+	for key, saved in pairs(savedLoans) do
+		if type(saved) == "table" then
+			local loanId = type(saved.id) == "string" and saved.id or (type(key) == "string" and key or nil)
+			if loanId and (saved.status == "active" or saved.status == "repaid" or saved.status == "liquidated")
+				and finite(saved.borrowerId) and finite(saved.lenderId)
+				and finite(saved.amount) and saved.amount >= 0
+				and finite(saved.collateral) and saved.collateral >= 0
+				and finite(saved.totalRepay) and saved.totalRepay >= 0
+				and finite(saved.dueAt) and saved.dueAt >= 0 then
+				saved.id = loanId
+				if saved.status == "active" then
+					activeLoans[loanId] = saved
+				end
+			end
+		end
+	end
+end
+
+local function persistLoanForParties(loan)
+	for _, userId in ipairs({loan.borrowerId, loan.lenderId}) do
+		local data = PlayerDataBridge.GetEconomyData(userId)
+		if data then
+			if type(data.ankLoans) ~= "table" then data.ankLoans = {} end
+			data.ankLoans[loan.id] = loan
+		end
+	end
+end
+
+local function restoreWhenLoaded(player)
+	task.spawn(function()
+		for _ = 1, 30 do
+			if PlayerDataBridge.GetEconomyData(player.UserId) then
+				restoreLoansForPlayer(player.UserId)
+				return
+			end
+			task.wait(1)
+		end
+	end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do restoreWhenLoaded(player) end
+Players.PlayerAdded:Connect(restoreWhenLoaded)
+
 -- ══════════════════════════════════════════════
 -- LOAN REQUEST — actually moves MolCoins now
 -- ══════════════════════════════════════════════
@@ -70,6 +121,8 @@ local function requestLoan(borrower, lenderId, amount, duration)
 	end
 	if not lender then return false, "Lender not online" end
 	if lender.UserId == borrower.UserId then return false, "Cannot lend to yourself" end
+	restoreLoansForPlayer(borrower.UserId)
+	restoreLoansForPlayer(lender.UserId)
 
 	-- Calculate finances
 	local required = math.ceil(amount * COLLATERAL_RATIO)
@@ -131,6 +184,7 @@ local function requestLoan(borrower, lenderId, amount, duration)
 	}
 
 	activeLoans[loanId] = loan
+	persistLoanForParties(loan)
 
 	-- Notify both parties
 	Remotes.FireClient("LoanCreated", borrower, {
@@ -178,6 +232,7 @@ local function repayLoan(player, loanId)
 
 	loan.status = "repaid"
 	loan.repaidAt = os.time()
+	persistLoanForParties(loan)
 
 	-- Notify
 	Remotes.FireClient("LoanRepaid", player, {
@@ -208,6 +263,7 @@ local function checkOverdueLoans()
 		if loan.status == "active" and now > loan.dueAt then
 			loan.status = "liquidated"
 			loan.liquidatedAt = now
+			persistLoanForParties(loan)
 
 			-- Transfer collateral to lender (borrower loses it)
 			PlayerDataBridge.AddMolCoins(loan.lenderId, loan.collateral)
