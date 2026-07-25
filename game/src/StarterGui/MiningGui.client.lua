@@ -140,7 +140,10 @@ returnBtn.Font = Enum.Font.GothamBold
 returnBtn.TextScaled = true
 returnBtn.Parent = titleBar
 corner(returnBtn, 6)
-returnBtn.Activated:Connect(function()
+local returnRequested = false
+local function requestReturnToNexus()
+	if returnRequested then return end
+	returnRequested = true
 	playUIClick()
 	setActionStatus("Returning to Nexus Hub…", C.green)
 	local r = Remotes:FindFirstChild("RequestReturnToNexus")
@@ -151,8 +154,14 @@ returnBtn.Activated:Connect(function()
 		screenGui.Enabled = false
 	else
 		setActionStatus("Return service unavailable.", C.red)
+		returnRequested = false
 	end
-end)
+end
+-- Activated is the normal cross-platform path. MouseButton1Click is retained
+-- for desktop Studio/Vinegar, where Activated can be swallowed by the MDI
+-- input layer even though the button is visibly on top.
+returnBtn.Activated:Connect(requestReturnToNexus)
+returnBtn.MouseButton1Click:Connect(requestReturnToNexus)
 
 -- Tabs
 local tabFrame = Instance.new("Frame")
