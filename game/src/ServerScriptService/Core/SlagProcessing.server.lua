@@ -796,6 +796,7 @@ Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperat
 	player:SetAttribute("ProcessTemp", state.temperature)
 	player:SetAttribute("ProcessPressure", state.pressure)
 	player:SetAttribute("ProcessPH", state.pH)
+	player:SetAttribute("ProcessFlowRate", state.flowRate)
 	player:SetAttribute("ReactionRate", state.reactionRate)
 	Remotes.FireClient("ProcessControlState", player, {
 		temperature = state.temperature,
