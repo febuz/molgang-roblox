@@ -28,10 +28,16 @@ local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
 task.wait(5)
 
 -- Returning players should not be forced through onboarding again. Read a
--- server-owned snapshot so this remains true across respawns and sessions.
-local dataOk, playerData = pcall(function()
-	return GetPlayerData:InvokeServer()
-end)
+-- server-owned snapshot and retry while EconomyManager finishes a slow load;
+-- otherwise a temporary nil response could show onboarding unnecessarily.
+local dataOk, playerData = false, nil
+for attempt = 1, 4 do
+	dataOk, playerData = pcall(function()
+		return GetPlayerData:InvokeServer()
+	end)
+	if dataOk and type(playerData) == "table" then break end
+	if attempt < 4 then task.wait(2) end
+end
 if dataOk and type(playerData) == "table"
 	and type(playerData.onboarding) == "table"
 	and playerData.onboarding.completed == true then
