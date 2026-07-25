@@ -57,11 +57,16 @@ local recentLeachRequests = {}    -- {userId = {key, timestamp}}; duplicate guar
 local lastProcessControlUpdate = {} -- {userId = monotonic timestamp}; request guard
 local leachIdCounter = 0
 
-local function requireStation(player, stationName, radius, actionName)
+local function requireStation(player, stationContract)
+	local stationName = stationContract.partName
+	local radius = stationContract.radius
+	local actionName = stationContract.label
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local station = workspace:FindFirstChild(stationName, true)
-	if not root or not station or not station:IsA("BasePart") then
+	if not root or not station or not station:IsA("BasePart")
+		or station:GetAttribute("Interactable") ~= true
+		or station:GetAttribute("InteractionType") ~= stationContract.interactionType then
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = actionName .. " unavailable: the station is not ready.", rarity = "common",
 		})
@@ -303,7 +308,7 @@ Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 	local userId = player.UserId
 	local slag = getPlayerSlag(userId)
 	local station = StationAccess.Stations.crush
-	if not requireStation(player, station.partName, station.radius, station.label) then return end
+	if not requireStation(player, station) then return end
 
 	-- Validate target size
 	if type(targetSize) ~= "string" then return end
@@ -417,7 +422,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local slag = getPlayerSlag(userId)
 	local processState = getProcessState(userId)
 	local station = StationAccess.Stations.leach
-	if not requireStation(player, station.partName, station.radius, station.label) then return end
+	if not requireStation(player, station) then return end
 
 	-- Validate inputs
 	if type(reagentId) ~= "string" or type(particleSize) ~= "string" then return end
@@ -560,7 +565,7 @@ end)
 Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	local userId = player.UserId
 	local station = StationAccess.Stations.leach
-	if not requireStation(player, station.partName, station.radius, station.label) then return end
+	if not requireStation(player, station) then return end
 	if type(leachId) ~= "string" then return end
 
 	local leaches = getPlayerLeaches(userId)
