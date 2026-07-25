@@ -107,7 +107,7 @@ for _ in $(seq 1 20); do
   sleep 1
 done
 if [ "$STUDIO_DETECTED" -eq 1 ]; then
-  echo "      Studio process detected; F5 playtest is available"
+  echo "      Studio process detected; waiting for local place load"
 else
   echo "      WARNING: Studio process was not detected after 20s"
   echo "      Check Vinegar logs for Wine/D3D/WebView startup failures"
