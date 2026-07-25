@@ -26,6 +26,7 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 local SlagPersistence = require(ReplicatedStorage.Modules.SlagPersistence)
+local StationAccess = require(ReplicatedStorage.Modules.StationAccess)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -55,6 +56,28 @@ local playerProcessState = {}     -- {userId = ProcessEngineering.CreateProcessS
 local recentLeachRequests = {}    -- {userId = {key, timestamp}}; duplicate guard
 local lastProcessControlUpdate = {} -- {userId = monotonic timestamp}; request guard
 local leachIdCounter = 0
+local STATION_RADIUS = {crush = 28, leach = 42}
+
+local function requireStation(player, stationName, radius, actionName)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local station = workspace:FindFirstChild(stationName, true)
+	if not root or not station or not station:IsA("BasePart") then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = actionName .. " unavailable: the station is not ready.", rarity = "common",
+		})
+		return false
+	end
+	local playerPosition = {x = root.Position.X, y = root.Position.Y, z = root.Position.Z}
+	local stationPosition = {x = station.Position.X, y = station.Position.Y, z = station.Position.Z}
+	if not StationAccess.WithinRange(playerPosition, stationPosition, radius) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Walk to " .. actionName .. " before operating it.", rarity = "common",
+		})
+		return false
+	end
+	return true
+end
 
 -- Get player's process control settings
 local function getProcessState(userId)
@@ -280,6 +303,7 @@ end)
 Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 	local userId = player.UserId
 	local slag = getPlayerSlag(userId)
+	if not requireStation(player, "CrushPlatform", STATION_RADIUS.crush, "Crushing Station") then return end
 
 	-- Validate target size
 	if type(targetSize) ~= "string" then return end
@@ -392,6 +416,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local userId = player.UserId
 	local slag = getPlayerSlag(userId)
 	local processState = getProcessState(userId)
+	if not requireStation(player, "LeachPlatform", STATION_RADIUS.leach, "Leaching Station") then return end
 
 	-- Validate inputs
 	if type(reagentId) ~= "string" or type(particleSize) ~= "string" then return end
@@ -533,6 +558,7 @@ end)
 
 Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	local userId = player.UserId
+	if not requireStation(player, "LeachPlatform", STATION_RADIUS.leach, "Leaching Station") then return end
 	if type(leachId) ~= "string" then return end
 
 	local leaches = getPlayerLeaches(userId)
