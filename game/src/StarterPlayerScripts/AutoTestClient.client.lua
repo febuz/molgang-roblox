@@ -171,6 +171,21 @@ if loadingScreen then
 			or ReplicatedStorage:FindFirstChild("MOLGANGIntroGate") ~= nil,
 		"intro gate marker disappeared after the loading screen closed")
 
+	local questTracker = findScreenGui("QuestTrackerGui")
+	if questTracker then
+		local questList = questTracker:FindFirstChild("QuestsList", true)
+		local questTitle = questTracker:FindFirstChild("ToggleCompactTracker", true)
+		task.wait(0.2)
+		local starterCard = questList and questList:FindFirstChild("first_atom")
+		check("Starter objective appears in compact tracker", starterCard ~= nil,
+			"new players should see the first atom objective after data load")
+		check("Compact tracker names the current objective", questTitle ~= nil
+			and string.find(questTitle.Text, "Your First Atom", 1, true) ~= nil,
+			"collapsed quest tracker must expose the current objective")
+	else
+		check("Starter objective appears in compact tracker", false, "QuestTrackerGui is missing")
+	end
+
 -- Exercise the three flows that previously looked clickable but could resolve
 -- a same-named LocalScript instead of the real ScreenGui. These are intentionally
 -- short, non-destructive probes: opening/closing UI and sending one free hammer

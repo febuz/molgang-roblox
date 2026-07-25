@@ -22,6 +22,7 @@ local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 local Quests = require(ReplicatedStorage.Modules.Quests)
 local PlayerDataLoaded = Remotes:WaitForChild("PlayerDataLoaded")
 local RequestQuestInfo = Remotes:WaitForChild("RequestQuestInfo")
+local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
 
 -- COLOR PALETTE
 local COLORS = {
@@ -264,6 +265,11 @@ local function updateCompactTracker()
 
 	-- Get active quests
 	local activeQuests = Quests.GetActiveQuests(questProgress)
+	if not compactExpanded then
+		trackerTitle.Text = #activeQuests > 0
+			and ("📋 " .. activeQuests[1].name .. "  ▼")
+			or "📋 Quests  ▼"
+	end
 
 	if #activeQuests == 0 then
 		local noQuestLabel = Instance.new("TextLabel")
@@ -468,3 +474,24 @@ _G.QuestTrackerToggle = function()
 end
 
 print("[QuestTrackerGui] Loaded — Press Q to toggle quest list")
+
+-- PlayerDataLoaded is a one-shot event and this script can start after it in
+-- embedded Studio/Wine. Retry both the data snapshot and quest state so a
+-- new player cannot be left with an empty tracker until they press Q.
+task.spawn(function()
+	for _ = 1, 20 do
+		if not playerData then
+			local ok, data = pcall(function() return GetPlayerData:InvokeServer() end)
+			if ok and type(data) == "table" then
+				playerData = data
+				questProgress = data.questProgress or Quests.CreateQuestProgress()
+			end
+		end
+		RequestQuestInfo:FireServer()
+		if playerData and next(questProgress.active or {}) ~= nil then
+			updateCompactTracker()
+			return
+		end
+		task.wait(0.5)
+	end
+end)
