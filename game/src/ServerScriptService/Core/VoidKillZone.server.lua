@@ -5,6 +5,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SpawnSafety = require(ReplicatedStorage.Modules.SpawnSafety)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 local KILL_Y = -35  -- recover before a normal traversal becomes a long void fall
 local CHECK_INTERVAL = 0.25  -- responsive without adding meaningful server load
@@ -71,6 +72,7 @@ task.spawn(function()
 				-- spawn exists. Do not kill the character; the next tick will
 				-- recover it once WorldBuilder has published MolGangSpawn.
 				if hrp and humanoid and SpawnSafety.ShouldRecover(hrp.Position.Y, KILL_Y, spawn ~= nil) then
+					PlayerDataBridge.RecordFallRecovery(player.UserId, hrp.Position.Y)
 					recoverPlayer(character, humanoid, hrp, spawn)
 				end
 			end

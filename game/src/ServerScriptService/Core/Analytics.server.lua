@@ -45,6 +45,7 @@ local function getSession(userId)
 				questsCompleted = 0,
 				questIds = {},
 				deaths = 0,
+				voidRecoveries = 0,
 				chatMessages = 0,
 				zoneVisits = {},
 		})
@@ -122,6 +123,11 @@ end)
 PlayerDataBridge.OnQuestCompleted(function(userId, questId)
 	trackEvent(userId, "questsCompleted", 1)
 	trackEvent(userId, "questIds", questId)
+end)
+
+PlayerDataBridge.OnFallRecovery(function(userId, yPosition)
+	trackEvent(userId, "voidRecoveries", 1)
+	trackEvent(userId, "voidRecoveryY", yPosition)
 end)
 
 Remotes.RecordAnalyticsEvent.OnServerEvent:Connect(function(player, eventName, value)

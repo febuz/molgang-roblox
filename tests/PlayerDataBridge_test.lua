@@ -31,6 +31,17 @@ assert(questUser == 52 and questId == "first_atom",
 assert(not PlayerDataBridge.RecordQuestCompleted(52, ""),
 	"empty quest ids must be rejected")
 
+local recoveryUser, recoveryY
+assert(PlayerDataBridge.OnFallRecovery(function(userId, yPosition)
+	recoveryUser, recoveryY = userId, yPosition
+end), "server fall-recovery listeners should register")
+assert(PlayerDataBridge.RecordFallRecovery(53, -42),
+	"server void recovery should notify analytics consumers")
+assert(recoveryUser == 53 and recoveryY == -42,
+	"fall analytics should retain the recovery position")
+assert(not PlayerDataBridge.RecordFallRecovery(53, "invalid"),
+	"invalid fall positions must be rejected")
+
 PlayerDataBridge.RecordAtomCollect(42, 1, "H", 2)
 PlayerDataBridge.RecordAtomCollect(42, 8, "O", 2)
 assert(PlayerDataBridge.RecordAtomCollectBatch(47, 23, "V", 12, 5),
@@ -96,4 +107,4 @@ local reloaded = {molCoins = 3}
 PlayerDataBridge.SetEconomyData(44, reloaded)
 assert(reloaded.molCoins == 10, "queued balance adjustments should apply on load")
 
-print("PlayerDataBridge Tests: 34 passed, 0 failed")
+print("PlayerDataBridge Tests: 37 passed, 0 failed")

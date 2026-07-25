@@ -26,6 +26,7 @@ local quizAnswerResults = {} -- {userId = {true|false, ...}}
 local atomCollectedListeners = {}
 local productionListeners = {}
 local questCompletedListeners = {}
+local fallRecoveryListeners = {}
 local MAX_DAILY_REWARD = 2000
 
 -- ══════════════════════════════════════════════
@@ -331,6 +332,23 @@ end
 function PlayerDataBridge.OnQuestCompleted(listener)
 	if type(listener) ~= "function" then return false end
 	table.insert(questCompletedListeners, listener)
+	return true
+end
+
+function PlayerDataBridge.RecordFallRecovery(userId, yPosition)
+	if type(userId) ~= "number" then return false end
+	yPosition = tonumber(yPosition)
+	if not yPosition or yPosition ~= yPosition then return false end
+	for _, listener in ipairs(fallRecoveryListeners) do
+		local ok, err = pcall(listener, userId, yPosition)
+		if not ok then warn("[PlayerDataBridge] fall listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnFallRecovery(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(fallRecoveryListeners, listener)
 	return true
 end
 
