@@ -732,17 +732,30 @@ end)
 -- REMOTE FUNCTIONS
 -- ══════════════════════════════════════════════
 
-Remotes.RequestCompleteOnboarding.OnServerEvent:Connect(function(player, path)
+local ALLOWED_ONBOARDING_PATHS = {explorer = true, scientist = true, engineer = true}
+
+local function setOnboardingPath(player, path, complete)
 	local data = playerData[player.UserId]
-	local allowedPaths = {explorer = true, scientist = true, engineer = true}
-	if not data or type(path) ~= "string" or not allowedPaths[path] then
+	if not data or type(path) ~= "string" or not ALLOWED_ONBOARDING_PATHS[path] then
 		return
 	end
 	if type(data.onboarding) ~= "table" then
 		data.onboarding = {completed = false, path = ""}
 	end
-	data.onboarding.completed = true
+	-- Route selection is useful progress even when a player leaves before
+	-- finishing the tutorial. Completion remains a separate server decision.
 	data.onboarding.path = path
+	if complete then
+		data.onboarding.completed = true
+	end
+end
+
+Remotes.RequestSetOnboardingPath.OnServerEvent:Connect(function(player, path)
+	setOnboardingPath(player, path, false)
+end)
+
+Remotes.RequestCompleteOnboarding.OnServerEvent:Connect(function(player, path)
+	setOnboardingPath(player, path, true)
 end)
 
 Remotes.GetPlayerData.OnServerInvoke = function(player)

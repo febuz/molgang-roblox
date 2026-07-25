@@ -113,6 +113,7 @@ local clientToServerEvents = {
 	"RequestRepayLoan",      -- {loanId} lening terugbetalen
 	"RequestChainQuery",     -- {query} chain explorer zoekquery
 	"RequestDailyClaim",     -- {} login bonus claimen
+	"RequestSetOnboardingPath", -- {path} persist route choice before onboarding completes
 	"RequestCompleteOnboarding", -- {path} persist first-run route choice
 	"RecordAnalyticsEvent", -- {eventName, value} low-risk behavior telemetry
 	"RequestAtomTransfer",   -- {targetId, elementZ} atoom sturen naar vriend

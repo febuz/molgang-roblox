@@ -169,7 +169,18 @@ local atomsCollected = math.max(
 	countAtomInventory(playerData)
 )
 local tutorialComplete = false
-local selectedPath = "explorer"
+local savedPath = type(playerData) == "table"
+	and type(playerData.onboarding) == "table"
+	and playerData.onboarding.path
+local selectedPath = (savedPath == "explorer" or savedPath == "scientist" or savedPath == "engineer")
+	and savedPath or "explorer"
+
+local function persistOnboardingPath(path)
+	local pathRemote = Remotes:FindFirstChild("RequestSetOnboardingPath")
+	if pathRemote then
+		pathRemote:FireServer(path)
+	end
+end
 
 local function persistOnboardingComplete()
 	if tutorialComplete then return end
@@ -396,6 +407,7 @@ for index, option in ipairs(pathOptions) do
 		if selectedPathFromInput or not pathSelector.Visible then return end
 		selectedPathFromInput = true
 		selectedPath = option.key
+		persistOnboardingPath(selectedPath)
 		STEPS = PATHS[selectedPath]
 		currentStep = 1
 		pathSelector.Visible = false
@@ -411,6 +423,17 @@ for index, option in ipairs(pathOptions) do
 	-- Activated while ordinary desktop Roblox still uses it reliably.
 	button.Activated:Connect(choosePath)
 	button.MouseButton1Click:Connect(choosePath)
+end
+
+-- Resume a previously selected but unfinished route without showing the
+-- selector again. This makes disconnects and test-server restarts harmless.
+if savedPath == "explorer" or savedPath == "scientist" or savedPath == "engineer" then
+	for index, option in ipairs(pathOptions) do
+		if option.key == savedPath and choosePathByIndex[index] then
+			choosePathByIndex[index]()
+			break
+		end
+	end
 end
 
 -- Keyboard fallback makes the age route selectable even when the embedded
