@@ -107,6 +107,27 @@ function PlayerDataBridge.GetPendingCollect(userId)
 	return nil
 end
 
+-- Pending collections are applied by EconomyManager on a throttled worker.
+-- Callers that reserve inventory now must include this queued amount, or a
+-- later batch can be accepted and then rejected after the producing process
+-- has already been consumed.
+function PlayerDataBridge.GetPendingAtomAmount(userId)
+	local total = 0
+	for _, queued in ipairs(pendingCollections[userId] or {}) do
+		if type(queued.entries) == "table" then
+			for _, entry in ipairs(queued.entries) do
+				total = total + (tonumber(entry.amount) or 0)
+			end
+		elseif queued.amount ~= nil then
+			total = total + (tonumber(queued.amount) or 0)
+		else
+			-- Legacy single-atom entries represent exactly one atom.
+			total = total + 1
+		end
+	end
+	return total
+end
+
 -- ══════════════════════════════════════════════
 -- MOLECULE BUILD (EconomyManager → ChainRegistry)
 -- ══════════════════════════════════════════════

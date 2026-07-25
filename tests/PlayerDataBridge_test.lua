@@ -11,9 +11,13 @@ assert(PlayerDataBridge.RecordAtomCollectMultiBatch(48, {
 	{elementZ = 26, symbol = "Fe", amount = 4, coinReward = 2},
 	{elementZ = 8, symbol = "O", amount = 6, coinReward = 2},
 }), "mixed atom collections should queue as one atomic batch")
+assert(PlayerDataBridge.GetPendingAtomAmount(48) == 10,
+	"pending mixed collections must reserve every atom before delayed processing")
 local mixed = PlayerDataBridge.GetPendingCollect(48)
 assert(mixed and mixed.entries and #mixed.entries == 2 and mixed.entries[2].amount == 6,
 	"mixed atom batches must preserve every entry")
+assert(PlayerDataBridge.GetPendingAtomAmount(48) == 0,
+	"consuming a queued collection must release its reserved atom capacity")
 assert(not PlayerDataBridge.RecordAtomCollectMultiBatch(49, {{elementZ = 0, symbol = "X", amount = 1}}),
 	"invalid mixed atom batches must be rejected")
 local first = PlayerDataBridge.GetPendingCollect(42)
@@ -61,4 +65,4 @@ local reloaded = {molCoins = 3}
 PlayerDataBridge.SetEconomyData(44, reloaded)
 assert(reloaded.molCoins == 10, "queued balance adjustments should apply on load")
 
-print("PlayerDataBridge Tests: 26 passed, 0 failed")
+print("PlayerDataBridge Tests: 28 passed, 0 failed")

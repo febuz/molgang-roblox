@@ -603,10 +603,11 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 		totalAtoms = totalAtoms + count
 	end
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	local pendingAtomAmount = PlayerDataBridge.GetPendingAtomAmount(userId)
 	if not playerData or not InventoryLimits.CanAddAtoms(
-		playerData.atoms, playerData.facilities, totalAtoms) then
+		playerData.atoms, playerData.facilities, totalAtoms + pendingAtomAmount) then
 		Remotes.FireClient("ServerAnnounce", player, {
-			message = "Atom storage is too full to extract this batch. Build an Office or clear storage first.",
+			message = "Atom storage is too full for this batch and queued production. Build an Office or clear storage first.",
 			rarity = "common",
 		})
 		return
