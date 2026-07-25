@@ -169,9 +169,9 @@ def periodic_cell(num, grp, per):
 
 # Zones as floating platforms in a ring (the archipelago), centre = Nexus Hub.
 ZONES = {
-    "Nexus Hub":            {"x": 0,    "z": 0,    "r": 34, "landmarks": ["welcome_arch", "nexus_fountain", "directory_signpost", "info_kiosk", "holo_map_stand"]},
+    "Nexus Hub":            {"x": 0,    "z": 0,    "r": 34, "landmarks": ["welcome_arch_hd", "nexus_fountain", "directory_signpost", "holo_map_stand"]},
     "Periodic Table Biome": {"x": 0,    "z": -120, "r": 40, "landmarks": ["periodic_table_display", "molecule_model", "beaker_1L", "erlenmeyer_flask", "reagent_shelf"]},
-    "Quantum Lab":          {"x": 120,  "z": 0,    "r": 36, "landmarks": ["quantum_tunnel_ring", "quantum_dot", "hero_shield_generator", "microscope", "fume_hood"]},
+    "Quantum Lab":          {"x": 120,  "z": 0,    "r": 36, "landmarks": ["quantum_tunnel_ring", "quantum_dot", "hero_shield_generator", "microscope_hd", "fume_hood_hd"]},
     "Slakkenspoor Fabriek": {"x": -140, "z": 0,    "r": 60, "landmarks": []},   # the hero zone — the processing line
     "MolChain Tower":       {"x": 95,   "z": -95,  "r": 30, "landmarks": ["distillation_column_hd", "storage_silo_hd", "diploma_frame"]},
     "ANK Kredietunie":      {"x": -95,  "z": -95,  "r": 30, "landmarks": ["victory_trophy", "diploma_frame", "plaza_bench", "cafe_counter"]},
@@ -211,6 +211,12 @@ ZONE_PROPS = {
     ],
     "Periodic Table Biome": [
         ("Barrel_01.glb", -30, 28, 0.7, 1.8), ("cement_bag.glb", 29, 27, 0.0, 1.4),
+    ],
+    "Nexus Hub": [
+        ("info_kiosk_hd.glb", 7, 9, 2.6, 2.2, {"interact": "directory"}),
+    ],
+    "ANK Kredietunie": [
+        ("ank_counter_hd.glb", 0, -7, 0.0, 3.4, {"interact": "bank"}),
     ],
 }
 

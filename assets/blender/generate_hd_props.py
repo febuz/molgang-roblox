@@ -35,7 +35,7 @@ def clear_scene():
                 block.remove(item)
 
 
-def mat(name, color, metallic=0.6, roughness=0.45, emission=0.0):
+def mat(name, color, metallic=0.6, roughness=0.45, emission=0.0, alpha=1.0):
     if name in _mats:
         return _mats[name]
     m = bpy.data.materials.new(name)
@@ -47,6 +47,12 @@ def mat(name, color, metallic=0.6, roughness=0.45, emission=0.0):
     if emission:
         bsdf.inputs["Emission Color"].default_value = (*color, 1.0)
         bsdf.inputs["Emission Strength"].default_value = emission
+    if alpha < 1.0:                       # glass panes etc. — exports as glTF BLEND
+        bsdf.inputs["Alpha"].default_value = alpha
+        try:
+            m.blend_method = "BLEND"
+        except AttributeError:
+            pass
     _mats[name] = m
     return m
 
@@ -345,9 +351,129 @@ def build_sample_station_hd():
     export_glb("sample_station_hd")
 
 
+# --------------------------------------------------- zone-landmark upgrades
+
+def build_welcome_arch_hd():
+    clear_scene()
+    steel = mat("arch_steel", (0.20, 0.45, 0.48), 0.75, 0.4)
+    dark = mat("dark_steel", (0.10, 0.11, 0.13), 0.85, 0.5)
+    sign = mat("arch_sign", (0.35, 0.95, 0.85), 0.1, 0.4, emission=1.1)
+    amber = mat("arch_amber", (0.95, 0.72, 0.18), 0.3, 0.5)
+    W, H = 4.2, 5.2                                  # half-span / column height
+    for s in (-1, 1):                                # columns with base flanges
+        cyl(0.28, H, (s * W, 0, H / 2), steel, verts=24)
+        flange(0.5, (s * W, 0, 0.06), dark)
+        flange(0.36, (s * W, 0, H - 0.05), dark)
+        for z in (1.4, 2.8, 4.2):                    # collar rings
+            torus(0.30, 0.035, (s * W, 0, z), dark)
+        cyl(0.05, 1.1, (s * W, 0, H + 0.5), dark, verts=8)   # flag poles
+        box((0.02, 0.7, 0.4), (s * W, 0.36, H + 0.75), amber)
+    box((2 * W + 0.9, 0.5, 0.55), (0, 0, H + 0.1), steel)    # crossbeam
+    box((2 * W - 0.6, 0.08, 0.9), (0, -0.28, H + 0.12), sign)  # emissive name panel
+    for k in range(7):                               # rivet dots along the beam
+        cyl(0.05, 0.1, (-W + 1.2 + k * 1.15, 0.3, H + 0.1), dark, verts=8, rot=(math.pi / 2, 0, 0))
+    export_glb("welcome_arch_hd")
+
+
+def build_info_kiosk_hd():
+    clear_scene()
+    body = mat("kiosk_body", (0.18, 0.22, 0.28), 0.5, 0.5)
+    dark = mat("dark_steel", (0.10, 0.11, 0.13), 0.85, 0.5)
+    scr = mat("kiosk_screen", (0.30, 0.90, 0.85), 0.0, 0.3, emission=0.9)
+    amber = mat("kiosk_amber", (0.95, 0.72, 0.18), 0.3, 0.5)
+    box((1.1, 0.5, 1.0), (0, 0, 0.5), body)          # pedestal
+    box((1.2, 0.6, 0.08), (0, 0, 1.04), dark)        # counter lip
+    box((1.0, 0.12, 0.72), (0, -0.05, 1.62), body,   # tilted screen housing
+        rot=(-0.28, 0, 0))
+    box((0.9, 0.03, 0.6), (0, -0.115, 1.63), scr, rot=(-0.28, 0, 0))
+    box((1.3, 0.9, 0.06), (0, 0, 2.25), amber)       # little roof
+    for s in (-1, 1):
+        cyl(0.04, 1.1, (s * 0.55, 0.3, 1.7), dark, verts=8)   # roof posts
+    box((0.34, 0.1, 0.4), (0.45, 0.28, 1.25), dark)  # leaflet rack
+    export_glb("info_kiosk_hd")
+
+
+def build_fume_hood_hd():
+    clear_scene()
+    body = mat("hood_body", (0.75, 0.77, 0.80), 0.3, 0.4)
+    dark = mat("dark_steel", (0.10, 0.11, 0.13), 0.85, 0.5)
+    glass = mat("hood_glass", (0.6, 0.75, 0.8), 0.0, 0.1, alpha=0.25)
+    inner = mat("hood_inner", (0.88, 0.89, 0.90), 0.1, 0.5)
+    flask = mat("hood_flask", (0.35, 0.75, 0.60), 0.1, 0.2, alpha=0.55)
+    box((1.6, 0.85, 0.9), (0, 0, 0.45), body)        # base cabinets
+    for x in (-0.4, 0.4):                            # cabinet doors + knobs
+        box((0.72, 0.03, 0.8), (x, -0.44, 0.45), body)
+        cyl(0.025, 0.05, (x + 0.28, -0.47, 0.45), dark, verts=8, rot=(math.pi / 2, 0, 0))
+    box((1.6, 0.85, 0.06), (0, 0, 0.93), inner)      # worktop
+    box((1.6, 0.06, 1.5), (0, 0.4, 1.7), inner)      # back wall
+    for s in (-1, 1):                                # side walls
+        box((0.06, 0.85, 1.5), (s * 0.77, 0, 1.7), body)
+    box((1.6, 0.85, 0.10), (0, 0, 2.48), body)       # top
+    box((1.5, 0.03, 0.95), (0, -0.40, 1.75), glass)  # sash (half open)
+    box((1.5, 0.05, 0.05), (0, -0.40, 1.30), dark)   # sash handle
+    cyl(0.16, 0.9, (0, 0.1, 2.95), dark, verts=16)   # extraction duct
+    cone(0.16, 0.28, 0.25, (0, 0.1, 2.6), dark, verts=16)
+    # glassware on the worktop
+    cone(0.14, 0.05, 0.30, (-0.35, 0.1, 1.12), flask, verts=20)   # erlenmeyer
+    cyl(0.06, 0.28, (0.05, 0.15, 1.11), flask, verts=14)          # beaker
+    cyl(0.02, 0.4, (0.35, 0.1, 1.17), flask, verts=10)            # test tube
+    export_glb("fume_hood_hd")
+
+
+def build_microscope_hd():
+    clear_scene()
+    body = mat("scope_body", (0.16, 0.18, 0.22), 0.6, 0.4)
+    metal = mat("scope_metal", (0.70, 0.72, 0.75), 0.9, 0.25)
+    lens = mat("scope_lens", (0.25, 0.55, 0.75), 0.2, 0.1)
+    box((0.5, 0.36, 0.08), (0, 0, 0.04), body)       # foot
+    box((0.10, 0.10, 0.55), (0, 0.12, 0.35), body,   # curved arm (leaning column)
+        rot=(0.35, 0, 0))
+    box((0.34, 0.30, 0.03), (0, -0.03, 0.30), metal) # stage
+    for s in (-1, 1):                                # stage clips
+        box((0.03, 0.16, 0.01), (s * 0.09, -0.05, 0.32), body)
+    cyl(0.05, 0.12, (0, -0.03, 0.21), metal, verts=12)   # condenser under stage
+    cyl(0.09, 0.06, (0, -0.03, 0.50), body, verts=16)    # turret disc
+    for k in range(3):                               # 3 objectives
+        a = k * 2 * math.pi / 3
+        cone(0.030, 0.020, 0.11, (0.05 * math.cos(a), -0.03 + 0.05 * math.sin(a), 0.43), metal, verts=10)
+    cyl(0.045, 0.28, (0, 0.02, 0.68), body, verts=14, rot=(0.35, 0, 0))  # eyepiece tube
+    cyl(0.05, 0.03, (0, 0.075, 0.80), lens, verts=14, rot=(0.35, 0, 0))  # eyepiece lens
+    for s in (-1, 1):                                # focus knobs
+        cyl(0.05, 0.04, (s * 0.08, 0.16, 0.28), metal, verts=12, rot=(0, math.pi / 2, 0))
+    export_glb("microscope_hd")
+
+
+def build_ank_counter_hd():
+    clear_scene()
+    wood = mat("ank_wood", (0.36, 0.24, 0.14), 0.1, 0.6)
+    dark = mat("dark_steel", (0.10, 0.11, 0.13), 0.85, 0.5)
+    scr = mat("ank_screen", (0.95, 0.75, 0.25), 0.0, 0.3, emission=0.9)
+    coin = mat("ank_coin", (0.95, 0.78, 0.20), 0.9, 0.3)
+    steel = mat("vault_steel", (0.45, 0.47, 0.52), 0.85, 0.35)
+    box((2.4, 0.7, 1.05), (0, 0, 0.53), wood)        # counter body
+    box((2.6, 0.9, 0.07), (0, 0, 1.09), wood)        # counter top
+    box((2.4, 0.05, 0.5), (0, -0.42, 0.55), dark)    # front kick panel
+    box((0.6, 0.05, 0.45), (-0.7, 0.2, 1.42), scr)   # teller screen (amber)
+    cyl(0.04, 0.3, (-0.7, 0.25, 1.20), dark, verts=10)
+    cyl(0.16, 0.03, (0.15, -0.15, 1.14), coin, verts=20)   # coin dish + coins
+    for k in range(5):
+        cyl(0.05, 0.012, (0.10 + 0.04 * k, -0.15 + 0.02 * (k % 2), 1.16 + 0.012 * k), coin, verts=12)
+    # small vault behind the counter: box + door wheel + hinges
+    box((0.9, 0.8, 1.3), (1.6, 0.55, 0.65), steel)
+    cyl(0.16, 0.06, (1.6, 0.12, 0.75), dark, verts=20, rot=(math.pi / 2, 0, 0))  # wheel hub
+    for k in range(4):
+        a = k * math.pi / 2
+        cyl(0.02, 0.34, (1.6 + 0.0, 0.12, 0.75), dark, verts=6,
+            rot=(math.pi / 2, a, 0))
+    torus(0.17, 0.02, (1.6, 0.12, 0.75), dark, rot=(math.pi / 2, 0, 0))
+    export_glb("ank_counter_hd")
+
+
 BUILDERS = [build_storage_silo_hd, build_slag_ladle_hd, build_distillation_column_hd,
             build_cooling_tower_hd, build_pipe_rack_hd, build_gas_cylinder_rack_hd,
-            build_control_console_hd, build_safety_station_hd, build_sample_station_hd]
+            build_control_console_hd, build_safety_station_hd, build_sample_station_hd,
+            build_welcome_arch_hd, build_info_kiosk_hd, build_fume_hood_hd,
+            build_microscope_hd, build_ank_counter_hd]
 
 if __name__ == "__main__":
     for b in BUILDERS:

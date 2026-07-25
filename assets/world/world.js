@@ -1430,6 +1430,13 @@ function checkInteract(now) {
     } else if (o.interact === 'console') {
       worldToast('🎛 Operator console — drive the plant with the reactor panel (left): '
         + 'grind, de-iron, roast, then set T/P/flow/pH');
+    } else if (o.interact === 'directory') {
+      worldToast('🗺 Moleculia — ⛏ Slakkenspoor: run the plant · 🧪 Periodic Biome: '
+        + 'collect 118 elements · ⚛️ Quantum Lab: ChemSim · 🌱 Lab & Farm: fertilize '
+        + '& harvest · 🏦 ANK: your MolCoins');
+    } else if (o.interact === 'bank') {
+      worldToast(`🏦 ANK Kredietunie — balance ${molcoins.toLocaleString('en-US')} MolCoins. `
+        + 'Earn: sell V₂O₅ from the plant, harvest crops, pass PPE checks');
     }
     return;
   }
