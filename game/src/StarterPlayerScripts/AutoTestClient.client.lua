@@ -229,6 +229,12 @@ local marketBiddingScale = marketBidding and marketBidding:FindFirstChild("Respo
 check("Market bidding scales to viewport", marketBiddingScale ~= nil and marketBiddingScale:IsA("UIScale")
 	and marketBiddingScale.Scale > 0 and marketBiddingScale.Scale <= 1,
 	"market-bidding modal must have a bounded ResponsiveScale")
+local placeSell = findButtonByText(marketBidding, "PLACE SELL")
+local placeSellRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestPlaceSell")
+local cancelSellRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestCancelSell")
+check("Sell orders have playable controls", placeSell ~= nil and placeSell.Active
+	and placeSellRemote ~= nil and cancelSellRemote ~= nil,
+	"sell order placement/cancellation is not wired")
 
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then

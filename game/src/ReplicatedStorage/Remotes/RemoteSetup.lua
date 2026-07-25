@@ -190,8 +190,9 @@ local clientToServerEvents = {
 	"RequestPlaceBid",       -- {productId, bidPrice, quantity} place market bid
 	"RequestPlaceSell",      -- {productId, askPrice, quantity} place sell order
 	"RequestCancelBid",      -- {bidId} cancel own bid
+	"RequestCancelSell",     -- {sellId} cancel own sell order
 	"RequestMarketBids",     -- {} get active bids
-	"MarketBidsResponse",    -- {bids, myBids} bid data
+	"MarketBidsResponse",    -- {bids, myBids, sells, mySells} order-book data
 	-- Plant Commissioning
 	"RequestStartRace",      -- {trackId} start commissioning phase
 	"RaceStarted",           -- {trackId, trackName, timeLimit}

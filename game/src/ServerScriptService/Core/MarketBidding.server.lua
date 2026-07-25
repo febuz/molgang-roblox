@@ -421,6 +421,25 @@ Remotes.RequestCancelBid.OnServerEvent:Connect(function(player, bidId)
 	})
 end)
 
+Remotes.RequestCancelSell.OnServerEvent:Connect(function(player, sellId)
+	local sell = activeSells[sellId]
+	if not sell or sell.playerId ~= player.UserId then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Sell order not found or not yours.",
+			rarity = "common",
+		})
+		return
+	end
+
+	-- Sell orders reserve inventory logically; cancelling simply releases that
+	-- reservation because the underlying material was never moved to escrow.
+	activeSells[sellId] = nil
+	Remotes.FireClient("ServerAnnounce", player, {
+		message = "Sell order cancelled. Reserved materials are available again.",
+		rarity = "common",
+	})
+end)
+
 -- ═══════════════════════════════════════════════
 -- GET BIDS
 -- ═══════════════════════════════════════════════
@@ -429,6 +448,8 @@ Remotes.RequestMarketBids.OnServerEvent:Connect(function(player)
 	local userId = player.UserId
 	local allBids = {}
 	local myBids = {}
+	local allSells = {}
+	local mySells = {}
 
 	for bidId, bid in pairs(activeBids) do
 		table.insert(allBids, {
@@ -442,10 +463,24 @@ Remotes.RequestMarketBids.OnServerEvent:Connect(function(player)
 			table.insert(myBids, bid)
 		end
 	end
+	for sellId, sell in pairs(activeSells) do
+		table.insert(allSells, {
+			sellId = sell.sellId,
+			playerName = sell.playerName,
+			productId = sell.productId,
+			price = sell.price,
+			quantity = sell.quantity,
+		})
+		if sell.playerId == userId then
+			table.insert(mySells, sell)
+		end
+	end
 
 	Remotes.FireClient("MarketBidsResponse", player, {
 		bids = allBids,
 		myBids = myBids,
+		sells = allSells,
+		mySells = mySells,
 	})
 end)
 

@@ -154,7 +154,7 @@ qtyBox.Parent = main
 corner(qtyBox, 6)
 
 local bidBtn = Instance.new("TextButton")
-bidBtn.Size = UDim2.new(0.44, -8, 0, 32)
+bidBtn.Size = UDim2.new(0.21, -4, 0, 32)
 bidBtn.Position = UDim2.new(0.54, 4, 0, 104)
 bidBtn.BackgroundColor3 = C.green
 bidBtn.Text = "PLACE BID"
@@ -163,6 +163,17 @@ bidBtn.TextScaled = true
 bidBtn.Font = Enum.Font.GothamBold
 bidBtn.Parent = main
 corner(bidBtn, 6)
+
+local sellBtn = Instance.new("TextButton")
+sellBtn.Size = UDim2.new(0.21, -4, 0, 32)
+sellBtn.Position = UDim2.new(0.77, 4, 0, 104)
+sellBtn.BackgroundColor3 = C.accent
+sellBtn.Text = "PLACE SELL"
+sellBtn.TextColor3 = Color3.new(1, 1, 1)
+sellBtn.TextScaled = true
+sellBtn.Font = Enum.Font.GothamBold
+sellBtn.Parent = main
+corner(sellBtn, 6)
 
 bidBtn.Activated:Connect(function()
 	if not selectedProduct then return end
@@ -174,12 +185,22 @@ bidBtn.Activated:Connect(function()
 	priceBox.Text = ""
 end)
 
+sellBtn.Activated:Connect(function()
+	if not selectedProduct then return end
+	local price = tonumber(priceBox.Text)
+	local qty = tonumber(qtyBox.Text) or 1
+	if not price or price < 1 or qty < 1 then return end
+	local r = Remotes:FindFirstChild("RequestPlaceSell")
+	if r then r:FireServer(selectedProduct, price, qty) end
+	priceBox.Text = ""
+end)
+
 -- Active bids list
 local bidsLabel = Instance.new("TextLabel")
 bidsLabel.Size = UDim2.new(1, -16, 0, 20)
 bidsLabel.Position = UDim2.new(0, 8, 0, 145)
 bidsLabel.BackgroundTransparency = 1
-bidsLabel.Text = "Active Bids"
+bidsLabel.Text = "Active Orders"
 bidsLabel.TextColor3 = C.gold
 bidsLabel.TextScaled = true
 bidsLabel.Font = Enum.Font.GothamBold
@@ -247,8 +268,52 @@ if bidResponseEvent then
 					end)
 				end
 			end
-			bidsScroll.CanvasSize = UDim2.new(0, 0, 0, #data.bids * 34)
 		end
+
+		local shown = data.bids and #data.bids or 0
+		if data.sells then
+			for _, sell in ipairs(data.sells) do
+				local sf = Instance.new("Frame")
+				sf.Size = UDim2.new(1, -8, 0, 30)
+				sf.BackgroundColor3 = C.bg
+				sf.Parent = bidsScroll
+				corner(sf, 4)
+
+				local sl = Instance.new("TextLabel")
+				sl.Size = UDim2.new(0.7, 0, 1, 0)
+				sl.Position = UDim2.new(0, 6, 0, 0)
+				sl.BackgroundTransparency = 1
+				sl.Text = "SELL " .. sell.playerName .. ": " .. sell.quantity .. "x " .. sell.productId .. " @ " .. sell.price .. " MC"
+				sl.TextColor3 = C.accent
+				sl.TextScaled = true; sl.Font = Enum.Font.Gotham
+				sl.TextXAlignment = Enum.TextXAlignment.Left
+				sl.Parent = sf
+
+				local isMySell = false
+				if data.mySells then
+					for _, ms in ipairs(data.mySells) do
+						if ms.sellId == sell.sellId then isMySell = true end
+					end
+				end
+				if isMySell then
+					local cb = Instance.new("TextButton")
+					cb.Size = UDim2.new(0.2, 0, 0.8, 0)
+					cb.Position = UDim2.new(0.78, 0, 0.1, 0)
+					cb.BackgroundColor3 = C.red
+					cb.Text = "Cancel"
+					cb.TextColor3 = Color3.new(1, 1, 1)
+					cb.TextScaled = true; cb.Font = Enum.Font.GothamBold
+					cb.Parent = sf
+					corner(cb, 4)
+					cb.Activated:Connect(function()
+						local r = Remotes:FindFirstChild("RequestCancelSell")
+						if r then r:FireServer(sell.sellId) end
+					end)
+				end
+				shown = shown + 1
+			end
+		end
+		bidsScroll.CanvasSize = UDim2.new(0, 0, 0, shown * 34)
 	end)
 end
 
