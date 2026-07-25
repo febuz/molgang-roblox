@@ -196,6 +196,10 @@ PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	else
 		questProgress = playerData.questProgress
 	end
+	-- Request the server-authoritative quest state immediately. This starts
+	-- the first objective for new players, so the compact tracker is useful
+	-- before they know that Q opens the full quest modal.
+	RequestQuestInfo:FireServer()
 end)
 
 local function displayQuestInTracker(quest)

@@ -176,6 +176,17 @@ function Quests.CreateQuestProgress()
 	}
 end
 
+-- Give a new player one concrete first objective without requiring them to
+-- discover the quest modal first. Existing progress is never overwritten.
+function Quests.EnsureStarterQuest(progress)
+	if type(progress) ~= "table" then return false end
+	progress.active = progress.active or {}
+	progress.completed = progress.completed or {}
+	progress.inProgress = progress.inProgress or {}
+	if next(progress.active) ~= nil or next(progress.completed) ~= nil then return false end
+	return Quests.AcceptQuest(progress, "first_atom")
+end
+
 function Quests.GetQuest(questId)
 	return Quests.AllQuests[questId]
 end

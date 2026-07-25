@@ -22,6 +22,7 @@ local function getQuestProgress(userId)
 	progress.completed = progress.completed or {}
 	progress.inProgress = progress.inProgress or {}
 	progress.lastDaily = progress.lastDaily or {}
+	Quests.EnsureStarterQuest(progress)
 	return data, progress
 end
 

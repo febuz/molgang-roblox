@@ -2,12 +2,15 @@ local Quests = require("../game/src/ReplicatedStorage/Modules/Quests")
 local Achievements = require("../game/src/ReplicatedStorage/Modules/Achievements")
 
 local progress = Quests.CreateQuestProgress()
+assert(Quests.EnsureStarterQuest(progress), "new players should receive a first objective")
+assert(Quests.GetActiveQuests(progress)[1].id == "first_atom",
+	"the first objective should be the atom collection quest")
 local allowed, reason = Quests.CanAccept(progress, "first_atom")
-assert(allowed and reason == "OK", "first quest must be acceptible for a new player")
-assert(Quests.AcceptQuest(progress, "first_atom"), "server quest acceptance should activate the quest")
-assert(not Quests.CanAccept(progress, "first_atom"), "an active quest must not be accepted twice")
+assert(not allowed and reason == "Quest already active", "the starter quest must not be duplicated")
+assert(not Quests.EnsureStarterQuest(progress), "existing progress must not be overwritten")
 assert(not Quests.CanAccept(progress, "collect_atoms"), "prerequisites must be enforced")
 assert(Quests.CompleteQuest(progress, "first_atom"), "completed quest must move to completed state")
+assert(not Quests.EnsureStarterQuest(progress), "completed progress must not restart the starter quest")
 assert(Quests.CanAccept(progress, "collect_atoms"), "completed prerequisites must unlock the next quest")
 
 progress.lastDaily.daily_collect = os.date("%Y-%m-%d")
@@ -21,4 +24,4 @@ local atomAchievement = Achievements.List.TenAtoms
 assert(Achievements.CheckProgress(consumedAtoms, atomAchievement) == 10,
 	"lifetime achievement progress must survive consumed atoms")
 
-print("Quest Flow Tests: 9 passed, 0 failed")
+print("Quest Flow Tests: 12 passed, 0 failed")
