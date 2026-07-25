@@ -35,9 +35,26 @@ screenGui.DisplayOrder = 20
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local biddingCamera = workspace.CurrentCamera
+local function updateBiddingScale()
+	if not biddingCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(biddingCamera.ViewportSize.X - 20) / 500,
+		(biddingCamera.ViewportSize.Y - 20) / 420
+	), 0.65, 1)
+end
+updateBiddingScale()
+if biddingCamera then
+	biddingCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateBiddingScale)
+end
+
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 500, 0, 420)
-main.Position = UDim2.new(0.5, -250, 0.5, -210)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
