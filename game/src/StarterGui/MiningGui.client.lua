@@ -366,7 +366,8 @@ if miningEvent then
 
 				-- Ore stockpile
 				lbl(card, {N="Ore", S=UDim2.new(0.2,0,0,14), P=UDim2.new(0,14,0,78),
-					T="Ore: " .. math.floor(plot.oreStockpile or 0) .. " kg", C=C.gold})
+					T="Ore: " .. math.floor(plot.oreStockpile or 0) .. " kg | Rit: " .. math.floor(plot.transportCapacity or 250) .. " kg",
+					C=C.gold})
 
 				-- Action buttons (right side)
 				local actX = 0.55
