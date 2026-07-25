@@ -23,6 +23,7 @@ local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
+local MiningPersistence = require(ReplicatedStorage.Modules.MiningPersistence)
 
 -- ═══════════════════════════════════════════════
 -- STATE
@@ -83,17 +84,18 @@ local function hydratePlotStates(userId, miningData)
 	for plotIdString, saved in pairs(miningData.plotStates or {}) do
 		local plotId = tonumber(plotIdString)
 		local plot = plotId and worldPlots[plotId]
-		if plot and (not plot.owner or plot.owner == userId) then
+		local safeState = MiningPersistence.SanitizePlotState(saved)
+		if plot and safeState and (not plot.owner or plot.owner == userId) then
 			plot.owner = userId
-			plot.explored = saved.explored == true
-			plot.composition = saved.composition or plot.composition
-			plot.vanadiumPct = saved.vanadiumPct or plot.vanadiumPct
-			plot.rarity = saved.rarity or plot.rarity
-			plot.mineEquipment = saved.mineEquipment or {}
-			plot.oreStockpile = saved.oreStockpile or 0
-			plot.totalMined = saved.totalMined or 0
-			plot.forSale = saved.forSale == true
-			plot.askPrice = saved.askPrice
+			plot.explored = safeState.explored
+			plot.composition = safeState.composition or plot.composition
+			plot.vanadiumPct = safeState.vanadiumPct or plot.vanadiumPct
+			plot.rarity = safeState.rarity or plot.rarity
+			plot.mineEquipment = safeState.mineEquipment
+			plot.oreStockpile = safeState.oreStockpile
+			plot.totalMined = safeState.totalMined
+			plot.forSale = safeState.forSale
+			plot.askPrice = safeState.askPrice
 			miningData.ownedPlots[plotId] = true
 		end
 	end
@@ -135,11 +137,19 @@ local function getPlayerMining(userId)
 		local playerData = PlayerDataBridge.GetPlayerData(userId)
 		if playerData then
 			playerData.mining = playerData.mining or {}
-			playerData.mining.ownedPlots = playerData.mining.ownedPlots or {}
-			playerData.mining.equipment = playerData.mining.equipment or {}
-			playerData.mining.plotStates = playerData.mining.plotStates or {}
-			playerData.mining.totalOreMined = playerData.mining.totalOreMined or 0
-			playerData.mining.totalOreValue = playerData.mining.totalOreValue or 0
+			if type(playerData.mining.ownedPlots) ~= "table" then playerData.mining.ownedPlots = {} end
+			if type(playerData.mining.equipment) ~= "table" then
+				playerData.mining.equipment = {}
+			end
+			if type(playerData.mining.plotStates) ~= "table" then
+				playerData.mining.plotStates = {}
+			end
+			if not (type(playerData.mining.totalOreMined) == "number" and playerData.mining.totalOreMined >= 0 and playerData.mining.totalOreMined < math.huge) then
+				playerData.mining.totalOreMined = 0
+			end
+			if not (type(playerData.mining.totalOreValue) == "number" and playerData.mining.totalOreValue >= 0 and playerData.mining.totalOreValue < math.huge) then
+				playerData.mining.totalOreValue = 0
+			end
 			playerMining[userId] = playerData.mining
 			hydratePlotStates(userId, playerData.mining)
 			hydratedMining[userId] = true
