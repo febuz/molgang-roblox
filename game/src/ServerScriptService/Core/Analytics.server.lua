@@ -21,6 +21,7 @@ local pathStore = DataStoreProvider.GetDataStore("MolGang_PlayerPaths_v1")
 -- every 3 seconds, capped to a 30-minute session.
 local PATH_SAMPLE_INTERVAL = 3
 local MAX_PATH_SAMPLES = 600
+local SAVE_RETRIES = 3
 
 -- Session data per player
 local playerSessions = {}
@@ -43,7 +44,11 @@ local function getSession(userId)
 			lastAction = os.time(),
 			path = {},
 			clockStart = os.clock(),
-			lastPathSample = 0,
+			-- Capture the spawn position on the first heartbeat. Short OTAP
+			-- sessions must still produce a useful route record.
+			lastPathSample = -PATH_SAMPLE_INTERVAL,
+			saving = false,
+			saved = false,
 		}
 	end
 	return playerSessions[userId]
@@ -109,34 +114,80 @@ Remotes.RequestAtomCollect.OnServerEvent:Connect(function(player, _atomName)
 	trackEvent(player.UserId, "atomsCollected", 1)
 end)
 
--- Track when player leaves — save session summary
-Players.PlayerRemoving:Connect(function(player)
+local function persistSession(player, session)
+	if not session or session.saved then return true end
+	if session.saving then
+		local deadline = os.clock() + 8
+		while session.saving and os.clock() < deadline do task.wait() end
+		return session.saved
+	end
+
+	session.saving = true
 	local userId = player.UserId
-	local session = playerSessions[userId]
-	if not session then return end
-
 	local duration = os.time() - session.joinTime
-	-- Save compressed session data
-	pcall(function()
-		local key = "session_" .. userId .. "_" .. os.time()
-		analyticsStore:SetAsync(key, duration)
-		pathStore:SetAsync("path_" .. userId .. "_" .. session.joinTime, {
-			userId = userId,
-			playerName = player.Name,
-			startedAt = session.joinTime,
-			duration = duration,
-			samples = session.path,
-		})
-	end)
+	local analyticsKey = "session_" .. userId .. "_" .. os.time()
+	local pathKey = "path_" .. userId .. "_" .. session.joinTime
+	local payload = {
+		userId = userId,
+		playerName = player.Name,
+		startedAt = session.joinTime,
+		duration = duration,
+		samples = session.path,
+	}
 
-	playerSessions[userId] = nil
+	local saved = false
+	for attempt = 1, SAVE_RETRIES do
+		local analyticsOk = pcall(function()
+			analyticsStore:SetAsync(analyticsKey, duration)
+		end)
+		local pathOk = pcall(function()
+			pathStore:SetAsync(pathKey, payload)
+		end)
+		if analyticsOk and pathOk then
+			saved = true
+			break
+		end
+		if attempt < SAVE_RETRIES then task.wait(attempt) end
+	end
+
+	session.saving = false
+	session.saved = saved
+	if not saved then
+		warn("[Analytics] Could not persist session after retries for " .. player.Name)
+	end
+	return saved
+end
+
+local function finishSession(player)
+	local session = playerSessions[player.UserId]
+	if not session then return end
+	local duration = os.time() - session.joinTime
+	local saved = persistSession(player, session)
+	if saved then playerSessions[player.UserId] = nil end
 	print("[Analytics]", player.Name, "session:", duration .. "s,", session.events.atomsCollected,
-		"atoms,", #session.path, "path samples")
+		"atoms,", #session.path, "path samples, saved=" .. tostring(saved))
+end
+
+-- Track when player leaves — save session summary.
+Players.PlayerRemoving:Connect(finishSession)
+
+-- Roblox can close a server before PlayerRemoving has run for every player.
+-- Flush all active sessions so route analytics survives Studio stop and deploys.
+game:BindToClose(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		finishSession(player)
+	end
 end)
 
 -- Track player joins
 Players.PlayerAdded:Connect(function(player)
 	getSession(player.UserId)
 end)
+
+-- Server scripts can be required after players already exist (notably in
+-- Studio/OTAP); do not lose those sessions or their initial path sample.
+for _, player in ipairs(Players:GetPlayers()) do
+	getSession(player.UserId)
+end
 
 print("[MOLGANG] Analytics initialized — tracking session events")
