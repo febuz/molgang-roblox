@@ -41,7 +41,6 @@ local AtomCollected = Remotes:WaitForChild("AtomCollected")
 local MoleculeBuilt = Remotes:WaitForChild("MoleculeBuilt")
 local ChainEntryAdded = Remotes:WaitForChild("ChainEntryAdded")
 local AchievementUnlocked = Remotes:WaitForChild("AchievementUnlocked")
-local ServerAnnounce = Remotes:WaitForChild("ServerAnnounce")
 local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
 
 --------------------------------------------------------------------------------
@@ -1107,13 +1106,6 @@ AchievementUnlocked.OnClientEvent:Connect(function(data)
 	if not data then return end
 	showAchievementBanner(data.title or "Achievement", data.description or "")
 	addTickerMessage(player.Name .. " unlocked achievement '" .. (data.title or "") .. "'!")
-end)
-
-ServerAnnounce.OnClientEvent:Connect(function(data)
-	-- data = {message}
-	if data and data.message then
-		addTickerMessage(data.message)
-	end
 end)
 
 --------------------------------------------------------------------------------
