@@ -13,6 +13,7 @@ local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local PlayerPathAnalytics = require(script.Parent.PlayerPathAnalytics)
 
 local analyticsStore = DataStoreProvider.GetOrderedDataStore("Analytics_v1")
 local pathStore = DataStoreProvider.GetDataStore("MolGang_PlayerPaths_v1")
@@ -20,8 +21,6 @@ local pathStore = DataStoreProvider.GetDataStore("MolGang_PlayerPaths_v1")
 -- A route sample is useful for level design, but recording every physics frame
 -- is noisy, expensive, and unnecessary. Keep one rounded sample per player
 -- every 3 seconds, capped to a 30-minute session.
-local PATH_SAMPLE_INTERVAL = 3
-local MAX_PATH_SAMPLES = 600
 local SAVE_RETRIES = 3
 
 -- Session data per player
@@ -29,9 +28,9 @@ local playerSessions = {}
 
 local function getSession(userId)
 	if not playerSessions[userId] then
-		playerSessions[userId] = {
-			joinTime = os.time(),
-			events = {
+		local joinTime = os.time()
+		local sessionId = tostring(joinTime) .. "_" .. tostring(math.floor(os.clock() * 1000))
+		playerSessions[userId] = PlayerPathAnalytics.NewSession(joinTime, os.clock(), sessionId, {
 				atomsCollected = 0,
 				moleculesBuilt = 0,
 				leachesStarted = 0,
@@ -40,17 +39,11 @@ local function getSession(userId)
 				questsCompleted = 0,
 				deaths = 0,
 				chatMessages = 0,
-			},
-			firstAction = nil,
-			lastAction = os.time(),
-			path = {},
-			clockStart = os.clock(),
-			-- Capture the spawn position on the first heartbeat. Short OTAP
-			-- sessions must still produce a useful route record.
-			lastPathSample = -PATH_SAMPLE_INTERVAL,
-			saving = false,
-			saved = false,
-		}
+		})
+		playerSessions[userId].analyticsKey = "session_" .. userId .. "_" .. sessionId
+		playerSessions[userId].pathKey = "path_" .. userId .. "_" .. sessionId
+		playerSessions[userId].firstAction = nil
+		playerSessions[userId].lastAction = joinTime
 	end
 	return playerSessions[userId]
 end
@@ -72,20 +65,16 @@ end
 
 local function samplePlayerPath(player, now)
 	local session = playerSessions[player.UserId]
-	if not session or now - session.lastPathSample < PATH_SAMPLE_INTERVAL then return end
+	if not session then return end
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
-	if #session.path >= MAX_PATH_SAMPLES then return end
-	session.lastPathSample = now
 	local position = root.Position
-	table.insert(session.path, {
-		t = math.floor(now - session.clockStart),
-		x = math.round(position.X * 2) / 2,
-		y = math.round(position.Y * 2) / 2,
-		z = math.round(position.Z * 2) / 2,
-		zone = nearestZone(position),
-	})
+	PlayerPathAnalytics.AppendSample(session, now, {
+		x = position.X,
+		y = position.Y,
+		z = position.Z,
+	}, nearestZone(position))
 end
 
 RunService.Heartbeat:Connect(function()
@@ -127,37 +116,32 @@ local function persistSession(player, session)
 	session.saving = true
 	local userId = player.UserId
 	local duration = os.time() - session.joinTime
-	local analyticsKey = "session_" .. userId .. "_" .. os.time()
-	local pathKey = "path_" .. userId .. "_" .. session.joinTime
-	local payload = {
-		userId = userId,
-		playerName = player.Name,
-		startedAt = session.joinTime,
-		duration = duration,
-		samples = session.path,
-	}
-
-	local saved = false
+	local payload = PlayerPathAnalytics.BuildPayload(session, userId, player.Name, duration)
+	local analyticsSaved = session.analyticsSaved == true
+	local pathSaved = session.pathSaved == true
 	for attempt = 1, SAVE_RETRIES do
-		local analyticsOk = pcall(function()
-			analyticsStore:SetAsync(analyticsKey, duration)
-		end)
-		local pathOk = pcall(function()
-			pathStore:SetAsync(pathKey, payload)
-		end)
-		if analyticsOk and pathOk then
-			saved = true
-			break
+		if not analyticsSaved then
+			analyticsSaved = pcall(function()
+				analyticsStore:SetAsync(session.analyticsKey, duration)
+			end)
 		end
+		if not pathSaved then
+			pathSaved = pcall(function()
+				pathStore:SetAsync(session.pathKey, payload)
+			end)
+		end
+		if analyticsSaved and pathSaved then break end
 		if attempt < SAVE_RETRIES then task.wait(attempt) end
 	end
 
 	session.saving = false
-	session.saved = saved
-	if not saved then
+	session.analyticsSaved = analyticsSaved
+	session.pathSaved = pathSaved
+	session.saved = analyticsSaved and pathSaved
+	if not session.saved then
 		warn("[Analytics] Could not persist session after retries for " .. player.Name)
 	end
-	return saved
+	return session.saved
 end
 
 local function finishSession(player)
