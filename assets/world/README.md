@@ -15,12 +15,19 @@ content is rebuilt around the game's actual goals.
 ## Run it
 
 ```bash
-# static world (map + streaming renderer) — serve assets/ and open /world/
+# the whole game — just serve assets/ and open /world/ (no backend needed)
 python3 -m http.server 8082 --directory assets    # http://localhost:8082/world/
 
-# live process sim (the Slakkenspoor reactor + multiplayer presence)
+# OPTIONAL: the Python sim adds shared multiplayer + a server-authoritative
+# reactor. Without it the process chemistry runs client-side (see below), so a
+# static host (e.g. knitweb.art/molgang) is fully playable on its own.
 python3 assets/world/sim_server.py                # authority on :8077
 ```
+
+The Slakkenspoor process runs entirely in the browser (`process_sim.py` is
+ported to JS in `world.js`) and only falls back to the Python sim when one is
+reachable — so operating the plant, producing V₂O₅, and selling it all work with
+no server. The sim server is only needed for shared multiplayer.
 
 Controls: **click** to look, **W/A/S/D** move, **Shift** sprint. Buttons: 🌱
 Fertilizer Lab (**F**), 🌾 Farm, 🥽 AR (**R** toggles the overlay).
