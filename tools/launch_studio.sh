@@ -81,7 +81,19 @@ echo "[4/4] Launching Roblox Studio via Vinegar..."
 # Explicit EditFile intent is required by current Studio builds. Passing only
 # the Linux path starts the shell/start page with Studio Launch Intent=None;
 # the Wine Documents path plus EditFile opens the place data model directly.
-flatpak run org.vinegarhq.Vinegar \
+# Some OTAP hosts expose the NVIDIA device to Flatpak but fail EGL/DRI3
+# initialization in Wine. Keep the normal path untouched, while allowing a
+# one-shot software-render fallback for diagnosis or low-GPU environments.
+VINEGAR_RENDER_ARGS=()
+if [ "${MOLGANG_SOFTWARE_RENDER:-0}" = "1" ]; then
+  VINEGAR_RENDER_ARGS+=(
+    --env=LIBGL_ALWAYS_SOFTWARE=1
+    --env=MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+    --env=GALLIUM_DRIVER=llvmpipe
+  )
+  echo "      Software-render fallback enabled (one-shot)"
+fi
+flatpak run "${VINEGAR_RENDER_ARGS[@]}" org.vinegarhq.Vinegar \
   -task EditFile \
   -localPlaceFile "$WINE_PLACE" \
   -userid 9400855976 \
