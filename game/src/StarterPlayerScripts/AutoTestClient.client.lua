@@ -181,6 +181,12 @@ check("Process control scales to viewport", processScale ~= nil and processScale
 	and processScale.Scale > 0 and processScale.Scale <= 1,
 	"process-control modal must have a bounded ResponsiveScale")
 
+local mining = findScreenGui("MiningGui")
+local miningScale = mining and mining:FindFirstChild("ResponsiveScale")
+check("Mining scales to viewport", miningScale ~= nil and miningScale:IsA("UIScale")
+	and miningScale.Scale > 0 and miningScale.Scale <= 1,
+	"mining modal must have a bounded ResponsiveScale")
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")
