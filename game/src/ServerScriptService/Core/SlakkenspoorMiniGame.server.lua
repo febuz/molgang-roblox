@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local MiniGameRules = require(ReplicatedStorage.Modules.MiniGameRules)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -696,7 +697,7 @@ Remotes.RequestSortOrb.OnServerEvent:Connect(function(player, orbId, binChoice)
 
 	-- Normalize bin choice
 	binChoice = string.upper(binChoice)
-	if binChoice ~= "LEFT" and binChoice ~= "CENTER" and binChoice ~= "RIGHT" then
+	if not MiniGameRules.IsValidBin(binChoice) then
 		return -- invalid bin
 	end
 

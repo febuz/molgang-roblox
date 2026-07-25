@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local MiniGameRules = require(ReplicatedStorage.Modules.MiniGameRules)
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -122,21 +123,21 @@ local currentOrbId = nil
 
 createBin("magnetic", "MAGNETIC\n(Fe3O4)", BIN_COLORS.magnetic, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "LEFT")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, MiniGameRules.Bins.magnetic)
 		currentOrbId = nil
 	end
 end)
 
 createBin("valuable", "VALUABLE\n(V2O5/TiO2)", BIN_COLORS.valuable, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "CENTER")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, MiniGameRules.Bins.valuable)
 		currentOrbId = nil
 	end
 end)
 
 createBin("hazard", "HAZARD\n(Cr VI)", BIN_COLORS.hazard, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "RIGHT")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, MiniGameRules.Bins.hazard)
 		currentOrbId = nil
 	end
 end)
