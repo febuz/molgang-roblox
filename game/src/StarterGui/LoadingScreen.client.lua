@@ -426,10 +426,11 @@ playStroke.Parent = playBtn
 
 -- Footer
 local footer = Instance.new("TextLabel")
+footer.Name = "Footer"
 footer.Size = UDim2.new(0.6, 0, 0, 18)
 footer.Position = UDim2.new(0.2, 0, 1, -30)
 footer.BackgroundTransparency = 1
-footer.Text = "MOLGANG OTAP teststraat | Chemical Engineering Simulator v0.2"
+footer.Text = "MOLGANG OTAP teststraat | Chemical Engineering Simulator 1.0"
 footer.TextColor3 = Color3.fromRGB(80, 85, 100)
 footer.TextScaled = true
 footer.Font = Enum.Font.Gotham

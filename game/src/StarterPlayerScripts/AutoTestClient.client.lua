@@ -95,6 +95,11 @@ if loadingScreen then
 		"PlayBtn was not created")
 	check("LoadingScreen content stays inside viewport", contentPanel ~= nil and contentPanel.ClipsDescendants,
 		"ContentPanel must clip its responsive shortcut grid at the rounded outline")
+	local footer = loadingScreen:FindFirstChild("Footer", true)
+	check("LoadingScreen identifies the OTAP build", footer ~= nil
+		and string.find(footer.Text, "MOLGANG OTAP teststraat", 1, true) ~= nil
+		and string.find(footer.Text, "v0.2", 1, true) == nil,
+		"loading footer still presents the old v0.2/demo identity")
 	if playButton then
 		check("LoadingScreen enter control is ready", playButton.Visible and playButton.Active,
 			"PlayBtn is not visible/active after the loading phase")
