@@ -469,11 +469,95 @@ def build_ank_counter_hd():
     export_glb("ank_counter_hd")
 
 
+def build_plaza_bench_hd():
+    clear_scene()
+    wood = mat("bench_wood", (0.42, 0.28, 0.16), 0.05, 0.6)
+    iron = mat("bench_iron", (0.12, 0.13, 0.15), 0.7, 0.5)
+    for y, z, rx in [(-0.02, 0.46, 0), (0.16, 0.46, 0), (0.34, 0.46, 0),   # seat slats
+                     (0.44, 0.66, 1.25), (0.44, 0.86, 1.25)]:              # back slats
+        box((1.8, 0.14, 0.035), (0, y, z), wood, rot=(rx, 0, 0))
+    for s in (-1, 1):                                # cast-iron end frames
+        box((0.07, 0.5, 0.06), (s * 0.85, 0.15, 0.44), iron)
+        box((0.07, 0.06, 0.46), (s * 0.85, -0.08, 0.23), iron)   # front leg
+        box((0.07, 0.06, 0.46), (s * 0.85, 0.38, 0.23), iron)    # rear leg
+        box((0.07, 0.06, 0.55), (s * 0.85, 0.47, 0.72), iron,    # backrest support
+            rot=(1.25, 0, 0))
+        cyl(0.035, 0.5, (s * 0.85, 0.15, 0.5), iron, verts=10,   # armrest
+            rot=(math.pi / 2, 0, 0))
+    export_glb("plaza_bench_hd")
+
+
+def build_directory_signpost_hd():
+    clear_scene()
+    dark = mat("post_dark", (0.12, 0.13, 0.15), 0.7, 0.5)
+    # arm colours echo the zones: factory amber, biome green, lab violet, ANK gold
+    arms = [mat("arm_factory", (0.79, 0.55, 0.23), 0.3, 0.5),
+            mat("arm_biome", (0.30, 0.62, 0.36), 0.3, 0.5),
+            mat("arm_lab", (0.55, 0.40, 0.75), 0.3, 0.5),
+            mat("arm_ank", (0.85, 0.70, 0.25), 0.4, 0.4)]
+    cyl(0.09, 3.4, (0, 0, 1.7), dark, verts=16)      # main post
+    sphere(0.13, (0, 0, 3.5), dark)                  # finial
+    cyl(0.30, 0.05, (0, 0, 0.03), dark, verts=20)    # base plate
+    for i, m in enumerate(arms):                     # pointing arms, fanned
+        a = i * math.pi / 2 + 0.4
+        z = 2.15 + i * 0.35
+        dx, dy = math.cos(a), math.sin(a)
+        box((0.9, 0.05, 0.22), (dx * 0.45, dy * 0.45, z), m, rot=(0, 0, a))
+        # arrow tip: small wedge at the far end
+        cone(0.11, 0.01, 0.18, (dx * 0.98, dy * 0.98, z), m, verts=4,
+             rot=(0, math.pi / 2, a))
+    export_glb("directory_signpost_hd")
+
+
+def build_cafe_counter_hd():
+    clear_scene()
+    wood = mat("cafe_wood", (0.38, 0.25, 0.15), 0.1, 0.55)
+    top = mat("cafe_top", (0.85, 0.83, 0.78), 0.1, 0.3)
+    steel = mat("cafe_steel", (0.65, 0.67, 0.70), 0.9, 0.3)
+    dark = mat("dark_steel", (0.10, 0.11, 0.13), 0.85, 0.5)
+    cup = mat("cafe_cup", (0.92, 0.90, 0.86), 0.05, 0.4)
+    menu = mat("cafe_menu", (0.30, 0.90, 0.80), 0.0, 0.4, emission=0.7)
+    box((2.2, 0.65, 1.0), (0, 0, 0.5), wood)         # counter body
+    box((2.4, 0.85, 0.06), (0, 0, 1.03), top)        # stone top
+    box((2.2, 0.05, 0.35), (0, -0.36, 0.35), dark)   # kick panel
+    # espresso machine: body + group heads + steam wand + top tray
+    box((0.7, 0.45, 0.42), (-0.55, 0.1, 1.27), steel)
+    box((0.74, 0.5, 0.05), (-0.55, 0.1, 1.51), dark)
+    for x in (-0.72, -0.38):
+        box((0.14, 0.12, 0.10), (x, -0.14, 1.15), dark)          # group heads
+    cyl(0.02, 0.3, (-0.18, -0.05, 1.15), steel, verts=8, rot=(0.5, 0, 0))  # wand
+    for k in range(3):                               # stacked cups
+        cyl(0.05, 0.06, (0.15, 0.1, 1.09 + k * 0.065), cup, verts=12)
+    cyl(0.16, 0.02, (0.55, 0.05, 1.07), steel, verts=20)          # serving tray
+    box((0.5, 0.04, 0.6), (0.85, 0.28, 1.65), dark)  # menu board on the top
+    box((0.44, 0.02, 0.54), (0.85, 0.26, 1.65), menu)
+    export_glb("cafe_counter_hd")
+
+
+def build_diploma_frame_hd():
+    clear_scene()
+    frame = mat("dip_frame", (0.55, 0.42, 0.18), 0.6, 0.35)
+    paper = mat("dip_paper", (0.93, 0.90, 0.82), 0.0, 0.6)
+    seal = mat("dip_seal", (0.80, 0.15, 0.15), 0.2, 0.4, emission=0.5)
+    ribbon = mat("dip_ribbon", (0.70, 0.12, 0.12), 0.1, 0.5)
+    ink = mat("dip_ink", (0.20, 0.20, 0.24), 0.0, 0.6)
+    box((0.9, 0.06, 1.2), (0, 0, 0.6), frame)        # outer frame
+    box((0.78, 0.03, 1.08), (0, -0.025, 0.6), paper) # certificate
+    for z in (0.95, 0.85, 0.75):                     # text lines
+        box((0.5, 0.01, 0.035), (0, -0.045, z), ink)
+    box((0.3, 0.01, 0.03), (0, -0.045, 0.65), ink)
+    cyl(0.09, 0.02, (0.22, -0.05, 0.42), seal, verts=20, rot=(math.pi / 2, 0, 0))
+    box((0.05, 0.015, 0.16), (0.19, -0.05, 0.30), ribbon, rot=(0, 0.25, 0))
+    box((0.05, 0.015, 0.16), (0.26, -0.05, 0.30), ribbon, rot=(0, -0.25, 0))
+    export_glb("diploma_frame_hd")
+
+
 BUILDERS = [build_storage_silo_hd, build_slag_ladle_hd, build_distillation_column_hd,
             build_cooling_tower_hd, build_pipe_rack_hd, build_gas_cylinder_rack_hd,
             build_control_console_hd, build_safety_station_hd, build_sample_station_hd,
             build_welcome_arch_hd, build_info_kiosk_hd, build_fume_hood_hd,
-            build_microscope_hd, build_ank_counter_hd]
+            build_microscope_hd, build_ank_counter_hd, build_plaza_bench_hd,
+            build_directory_signpost_hd, build_cafe_counter_hd, build_diploma_frame_hd]
 
 if __name__ == "__main__":
     for b in BUILDERS:
