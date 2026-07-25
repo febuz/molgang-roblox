@@ -45,6 +45,12 @@ local PROCESS_WATER_COST_BY_SIZE = {
 	powder = 70,
 }
 
+-- The process-control panel is the playable chemical simulator. Access is a
+-- server-authoritative session purchase, not a client-side UI flag. A player
+-- pays once per Studio/server session and can reopen the simulator freely.
+local CHEMICAL_SIMULATOR_ACCESS_COST = 25
+local chemicalSimulatorAccess = {}
+
 -- ══════════════════════════════════════════════
 -- STATE
 -- ══════════════════════════════════════════════
@@ -790,6 +796,14 @@ end)
 
 Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperature, pressure, pH, flowRate)
 	local userId = player.UserId
+	if not chemicalSimulatorAccess[userId] then
+		Remotes.FireClient("ChemicalSimulatorAccess", player, {
+			success = false,
+			cost = CHEMICAL_SIMULATOR_ACCESS_COST,
+			message = "Purchase chemical simulator access before changing process controls.",
+		})
+		return
+	end
 	local now = os.clock()
 	if lastProcessControlUpdate[userId] and now - lastProcessControlUpdate[userId] < 0.25 then
 		return
@@ -833,6 +847,14 @@ Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperat
 end)
 
 Remotes.RequestProcessControlState.OnServerEvent:Connect(function(player)
+	if not chemicalSimulatorAccess[player.UserId] then
+		Remotes.FireClient("ChemicalSimulatorAccess", player, {
+			success = false,
+			cost = CHEMICAL_SIMULATOR_ACCESS_COST,
+			message = "Purchase chemical simulator access before loading process controls.",
+		})
+		return
+	end
 	local state = getProcessState(player.UserId)
 	ProcessEng.UpdateDerivedValues(state)
 	local operatingSafe, interlockCode, interlockMessage = ProcessEng.ValidateOperatingEnvelope(state)
@@ -852,6 +874,34 @@ Remotes.RequestProcessControlState.OnServerEvent:Connect(function(player)
 	})
 end)
 
+Remotes.RequestChemicalSimulatorAccess.OnServerEvent:Connect(function(player)
+	local userId = player.UserId
+	if chemicalSimulatorAccess[userId] then
+		Remotes.FireClient("ChemicalSimulatorAccess", player, {
+			success = true,
+			cost = 0,
+			message = "Chemical simulator access is active for this session.",
+		})
+		return
+	end
+
+	if not PlayerDataBridge.SpendMolCoins(userId, CHEMICAL_SIMULATOR_ACCESS_COST) then
+		Remotes.FireClient("ChemicalSimulatorAccess", player, {
+			success = false,
+			cost = CHEMICAL_SIMULATOR_ACCESS_COST,
+			message = string.format("Chemical simulator access costs %d MolCoins.", CHEMICAL_SIMULATOR_ACCESS_COST),
+		})
+		return
+	end
+
+	chemicalSimulatorAccess[userId] = true
+	Remotes.FireClient("ChemicalSimulatorAccess", player, {
+		success = true,
+		cost = CHEMICAL_SIMULATOR_ACCESS_COST,
+		message = string.format("Chemical simulator unlocked for this session (-%d MolCoins).", CHEMICAL_SIMULATOR_ACCESS_COST),
+	})
+end)
+
 -- ══════════════════════════════════════════════
 -- CLEANUP ON PLAYER LEAVE
 -- ══════════════════════════════════════════════
@@ -868,6 +918,7 @@ Players.PlayerRemoving:Connect(function(player)
 	playerCrushState[userId] = nil
 	recentLeachRequests[userId] = nil
 	lastProcessControlUpdate[userId] = nil
+	chemicalSimulatorAccess[userId] = nil
 end)
 
 print("[MOLGANG] SlagProcessing initialized — BOF steel slag chemistry active at Slakkenspoor")

@@ -82,6 +82,7 @@ local GUI_COST_HINTS = {
 	FactoryBuilderGui = {cost = 2000, hint = "Factory rental costs 2000 MC/month"},
 	MiningGui = {cost = 800, hint = "Exploration licenses start at 800 MC"},
 	SlagProcessingGui = {cost = 50, hint = "Raw slag costs 50 MC per batch"},
+	ProcessControlGui = {cost = 25, hint = "Chemical simulator access costs 25 MC per session"},
 }
 
 local closeOtherOverlays

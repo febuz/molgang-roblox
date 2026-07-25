@@ -47,6 +47,7 @@ local serverToClientEvents = {
 	"SlagExtracted",       -- {atoms, molCoins} products added to inventory
 	"SlagInventoryUpdate", -- {slagInventory} updated slag quantities
 	"ProcessControlState", -- {temperature, pressure, pH, flowRate} persisted controls
+	"ChemicalSimulatorAccess", -- {success, cost, balance, message}
 	-- Bubble Tea Bar
 	"DrinkPurchased",      -- {drinkId, name, buffType, duration} drink bought
 	"DrinkListResponse",   -- {drinks, activeBuffs} available drinks and active buffs
@@ -131,6 +132,7 @@ local clientToServerEvents = {
 	"RequestSlagInfo",       -- {} get current slag processing state
 	"RequestSetProcessControl", -- {temperature, pressure, pH, flowRate} update process variables
 	"RequestProcessControlState", -- {} load persisted process controls
+	"RequestChemicalSimulatorAccess", -- {} pay for the chemical simulator session
 	-- Bubble Tea Bar
 	"RequestBuyDrink",       -- {drinkId} purchase a bubble tea
 	"RequestDrinkList",      -- {} get drink menu and active buffs

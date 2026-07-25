@@ -53,6 +53,7 @@ local function corner(p, r) local c = Instance.new("UICorner"); c.CornerRadius =
 
 local processState = ProcessEng.CreateProcessState()
 local controlsReady = false
+local simulatorAccessGranted = false
 
 -- ═══════════════════════════════════════════════
 -- SCREEN GUI
@@ -450,11 +451,44 @@ if processStateEvent then
 	end)
 end
 
+local accessEvent = Remotes:FindFirstChild("ChemicalSimulatorAccess")
+if accessEvent then
+	accessEvent.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then return end
+		if data.success then
+			simulatorAccessGranted = true
+			helpBar.Text = "CHEMICAL SIMULATOR ACTIVE  |  " .. tostring(data.message or "Access granted.")
+			helpBar.TextColor3 = C.accent
+			local request = Remotes:FindFirstChild("RequestProcessControlState")
+			if request then request:FireServer() end
+		else
+			simulatorAccessGranted = false
+			helpBar.Text = "ACCESS DENIED  |  " .. tostring(data.message or "Insufficient MolCoins.")
+			helpBar.TextColor3 = C.danger
+			task.delay(1.5, function()
+				if screenGui.Parent then screenGui.Enabled = false end
+			end)
+		end
+	end)
+end
+
 screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	if not screenGui.Enabled then return end
 	controlsReady = false
-	local request = Remotes:FindFirstChild("RequestProcessControlState")
-	if request then request:FireServer() end
+	if not simulatorAccessGranted then
+		local accessRequest = Remotes:FindFirstChild("RequestChemicalSimulatorAccess")
+		if accessRequest then
+			helpBar.Text = "CHEMICAL SIMULATOR  |  Access costs 25 MolCoins per session..."
+			helpBar.TextColor3 = C.gold
+			accessRequest:FireServer()
+		else
+			helpBar.Text = "CHEMICAL SIMULATOR ACCESS UNAVAILABLE"
+			helpBar.TextColor3 = C.danger
+		end
+	else
+		local request = Remotes:FindFirstChild("RequestProcessControlState")
+		if request then request:FireServer() end
+	end
 end)
 
 -- ═══════════════════════════════════════════════
