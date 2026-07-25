@@ -238,7 +238,7 @@ contentPanel.Name = "ContentPanel"
 -- Keep the intro panel inside the viewport on narrow Studio/Wine windows.
 -- The four-column shortcut grid below uses relative positions, so it can
 -- shrink with the panel instead of extending beyond the rounded outline.
-contentPanel.Size = UDim2.new(0.88, 0, 0, 280)
+contentPanel.Size = UDim2.new(0.88, 0, 0, 220)
 contentPanel.Position = UDim2.new(0.06, 0, 0, 310)
 contentPanel.ClipsDescendants = true
 contentPanel.BackgroundColor3 = COLORS.panel
@@ -254,11 +254,11 @@ cpStroke.Transparency = 1
 cpStroke.Parent = contentPanel
 
 -- Description text
-local descText = [[OTAP teststraat for a Chemical Engineering Simulator in space. Process BOF steel slag through realistic crushing, leaching, and extraction. Synthesize fertilizers with real NPK chemistry. Manage an industrial factory, trade on global markets, and master the periodic table — all in immersive VR/AR.]]
+local descText = [[Verken Moleculia stap voor stap. Na het laden kies je een passende route: Ontdekker (8–11), Onderzoeker (12–15) of Ingenieur (16+).]]
 
 local description = Instance.new("TextLabel")
 description.Name = "Description"
-description.Size = UDim2.new(1, -30, 0, 70)
+description.Size = UDim2.new(1, -30, 0, 48)
 description.Position = UDim2.new(0, 15, 0, 15)
 description.BackgroundTransparency = 1
 description.Text = descText
@@ -273,7 +273,7 @@ description.Parent = contentPanel
 -- Divider line
 local divider = Instance.new("Frame")
 divider.Size = UDim2.new(0.9, 0, 0, 1)
-divider.Position = UDim2.new(0.05, 0, 0, 90)
+divider.Position = UDim2.new(0.05, 0, 0, 68)
 divider.BackgroundColor3 = COLORS.accentDim
 divider.BackgroundTransparency = 1
 divider.BorderSizePixel = 0
@@ -282,7 +282,7 @@ divider.Parent = contentPanel
 -- Quick controls section
 local controlsTitle = Instance.new("TextLabel")
 controlsTitle.Size = UDim2.new(1, -30, 0, 22)
-controlsTitle.Position = UDim2.new(0, 15, 0, 100)
+controlsTitle.Position = UDim2.new(0, 15, 0, 78)
 controlsTitle.BackgroundTransparency = 1
 controlsTitle.Text = "CONTROLS"
 controlsTitle.TextColor3 = COLORS.accent
@@ -294,44 +294,28 @@ controlsTitle.Parent = contentPanel
 
 -- Controls grid (2 columns)
 local controlsData = {
-	{"WASD", "Move around"},
-	{"Space", "Jump"},
-	{"P", "Periodic Table"},
-	{"D", "Dashboard"},
-	{"I", "Inventory"},
-	{"R", "Recipe Book"},
-	{"Q", "Quest Log"},
-	{"S", "Slag Processing"},
-	{"F", "Fertilizer Lab"},
-	{"G", "Factory Builder"},
-	{"C", "Process Control"},
-	{"T", "Research Tree"},
-	{"V", "Mining"},
-	{"X", "Product Exchange"},
-	{"B", "Bubble Tea Bar"},
-	{"L", "Leaderboards"},
-	{"A", "Achievements"},
-	{"Tab", "Wallet"},
-	{"M", "Minimap"},
-	{"Esc", "Close All"},
+	{"WASD", "Bewegen"},
+	{"Space", "Springen"},
+	{"P", "Elementen bekijken"},
+	{"D", "Dashboard openen"},
 }
 
 local controlsFrame = Instance.new("Frame")
 -- Four compact columns keep all shortcuts inside the outlined panel.
-controlsFrame.Size = UDim2.new(1, -30, 0, 150)
-controlsFrame.Position = UDim2.new(0, 15, 0, 125)
+controlsFrame.Size = UDim2.new(1, -30, 0, 72)
+controlsFrame.Position = UDim2.new(0, 15, 0, 103)
 controlsFrame.BackgroundTransparency = 1
 controlsFrame.Parent = contentPanel
 
 local controlLabels = {}
 for i, ctrl in ipairs(controlsData) do
-	local col = (i - 1) % 4
-	local row = math.floor((i - 1) / 4)
+	local col = (i - 1) % 2
+	local row = math.floor((i - 1) / 2)
 
 	-- Key badge
 	local keyBadge = Instance.new("TextLabel")
 	keyBadge.Size = UDim2.fromOffset(42, 22)
-	keyBadge.Position = UDim2.new(col * 0.25, 0, 0, row * 28)
+	keyBadge.Position = UDim2.new(col * 0.5, 0, 0, row * 28)
 	keyBadge.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
 	keyBadge.BackgroundTransparency = 0.3
 	keyBadge.Text = ctrl[1]
@@ -347,8 +331,8 @@ for i, ctrl in ipairs(controlsData) do
 
 	-- Action label
 	local actionLabel = Instance.new("TextLabel")
-	actionLabel.Size = UDim2.new(0.25, -48, 0, 22)
-	actionLabel.Position = UDim2.new(col * 0.25, 47, 0, row * 28)
+	actionLabel.Size = UDim2.new(0.5, -48, 0, 22)
+	actionLabel.Position = UDim2.new(col * 0.5, 47, 0, row * 28)
 	actionLabel.BackgroundTransparency = 1
 	actionLabel.Text = ctrl[2]
 	actionLabel.TextColor3 = COLORS.textSecondary
