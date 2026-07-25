@@ -105,7 +105,7 @@ end
 
 -- Track collection requests on the client→server contract. AtomCollected is
 -- deliberately server→client and therefore has no server-side Event signal.
-Remotes.RequestAtomCollect.OnServerEvent:Connect(function(player, atomName)
+Remotes.RequestAtomCollect.OnServerEvent:Connect(function(player, _atomName)
 	trackEvent(player.UserId, "atomsCollected", 1)
 end)
 
@@ -116,13 +116,6 @@ Players.PlayerRemoving:Connect(function(player)
 	if not session then return end
 
 	local duration = os.time() - session.joinTime
-	local summary = {
-		duration = duration,
-		events = session.events,
-		pathSamples = #session.path,
-		date = os.date("%Y-%m-%d"),
-	}
-
 	-- Save compressed session data
 	pcall(function()
 		local key = "session_" .. userId .. "_" .. os.time()
