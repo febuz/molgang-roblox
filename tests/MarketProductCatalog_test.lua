@@ -1,3 +1,9 @@
+-- Lune does not provide Roblox's Color3 global; the catalog only needs a
+-- stable placeholder for its display colors in this pure test.
+if not Color3 then
+	Color3 = {fromRGB = function(r, g, b) return {R = r / 255, G = g / 255, B = b / 255} end}
+end
+
 local ProductMarket = require("../game/src/ReplicatedStorage/Modules/ProductMarket")
 
 assert(#ProductMarket.Products == 8, "market catalog must expose all eight products")
