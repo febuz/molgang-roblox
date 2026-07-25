@@ -26,7 +26,7 @@ local MiningSystem = {}
 
 MiningSystem.PlotTypes = {
 	{
-		id = "magnetite_low",
+		id = "practice_outcrop",
 		name = "Practice Outcrop",
 		description = "Surface-level practice deposit. Hand-collect samples for free. Perfect for learning mining basics.",
 		geology = "Weathered outcrop with exposed magnetite veins",
@@ -350,7 +350,10 @@ function MiningSystem.CalculateMiningRate(plot, equipment)
 	for _, equip in ipairs(equipment) do
 		local equipData = nil
 		for _, e in ipairs(MiningSystem.Equipment) do
-			if e.id == equip then equipData = e break end
+			if e.id == equip then
+				equipData = e
+				break
+			end
 		end
 		if equipData and equipData.miningRate then
 			totalRate = totalRate + equipData.miningRate
@@ -361,7 +364,10 @@ function MiningSystem.CalculateMiningRate(plot, equipment)
 	local hardnessFactor = 6.0 / (plot.hardness or 6.0)
 
 	-- Depth penalty (deeper = slower access)
-	local depthFactor = 10.0 / (plot.depth or 10.0)
+	local depth = tonumber(plot.depth) or 10.0
+	-- Surface deposits have no depth penalty; never allow depth=0 to become
+	-- division-by-zero and infinite ore production.
+	local depthFactor = depth <= 0 and 1.0 or math.clamp(10.0 / depth, 0.1, 2.0)
 
 	return totalRate * hardnessFactor * depthFactor
 end
