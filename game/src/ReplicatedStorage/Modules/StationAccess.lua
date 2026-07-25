@@ -3,6 +3,11 @@
 
 local StationAccess = {}
 
+local function finiteCoordinate(value)
+	local number = tonumber(value)
+	return number and number == number and number ~= math.huge and number ~= -math.huge
+end
+
 -- Keep the physical stations and their interaction envelopes in one shared
 -- contract. WorldBuilder owns the geometry; server handlers and tests consume
 -- these identifiers so a rename cannot silently break the production loop.
@@ -42,10 +47,15 @@ function StationAccess.WithinRange(playerPosition, stationPosition, radius)
 		return false
 	end
 	local maxDistance = tonumber(radius)
-	if not maxDistance or maxDistance < 0 then return false end
-	local dx = (tonumber(playerPosition.x) or 0) - (tonumber(stationPosition.x) or 0)
-	local dy = (tonumber(playerPosition.y) or 0) - (tonumber(stationPosition.y) or 0)
-	local dz = (tonumber(playerPosition.z) or 0) - (tonumber(stationPosition.z) or 0)
+	if not finiteCoordinate(maxDistance) or maxDistance < 0 then return false end
+	if not finiteCoordinate(playerPosition.x) or not finiteCoordinate(playerPosition.y)
+		or not finiteCoordinate(playerPosition.z) or not finiteCoordinate(stationPosition.x)
+		or not finiteCoordinate(stationPosition.y) or not finiteCoordinate(stationPosition.z) then
+		return false
+	end
+	local dx = playerPosition.x - stationPosition.x
+	local dy = playerPosition.y - stationPosition.y
+	local dz = playerPosition.z - stationPosition.z
 	return dx * dx + dy * dy + dz * dz <= maxDistance * maxDistance
 end
 

@@ -28,5 +28,9 @@ assert(not StationAccess.WithinRange({x = 13, y = 5, z = -2}, station, 2),
 	"player outside station radius must be rejected")
 assert(not StationAccess.WithinRange(nil, station, 10),
 	"missing player position must be rejected")
+assert(not StationAccess.WithinRange({x = 10, y = 5}, station, 10),
+	"incomplete player positions must be rejected")
+assert(not StationAccess.WithinRange({x = 0 / 0, y = 5, z = -2}, station, 10),
+	"non-finite player positions must be rejected")
 
-print("Station Access Tests: 8 passed, 0 failed")
+print("Station Access Tests: 10 passed, 0 failed")
