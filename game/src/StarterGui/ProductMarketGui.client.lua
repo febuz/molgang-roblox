@@ -242,7 +242,7 @@ end)
 
 -- Product list
 local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, -16, 1, -92)
+scroll.Size = UDim2.new(1, -16, 1, -110)
 scroll.Position = UDim2.new(0, 8, 0, 104)
 scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 6
