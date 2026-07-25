@@ -41,6 +41,8 @@ assert(ProductionState.NormalizeElapsed(math.huge, 120) == 0,
 	"corrupt factory progress must reset instead of granting catch-up output")
 assert(ProductionState.NormalizeRemainder(4) < 1,
 	"atom remainder must remain fractional")
+local cappedCycles = ProductionState.Advance(0, 60, 100000, 120)
+assert(cappedCycles <= 2, "extreme production speed must be capped")
 
 local facilities = Facilities.CreatePlayerFacilities()
 assert(Facilities.BuildFacility(facilities, "Research Lab"), "research lab should build")
@@ -48,4 +50,4 @@ assert(facilities.researchLabs == 1 and facilities.researchlabs == nil,
 	"research lab must use the canonical persisted key")
 assert(Facilities.CanBuild(facilities, "Research Lab"), "research lab max-level check must read canonical key")
 
-print("Production Cadence Tests: 23 passed, 0 failed")
+print("Production Cadence Tests: 24 passed, 0 failed")
