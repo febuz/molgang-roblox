@@ -1,4 +1,8 @@
 local DataMigration = require("../game/src/ReplicatedStorage/Modules/DataMigration")
+local DataTemplate = require("../game/src/ReplicatedStorage/Data/DataTemplate")
+
+assert(DataTemplate.mining.equipment.hand_pick == 1,
+	"new players must receive a free hand pick for the first mining path")
 
 local template = {
 	carbonCredits = 0,
@@ -37,4 +41,4 @@ local copy = DataMigration.DeepCopy(template)
 copy.facilities.mines = 99
 assert(template.facilities.mines == 0, "deep copy must not alias template tables")
 
-print("Data Migration Tests: 8 passed, 0 failed")
+print("Data Migration Tests: 9 passed, 0 failed")

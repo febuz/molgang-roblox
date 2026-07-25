@@ -41,7 +41,7 @@ return {
 	-- Mining rights and plot state (persisted through EconomyManager)
 	mining = {
 		ownedPlots = {},
-		equipment = {},
+		equipment = {hand_pick = 1},
 		plotStates = {},
 		totalOreMined = 0,
 		totalOreValue = 0,

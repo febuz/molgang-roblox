@@ -132,7 +132,7 @@ local function getPlayerMining(userId)
 	if not playerMining[userId] then
 		playerMining[userId] = {
 			ownedPlots = {},       -- {plotId = true}
-			equipment = {},        -- {equipId = count}
+			equipment = {hand_pick = 1}, -- free starter tool for onboarding
 			totalOreMined = 0,
 			totalOreValue = 0,
 		}
@@ -354,6 +354,7 @@ Remotes.RequestDeployEquipment.OnServerEvent:Connect(function(player, plotId, eq
 	local plot = worldPlots[plotId]
 	if not plot then reject(player, "Mining plot not found."); return end
 	if plot.owner ~= userId then reject(player, "You must own this plot before deploying equipment."); return end
+	if not MiningSystem.GetEquipment(equipId) then reject(player, "Unknown mining equipment."); return end
 
 	local pm = getPlayerMining(userId)
 	if (pm.equipment[equipId] or 0) <= 0 then

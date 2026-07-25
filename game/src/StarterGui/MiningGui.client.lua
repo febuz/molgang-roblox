@@ -372,18 +372,32 @@ if miningEvent then
 				local actX = 0.55
 
 				-- Deploy equipment
+				local deployChoices = {}
+				for equipId, amount in pairs(data.equipment or {}) do
+					if amount > 0 and MiningSystem.GetEquipment(equipId) then
+						table.insert(deployChoices, equipId)
+					end
+				end
+				table.sort(deployChoices)
+				local deployIndex = 1
 				local deployBtn = Instance.new("TextButton")
 				deployBtn.Size = UDim2.new(0, 70, 0, 24)
 				deployBtn.Position = UDim2.new(actX, 0, 0, 8)
 				deployBtn.BackgroundColor3 = C.accent
-				deployBtn.Text = "Deploy"; deployBtn.TextColor3 = Color3.new(0,0,0)
+				local firstDeploy = deployChoices[deployIndex]
+				deployBtn.Text = firstDeploy and ("Deploy\n" .. (MiningSystem.GetEquipment(firstDeploy).name or firstDeploy)) or "Buy equipment"
+				deployBtn.TextColor3 = Color3.new(0,0,0)
 				deployBtn.Font = Enum.Font.GothamBold; deployBtn.TextScaled = true
 				deployBtn.Parent = card; corner(deployBtn, 4)
 				local pid2 = plot.id
 				deployBtn.Activated:Connect(function()
-					-- Deploy first available equipment
+					if #deployChoices == 0 then return end
+					local equipId = deployChoices[deployIndex]
 					local r = Remotes:FindFirstChild("RequestDeployEquipment")
-					if r then r:FireServer(pid2, "pneumatic_drill") end
+					if r then r:FireServer(pid2, equipId) end
+					deployIndex = (deployIndex % #deployChoices) + 1
+					local nextEquip = deployChoices[deployIndex]
+					deployBtn.Text = "Deploy\n" .. (MiningSystem.GetEquipment(nextEquip).name or nextEquip)
 				end)
 
 				-- Collect ore
