@@ -15,6 +15,7 @@ local ProductMarket = require(ReplicatedStorage.Modules.ProductMarket)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
+local MarketOrderRules = require(ReplicatedStorage.Modules.MarketOrderRules)
 
 -- Active bids
 local activeBids = {} -- {bidId = {playerId, playerName, productId, price, quantity, timestamp}}
@@ -167,15 +168,20 @@ Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPr
 	-- Open sell orders reserve the same underlying atoms. Without this check a
 	-- player could list the same inventory repeatedly and create orders that
 	-- can never settle once the first one fills.
-	for atom, countPerUnit in pairs(product.requiredAtoms) do
-		local reserved = 0
-		for _, existingSell in pairs(activeSells) do
-			if existingSell.playerId == userId and existingSell.productId == productId then
-				reserved = reserved + existingSell.quantity * countPerUnit
+	local reservedAtoms = {}
+	local reservedSlag = {}
+	for _, existingSell in pairs(activeSells) do
+		if existingSell.playerId == userId then
+			local existingProduct = ProductMarket.GetProduct(existingSell.productId)
+			if existingProduct then
+				MarketOrderRules.AddReservation(
+					reservedAtoms, reservedSlag, existingProduct, existingSell.quantity)
 			end
 		end
+	end
+	for atom, countPerUnit in pairs(product.requiredAtoms) do
 		local needed = countPerUnit * quantity
-		local available = (pData.atoms[atom] or 0) - reserved
+		local available = MarketOrderRules.GetAvailable(pData.atoms, reservedAtoms, atom)
 		if available < needed then
 			Remotes.FireClient("ServerAnnounce", player, {
 				message = "Not enough unreserved " .. atom .. " for this sell order.",
@@ -185,14 +191,8 @@ Remotes.RequestPlaceSell.OnServerEvent:Connect(function(player, productId, askPr
 		end
 	end
 	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
-		local reserved = 0
-		for _, existingSell in pairs(activeSells) do
-			if existingSell.playerId == userId and existingSell.productId == productId then
-				reserved = reserved + existingSell.quantity * countPerUnit
-			end
-		end
 		local needed = countPerUnit * quantity
-		local available = (pData.slagInventory and pData.slagInventory[residue] or 0) - reserved
+		local available = MarketOrderRules.GetAvailable(pData.slagInventory, reservedSlag, residue)
 		if available < needed then
 			Remotes.FireClient("ServerAnnounce", player, {
 				message = "Not enough unreserved slag " .. residue .. " for this sell order.",
@@ -294,6 +294,7 @@ function matchBid(bidId, bidder)
 		local fillPrice = bestSell.price -- execute at seller's ask price
 		if not transferProduct(bestSell.productId, bestSell.playerId, bid.playerId, fillQty) then
 			activeSells[bestSellId] = nil
+			task.defer(matchBid, bidId, bidder)
 			return
 		end
 
@@ -330,6 +331,9 @@ function matchBid(bidId, bidder)
 		if bestSell.quantity <= 0 then activeSells[bestSellId] = nil end
 
 		print("[Market] MATCH:", fillQty, "x", bid.productId, "@", fillPrice, "MC")
+		if activeBids[bidId] then
+			task.defer(matchBid, bidId, bidder)
+		end
 	end
 end
 
@@ -384,6 +388,9 @@ function matchSell(sellId, seller)
 
 		if bestBid.quantity <= 0 then activeBids[bestBidId] = nil end
 		if sell.quantity <= 0 then activeSells[sellId] = nil end
+		if activeSells[sellId] then
+			task.defer(matchSell, sellId, seller)
+		end
 	end
 end
 
