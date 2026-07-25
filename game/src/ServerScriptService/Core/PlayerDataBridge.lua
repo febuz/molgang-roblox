@@ -25,6 +25,7 @@ local atomCollectedCounts = {} -- {userId = count}
 local quizAnswerResults = {} -- {userId = {true|false, ...}}
 local atomCollectedListeners = {}
 local productionListeners = {}
+local questCompletedListeners = {}
 local MAX_DAILY_REWARD = 2000
 
 -- ══════════════════════════════════════════════
@@ -315,6 +316,21 @@ end
 function PlayerDataBridge.OnProductionCycle(listener)
 	if type(listener) ~= "function" then return false end
 	table.insert(productionListeners, listener)
+	return true
+end
+
+function PlayerDataBridge.RecordQuestCompleted(userId, questId)
+	if type(questId) ~= "string" or questId == "" then return false end
+	for _, listener in ipairs(questCompletedListeners) do
+		local ok, err = pcall(listener, userId, questId)
+		if not ok then warn("[PlayerDataBridge] quest listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnQuestCompleted(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(questCompletedListeners, listener)
 	return true
 end
 

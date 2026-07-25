@@ -44,6 +44,7 @@ local function completeReadyQuests(player, data, progress)
 				data.badges = data.badges or {}
 				data.badges[reward.badge] = true
 			end
+			PlayerDataBridge.RecordQuestCompleted(player.UserId, questId)
 			Remotes.FireClient("QuestCompleted", player, {
 				questId = questId,
 				reward = reward,

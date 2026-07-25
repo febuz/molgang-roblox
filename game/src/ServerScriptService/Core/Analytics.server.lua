@@ -39,6 +39,7 @@ local function getSession(userId)
 				productsSold = 0,
 				guisOpened = {},
 				questsCompleted = 0,
+				questIds = {},
 				deaths = 0,
 				chatMessages = 0,
 				zoneVisits = {},
@@ -112,6 +113,11 @@ end)
 PlayerDataBridge.OnProductionCycle(function(userId, atomsProduced, moleculesProduced)
 	trackEvent(userId, "atomsProduced", atomsProduced)
 	trackEvent(userId, "moleculesBuilt", moleculesProduced)
+end)
+
+PlayerDataBridge.OnQuestCompleted(function(userId, questId)
+	trackEvent(userId, "questsCompleted", 1)
+	trackEvent(userId, "questIds", questId)
 end)
 
 local function persistSession(player, session)

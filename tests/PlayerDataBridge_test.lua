@@ -20,6 +20,17 @@ assert(productionUser == 51 and productionAtoms == 12 and productionMolecules ==
 assert(not PlayerDataBridge.RecordProduction(51, -1, 0),
 	"negative production must be rejected")
 
+local questUser, questId
+assert(PlayerDataBridge.OnQuestCompleted(function(userId, completedId)
+	questUser, questId = userId, completedId
+end), "server quest listeners should register")
+assert(PlayerDataBridge.RecordQuestCompleted(52, "first_atom"),
+	"server quest completion should notify analytics consumers")
+assert(questUser == 52 and questId == "first_atom",
+	"quest analytics should receive the completed quest id")
+assert(not PlayerDataBridge.RecordQuestCompleted(52, ""),
+	"empty quest ids must be rejected")
+
 PlayerDataBridge.RecordAtomCollect(42, 1, "H", 2)
 PlayerDataBridge.RecordAtomCollect(42, 8, "O", 2)
 assert(PlayerDataBridge.RecordAtomCollectBatch(47, 23, "V", 12, 5),
@@ -85,4 +96,4 @@ local reloaded = {molCoins = 3}
 PlayerDataBridge.SetEconomyData(44, reloaded)
 assert(reloaded.molCoins == 10, "queued balance adjustments should apply on load")
 
-print("PlayerDataBridge Tests: 31 passed, 0 failed")
+print("PlayerDataBridge Tests: 34 passed, 0 failed")
