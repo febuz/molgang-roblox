@@ -190,8 +190,13 @@ if [ "$PLACE_READY" -ne 1 ]; then
 fi
 
 focus_studio_and_play() {
+  if xdotool search --onlyvisible --class "robloxstudiobeta.exe" windowactivate --sync -- key F5 2>/dev/null; then
+    return 0
+  fi
+
   local studio_windows
-  studio_windows=$(xdotool search --name "MOLGANG_OTAP_Test.rbxl" 2>/dev/null || true)
+  studio_windows=$(xdotool search --onlyvisible --class "robloxstudiobeta.exe" 2>/dev/null || true)
+  [ -n "$studio_windows" ] || studio_windows=$(xdotool search --name "MOLGANG_OTAP_Test.rbxl" 2>/dev/null || true)
   [ -n "$studio_windows" ] || return 1
 
   while read -r studio_window; do
