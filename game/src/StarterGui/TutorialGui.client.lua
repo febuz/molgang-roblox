@@ -193,6 +193,25 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 110
 screenGui.Parent = playerGui
 
+-- Keep the route selector and its buttons inside the viewport on narrow
+-- laptops, embedded Studio windows and mobile screens. The layout remains
+-- authored at a readable desktop size and scales as one unit.
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local tutorialCamera = workspace.CurrentCamera
+local function updateTutorialScale()
+	if not tutorialCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(tutorialCamera.ViewportSize.X - 20) / 560,
+		(tutorialCamera.ViewportSize.Y - 20) / 290
+	), 0.55, 1)
+end
+updateTutorialScale()
+if tutorialCamera then
+	tutorialCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateTutorialScale)
+end
+
 local modalScrim = Instance.new("Frame")
 modalScrim.Name = "RouteSelectorScrim"
 modalScrim.Size = UDim2.fromScale(1, 1)

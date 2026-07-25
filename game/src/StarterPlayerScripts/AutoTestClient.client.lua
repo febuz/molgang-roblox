@@ -141,6 +141,11 @@ if loadingScreen then
 		local routeSelector = tutorial:FindFirstChild("PathSelector", true)
 		check("Tutorial presents age-aware route selector", routeSelector ~= nil,
 			"PathSelector is missing from the first-run tutorial")
+		local tutorialScale = tutorial:FindFirstChild("ResponsiveScale")
+		check("Tutorial selector scales to viewport", tutorialScale ~= nil
+			and tutorialScale:IsA("UIScale") and tutorialScale.Scale > 0
+			and tutorialScale.Scale <= 1,
+			"route selector needs a bounded ResponsiveScale for narrow viewports")
 		local routeScrim = tutorial:FindFirstChild("RouteSelectorScrim", true)
 		check("Tutorial selector isolates underlying HUD", routeScrim ~= nil
 			and routeScrim:IsA("GuiObject") and routeScrim.Active
