@@ -177,6 +177,32 @@ ZONES = {
     "ANK Kredietunie":      {"x": -95,  "z": -95,  "r": 30, "landmarks": ["victory_trophy", "diploma_frame", "plaza_bench", "cafe_counter"]},
 }
 
+# Photoscanned CC0 prop dressing (Poly Haven, see assets/fbx_library/): AAA
+# scenes read real because of prop density. (glb, dx, dz, rot, footprint).
+ZONE_PROPS = {
+    "Slakkenspoor Fabriek": [
+        ("Barrel_01.glb", -38, 14, 0.4, 1.8), ("Barrel_01.glb", -36.4, 13.2, 2.1, 1.8),
+        ("barrel_03.glb", -37, 16, 1.2, 1.8), ("cement_bag.glb", -30, -14, 0.2, 1.4),
+        ("modular_industrial_pipes_01.glb", -12, 14, 0.0, 7.0),
+        ("modular_industrial_pipes_01.glb", 12, -14, 3.14, 7.0),
+        ("propane_tank.glb", 30, 14, 0.8, 1.6), ("small_lpg_tank.glb", 33, 13, 0.0, 2.2),
+        ("metal_jerrycan.glb", 18, 13, 1.0, 1.0), ("metal_toolbox.glb", 6, -13, 0.5, 1.1),
+        ("korean_fire_extinguisher_01.glb", 24, -12, 0.0, 0.9),
+        ("portable_generator.glb", -22, -15, 1.6, 2.2),
+        ("ladder_sectioned_01.glb", 40, -12, 0.3, 2.6),
+        ("caged_hanging_light.glb", -20, 0, 0.0, 0.9), ("caged_hanging_light.glb", 20, 0, 0.0, 0.9),
+    ],
+    "Quantum Lab": [
+        ("chemistry_set.glb", 0, -8, 0.2, 2.6, {"console": "chemsim"}),   # the paid ChemSim console
+        ("bunsen_burner.glb", 3, -7, 0.0, 0.9),
+        ("metal_toolbox.glb", -4, -8, 1.2, 1.0),
+        ("caged_hanging_light.glb", 0, -12, 0.0, 0.9),
+    ],
+    "Periodic Table Biome": [
+        ("Barrel_01.glb", -30, 28, 0.7, 1.8), ("cement_bag.glb", 29, 27, 0.0, 1.4),
+    ],
+}
+
 # The real 12-station BOF slag processing chain (SteelSlag.ProcessingStations),
 # in order, mapped to the equipment GLBs we have.
 PROCESS_LINE = [
@@ -250,6 +276,11 @@ def build():
                 lz = cz + math.sin(ang) * rad * 0.5
                 big = any(k in lm for k in ("column", "silo", "tower", "arch", "fountain", "tunnel"))
                 add("asset", lm + (".glb" if not lm.endswith(".glb") else ""), lx, lz, ang, 12 if big else 6)
+
+        # photoscanned prop dressing for this zone (CC0 Poly Haven)
+        for p in ZONE_PROPS.get(name, []):
+            glb, pdx, pdz, prot, ps = p[:5]
+            add("asset", glb, cx + pdx, cz + pdz, prot, ps, p[5] if len(p) > 5 else None)
 
     fertilizers = parse_fertilizers()
     crops = parse_crops()

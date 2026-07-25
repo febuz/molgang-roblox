@@ -21,3 +21,4 @@ assets/pipeline_env/
 assets/pipeline/scheduler*.log
 assets/world/__pycache__/
 __pycache__/
+assets/fbx_library/*/
