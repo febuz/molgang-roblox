@@ -51,10 +51,10 @@ screenGui.DisplayOrder = 7
 screenGui.Enabled = true
 screenGui.Parent = playerGui
 
--- COMPACT TRACKER WIDGET (always visible top-left)
+-- COMPACT TRACKER WIDGET (collapsed by default so it never covers the world)
 local compactTracker = Instance.new("Frame")
 compactTracker.Name = "CompactTracker"
-compactTracker.Size = UDim2.new(0, 320, 0, 200)
+compactTracker.Size = UDim2.fromOffset(260, 38)
 compactTracker.Position = UDim2.new(0, 10, 0, 60)
 compactTracker.BackgroundColor3 = COLORS.panel
 compactTracker.BackgroundTransparency = 0.2
@@ -62,23 +62,27 @@ compactTracker.Parent = screenGui
 createCorner(compactTracker, 10)
 
 -- Tracker header
-local trackerTitle = Instance.new("TextLabel")
-trackerTitle.Size = UDim2.new(1, 0, 0, 30)
+local trackerTitle = Instance.new("TextButton")
+trackerTitle.Name = "ToggleCompactTracker"
+trackerTitle.Size = UDim2.new(1, 0, 0, 38)
 trackerTitle.BackgroundTransparency = 0.3
-trackerTitle.Text = "📋 Active Quests"
+trackerTitle.Text = "📋 Quests  ▼"
 trackerTitle.TextColor3 = COLORS.accent
 trackerTitle.TextScaled = true
 trackerTitle.Font = Enum.Font.GothamBold
+trackerTitle.AutoButtonColor = true
+trackerTitle.Active = true
 trackerTitle.Parent = compactTracker
 createCorner(trackerTitle, 8)
 
 -- Active quests list
 local questsList = Instance.new("ScrollingFrame")
 questsList.Name = "QuestsList"
-questsList.Size = UDim2.new(1, -10, 1, -40)
-questsList.Position = UDim2.new(0, 5, 0, 35)
+questsList.Size = UDim2.new(1, -10, 1, -48)
+questsList.Position = UDim2.new(0, 5, 0, 43)
 questsList.BackgroundTransparency = 1
 questsList.ScrollBarThickness = 4
+questsList.Visible = false
 questsList.Parent = compactTracker
 
 local questsLayout = Instance.new("UIListLayout")
@@ -162,6 +166,25 @@ modalLayout.Parent = modalScroll
 
 local playerData = nil
 local questProgress = {}
+local compactExpanded = false
+local lastCompactToggle = 0
+
+local function setCompactExpanded(expanded)
+	compactExpanded = expanded
+	questsList.Visible = expanded
+	compactTracker.Size = expanded and UDim2.fromOffset(260, 150) or UDim2.fromOffset(260, 38)
+	trackerTitle.Text = expanded and "📋 Active Quests  ▲" or "📋 Quests  ▼"
+end
+
+local function toggleCompactTracker()
+	local now = os.clock()
+	if now - lastCompactToggle < 0.1 then return end
+	lastCompactToggle = now
+	setCompactExpanded(not compactExpanded)
+end
+
+trackerTitle.Activated:Connect(toggleCompactTracker)
+trackerTitle.MouseButton1Click:Connect(toggleCompactTracker)
 
 PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
