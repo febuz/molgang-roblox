@@ -172,8 +172,21 @@ screenGui.Name = "TutorialGui"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.DisplayOrder = 50
+-- The route selector is the first-run modal. Keep the underlying HUD and
+-- world-event banners from showing through it or stealing visual focus.
+screenGui.DisplayOrder = 110
 screenGui.Parent = playerGui
+
+local modalScrim = Instance.new("Frame")
+modalScrim.Name = "RouteSelectorScrim"
+modalScrim.Size = UDim2.fromScale(1, 1)
+modalScrim.Position = UDim2.fromScale(0, 0)
+modalScrim.BackgroundColor3 = Color3.fromRGB(3, 7, 14)
+modalScrim.BackgroundTransparency = 0.08
+modalScrim.BorderSizePixel = 0
+modalScrim.Active = true
+modalScrim.ZIndex = 1
+modalScrim.Parent = screenGui
 
 -- Tutorial panel at bottom-center
 local panel = Instance.new("Frame")
@@ -290,6 +303,7 @@ pathSelector.Size = UDim2.fromOffset(560, 290)
 pathSelector.AnchorPoint = Vector2.new(0.5, 0.5)
 pathSelector.Position = UDim2.fromScale(0.5, 0.5)
 pathSelector.BackgroundColor3 = COLORS.panel
+pathSelector.ZIndex = 2
 pathSelector.Parent = screenGui
 local selectorCorner = Instance.new("UICorner")
 selectorCorner.CornerRadius = UDim.new(0, 14)
@@ -345,6 +359,7 @@ for index, option in ipairs(pathOptions) do
 		STEPS = PATHS[selectedPath]
 		currentStep = 1
 		pathSelector.Visible = false
+		modalScrim.Visible = false
 		panel.Visible = true
 		showStep(1)
 		TweenService:Create(panel, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
