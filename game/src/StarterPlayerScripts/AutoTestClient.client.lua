@@ -232,6 +232,16 @@ if quizStart and quizStart:IsA("GuiButton") then
 			"RequestQuizStart produced no ServerAnnounce.quizData response")
 		check("Start Chemistry Quiz opens quiz modal", quizGui ~= nil and quizGui.Enabled,
 			"QuizGui did not become visible after the server response")
+		if quizGui then
+			local quizOptions = {}
+			for _, child in ipairs(quizGui:GetDescendants()) do
+				if child:IsA("TextButton") and child.Parent and child.Parent.Name == "Options" then
+					table.insert(quizOptions, child)
+				end
+			end
+			check("Quiz answer controls are present", #quizOptions > 0,
+				"first quiz question did not create answer buttons")
+		end
 		if quizRemote then
 			local cancelRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizCancel")
 			if cancelRemote then

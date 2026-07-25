@@ -59,6 +59,7 @@ question.TextWrapped = true
 question.Parent = panel
 
 local optionsFrame = Instance.new("Frame")
+optionsFrame.Name = "Options"
 optionsFrame.Size = UDim2.new(1, -50, 0, 210)
 optionsFrame.Position = UDim2.new(0, 25, 0, 175)
 optionsFrame.BackgroundTransparency = 1
@@ -83,10 +84,13 @@ local function clearOptions()
 	end
 end
 
+local answerLocked = false
+
 local function showQuiz(data)
 	if type(data) ~= "table" or type(data.quizData) ~= "table" then return end
 	local quiz = data.quizData
 	gui.Enabled = true
+	answerLocked = false
 	title.Text = string.format("CHEMISTRY QUIZ  •  %d / %d", quiz.questionNum or 1, quiz.totalQuestions or 3)
 	question.Text = quiz.question or "Question unavailable"
 	clearOptions()
@@ -102,7 +106,16 @@ local function showQuiz(data)
 		option.Parent = optionsFrame
 		Instance.new("UICorner", option).CornerRadius = UDim.new(0, 7)
 		option.Activated:Connect(function()
-			option.Active = false
+			if answerLocked then return end
+			answerLocked = true
+			question.Text = "Checking answer..."
+			for _, otherOption in ipairs(optionsFrame:GetChildren()) do
+				if otherOption:IsA("TextButton") then
+					otherOption.Active = false
+					otherOption.AutoButtonColor = false
+					otherOption.BackgroundColor3 = Color3.fromRGB(65, 70, 88)
+				end
+			end
 			Remotes.RequestQuizAnswer:FireServer(quiz.questionNum, answer)
 		end)
 	end
@@ -110,11 +123,13 @@ end
 
 close.Activated:Connect(function()
 	Remotes.RequestQuizCancel:FireServer()
+	answerLocked = false
 	gui.Enabled = false
 	clearOptions()
 end)
 backdrop.Activated:Connect(function()
 	Remotes.RequestQuizCancel:FireServer()
+	answerLocked = false
 	gui.Enabled = false
 	clearOptions()
 end)
