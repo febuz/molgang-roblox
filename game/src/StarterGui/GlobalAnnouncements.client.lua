@@ -34,10 +34,10 @@ screenGui.Name = "GlobalAnnouncements"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
--- Announcements are non-interactive feedback, but must render above normal
--- modal panels so a market/process window cannot hide an important warning.
--- LoadingScreen and ShortcutOverlay remain higher priority (100/95).
-screenGui.DisplayOrder = 92
+-- Announcements are non-interactive feedback. Keep them in a dedicated top
+-- strip rather than above modal panels: a timed world event must never cover
+-- a menu title bar or steal the player's only visible action button.
+screenGui.DisplayOrder = 6
 screenGui.Parent = playerGui
 
 -- Announcement queue
@@ -54,9 +54,10 @@ local function displayAnnouncement(announcement)
 	local panel = Instance.new("Frame")
 	panel.Name = "AnnouncementPanel"
 	panel.Size = UDim2.new(0, 620, 0, 64)
-	panel.Position = UDim2.new(0.5, -310, 0, 92)
+	panel.Position = UDim2.new(0.5, -310, 0, 8)
 	panel.BackgroundColor3 = COLORS.background
 	panel.BackgroundTransparency = 0.1
+	panel.Active = false
 	panel.ZIndex = 30
 	panel.Parent = screenGui
 
@@ -77,6 +78,7 @@ local function displayAnnouncement(announcement)
 	iconLabel.BackgroundTransparency = 1
 	iconLabel.Text = announcement.icon or "📢"
 	iconLabel.TextScaled = true
+	iconLabel.Active = false
 	iconLabel.ZIndex = 31
 	iconLabel.Parent = panel
 
@@ -91,6 +93,7 @@ local function displayAnnouncement(announcement)
 	messageLabel.TextScaled = true
 	messageLabel.Font = Enum.Font.GothamBold
 	messageLabel.TextWrapped = true
+	messageLabel.Active = false
 	messageLabel.ZIndex = 31
 	messageLabel.Parent = panel
 	local messageConstraint = Instance.new("UITextSizeConstraint")
