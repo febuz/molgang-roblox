@@ -103,11 +103,28 @@ screenGui.DisplayOrder = 10
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local dashboardCamera = workspace.CurrentCamera
+local function updateDashboardScale()
+	if not dashboardCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(dashboardCamera.ViewportSize.X - 20) / 800,
+		(dashboardCamera.ViewportSize.Y - 20) / 600
+	), 0.65, 1)
+end
+updateDashboardScale()
+if dashboardCamera then
+	dashboardCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateDashboardScale)
+end
+
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 800, 0, 600)
-mainPanel.Position = UDim2.new(0.5, -400, 0.5, -300)
+mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanel.Position = UDim2.fromScale(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui

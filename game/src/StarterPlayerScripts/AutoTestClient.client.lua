@@ -170,6 +170,11 @@ check("Slag processing scales to viewport", slagScale ~= nil and slagScale:IsA("
 	and slagScale.Scale > 0 and slagScale.Scale <= 1,
 	"core production modal must have a bounded ResponsiveScale")
 
+local dashboardScale = dashboard and dashboard:FindFirstChild("ResponsiveScale")
+check("Dashboard scales to viewport", dashboardScale ~= nil and dashboardScale:IsA("UIScale")
+	and dashboardScale.Scale > 0 and dashboardScale.Scale <= 1,
+	"dashboard modal must have a bounded ResponsiveScale")
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")
