@@ -223,10 +223,14 @@ end)
 timeTest("Nexus return uses a safe world spawn", function()
 	local returnRemote = Remotes:FindFirstChild("RequestReturnToNexus")
 	local spawn = Workspace:FindFirstChild("MolGangSpawn", true)
+	local returnPad = Workspace:FindFirstChild("TeleportPad_ReturnToNexus", true)
 	assert(returnRemote and returnRemote:IsA("RemoteEvent"),
 		"RequestReturnToNexus remote is missing")
 	assert(spawn and spawn:IsA("BasePart") and spawn.Anchored and spawn.CanCollide,
 		"Nexus return has no anchored collidable spawn target")
+	assert(returnPad and returnPad:IsA("BasePart")
+		and returnPad:GetAttribute("TeleportName") == "Nexus Hub",
+		"physical Nexus return pad is missing its canonical route")
 end)
 
 timeTest("Atoms folder created", function()

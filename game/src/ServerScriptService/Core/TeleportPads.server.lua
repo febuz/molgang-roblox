@@ -65,13 +65,25 @@ local function onTouched(hit, pad)
 	end
 
 	local target = pad:GetAttribute("TeleportTarget")
-	if typeof(target) ~= "Vector3" then return end
+	local targetCFrame
+	if pad:GetAttribute("TeleportName") == "Nexus Hub" then
+		-- Keep the physical return pad and the HUD return action on the same
+		-- server-owned safe spawn. The attribute remains for diagnostics and
+		-- compatibility with older generated pads.
+		targetCFrame = nexusCFrame()
+	elseif typeof(target) == "Vector3" then
+		targetCFrame = CFrame.new(target + Vector3.new(0, 5, 0))
+	else
+		return
+	end
 
 	playerCooldowns[player.UserId] = now
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if hrp then
-		hrp.CFrame = CFrame.new(target + Vector3.new(0, 5, 0))
+		character:PivotTo(targetCFrame)
+		hrp.AssemblyLinearVelocity = Vector3.zero
+		hrp.AssemblyAngularVelocity = Vector3.zero
 	end
 end
 
