@@ -22,7 +22,10 @@
 local RunService = game:GetService("RunService")
 
 -- Only run in Studio, not in published game
-if not RunService:IsStudio() then return end
+-- Keep the test harness opt-in so a normal Studio playtest is not polluted by
+-- synthetic actions or a long-running test report. Set RunAutoTest=true in
+-- the command bar before pressing F5 when a full automated run is wanted.
+if not RunService:IsStudio() or game:GetAttribute("RunAutoTest") ~= true then return end
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

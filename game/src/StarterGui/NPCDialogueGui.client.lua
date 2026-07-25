@@ -129,7 +129,7 @@ local currentNPC = nil
 local currentDialogueIndex = 1
 local dialogueActive = false
 
-local function showDialogue(npcName)
+local function showDialogue(npcName, payload)
 	local npc = NPCDialogues.GetNPC(npcName)
 	if not npc then return end
 
@@ -142,37 +142,45 @@ local function showDialogue(npcName)
 	npcNameLabel.Text = npc.name
 	npcRoleLabel.Text = npc.role
 
-	-- Show greeting first
-	dialogueText.Text = npc.greeting
-
-continueBtn.Activated:Connect(function()
-		if currentDialogueIndex <= #npc.dialogues then
-			local dialogue = npc.dialogues[currentDialogueIndex]
-			dialogueText.Text = dialogue.text
-
-			-- Show rewards
-			if dialogue.rewards then
-				if dialogue.rewards.molCoins then
-					dialogueText.Text = dialogueText.Text .. "\n\n💰 +" .. dialogue.rewards.molCoins .. " MolCoins"
-				end
-				if dialogue.rewards.badge then
-					dialogueText.Text = dialogueText.Text .. "\n🏅 Badge: " .. dialogue.rewards.badge
-				end
-			end
-
-			currentDialogueIndex = currentDialogueIndex + 1
-		else
-			-- End dialogue
-			screenGui.Enabled = false
-			dialogueActive = false
-			currentNPC = nil
-		end
-	end)
+	-- Server-authored text takes precedence over the static greeting.
+	dialogueText.Text = type(payload) == "table" and (payload.text or payload.dialogue)
+		or npc.greeting
 end
+
+local function advanceDialogue()
+	if not currentNPC then return end
+	if currentDialogueIndex <= #currentNPC.dialogues then
+		local dialogue = currentNPC.dialogues[currentDialogueIndex]
+		dialogueText.Text = dialogue.text
+
+		-- Show rewards
+		if dialogue.rewards then
+			if dialogue.rewards.molCoins then
+				dialogueText.Text = dialogueText.Text .. "\n\n💰 +" .. dialogue.rewards.molCoins .. " MolCoins"
+			end
+			if dialogue.rewards.badge then
+				dialogueText.Text = dialogueText.Text .. "\n🏅 Badge: " .. dialogue.rewards.badge
+			end
+		end
+
+		currentDialogueIndex = currentDialogueIndex + 1
+	else
+		-- End dialogue
+		screenGui.Enabled = false
+		dialogueActive = false
+		currentNPC = nil
+	end
+end
+
+-- Connect once. Connecting inside showDialogue stacked callbacks after every
+-- conversation and made later clicks advance multiple NPC dialogues at once.
+continueBtn.Activated:Connect(advanceDialogue)
 
 -- Listen for NPC dialogue requests
 Remotes.NPCDialogue.OnClientEvent:Connect(function(data)
-	showDialogue(data.npcName)
+	if type(data) == "table" and data.npcName then
+		showDialogue(data.npcName, data)
+	end
 end)
 
 -- ═════════════════════════════════════════════

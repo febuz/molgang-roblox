@@ -1,9 +1,11 @@
 -- AutoTestClient.client.lua
 -- Studio-only GUI smoke test. Server scripts cannot reliably inspect the
 -- client-created PlayerGui tree, so this verifies the actual input surface.
+-- It is opt-in: automatic button activation must never interrupt a manual
+-- playtest (especially the age route selector or a live quiz question).
 
 local RunService = game:GetService("RunService")
-if not RunService:IsStudio() then return end
+if not RunService:IsStudio() or game:GetAttribute("RunAutoTest") ~= true then return end
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,7 +16,6 @@ local requiredGuis = {
 	"HUDWidget", "DashboardGui", "QuizGui", "SlagProcessingGui",
 	"FactoryBuilderGui", "MiningGui", "ResearchGui", "InventoryGui",
 	"WalletGui", "ProductMarketGui", "MinimapGui", "QuestModal",
-	"OTAPNavigationOverlay",
 }
 
 -- GUI LocalScripts start independently and Studio/Wine can spend 15–30s
@@ -84,6 +85,16 @@ for _, guiName in ipairs(requiredGuis) do
 			"visible button has zero-sized hit area; likely clipped or outside its layout")
 	end
 end
+
+-- The navigation overlay is intentionally informational and therefore does
+-- not need a TextButton. Keep its existence/compass contract separate from
+-- interactive modal GUIs so the smoke test does not report a false failure.
+local navigationOverlay = findScreenGui("OTAPNavigationOverlay")
+check("Navigation overlay exists", navigationOverlay ~= nil,
+	"OTAPNavigationOverlay is missing")
+check("Navigation overlay has compass", navigationOverlay ~= nil
+	and navigationOverlay:FindFirstChild("Compass", true) ~= nil,
+	"zone compass is missing from the navigation overlay")
 
 local loadingScreen = findScreenGui("LoadingScreen")
 if loadingScreen then
