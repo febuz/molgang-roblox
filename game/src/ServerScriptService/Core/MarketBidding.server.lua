@@ -293,8 +293,20 @@ function matchBid(bidId, bidder)
 		local fillQty = math.min(bid.quantity, bestSell.quantity)
 		local fillPrice = bestSell.price -- execute at seller's ask price
 		if not transferProduct(bestSell.productId, bestSell.playerId, bid.playerId, fillQty) then
-			activeSells[bestSellId] = nil
-			task.defer(matchBid, bidId, bidder)
+			-- A failed transfer can be temporary (for example, the buyer's
+			-- inventory is full). Never silently delete the seller's order: its
+			-- reserved material still exists and the order can match later.
+			Remotes.FireClient("ServerAnnounce", bidder, {
+				message = "Bid paused: product transfer unavailable; your escrow and order remain active.",
+				rarity = "common",
+			})
+			local sellerPlayer = Players:GetPlayerByUserId(bestSell.playerId)
+			if sellerPlayer then
+				Remotes.FireClient("ServerAnnounce", sellerPlayer, {
+					message = "Sell order paused: buyer cannot receive this transfer yet; order remains active.",
+					rarity = "common",
+				})
+			end
 			return
 		end
 
@@ -357,7 +369,17 @@ function matchSell(sellId, seller)
 		local fillQty = math.min(sell.quantity, bestBid.quantity)
 		local fillPrice = sell.price
 		if not transferProduct(sell.productId, sell.playerId, bestBid.playerId, fillQty) then
-			activeSells[sellId] = nil
+			local bidderPlayer = Players:GetPlayerByUserId(bestBid.playerId)
+			if bidderPlayer then
+				Remotes.FireClient("ServerAnnounce", bidderPlayer, {
+					message = "Bid paused: product transfer unavailable; escrow and order remain active.",
+					rarity = "common",
+				})
+			end
+			Remotes.FireClient("ServerAnnounce", seller, {
+				message = "Sell order paused: buyer cannot receive this transfer yet; order remains active.",
+				rarity = "common",
+			})
 			return
 		end
 
