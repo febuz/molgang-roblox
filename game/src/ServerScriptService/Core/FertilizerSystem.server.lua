@@ -48,19 +48,89 @@ end
 
 local playerFarms = {}  -- {userId = {plots = {}, questProgress = {}, fertilizerInventory = {}}}
 
+local function finiteOr(value, fallback, minimum, maximum)
+	local number = tonumber(value)
+	if not number or number ~= number or number == math.huge or number == -math.huge then
+		return fallback
+	end
+	return math.clamp(number, minimum, maximum)
+end
+
+local function findSoil(soilId)
+	for _, soil in ipairs(FertilizerTrack.SoilTypes) do
+		if soil.id == soilId then return soil end
+	end
+	return FertilizerTrack.SoilTypes[1]
+end
+
+local function findCrop(cropId)
+	if type(cropId) ~= "string" then return nil end
+	for _, crop in ipairs(FertilizerTrack.Crops) do
+		if crop.id == cropId then return crop end
+	end
+	return nil
+end
+
+local function sanitizeSavedFarm(savedFarm)
+	if type(savedFarm) ~= "table" or type(savedFarm.plots) ~= "table"
+		or #savedFarm.plots ~= MAX_PLOTS then
+		return nil
+	end
+	for index = 1, MAX_PLOTS do
+		local plot = savedFarm.plots[index]
+		if type(plot) ~= "table" then return nil end
+		local soil = findSoil(plot.soilType)
+		plot.id = index
+		plot.soilType = soil.id
+		plot.soilName = soil.name
+		plot.pH = finiteOr(plot.pH, soil.pH, 3, 9)
+		plot.nutrients = type(plot.nutrients) == "table" and plot.nutrients or {}
+		plot.nutrients.N = finiteOr(plot.nutrients.N, soil.baseNutrients.N, 0, 1000)
+		plot.nutrients.P = finiteOr(plot.nutrients.P, soil.baseNutrients.P, 0, 1000)
+		plot.nutrients.K = finiteOr(plot.nutrients.K, soil.baseNutrients.K, 0, 1000)
+		plot.growthProgress = finiteOr(plot.growthProgress, 0, 0, 100)
+		plot.growthDays = finiteOr(plot.growthDays, 0, 0, 10000)
+		plot.growthStartTime = finiteOr(plot.growthStartTime, 0, 0, math.huge)
+		plot.totalGrowthDays = finiteOr(plot.totalGrowthDays, 0, 0, 10000)
+		plot.fertilized = plot.fertilized == true
+		plot.tested = plot.tested == true
+		plot.ready = plot.ready == true
+		plot.cropName = type(plot.cropName) == "string" and plot.cropName or nil
+		plot.fertilizerUsed = type(plot.fertilizerUsed) == "string" and plot.fertilizerUsed or nil
+		plot.contaminants = type(plot.contaminants) == "table" and plot.contaminants or nil
+
+		local crop = findCrop(plot.crop)
+		if crop and plot.totalGrowthDays > 0 then
+			plot.crop = crop.id
+			plot.cropName = crop.name
+		else
+			-- An unknown crop or incomplete timer cannot be resumed safely.
+			plot.crop = nil
+			plot.cropName = nil
+			plot.ready = false
+			plot.growthProgress = 0
+			plot.growthDays = 0
+			plot.growthStartTime = 0
+			plot.totalGrowthDays = 0
+		end
+	end
+	savedFarm.questProgress = type(savedFarm.questProgress) == "table" and savedFarm.questProgress or {}
+	savedFarm.fertilizerInventory = type(savedFarm.fertilizerInventory) == "table" and savedFarm.fertilizerInventory or {}
+	savedFarm.totalHarvests = finiteOr(savedFarm.totalHarvests, 0, 0, 1000000000)
+	savedFarm.totalYield = finiteOr(savedFarm.totalYield, 0, 0, 1000000000)
+	savedFarm.currentAct = math.floor(finiteOr(savedFarm.currentAct, 1, 1, 3))
+	return savedFarm
+end
+
 local function getPlayerFarm(userId)
 	if not playerFarms[userId] then
 		local playerData = PlayerDataBridge.GetPlayerData(userId)
 		local savedFarm = playerData and playerData.fertilizerFarm
-		if savedFarm and type(savedFarm.plots) == "table" and #savedFarm.plots == MAX_PLOTS then
+		local restoredFarm = sanitizeSavedFarm(savedFarm)
+		if restoredFarm then
 			-- Reuse the canonical economy table so EconomyManager's normal
 			-- autosave persists farm changes without a second datastore.
-			savedFarm.questProgress = savedFarm.questProgress or {}
-			savedFarm.fertilizerInventory = savedFarm.fertilizerInventory or {}
-			savedFarm.totalHarvests = savedFarm.totalHarvests or 0
-			savedFarm.totalYield = savedFarm.totalYield or 0
-			savedFarm.currentAct = savedFarm.currentAct or 1
-			playerFarms[userId] = savedFarm
+			playerFarms[userId] = restoredFarm
 			return playerFarms[userId]
 		end
 
