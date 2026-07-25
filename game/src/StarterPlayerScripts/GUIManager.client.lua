@@ -22,6 +22,17 @@ local playerGui = player:WaitForChild("PlayerGui")
 local playerData = nil
 local currentZone = "hub"
 
+-- Movement keys must never be interpreted as a GUI command.  This is kept
+-- separately from `gameProcessed`: Roblox/Vinegar can report WASD as
+-- unprocessed while the default character controller is also consuming it.
+local movementKeys = {
+	[Enum.KeyCode.W] = true,
+	[Enum.KeyCode.A] = true,
+	[Enum.KeyCode.S] = true,
+	[Enum.KeyCode.D] = true,
+}
+local movementKeysDown = {}
+
 -- Track which GUI panels are open (for ESC close-all)
 local guiStates = {
 	PeriodicTableGui = false,
@@ -155,8 +166,20 @@ end
 -- ══════════════════════════════════════════════
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
 	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+	if movementKeys[input.KeyCode] then
+		movementKeysDown[input.KeyCode] = true
+		-- If a stale shortcut or an external script left this modal open, the
+		-- first movement input is an unambiguous signal to return control to play.
+		local achievements = findScreenGui("AchievementsGui")
+		if achievements and achievements.Enabled then
+			achievements.Enabled = false
+			guiStates.AchievementsGui = false
+			print("[GUIManager] Closed AchievementsGui on movement input")
+		end
+		return
+	end
+	if gameProcessed then return end
 	if UserInputService:GetFocusedTextBox() then return end
 
 	-- P = Toggle Periodic Table
@@ -271,6 +294,33 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		closeAllOverlays()
 	end
 end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Keyboard and movementKeys[input.KeyCode] then
+		movementKeysDown[input.KeyCode] = nil
+	end
+end)
+
+-- Defensive guard for a delayed/legacy opener: even if another client script
+-- enables the achievement modal after the WASD event, it must not steal play
+-- input while a movement key is still held.
+local function guardAchievementsGui(gui)
+	if not gui:IsA("ScreenGui") or gui.Name ~= "AchievementsGui" then return end
+	gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+		if not gui.Enabled then return end
+		for key, down in pairs(movementKeysDown) do
+			if down and UserInputService:IsKeyDown(key) then
+				gui.Enabled = false
+				guiStates.AchievementsGui = false
+				print("[GUIManager] Rejected AchievementsGui while movement key was held")
+				return
+			end
+		end
+	end)
+end
+
+for _, child in ipairs(playerGui:GetChildren()) do guardAchievementsGui(child) end
+playerGui.ChildAdded:Connect(guardAchievementsGui)
 
 -- ══════════════════════════════════════════════
 -- SOUND PLAYBACK
