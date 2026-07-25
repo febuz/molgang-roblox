@@ -15,6 +15,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StationAccess = require(ReplicatedStorage.Modules.StationAccess)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -144,6 +146,44 @@ for _, tp in ipairs(TELEPORTS) do
 	table.insert(zoneDots, {dot = tpDot, zone = {pos = tp.pos}})
 end
 
+-- Production stations are explicit navigation targets, not anonymous points
+-- inside the factory zone. Their positions come from the shared station
+-- contract used by server access validation.
+local setWaypoint
+for _, stationKey in ipairs({"crush", "leach"}) do
+	local station = StationAccess.Stations[stationKey]
+	local map = station.mapPosition
+	local stationDot = Instance.new("Frame")
+	stationDot.Name = "Station_" .. stationKey
+	stationDot.Size = UDim2.fromOffset(9, 9)
+	stationDot.BackgroundColor3 = stationKey == "crush"
+		and Color3.fromRGB(255, 150, 50)
+		or Color3.fromRGB(80, 210, 255)
+	stationDot.Parent = mapFrame
+	corner(stationDot, 4)
+	local stationLabel = Instance.new("TextLabel")
+	stationLabel.Size = UDim2.fromOffset(72, 12)
+	stationLabel.Position = UDim2.new(0.5, -36, 1, 1)
+	stationLabel.BackgroundTransparency = 1
+	stationLabel.Text = stationKey == "crush" and "CRUSH" or "LEACH"
+	stationLabel.TextColor3 = stationDot.BackgroundColor3
+	stationLabel.TextScaled = true
+	stationLabel.Font = Enum.Font.GothamBold
+	stationLabel.Parent = stationDot
+	local stationPos = Vector3.new(map.x, map.y, map.z)
+	local clickBtn = Instance.new("TextButton")
+	clickBtn.Name = "SetWaypoint"
+	clickBtn.Size = UDim2.new(1, 8, 1, 8)
+	clickBtn.Position = UDim2.new(0, -4, 0, -4)
+	clickBtn.BackgroundTransparency = 1
+	clickBtn.Text = ""
+	clickBtn.Parent = stationDot
+	clickBtn.Activated:Connect(function()
+		setWaypoint(station.label, stationPos)
+	end)
+	table.insert(zoneDots, {dot = stationDot, zone = {name = station.label, pos = stationPos}})
+end
+
 -- ═══════════════════════════════════════════════
 -- WAYPOINT SYSTEM
 -- ═══════════════════════════════════════════════
@@ -181,7 +221,7 @@ wpText.Font = Enum.Font.GothamBold
 wpText.TextXAlignment = Enum.TextXAlignment.Left
 wpText.Parent = waypointGui
 
-local function setWaypoint(zoneName, targetPos)
+function setWaypoint(zoneName, targetPos)
 	activeWaypoint = {name = zoneName, pos = targetPos}
 	waypointGui.Visible = true
 end

@@ -6,8 +6,11 @@ assert(StationAccess.Stations.crush.partName == "CrushPlatform"
 	"crushing station contract must match the world geometry")
 assert(StationAccess.Stations.leach.partName == "LeachPlatform"
 	and StationAccess.Stations.leach.interactionType == "SlagLeachStation"
-	and StationAccess.Stations.leach.radius == 42,
+	and StationAccess.Stations.leach.radius == 42
+	and StationAccess.Stations.leach.mapPosition.z == 40,
 	"leaching station contract must match the world geometry")
+assert(StationAccess.Stations.crush.mapPosition.z == -40,
+	"crushing station map position must match the world geometry")
 
 local station = {x = 10, y = 5, z = -2}
 assert(StationAccess.WithinRange({x = 10, y = 5, z = -2}, station, 0),
@@ -19,4 +22,4 @@ assert(not StationAccess.WithinRange({x = 13, y = 5, z = -2}, station, 2),
 assert(not StationAccess.WithinRange(nil, station, 10),
 	"missing player position must be rejected")
 
-print("Station Access Tests: 6 passed, 0 failed")
+print("Station Access Tests: 8 passed, 0 failed")

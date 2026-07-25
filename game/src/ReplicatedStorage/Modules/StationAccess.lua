@@ -12,12 +12,14 @@ StationAccess.Stations = {
 		interactionType = "SlagCrushStation",
 		radius = 28,
 		label = "Crushing Station",
+		mapPosition = {x = -1850, y = 10, z = -40},
 	},
 	leach = {
 		partName = "LeachPlatform",
 		interactionType = "SlagLeachStation",
 		radius = 42,
 		label = "Leaching Station",
+		mapPosition = {x = -1850, y = 10, z = 40},
 	},
 }
 
