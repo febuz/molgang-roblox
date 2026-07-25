@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -79,6 +80,14 @@ ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground)
 // Switch the instant sky/ground/lighting to a deep-space setting and paint a
 // starfield behind the zones. Called from init() when meta.space is set.
 function setSpace() {
+  // Real HDRI lighting (CC0 Poly Haven "industrial workshop foundry"): warm,
+  // directional industrial reflections on every PBR surface — replaces the
+  // neutral RoomEnvironment once loaded (which stays as the instant fallback).
+  new RGBELoader().load('./env/industrial_workshop_foundry_1k.hdr', (t) => {
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    scene.environment = pmrem.fromEquirectangular(t).texture;
+    t.dispose();
+  }, undefined, () => { /* keep RoomEnvironment */ });
   const c = document.createElement('canvas'); c.width = c.height = 1024;
   const g = c.getContext('2d');
   const grd = g.createLinearGradient(0, 0, 0, 1024);
@@ -135,6 +144,23 @@ function deckTexture() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   _deckTex = t; return t;
 }
+// Scanned PBR plate maps (CC0 ambientCG MetalPlates006) tiled under the
+// procedural deck markings — per-texture UV transforms (r152+) let the colour
+// stay full-circle while normal/roughness/metalness tile 6x for real relief.
+let _pbrDeck = null;
+function pbrDeckMaps() {
+  if (_pbrDeck) return _pbrDeck;
+  const mk = (file, srgb) => {
+    const t = texLoader.load(`./env/${file}`);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6); t.anisotropy = 4;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  _pbrDeck = { normalMap: mk('deck_normal.jpg'), roughnessMap: mk('deck_rough.jpg'),
+               metalnessMap: mk('deck_metal.jpg'), normalScale: new THREE.Vector2(0.9, 0.9) };
+  return _pbrDeck;
+}
+
 function buildPlatform(o) {
   const rad = o.s;
   const disc = new THREE.Mesh(
@@ -143,7 +169,8 @@ function buildPlatform(o) {
   disc.position.set(o.x, -1.2, o.z); disc.receiveShadow = true; disc.castShadow = true; scene.add(disc);
   const deck = new THREE.Mesh(
     new THREE.CircleGeometry(rad * 0.985, 64),
-    new THREE.MeshStandardMaterial({ map: deckTexture(), roughness: 0.62, metalness: 0.5 }));
+    Object.assign(new THREE.MeshStandardMaterial({ map: deckTexture(), roughness: 0.9, metalness: 0.6 }),
+      pbrDeckMaps()));   // real scanned plate relief under the procedural markings
   deck.rotation.x = -Math.PI / 2; deck.position.set(o.x, 0.06, o.z); deck.receiveShadow = true; scene.add(deck);
   const rim = new THREE.Mesh(
     new THREE.TorusGeometry(rad, 0.35, 12, 96),
