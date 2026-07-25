@@ -853,6 +853,32 @@ local lastCrushProgress = 0
 local lastCrushHits = 0
 local lastCrushTotal = 8
 
+-- Surface authoritative server rejections inside the modal. The global
+-- announcement ticker can be hidden behind this panel, which previously made
+-- an out-of-range station request look like a dead hammer button.
+local serverAnnounce = Remotes:FindFirstChild("ServerAnnounce")
+if serverAnnounce then
+	serverAnnounce.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" or type(data.message) ~= "string" then return end
+		local message = string.lower(data.message)
+		local slagMessage = string.find(message, "slag", 1, true)
+			or string.find(message, "crush", 1, true)
+			or string.find(message, "cone", 1, true)
+			or string.find(message, "mill", 1, true)
+			or string.find(message, "station", 1, true)
+		if not slagMessage then return end
+		crushRequestId += 1
+		crushRequestBusy = false
+		hammerBtn.Active = true
+		grindBtn.Active = true
+		millBtn.Active = true
+		crushLabel.Text = data.message
+		crushLabel.TextColor3 = (string.find(message, "reject", 1, true)
+			or string.find(message, "not enough", 1, true)
+			or string.find(message, "required", 1, true)) and C.red or C.textDim
+	end)
+end
+
 local crushEvent = Remotes:FindFirstChild("SlagCrushProgress")
 if crushEvent then
 	crushEvent.OnClientEvent:Connect(function(data)
