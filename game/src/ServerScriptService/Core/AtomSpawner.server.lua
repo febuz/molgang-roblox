@@ -63,6 +63,10 @@ local atomCount = 0
 local playerCooldowns = {} -- {playerId = lastCollectTime}
 local playerCollectCounts = {} -- {playerId = {count, resetTime}}
 
+local function rejectCollect(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
+
 -- Atoms folder in workspace
 local atomsFolder = Instance.new("Folder")
 atomsFolder.Name = "Atoms"
@@ -320,22 +324,39 @@ local function onRequestCollect(player, atomName)
 	end
 
 	-- Vind het atoom
+	if type(atomName) ~= "string" then
+		rejectCollect(player, "Collectie mislukt: kies een zichtbaar atoom.")
+		return
+	end
 	local atom = atomsFolder:FindFirstChild(atomName)
-	if not atom then return end
+	if not atom then
+		rejectCollect(player, "Dit atoom is al verzameld of verlopen.")
+		return
+	end
 
 	local data = activeAtoms[atom]
-	if not data then return end
+	if not data then
+		rejectCollect(player, "Dit atoom is niet meer beschikbaar.")
+		return
+	end
 
 	-- Positie validatie (anti-teleport)
 	local character = player.Character
-	if not character then return end
+	if not character then
+		rejectCollect(player, "Je personage is nog niet klaar om te verzamelen.")
+		return
+	end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		rejectCollect(player, "Je positie kan nog niet worden bepaald.")
+		return
+	end
 
 	local distance = (hrp.Position - atom.Position).Magnitude
 	local effectiveRange = COLLECT_RANGE * getCollectRangeMultiplier(player.UserId)
 	if distance > effectiveRange then
 		warn("[AtomSpawner] Collect te ver:", player.Name, distance, "studs")
+		rejectCollect(player, "Loop dichter naar het gloeiende atoom toe.")
 		return
 	end
 
