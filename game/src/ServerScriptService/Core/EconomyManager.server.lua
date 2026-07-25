@@ -37,7 +37,6 @@ local SAVE_INTERVAL = 60               -- auto-save every 60 seconds
 
 local playerDataStore = DataStoreProvider.GetDataStore("MolGang_PlayerData_v1")
 local playerData = {}       -- {userId = data}
-local playerDailyEarned = {} -- {userId = earned today}
 local lastDayAdvance = {}   -- {userId = os.time() of last active-session advance}
 local recentTradeRequests = {} -- {userId = {key, timestamp}}; duplicate guard
 
@@ -76,7 +75,9 @@ local function loadPlayerData(player)
 	end
 	playerData[userId].lastLoginDate = today
 
-	playerDailyEarned[userId] = 0
+	-- The cap is backed by persistent daily stats, not only this server
+	-- process. This prevents reconnect/server-hop farming.
+	DailyStats.Ensure(playerData[userId])
 	-- Start the active-session clock at load time. Without this, the first
 	-- 30-second tick compared against epoch zero and advanced a fresh player
 	-- immediately instead of after one complete OTAP day.
@@ -135,20 +136,21 @@ end
 local function addMolCoins(player, amount, reason)
 	local userId = player.UserId
 	local data = playerData[userId]
-	if not data then return false end
+	if not data or type(amount) ~= "number" or amount ~= amount
+		or amount == math.huge or amount == -math.huge or amount <= 0 then
+		return false
+	end
+	local dailyStats = DailyStats.Ensure(data)
+	local earnedToday = dailyStats.molCoinsEarned or 0
 
 	-- Daily cap check
-	if playerDailyEarned[userId] and playerDailyEarned[userId] + amount > MAX_MOLCOINS_PER_DAY then
+	if earnedToday + amount > MAX_MOLCOINS_PER_DAY then
 		return false, "Daily MolCoin limit reached"
 	end
 
 	data.molCoins = data.molCoins + amount
 	data.totalMolCoinsEarned = data.totalMolCoinsEarned + amount
 	DailyStats.Increment(data, "molCoinsEarned", amount)
-	if playerDailyEarned[userId] then
-		playerDailyEarned[userId] = playerDailyEarned[userId] + amount
-	end
-
 	return true
 end
 
@@ -583,11 +585,13 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 			return
 		end
 
-		-- Deduct from inventory, add MolCoins
+		-- Settle the coin leg first. If the persistent daily cap rejects the
+		-- sale, the atom inventory must remain untouched.
 		local totalRevenue = currentPrice * quantity
-		if playerDailyEarned[userId] + totalRevenue > MAX_MOLCOINS_PER_DAY then
+		local paid, reason = addMolCoins(player, totalRevenue, "market_sell")
+		if not paid then
 			print("[EconomyManager]", player.Name, "daily earning limit reached for", itemName)
-			rejectRequest(player, "Daily market income limit reached. Try again after the next reset.")
+			rejectRequest(player, reason or "Daily market income limit reached. Try again after the next reset.")
 			return
 		end
 		recentTradeRequests[userId] = {key = requestKey, timestamp = os.clock()}
@@ -595,8 +599,6 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 		if data.atoms[itemName] <= 0 then
 			data.atoms[itemName] = nil
 		end
-		addMolCoins(player, totalRevenue, "market_sell")
-
 		Remotes.FireClient("MarketTrade", player, {
 			action = "sell",
 			item = itemName,
@@ -738,7 +740,6 @@ Players.PlayerRemoving:Connect(function(player)
 	savePlayerData(player)
 	PlayerDataBridge.Cleanup(player.UserId)
 	playerData[player.UserId] = nil
-	playerDailyEarned[player.UserId] = nil
 	lastDayAdvance[player.UserId] = nil
 	recentTradeRequests[player.UserId] = nil
 end)
