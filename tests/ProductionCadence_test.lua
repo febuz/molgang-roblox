@@ -1,4 +1,5 @@
 local Facilities = require("../game/src/ReplicatedStorage/Modules/Facilities")
+local ProductionState = require("../game/src/ReplicatedStorage/Modules/ProductionState")
 
 assert(Facilities.GetFacility("Mine").productionTime == 60, "mine cadence must be 60 seconds")
 assert(Facilities.GetFacility("Factory").productionTime == 120, "factory cadence must be 120 seconds")
@@ -31,6 +32,15 @@ assert(Facilities.ApplyProductionBonus(100, 1.2) == 120,
 	"production tournament must increase production bonus")
 assert(Facilities.ApplyProductionBonus(99, 1.2) == 118,
 	"production bonus must use deterministic floor rounding")
+local cycles, remainder = ProductionState.Advance(60, 60, 1, 120)
+assert(cycles == 1 and remainder == 0, "restored factory progress must complete at 120 seconds")
+local boostedCycles, boostedRemainder = ProductionState.Advance(60, 60, 1.5, 120)
+assert(boostedCycles == 1 and boostedRemainder == 30,
+	"production speed must advance the persisted factory clock deterministically")
+assert(ProductionState.NormalizeElapsed(math.huge, 120) == 0,
+	"corrupt factory progress must reset instead of granting catch-up output")
+assert(ProductionState.NormalizeRemainder(4) < 1,
+	"atom remainder must remain fractional")
 
 local facilities = Facilities.CreatePlayerFacilities()
 assert(Facilities.BuildFacility(facilities, "Research Lab"), "research lab should build")
@@ -38,4 +48,4 @@ assert(facilities.researchLabs == 1 and facilities.researchlabs == nil,
 	"research lab must use the canonical persisted key")
 assert(Facilities.CanBuild(facilities, "Research Lab"), "research lab max-level check must read canonical key")
 
-print("Production Cadence Tests: 19 passed, 0 failed")
+print("Production Cadence Tests: 23 passed, 0 failed")

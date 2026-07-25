@@ -27,6 +27,13 @@ return {
 		offices = 0,
 	},
 
+	-- In-progress cadence survives server restarts without simulating offline
+	-- production that never ran.
+	production = {
+		factoryElapsedSeconds = 0,
+		outdoorAtomRemainder = 0,
+	},
+
 	-- Mining rights and plot state (persisted through EconomyManager)
 	mining = {
 		ownedPlots = {},

@@ -19,6 +19,7 @@ local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
+local ProductionState = require(ReplicatedStorage.Modules.ProductionState)
 
 -- ═══════════════════════════════════════════════
 -- PRODUCTION CONFIGURATION
@@ -27,8 +28,6 @@ local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 local PRODUCTION_INTERVAL = 60  -- 60 seconds per production cycle
 local BASE_ATOMS = {"H", "O", "C", "N", "Fe", "Cu", "Au", "V", "W", "Al"}
 local FACTORY_CYCLE_SECONDS = Facilities.GetFacility("Factory").productionTime
-local factoryElapsed = {} -- active-session elapsed time per player
-local outdoorAtomRemainder = {} -- fractional production carried to the next tick
 
 -- ═══════════════════════════════════════════════
 -- PRODUCTION LOGIC
@@ -87,7 +86,9 @@ local function produceMolecules(playerData, facilities)
 				-- Consume atoms
 				for sym, count in pairs(recipe.atoms) do
 					atoms[sym] = atoms[sym] - count
-					if atoms[sym] <= 0 then atoms[sym] = nil end
+					if atoms[sym] <= 0 then
+						atoms[sym] = nil
+					end
 				end
 
 				-- Add molecule
@@ -104,6 +105,10 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 	if not playerData or not facilities then return end
 	playerData.atoms = playerData.atoms or {}
 	playerData.molecules = playerData.molecules or {}
+	playerData.production = type(playerData.production) == "table" and playerData.production or {}
+	playerData.production.outdoorAtomRemainder = ProductionState.NormalizeRemainder(
+		playerData.production.outdoorAtomRemainder
+	)
 	playerData.molCoins = playerData.molCoins or 0
 	playerData.totalMolCoinsEarned = playerData.totalMolCoinsEarned or 0
 	local activeEffects = WorldEvents.GetActiveEffects()
@@ -115,9 +120,9 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 		playerData,
 		player:GetAttribute("OutdoorPenalty"),
 		productionSpeedMultiplier,
-		outdoorAtomRemainder[player.UserId]
+		playerData.production.outdoorAtomRemainder
 	)
-	outdoorAtomRemainder[player.UserId] = nextRemainder or 0
+	playerData.production.outdoorAtomRemainder = ProductionState.NormalizeRemainder(nextRemainder)
 	for atom, count in pairs(atomsProduced) do
 		playerData.atoms[atom] = (playerData.atoms[atom] or 0) + count
 	end
@@ -151,10 +156,10 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 
 	-- Award MolCoins for production
 	local productionBonus = 0
-	for atom, count in pairs(atomsProduced) do
+	for _, count in pairs(atomsProduced) do
 		productionBonus = productionBonus + (count * 2)  -- 2 MolCoins per atom
 	end
-	for mol, count in pairs(moleculesProduced) do
+	for _, count in pairs(moleculesProduced) do
 		productionBonus = productionBonus + (count * 10)  -- 10 MolCoins per molecule
 	end
 	productionBonus = Facilities.ApplyProductionBonus(
@@ -176,12 +181,16 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 			productionBonusMultiplier = tonumber(activeEffects.productionBonusMult) or 1,
 			totalAtoms = (function()
 				local count = 0
-				for _, c in pairs(playerData.atoms) do count = count + c end
+				for _, c in pairs(playerData.atoms) do
+					count = count + c
+				end
 				return count
 			end)(),
 			totalMolecules = (function()
 				local count = 0
-				for _, c in pairs(playerData.molecules) do count = count + c end
+				for _, c in pairs(playerData.molecules) do
+					count = count + c
+				end
 				return count
 			end)(),
 		})
@@ -211,18 +220,27 @@ task.spawn(function()
 					factories = playerData.facilities and playerData.facilities.factories or 0,
 					researchLabs = playerData.facilities and playerData.facilities.researchLabs or 0,
 					offices = playerData.facilities and playerData.facilities.offices or 0,
-				}
+					}
 
-				local factoryCycles = 0
-				if facilities.factories > 0 then
-					local activeEffects = WorldEvents.GetActiveEffects()
-					local productionSpeedMultiplier = math.max(0, tonumber(activeEffects.productionSpeedMult) or 1)
-					local elapsed = (factoryElapsed[player.UserId] or 0) + PRODUCTION_INTERVAL * productionSpeedMultiplier
-					factoryCycles = math.floor(elapsed / FACTORY_CYCLE_SECONDS)
-					factoryElapsed[player.UserId] = elapsed - factoryCycles * FACTORY_CYCLE_SECONDS
-				else
-					factoryElapsed[player.UserId] = 0
-				end
+					playerData.production = type(playerData.production) == "table" and playerData.production or {}
+					playerData.production.factoryElapsedSeconds = ProductionState.NormalizeElapsed(
+						playerData.production.factoryElapsedSeconds,
+						FACTORY_CYCLE_SECONDS
+					)
+
+					local factoryCycles = 0
+					if facilities.factories > 0 then
+						local activeEffects = WorldEvents.GetActiveEffects()
+						local productionSpeedMultiplier = math.max(0, tonumber(activeEffects.productionSpeedMult) or 1)
+						factoryCycles, playerData.production.factoryElapsedSeconds = ProductionState.Advance(
+							playerData.production.factoryElapsedSeconds,
+							PRODUCTION_INTERVAL,
+							productionSpeedMultiplier,
+							FACTORY_CYCLE_SECONDS
+						)
+					else
+						playerData.production.factoryElapsedSeconds = 0
+					end
 
 				-- Mines run every minute; factories only when their configured
 				-- 120-second cycle becomes due.
@@ -232,11 +250,6 @@ task.spawn(function()
 			end
 		end
 	end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-	factoryElapsed[player.UserId] = nil
-	outdoorAtomRemainder[player.UserId] = nil
 end)
 
 print("[ProductionManager] initialized — mine 60s / factory " .. FACTORY_CYCLE_SECONDS .. "s cycles active")
