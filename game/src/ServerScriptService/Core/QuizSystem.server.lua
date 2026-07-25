@@ -19,7 +19,10 @@ local QuizQuestionUtils = require(ReplicatedStorage.Modules.QuizQuestionUtils)
 -- both scripts have run.
 local function getQuizRewardMultiplier(userId)
 	if _G.GetPlayerBuff then
-		return _G.GetPlayerBuff(userId, "quizHint")
+		local multiplier = _G.GetPlayerBuff(userId, "quizHint")
+		if type(multiplier) == "number" and multiplier > 0 and multiplier < math.huge then
+			return multiplier
+		end
 	end
 	return 1.0
 end
@@ -297,28 +300,38 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 	else
 		-- Check answer
 		local correct = answer == current.correct
-		PlayerDataBridge.RecordQuizAnswer(userId, correct)
-		if correct then
-			session.score = session.score + 1
-			-- Award MolCoins, boosted by an active quizHint drink buff
-			local reward = math.floor(10 * getQuizRewardMultiplier(userId))
-			local _, _, paidReward = PlayerDataBridge.AddRewardMolCoins(userId, reward)
-			reward = paidReward
-			player:SetAttribute("LastCollectReward", reward)
-			player:SetAttribute("CollectTimestamp", tick())
+		-- Advance the authoritative session before reward bookkeeping. A data or
+		-- buff error must not strand the client on "Checking answer...".
+		session.currentIndex = session.currentIndex + 1
+		local rewardOk, rewardError = pcall(function()
+			PlayerDataBridge.RecordQuizAnswer(userId, correct)
+			if correct then
+				session.score = session.score + 1
+				-- Award MolCoins, boosted by an active quizHint drink buff
+				local reward = math.floor(10 * getQuizRewardMultiplier(userId))
+				local _, _, paidReward = PlayerDataBridge.AddRewardMolCoins(userId, reward)
+				reward = paidReward
+				player:SetAttribute("LastCollectReward", reward)
+				player:SetAttribute("CollectTimestamp", tick())
 
+				Remotes.FireClient("ServerAnnounce", player, {
+					message = "Correct! +" .. reward .. " MolCoins",
+					rarity = "common",
+				})
+			else
+				Remotes.FireClient("ServerAnnounce", player, {
+					message = "Incorrect. The answer was: " .. current.correct,
+					rarity = "common",
+				})
+			end
+		end)
+		if not rewardOk then
+			warn("[QuizSystem] Answer reward bookkeeping failed: " .. tostring(rewardError))
 			Remotes.FireClient("ServerAnnounce", player, {
-				message = "Correct! +" .. reward .. " MolCoins",
-				rarity = "common",
-			})
-		else
-			Remotes.FireClient("ServerAnnounce", player, {
-				message = "Incorrect. The answer was: " .. current.correct,
+				message = "Antwoord ontvangen. Beloning wordt later bijgewerkt.",
 				rarity = "common",
 			})
 		end
-
-		session.currentIndex = session.currentIndex + 1
 	end
 
 	-- Next question or end quiz

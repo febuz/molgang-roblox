@@ -112,6 +112,7 @@ local function clearOptions()
 end
 
 local answerLocked = false
+local pendingQuestionNum = nil
 
 local function showQuizExpired()
 	answerLocked = true
@@ -126,6 +127,7 @@ local function showQuiz(data)
 	local quiz = data.quizData
 	gui.Enabled = true
 	answerLocked = false
+	pendingQuestionNum = nil
 	title.Text = string.format("CHEMISTRY QUIZ  •  %d / %d", quiz.questionNum or 1, quiz.totalQuestions or 3)
 	question.Text = quiz.question or "Question unavailable"
 	clearOptions()
@@ -143,6 +145,7 @@ local function showQuiz(data)
 		option.Activated:Connect(function()
 			if answerLocked then return end
 			answerLocked = true
+			pendingQuestionNum = quiz.questionNum
 			question.Text = "Checking answer..."
 			for _, otherOption in ipairs(optionsFrame:GetChildren()) do
 				if otherOption:IsA("TextButton") then
@@ -152,6 +155,22 @@ local function showQuiz(data)
 				end
 			end
 			Remotes.RequestQuizAnswer:FireServer(quiz.questionNum, answer)
+			-- Never leave the player in a dead-end loading state if Studio/Wine or
+			-- a transient server error drops the response. The answer may already
+			-- have been accepted server-side, so require an explicit Close/restart
+			-- instead of risking a duplicate or out-of-order submission.
+			task.delay(6, function()
+				if not gui.Parent or not gui.Enabled then return end
+				if pendingQuestionNum ~= quiz.questionNum or not answerLocked then return end
+				question.Text = "Antwoord ontvangen, maar de vervolgvraag kwam niet door.\nDruk op Close en start de quiz opnieuw."
+				for _, otherOption in ipairs(optionsFrame:GetChildren()) do
+					if otherOption:IsA("TextButton") then
+						otherOption.Active = false
+						otherOption.AutoButtonColor = false
+						otherOption.BackgroundColor3 = Color3.fromRGB(65, 70, 88)
+					end
+				end
+			end)
 		end)
 	end
 end
@@ -159,12 +178,14 @@ end
 close.Activated:Connect(function()
 	Remotes.RequestQuizCancel:FireServer()
 	answerLocked = false
+	pendingQuestionNum = nil
 	gui.Enabled = false
 	clearOptions()
 end)
 backdrop.Activated:Connect(function()
 	Remotes.RequestQuizCancel:FireServer()
 	answerLocked = false
+	pendingQuestionNum = nil
 	gui.Enabled = false
 	clearOptions()
 end)
