@@ -6,6 +6,10 @@ Each session is stored in the `MolGang_PlayerPaths_v1` DataStore under:
 
 ```text
 path_<userId>_<sessionStartUnixTime>
+
+The `events.atomsCollected` counter is driven by the server's validated atom
+collection path, not by the client collection request. Rejected requests and
+Quantum Dot captures therefore cannot inflate normal atom-production metrics.
 ```
 
 The record contains `userId`, `playerName`, `startedAt`, `duration`, and `samples`. Each sample has `t`, `x`, `y`, `z`, and the nearest generated zone name. Missing characters or short sessions simply produce fewer samples.

@@ -1,5 +1,14 @@
 local PlayerDataBridge = require("../game/src/ServerScriptService/Core/PlayerDataBridge")
 
+local callbackUser, callbackCount
+assert(PlayerDataBridge.OnAtomCollected(function(userId, count)
+	callbackUser, callbackCount = userId, count
+end), "server atom collection listeners should register")
+assert(PlayerDataBridge.RecordAtomCollected(50) == 1,
+	"validated atom collection should increment its server-side count")
+assert(callbackUser == 50 and callbackCount == 1,
+	"validated atom collection should notify analytics consumers")
+
 PlayerDataBridge.RecordAtomCollect(42, 1, "H", 2)
 PlayerDataBridge.RecordAtomCollect(42, 8, "O", 2)
 assert(PlayerDataBridge.RecordAtomCollectBatch(47, 23, "V", 12, 5),
@@ -65,4 +74,4 @@ local reloaded = {molCoins = 3}
 PlayerDataBridge.SetEconomyData(44, reloaded)
 assert(reloaded.molCoins == 10, "queued balance adjustments should apply on load")
 
-print("PlayerDataBridge Tests: 28 passed, 0 failed")
+print("PlayerDataBridge Tests: 31 passed, 0 failed")

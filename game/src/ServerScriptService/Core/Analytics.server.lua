@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 local analyticsStore = DataStoreProvider.GetOrderedDataStore("Analytics_v1")
 local pathStore = DataStoreProvider.GetDataStore("MolGang_PlayerPaths_v1")
@@ -108,10 +109,11 @@ local function trackEvent(userId, eventName, value)
 	end
 end
 
--- Track collection requests on the client→server contract. AtomCollected is
--- deliberately server→client and therefore has no server-side Event signal.
-Remotes.RequestAtomCollect.OnServerEvent:Connect(function(player, _atomName)
-	trackEvent(player.UserId, "atomsCollected", 1)
+-- Count only the successful server-side collection path. Listening to the
+-- request remote would count rejected attempts, spoofed names and Quantum
+-- Dots (which share the remote but are not normal atom production).
+PlayerDataBridge.OnAtomCollected(function(userId)
+	trackEvent(userId, "atomsCollected", 1)
 end)
 
 local function persistSession(player, session)

@@ -23,6 +23,7 @@ local pendingBalanceAdjustments = {} -- {userId = MolCoins to apply on next load
 local drinkPurchaseCounts = {} -- {userId = count}
 local atomCollectedCounts = {} -- {userId = count}
 local quizAnswerResults = {} -- {userId = {true|false, ...}}
+local atomCollectedListeners = {}
 local MAX_DAILY_REWARD = 2000
 
 -- ══════════════════════════════════════════════
@@ -274,7 +275,20 @@ end
 function PlayerDataBridge.RecordAtomCollected(userId)
 	local newCount = (atomCollectedCounts[userId] or 0) + 1
 	atomCollectedCounts[userId] = newCount
+	-- Notify server-only consumers after a validated AtomSpawner collection.
+	-- This is deliberately separate from the client remote: rejected requests
+	-- and Quantum Dots must never inflate the player-behaviour counters.
+	for _, listener in ipairs(atomCollectedListeners) do
+		local ok, err = pcall(listener, userId, newCount)
+		if not ok then warn("[PlayerDataBridge] atom listener failed:", err) end
+	end
 	return newCount
+end
+
+function PlayerDataBridge.OnAtomCollected(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(atomCollectedListeners, listener)
+	return true
 end
 
 function PlayerDataBridge.GetAtomCollectedCount(userId)
