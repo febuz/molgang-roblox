@@ -531,6 +531,22 @@ Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
 		startPrompt.Visible = true
 		return
 	end
+	if data and type(data.message) == "string" then
+		local message = string.lower(data.message)
+		local startFailure = string.find(message, "move closer", 1, true)
+			or string.find(message, "cooldown", 1, true)
+			or string.find(message, "machine is busy", 1, true)
+			or string.find(message, "max ", 1, true)
+			or string.find(message, "already in an hgms", 1, true)
+		if startFailure then
+			gui.Enabled = true
+			startPrompt.Visible = true
+			promptLabel.Text = data.message .. "\n\nPress E or click START HGMS to retry."
+			startButton.Active = true
+			startRequestPending = false
+			return
+		end
+	end
 	if data and data.miniGameScore then
 		updateHUD(data.miniGameScore, data.miniGameTimer or 0)
 	end
