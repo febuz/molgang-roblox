@@ -8,6 +8,11 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -18,11 +23,20 @@ const WORLDFILE = params.get('world') || './moleculia.json';
 let MOLECULIA = true;   // set from meta.space after the map loads
 
 // ---------- renderer + instant background ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;   // filmic response -> realistic highlights
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;     // soft grounded shadows
 $('#stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+// Image-based lighting: a neutral studio environment gives every PBR material
+// real reflections + soft ambient, the single biggest step up in realism.
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 // Sky gradient as an instant background (a canvas texture — no assets to wait on).
 (function sky() {
   const c = document.createElement('canvas'); c.width = 8; c.height = 256;
@@ -36,15 +50,30 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xc4dae8, 55, 200);
 
 const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 400);
-scene.add(new THREE.HemisphereLight(0xdfeeff, 0x384049, 1.5));
-const sun = new THREE.DirectionalLight(0xfff2e0, 2.1);
-sun.position.set(60, 130, 40); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xdfeeff, 0x384049, 0.45));   // env map carries most ambient now
+const sun = new THREE.DirectionalLight(0xfff2e0, 2.6);
+sun.position.set(60, 130, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 300;
+sun.shadow.camera.left = -48; sun.shadow.camera.right = 48;
+sun.shadow.camera.top = 48; sun.shadow.camera.bottom = -48;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+scene.add(sun); scene.add(sun.target);
+
+// Post-processing: subtle bloom so emissive rims, quantum glow, element tiles and
+// stars actually glow — a big perceptual polish in a dark space scene.
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.5, 0.85);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
 
 // Ground shows immediately too.
 let WORLD = 240, roadAts = null, ROAD = 14;
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 1 });
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD), groundMat);
-ground.rotation.x = -Math.PI / 2; scene.add(ground);
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
 // ---------- Moleculia: floating archipelago in space ----------
 // Switch the instant sky/ground/lighting to a deep-space setting and paint a
@@ -83,12 +112,12 @@ function setSpace() {
 function buildPlatform(o) {
   const rad = o.s;
   const disc = new THREE.Mesh(
-    new THREE.CylinderGeometry(rad, rad * 0.92, 2.4, 48),
-    new THREE.MeshStandardMaterial({ color: 0x1b2436, roughness: 0.85, metalness: 0.1 }));
-  disc.position.set(o.x, -1.2, o.z); scene.add(disc);
+    new THREE.CylinderGeometry(rad, rad * 0.92, 2.4, 64),
+    new THREE.MeshStandardMaterial({ color: 0x28313f, roughness: 0.55, metalness: 0.65 }));
+  disc.position.set(o.x, -1.2, o.z); disc.receiveShadow = true; disc.castShadow = true; scene.add(disc);
   const rim = new THREE.Mesh(
-    new THREE.TorusGeometry(rad, 0.35, 8, 64),
-    new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0x2f6bd0, emissiveIntensity: 0.8 }));
+    new THREE.TorusGeometry(rad, 0.35, 12, 96),
+    new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0x3f8bff, emissiveIntensity: 1.6, roughness: 0.3, metalness: 0.4 }));
   rim.rotation.x = Math.PI / 2; rim.position.set(o.x, 0.05, o.z); scene.add(rim);
 }
 
@@ -114,6 +143,7 @@ function roundRect(g, x, y, w, h, r) {
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false);
+  composer.setSize(w, h); bloom.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
@@ -274,6 +304,7 @@ async function spawnAsset(o) {
     glbProto.set(o.ref, proto);
   }
   const obj = proto.clone(true);
+  obj.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; if (n.material) n.material.envMapIntensity = 1.1; } });
   const box = new THREE.Box3().setFromObject(obj);
   const size = box.getSize(new THREE.Vector3());
   const s = o.s / Math.max(size.x, size.z, 0.01);
@@ -1104,12 +1135,15 @@ function loop(now) {
     lastStream = now; stream(); checkCollect(); updateGoals();
     if (crClientActive && !simOk) applyReactorState(crStateObj());
   }
+  // Keep the sun (and its shadow frustum) centred on the player for crisp shadows.
+  sun.position.set(player.pos.x + 50, 120, player.pos.z + 35);
+  sun.target.position.set(player.pos.x, 0, player.pos.z);
   const xr = renderer.xr.isPresenting;
   if (xr) {
     const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons();
-    renderer.render(scene, camera);                    // headset drives cadence
+    renderer.render(scene, camera);                    // headset drives cadence (no post-fx in XR)
   } else if (now - lastRender >= refresh / BUDGET) {
-    lastRender = now; renderer.render(scene, camera); if (arOn) drawAR();
+    lastRender = now; composer.render(); if (arOn) drawAR();   // bloom + tone-mapped
   }
 }
 renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
