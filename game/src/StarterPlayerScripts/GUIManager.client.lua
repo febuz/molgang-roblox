@@ -84,10 +84,16 @@ local GUI_COST_HINTS = {
 	SlagProcessingGui = {cost = 50, hint = "Raw slag costs 50 MC per batch"},
 }
 
+local closeOtherOverlays
+
 local function toggleGui(guiName)
 	local gui = findScreenGui(guiName)
 	if gui then
-		gui.Enabled = not gui.Enabled
+		local shouldEnable = not gui.Enabled
+		if shouldEnable then
+			closeOtherOverlays(guiName)
+		end
+		gui.Enabled = shouldEnable
 		guiStates[guiName] = gui.Enabled
 		playSound(gui.Enabled and "ui_open" or "ui_close")
 		-- Cost warning when opening expensive GUIs (#7)
@@ -129,6 +135,18 @@ local function closeAllOverlays()
 		end
 	end
 	playSound("ui_close")
+end
+
+closeOtherOverlays = function(exceptName)
+	for guiName, _ in pairs(guiStates) do
+		if guiName ~= exceptName then
+			local gui = findScreenGui(guiName)
+			if gui and gui.Enabled then
+				gui.Enabled = false
+				guiStates[guiName] = false
+			end
+		end
+	end
 end
 
 -- ══════════════════════════════════════════════
