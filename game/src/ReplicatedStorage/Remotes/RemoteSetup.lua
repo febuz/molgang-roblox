@@ -98,6 +98,7 @@ local serverToClientEvents = {
 	"QuestState",            -- {questProgress}
 	"QuestCompleted",        -- {questId, reward}
 	"QuestFailed",            -- {reason}
+	"NetworkStatusResponse", -- {routes, bottlenecks, summary}
 }
 
 -- ══════════════════════════════════════════════
