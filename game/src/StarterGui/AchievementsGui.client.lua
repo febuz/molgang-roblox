@@ -229,6 +229,10 @@ local function displayBadges()
 		text.TextWrapped = true
 		text.Font = Enum.Font.Gotham
 		text.Parent = empty
+		local textConstraint = Instance.new("UITextSizeConstraint")
+		textConstraint.MinTextSize = 16
+		textConstraint.MaxTextSize = 24
+		textConstraint.Parent = text
 		return
 	end
 
@@ -349,8 +353,8 @@ local function displayProgress()
 
 		-- Progress bar
 		local barFrame = Instance.new("Frame")
-		barFrame.Size = UDim2.new(0.3, -5, 0, 8)
-		barFrame.Position = UDim2.new(1, -200, 0.5, -4)
+		barFrame.Size = UDim2.fromOffset(190, 8)
+		barFrame.Position = UDim2.new(1, -260, 0.5, -4)
 		barFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 		barFrame.Parent = card
 		createCorner(barFrame, 2)
@@ -363,8 +367,8 @@ local function displayProgress()
 
 		-- Percentage text
 		local percentLabel = Instance.new("TextLabel")
-		percentLabel.Size = UDim2.new(0.15, 0, 1, 0)
-		percentLabel.Position = UDim2.new(1, -35, 0.5, -10)
+		percentLabel.Size = UDim2.fromOffset(55, 20)
+		percentLabel.Position = UDim2.new(1, -65, 0.5, -10)
 		percentLabel.BackgroundTransparency = 1
 		percentLabel.Text = prog.percent .. "%"
 		percentLabel.TextColor3 = COLORS.gold
