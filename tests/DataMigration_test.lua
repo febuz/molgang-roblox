@@ -13,6 +13,17 @@ assert(existing.productLedger.totals.revenue == 10, "migration must preserve nes
 assert(existing.productLedger.totals.cogs == 0, "migration must add missing nested totals")
 assert(existing.carbonCredits == 0, "migration must add missing carbon-credit balance")
 
+local corrupted = {
+	facilities = "invalid",
+	productLedger = {totals = {revenue = "invalid"}},
+}
+DataMigration.MergeDefaults(corrupted, template)
+assert(type(corrupted.facilities) == "table" and corrupted.facilities.mines == 0,
+	"migration must replace wrong-type nested records")
+assert(type(corrupted.productLedger.totals.revenue) == "number"
+	and corrupted.productLedger.totals.revenue == 0,
+	"migration must replace wrong-type scalar fields")
+
 local copy = DataMigration.DeepCopy(template)
 copy.facilities.mines = 99
 assert(template.facilities.mines == 0, "deep copy must not alias template tables")
