@@ -199,6 +199,12 @@ check("Settings scales to viewport", settingsScale ~= nil and settingsScale:IsA(
 	and settingsScale.Scale > 0 and settingsScale.Scale <= 1,
 	"settings modal must have a bounded ResponsiveScale")
 
+local productMarket = findScreenGui("ProductMarketGui")
+local productMarketScale = productMarket and productMarket:FindFirstChild("ResponsiveScale")
+check("Product market scales to viewport", productMarketScale ~= nil and productMarketScale:IsA("UIScale")
+	and productMarketScale.Scale > 0 and productMarketScale.Scale <= 1,
+	"product-market modal must have a bounded ResponsiveScale")
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")
