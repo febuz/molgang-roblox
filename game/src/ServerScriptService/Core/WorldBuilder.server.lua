@@ -3953,6 +3953,14 @@ local function buildMoleculia()
 	print("[WorldBuilder] MOLGANG: The Molecular Chain")
 	print("=============================================================")
 
+	-- A live Studio/Rojo rerun must not expose stale geometry or an old
+	-- readiness marker while the replacement world is being constructed.
+	Workspace:SetAttribute("MoleculiaReady", false)
+	local previousZones = Workspace:FindFirstChild("Zones")
+	if previousZones then
+		previousZones:Destroy()
+	end
+
 	-- Step 1: Remove default environment
 	removeBaseplate()
 	-- Keep the floating archipelago visually spacious while preserving normal
