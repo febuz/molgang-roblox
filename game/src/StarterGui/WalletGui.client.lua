@@ -318,7 +318,7 @@ Remotes.DailyClaimResult.OnClientEvent:Connect(function(d)
 	else
 		local h = math.floor((d.remaining or 0) / 3600)
 		local m = math.floor(((d.remaining or 0) % 3600) / 60)
-		claim.Text = "Next: "..h.."h "..m.."m"
+		claim.Text = d.reason or ("Next: "..h.."h "..m.."m")
 	end
 end)
 

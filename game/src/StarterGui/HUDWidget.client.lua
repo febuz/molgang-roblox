@@ -496,7 +496,7 @@ DailyClaimResult.OnClientEvent:Connect(function(data)
 		claimLabel.TextColor3 = COLORS.gold
 		refreshHUD()
 	elseif data and not data.success then
-		claimLabel.Text = "Daily: Already claimed"
+		claimLabel.Text = "Daily: " .. (data.reason or "Already claimed")
 		claimLabel.TextColor3 = Color3.fromRGB(100, 110, 130)
 	end
 end)

@@ -401,8 +401,16 @@ Remotes.RequestDailyClaim.OnServerEvent:Connect(function(player)
 	local streakBonus = math.min(data.loginStreak * 10, 100)  -- up to 100 bonus
 	local totalClaim = DAILY_CLAIM_AMOUNT + streakBonus
 
+	local paid, reason = addMolCoins(player, totalClaim, "daily_claim")
+	if not paid then
+		Remotes.FireClient("DailyClaimResult", player, {
+			success = false,
+			reason = reason or "Daily MolCoin limit reached",
+			remaining = 0,
+		})
+		return
+	end
 	data.lastDailyClaim = now
-	addMolCoins(player, totalClaim, "daily_claim")
 
 	Remotes.FireClient("DailyClaimResult", player, {
 		success = true,
