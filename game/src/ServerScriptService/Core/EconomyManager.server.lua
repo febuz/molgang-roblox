@@ -17,6 +17,7 @@ local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
+local LoginStreak = require(ReplicatedStorage.Modules.LoginStreak)
 local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
 local MarketTransactionLedger = require(ReplicatedStorage.Modules.MarketTransactionLedger)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
@@ -64,16 +65,14 @@ local function loadPlayerData(player)
 		end
 	end
 
-	-- Update login streak
+	-- Update login streak. A missed calendar day resets the streak; simply
+	-- incrementing on every new login let long-absent players retain bonuses.
 	local today = os.date("%Y-%m-%d")
-	local lastLogin = playerData[userId].lastLoginDate
-	if lastLogin == "" then
-		playerData[userId].loginStreak = 1
-	elseif lastLogin ~= today then
-		-- Check if yesterday (simple check)
-		playerData[userId].loginStreak = playerData[userId].loginStreak + 1
-	end
-	playerData[userId].lastLoginDate = today
+	playerData[userId].loginStreak, playerData[userId].lastLoginDate = LoginStreak.Update(
+		playerData[userId].loginStreak,
+		playerData[userId].lastLoginDate,
+		today
+	)
 
 	-- The cap is backed by persistent daily stats, not only this server
 	-- process. This prevents reconnect/server-hop farming.
