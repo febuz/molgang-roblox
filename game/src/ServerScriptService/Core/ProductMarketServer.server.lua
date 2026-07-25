@@ -141,19 +141,6 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 		end
 	end
 
-	-- Consume atoms
-	for atom, countPerUnit in pairs(product.requiredAtoms) do
-		local consumed = countPerUnit * quantity
-		playerData.atoms[atom] = (playerData.atoms[atom] or 0) - consumed
-		if playerData.atoms[atom] <= 0 then
-			playerData.atoms[atom] = nil
-		end
-	end
-	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
-		local consumed = countPerUnit * quantity
-		playerData.slagInventory[residue] = playerData.slagInventory[residue] - consumed
-	end
-
 	-- Calculate revenue
 	local unitPrice = ProductMarket.ApplyMarketPriceMultiplier(
 		productId,
@@ -166,8 +153,29 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	local totalRevenue = unitPrice * quantity
 	local tradeTax, netRevenue = TradeRules.CalculateTradeTax(totalRevenue, eventEffects.tradeTaxMult)
 
-	-- Add MolCoins
-	PlayerDataBridge.AddEarnedMolCoins(userId, netRevenue)
+	-- Settle the payout before consuming material. A daily income cap or other
+	-- economy rejection must leave the player's atoms and residue untouched.
+	local paid = PlayerDataBridge.AddEarnedMolCoins(userId, netRevenue)
+	if not paid then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Sale rejected: today's MolCoin income limit has been reached; materials were not consumed.",
+			rarity = "common",
+		})
+		return
+	end
+
+	-- Consume atoms only after the payout has been accepted.
+	for atom, countPerUnit in pairs(product.requiredAtoms) do
+		local consumed = countPerUnit * quantity
+		playerData.atoms[atom] = (playerData.atoms[atom] or 0) - consumed
+		if playerData.atoms[atom] <= 0 then
+			playerData.atoms[atom] = nil
+		end
+	end
+	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+		local consumed = countPerUnit * quantity
+		playerData.slagInventory[residue] = playerData.slagInventory[residue] - consumed
+	end
 
 	-- Record in P&L
 	local ledger = getLedger(userId)
