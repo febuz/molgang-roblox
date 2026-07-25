@@ -113,6 +113,14 @@ end
 
 local answerLocked = false
 
+local function showQuizExpired()
+	answerLocked = true
+	clearOptions()
+	title.Text = "CHEMISTRY QUIZ  •  SESSION EXPIRED"
+	question.Text = "De quiz is verlopen voordat alle antwoorden zijn ingestuurd.\nDruk op Close om opnieuw te beginnen."
+	gui.Enabled = true
+end
+
 local function showQuiz(data)
 	if type(data) ~= "table" or type(data.quizData) ~= "table" then return end
 	local quiz = data.quizData
@@ -163,8 +171,7 @@ end)
 
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
 	if type(data) == "table" and data.quizExpired then
-		gui.Enabled = false
-		clearOptions()
+		showQuizExpired()
 		return
 	end
 	-- A world quiz pillar first announces its zone, then the server creates
