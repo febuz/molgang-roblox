@@ -13,6 +13,18 @@
 
 local Tutorial = {}
 
+-- Shared route-step predicate. Keeping this outside the GUI makes the first
+-- run contract testable and prevents a collect step from being auto-skipped
+-- just because the step was rendered.
+function Tutorial.IsStepSatisfied(step, atomsCollected)
+	if type(step) ~= "table" then return false end
+	local condition = step.condition
+	local count = math.max(0, tonumber(atomsCollected) or 0)
+	if condition == "collect_atom" then return count >= 1 end
+	if condition == "collect_atoms" then return count >= (tonumber(step.target) or 1) end
+	return false
+end
+
 -- ═══════════════════════════════════════════════
 -- TUTORIAL STEPS
 -- ═══════════════════════════════════════════════

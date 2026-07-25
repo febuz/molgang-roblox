@@ -23,6 +23,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
+local Tutorial = require(ReplicatedStorage.Modules.Tutorial)
 
 -- Wait for game to load
 task.wait(5)
@@ -474,8 +475,7 @@ showStep = function(stepIdx)
 
 	-- Collection milestones are monotonic server data. Re-check them whenever a
 	-- step becomes active so delayed tutorial startup cannot create a dead end.
-	if step.condition == "collect_atom"
-		or (step.condition == "collect_atoms" and atomsCollected >= (step.target or 1)) then
+	if Tutorial.IsStepSatisfied(step, atomsCollected) then
 		task.defer(function()
 			if currentStep == stepIdx and not tutorialComplete then
 				showStep(stepIdx + 1)
@@ -510,8 +510,7 @@ if atomCollectedEvent then
 		atomsCollected = atomsCollected + 1
 		local step = STEPS[currentStep]
 		if step and not tutorialComplete then
-			if step.condition == "collect_atom"
-				or (step.condition == "collect_atoms" and atomsCollected >= (step.target or 1)) then
+			if Tutorial.IsStepSatisfied(step, atomsCollected) then
 				advanceStep()
 			end
 		end
