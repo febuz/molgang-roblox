@@ -488,6 +488,9 @@ print("\n[AutoTest] ========== ECONOMY ==========")
 timeTest("Starting MolCoins = 500", function()
 	local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
 	assert(DataTemplate.molCoins == 500, "Start: " .. DataTemplate.molCoins)
+	assert(DataTemplate.onboarding and DataTemplate.onboarding.completed == false
+		and DataTemplate.onboarding.path == "",
+		"New players must start with an incomplete onboarding profile")
 end)
 
 timeTest("Product market has V2O5 at 500 MC", function()
@@ -579,6 +582,7 @@ if remoteFolder then
 		"RequestStartLeach", "RequestExtractProducts", "RequestStartResearch",
 		"RequestTestSoil", "RequestCraftFertilizer", "RequestApplyFertilizer",
 		"RequestPlantCrop", "RequestHarvestCrop", "RequestFertilizerInfo",
+		"RequestCompleteOnboarding",
 	}
 	for _, name in ipairs(requiredInteractiveRemotes) do
 		test("Interactive remote " .. name, remoteFolder:FindFirstChild(name) ~= nil)
