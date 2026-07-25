@@ -111,6 +111,7 @@ local clientToServerEvents = {
 	"RequestRepayLoan",      -- {loanId} lening terugbetalen
 	"RequestChainQuery",     -- {query} chain explorer zoekquery
 	"RequestDailyClaim",     -- {} login bonus claimen
+	"RequestCompleteOnboarding", -- {path} persist first-run route choice
 	"RequestAtomTransfer",   -- {targetId, elementZ} atoom sturen naar vriend
 	"RequestQuizAnswer",     -- {questionId, answer} quiz antwoord
 	"RequestQuizStart",      -- {zone} start een quiz vanuit dashboard/NPC

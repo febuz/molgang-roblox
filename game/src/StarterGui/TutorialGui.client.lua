@@ -22,9 +22,22 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
 
 -- Wait for game to load
 task.wait(5)
+
+-- Returning players should not be forced through onboarding again. Read a
+-- server-owned snapshot so this remains true across respawns and sessions.
+local dataOk, playerData = pcall(function()
+	return GetPlayerData:InvokeServer()
+end)
+if dataOk and type(playerData) == "table"
+	and type(playerData.onboarding) == "table"
+	and playerData.onboarding.completed == true then
+	print("[MOLGANG] Onboarding already completed via " .. tostring(playerData.onboarding.path))
+	return
+end
 
 -- ═══════════════════════════════════════════════
 -- COLORS
@@ -134,6 +147,15 @@ local currentStep = 1
 local atomsCollected = 0
 local tutorialComplete = false
 local selectedPath = "explorer"
+
+local function persistOnboardingComplete()
+	if tutorialComplete then return end
+	tutorialComplete = true
+	local completeRemote = Remotes:FindFirstChild("RequestCompleteOnboarding")
+	if completeRemote then
+		completeRemote:FireServer(selectedPath)
+	end
+end
 
 -- ═══════════════════════════════════════════════
 -- GUI SETUP
@@ -344,7 +366,7 @@ end
 showStep = function(stepIdx)
 	if stepIdx > #STEPS then
 		-- Tutorial complete — slide out and destroy
-		tutorialComplete = true
+		persistOnboardingComplete()
 		TweenService:Create(panel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(0.5, -250, 1, 20),
 		}):Play()
@@ -421,7 +443,7 @@ end)
 
 -- Skip button
 skipBtn.Activated:Connect(function()
-	tutorialComplete = true
+	persistOnboardingComplete()
 	TweenService:Create(panel, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		Position = UDim2.new(0.5, -250, 1, 20),
 		BackgroundTransparency = 1,

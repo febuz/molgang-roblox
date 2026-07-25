@@ -17,6 +17,10 @@ return {
 
 	-- Game progression
 	day = 1,            -- Current day counter
+	onboarding = {
+		completed = false,
+		path = "",
+	},
 
 	-- Facilities
 	facilities = {

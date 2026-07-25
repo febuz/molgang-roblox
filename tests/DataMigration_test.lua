@@ -2,6 +2,7 @@ local DataMigration = require("../game/src/ReplicatedStorage/Modules/DataMigrati
 
 local template = {
 	carbonCredits = 0,
+	onboarding = {completed = false, path = ""},
 	facilities = {starterBenches = 0, mines = 0},
 	productLedger = {totals = {revenue = 0, cogs = 0}},
 }
@@ -12,6 +13,8 @@ assert(existing.facilities.starterBenches == 0, "migration must add missing nest
 assert(existing.productLedger.totals.revenue == 10, "migration must preserve nested totals")
 assert(existing.productLedger.totals.cogs == 0, "migration must add missing nested totals")
 assert(existing.carbonCredits == 0, "migration must add missing carbon-credit balance")
+assert(existing.onboarding.completed == false and existing.onboarding.path == "",
+	"migration must add the persistent onboarding state")
 
 local corrupted = {
 	facilities = "invalid",
@@ -24,8 +27,14 @@ assert(type(corrupted.productLedger.totals.revenue) == "number"
 	and corrupted.productLedger.totals.revenue == 0,
 	"migration must replace wrong-type scalar fields")
 
+local corruptOnboarding = {onboarding = "finished"}
+DataMigration.MergeDefaults(corruptOnboarding, template)
+assert(type(corruptOnboarding.onboarding) == "table"
+	and corruptOnboarding.onboarding.completed == false,
+	"migration must replace corrupt onboarding state")
+
 local copy = DataMigration.DeepCopy(template)
 copy.facilities.mines = 99
 assert(template.facilities.mines == 0, "deep copy must not alias template tables")
 
-print("Data Migration Tests: 6 passed, 0 failed")
+print("Data Migration Tests: 8 passed, 0 failed")

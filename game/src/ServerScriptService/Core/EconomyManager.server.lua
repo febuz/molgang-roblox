@@ -732,6 +732,19 @@ end)
 -- REMOTE FUNCTIONS
 -- ══════════════════════════════════════════════
 
+Remotes.RequestCompleteOnboarding.OnServerEvent:Connect(function(player, path)
+	local data = playerData[player.UserId]
+	local allowedPaths = {explorer = true, scientist = true, engineer = true}
+	if not data or type(path) ~= "string" or not allowedPaths[path] then
+		return
+	end
+	if type(data.onboarding) ~= "table" then
+		data.onboarding = {completed = false, path = ""}
+	end
+	data.onboarding.completed = true
+	data.onboarding.path = path
+end)
+
 Remotes.GetPlayerData.OnServerInvoke = function(player)
 	local data = playerData[player.UserId]
 	if not data then return nil end
