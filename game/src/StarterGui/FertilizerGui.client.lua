@@ -450,11 +450,19 @@ if fertUpdateEvent then
 				local pc = plotCards[i]
 				if pc then
 					if plot.tested then
-						pc.soilLabel.Text = "Soil: " .. plot.soilName
+						local soilText = "Soil: " .. plot.soilName
+						if type(plot.contaminants) == "table" and #plot.contaminants > 0 then
+							soilText = soilText .. "  ⚠ " .. table.concat(plot.contaminants, "/")
+							pc.soilLabel.TextColor3 = Color3.fromRGB(255, 150, 70)
+						else
+							pc.soilLabel.TextColor3 = C.soilBrown
+						end
+						pc.soilLabel.Text = soilText
 						pc.npkLabel.Text = string.format("N:%d P:%d K:%d pH:%.1f",
 							plot.nutrients.N, plot.nutrients.P, plot.nutrients.K, plot.pH)
 					else
 						pc.soilLabel.Text = "Soil: Unknown (test it!)"
+						pc.soilLabel.TextColor3 = C.soilBrown
 						pc.npkLabel.Text = "N:? P:? K:? pH:?"
 					end
 
