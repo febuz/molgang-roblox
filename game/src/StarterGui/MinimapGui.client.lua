@@ -69,7 +69,12 @@ screenGui.DisplayOrder = 5
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
--- Map container (top-left)
+-- The compact HUD already contains a persistent map at bottom-right. Keep
+-- this detailed, clickable station map available on demand so it does not
+-- cover the atom inventory and molecule builder during normal play.
+screenGui.Enabled = false
+
+-- Map container (top-left when opened with M/N)
 local mapFrame = Instance.new("Frame")
 mapFrame.Name = "Minimap"
 mapFrame.Size = UDim2.fromOffset(MAP_SIZE, MAP_SIZE)
