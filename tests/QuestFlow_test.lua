@@ -17,6 +17,14 @@ assert(Quests.GetActiveQuests(progress)[1].id == "collect_atoms",
 	"guided path should activate the next collection objective")
 assert(not Quests.EnsureGuidedQuest(progress), "guided path must not duplicate an active quest")
 
+local sameOrderProgress = Quests.CreateQuestProgress()
+sameOrderProgress.completed.first_atom = true
+sameOrderProgress.completed.collect_atoms = true
+sameOrderProgress.completed.first_molecule = true
+local sameOrderAvailable = Quests.GetAvailableQuests(sameOrderProgress)
+assert(sameOrderAvailable[1].id == "build_first_mine",
+	"same-order guided quests must have deterministic id ordering")
+
 progress.lastDaily.daily_collect = os.date("%Y-%m-%d")
 assert(not Quests.CanAccept(progress, "daily_collect"), "daily quests must not repeat on the same day")
 

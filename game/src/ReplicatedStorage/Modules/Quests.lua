@@ -198,7 +198,10 @@ function Quests.GetQuestsByCategory(category)
 			table.insert(quests, quest)
 		end
 	end
-	table.sort(quests, function(a, b) return a.order < b.order end)
+	table.sort(quests, function(a, b)
+		if a.order == b.order then return a.id < b.id end
+		return a.order < b.order
+	end)
 	return quests
 end
 
@@ -229,7 +232,10 @@ function Quests.GetAvailableQuests(progress)
 			table.insert(available, quest)
 		end
 	end
-	table.sort(available, function(a, b) return a.order < b.order end)
+	table.sort(available, function(a, b)
+		if a.order == b.order then return a.id < b.id end
+		return a.order < b.order
+	end)
 	return available
 end
 
