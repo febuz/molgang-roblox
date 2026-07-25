@@ -499,10 +499,25 @@ function SteelSlag.CalculateYield(particleSize, reagentId, batchWeightKg, temper
 	temperature = temperature or 25
 	local contactFactor = math.clamp(1 / math.max(size.leachMultiplier, 0.05), 0.05, 4)
 	local oxideMasses = SteelSlag.GetPostMagneticSeparationMasses(batchWeight)
+	local targetProducts = {}
+	for _, element in ipairs(reagent.products or {}) do
+		targetProducts[element] = true
+	end
 
 	for oxide, data in pairs(SteelSlag.Composition) do
 		local extraction = reagent.extraction[oxide] or 0
-		if extraction > 0 then
+		local elements = SteelSlag.OxideToElements[oxide]
+		local isTargetProduct = next(targetProducts) == nil
+		if elements and next(targetProducts) ~= nil then
+			isTargetProduct = false
+			for element in pairs(elements) do
+				if targetProducts[element] then
+					isTargetProduct = true
+					break
+				end
+			end
+		end
+		if extraction > 0 and isTargetProduct then
 			local temperatureExtraction = math.clamp(
 				extraction * arrheniusMultiplier(temperature, ACTIVATION_ENERGIES[oxide] or 50),
 				0, 0.99

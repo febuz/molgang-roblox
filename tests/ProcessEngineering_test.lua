@@ -92,6 +92,15 @@ assert(math.abs(doubleBatchTotal - 1.74) < 0.000001
 	and math.abs(doubleBatchRecovery - 0.24) < 0.000001,
 	"pre-treatment mass streams must scale with batch weight")
 local hotYield = SteelSlag.CalculateYield("powder", "H2SO4", 1, 65)
+local h2so4Products = {}
+for _, product in ipairs(SteelSlag.Reagents.H2SO4.products) do h2so4Products[product] = true end
+for _, entry in ipairs(hotYield) do
+	local elements = SteelSlag.OxideToElements[entry.oxide]
+	for element in pairs(elements or {}) do
+		assert(h2so4Products[element],
+			"reagent product selectivity leaked non-product element " .. element)
+	end
+end
 for _, entry in ipairs(hotYield) do
 	if entry.oxide == "FeO" then
 		assert(entry.gramsExtracted < 50,

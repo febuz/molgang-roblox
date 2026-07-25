@@ -407,6 +407,19 @@ timeTest("Leach event bonus stays inside final product mass", function()
 		"Event bonus created more product than the final mass balance allows")
 end)
 
+timeTest("Reagent yield respects declared product selectivity", function()
+	local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
+	local products = {}
+	for _, element in ipairs(SteelSlag.Reagents.H2SO4.products or {}) do
+		products[element] = true
+	end
+	for _, entry in ipairs(SteelSlag.CalculateYield("powder", "H2SO4", 1, 65)) do
+		for element in pairs(SteelSlag.OxideToElements[entry.oxide] or {}) do
+			assert(products[element], "Non-product element leaked from H2SO4 yield: " .. element)
+		end
+	end
+end)
+
 -- ═══════════════════════════════════════════════
 -- TEST 7: ECONOMY BALANCE
 -- ═══════════════════════════════════════════════
