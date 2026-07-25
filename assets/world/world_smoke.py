@@ -42,12 +42,21 @@ def check_moleculia():
     missing = {o["ref"] for o in objs if o["t"] == "asset"} - models
     if missing:
         fail(f"moleculia references GLBs with no file: {sorted(missing)[:5]}")
+    interactables = [o for o in objs if o.get("interact")]
+    required_interactions = {"console", "assay", "safety"}
+    interaction_types = {o["interact"] for o in interactables}
+    missing_interactions = required_interactions - interaction_types
+    if missing_interactions:
+        fail(f"HD plant interaction routes missing: {sorted(missing_interactions)}")
+    invalid_interactions = [o for o in interactables if o["t"] != "asset"]
+    if invalid_interactions:
+        fail("interactive world objects must be streamable assets")
     elements = [o for o in objs if o["t"] == "element"]
     nums = {o["num"] for o in elements}
     if len(elements) != 118 or nums != set(range(1, 119)):
         fail(f"expected 118 elements numbered 1..118, got {len(elements)}")
     print(f"OK  Moleculia: {len(zones)} zones, {len(stations)} stations, {len(elements)} elements, "
-          f"{len(objs)} objects")
+          f"{len(objs)} objects · interactions {sorted(interaction_types)}")
     return meta
 
 
