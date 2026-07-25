@@ -32,6 +32,33 @@
   #cinema-btn { position: fixed; top: 212px; right: 12px; z-index: 12; cursor: pointer;
     background: rgba(14,18,26,.82); color: #f0d0e0; border: 1px solid #7a2c5a;
     border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #opt-btn { position: fixed; top: 252px; right: 12px; z-index: 12; cursor: pointer;
+    background: rgba(14,18,26,.82); color: #cfe0f0; border: 1px solid #3a4a6a;
+    border-radius: 8px; padding: 7px 12px; font: 13px system-ui; }
+  #options { position: fixed; inset: 0; z-index: 19; display: none; align-items: center;
+    justify-content: center; background: rgba(4,6,13,.72); }
+  #options .fl-card { width: min(460px, 94vw); }
+  #options label { display: block; font-size: 12px; margin: 10px 0 2px; color: #cfe0f0; }
+  #options input[type=range] { width: 100%; accent-color: #7fe0d6; }
+  #options .o-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  #options .o-val { color: #ffd479; font-size: 12px; }
+  #options .o-check { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: #cfe0f0; margin: 10px 0; }
+  #options .o-btns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  #options .o-btns button { cursor: pointer; flex: 1; min-width: 130px; padding: 8px; border-radius: 8px;
+    background: rgba(30,40,60,.6); border: 1px solid #26344a; color: #cfe0f0; font: 12px system-ui; }
+  #options .o-keys { margin-top: 12px; font-size: 11px; color: #9fb0c6; line-height: 1.7; }
+  #tutor { position: fixed; right: 14px; bottom: 14px; z-index: 22; display: none;
+    width: min(400px, 92vw); background: rgba(12,16,24,.94); border: 1px solid #2c704a;
+    border-radius: 12px; padding: 14px 16px; font: 13px system-ui; color: #eef4fb;
+    box-shadow: 0 10px 34px rgba(0,0,0,.55); }
+  #tutor .t-step { color: #7fe0d6; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+  #tutor h3 { margin: 4px 0 6px; font-size: 15px; }
+  #tutor p { color: #cfe0f0; margin: 0 0 10px; line-height: 1.5; }
+  #tutor .t-btns { display: flex; gap: 8px; }
+  #tutor .t-btns button { cursor: pointer; padding: 7px 12px; border-radius: 8px; font: 12px system-ui;
+    background: #143328; border: 1px solid #2c704a; color: #7fe0d6; }
+  #tutor .t-btns .t-skip { background: transparent; border-color: #26344a; color: #9fb0c6; }
+  #tutor .t-reward { color: #ffd479; font-size: 11.5px; margin-bottom: 8px; }
   #factory { position: fixed; inset: 0; z-index: 18; display: none; align-items: center;
     justify-content: center; background: rgba(4,6,13,.72); }
   .fc-card { width: min(920px, 96vw); }
@@ -234,6 +261,42 @@
 <button id="ar-toggle">🥽 AR</button>
 <button id="xr-btn" style="display:none">🥽 Enter AR</button>
 <button id="cinema-btn" title="Cinema mode — on Quest this expands onto the theater screen">🎬 Cinema</button>
+<button id="opt-btn" title="Options — AR floor, calibration, speed, tutorial">⚙ Options</button>
+<div id="options">
+  <div class="fl-card">
+    <div class="fl-head"><b>⚙ Options</b>
+      <span>AR calibration &amp; comfort — saved on this device</span>
+      <button id="opt-close" type="button">✕</button></div>
+    <div class="o-check"><input type="checkbox" id="o-hidefloor" />
+      <span>Hide the virtual floor in AR passthrough (your real floor takes over)</span></div>
+    <div class="o-row"><label for="o-floor">Floor height offset (AR/VR calibration)</label>
+      <span class="o-val" id="o-floor-v">0.00 m</span></div>
+    <input type="range" id="o-floor" min="-1.5" max="1.5" step="0.05" value="0" />
+    <div class="o-row"><label for="o-speed">Thumbstick walk speed</label>
+      <span class="o-val" id="o-speed-v">6 m/s</span></div>
+    <input type="range" id="o-speed" min="2" max="12" step="0.5" value="6" />
+    <div class="o-btns">
+      <button id="o-recenter" type="button">🧭 Recenter world (in headset)</button>
+      <button id="o-tutorial" type="button">🎓 Restart tutorial</button>
+    </div>
+    <div class="o-keys">
+      <b>Headset:</b> stick = walk · A/X = AR passthrough · B/Y = teleport to next zone<br />
+      <b>Desktop:</b> WASD + mouse · Shift = sprint · F = Fertilizer Lab · R = AR overlay<br />
+      <b>Gamepad (flat):</b> left stick = walk · right stick = look · trigger = click in panels
+    </div>
+  </div>
+</div>
+<div id="tutor">
+  <div class="t-step" id="t-step">Step 1 / 6</div>
+  <h3 id="t-title"></h3>
+  <p id="t-desc"></p>
+  <div class="t-reward" id="t-reward"></div>
+  <div class="t-btns">
+    <button id="t-go" type="button">📍 Take me there</button>
+    <button id="t-next" type="button">Next →</button>
+    <button id="t-skip" type="button" class="t-skip">Skip tutorial</button>
+  </div>
+</div>
 <button id="fert-btn" style="display:none">🌱 Fertilizer Lab</button>
 <div id="fertlab">
   <div class="fl-card">

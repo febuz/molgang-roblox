@@ -903,6 +903,8 @@ async function enterXR() {
   // streaming, interactions, element collection and the sun all follow the
   // headset (they used to stay parked at the spawn point: barely any objects).
   const xrOff = { x: 0, z: 0, base: null };
+  xrActiveSession = session;
+  session.__recenter = () => { xrOff.x = 0; xrOff.z = 0; session.__syncSpace(); xrToastShow('🧭 world recentered'); };
   session.__syncSpace = () => {
     xrOff.base = xrOff.base || renderer.xr.getReferenceSpace();
     if (xrOff.base && window.XRRigidTransform) renderer.xr.setReferenceSpace(
@@ -950,10 +952,11 @@ async function enterXR() {
   session.__syncSpace();                          // apply the saved floor offset
   xrToastShow('🥽 stick = walk · A = AR · B = next zone');
   session.addEventListener('end', () => {
-    scene.background = skyBg; setFloorHidden(false);
+    scene.background = skyBg; setFloorHidden(false); xrActiveSession = null;
     if (xrBtn) xrBtn.disabled = false;
   });
 }
+let xrActiveSession = null;
 if (xrBtn) xrBtn.addEventListener('click', () => { xrBtn.disabled = true; enterXR().catch((e) => { xrBtn.disabled = false; if (xrStat) xrStat.textContent = '🕶️ XR start failed: ' + e.message; }); });
 detectXR();
 
@@ -968,7 +971,7 @@ detectXR();
 //    the controller behaves as a mouse. B/squeeze closes the panel (Escape).
 // Cinema: fullscreen is what makes the Quest Browser expand the page onto its
 // big curved theater screen; on desktop it is a plain fullscreen toggle.
-const OVERLAY_IDS = ['intro', 'fertlab', 'farm', 'factory', 'chemsim'];
+const OVERLAY_IDS = ['intro', 'fertlab', 'farm', 'factory', 'chemsim', 'options'];
 const overlayOpen = () => OVERLAY_IDS.some((id) => {
   const el = document.getElementById(id);
   return el && getComputedStyle(el).display !== 'none';
@@ -1514,6 +1517,115 @@ function checkInteract(now) {
   }
 }
 
+// ---------- ⚙ options menu: AR calibration, comfort, tutorial restart ----------
+// DOM panel (2D/cinema; set things up before entering the headset). The floor
+// offset and recenter apply LIVE to a running XR session via xrActiveSession.
+function initOptions() {
+  const panel = document.getElementById('options'); if (!panel) return;
+  const btn = document.getElementById('opt-btn');
+  const hf = document.getElementById('o-hidefloor');
+  const fo = document.getElementById('o-floor'), fov = document.getElementById('o-floor-v');
+  const sp = document.getElementById('o-speed'), spv = document.getElementById('o-speed-v');
+  hf.checked = xrSettings.hideFloorAR;
+  fo.value = xrSettings.floorOffset; fov.textContent = (+xrSettings.floorOffset).toFixed(2) + ' m';
+  sp.value = xrSettings.speed; spv.textContent = xrSettings.speed + ' m/s';
+  if (btn) btn.addEventListener('click', () => { panel.style.display = 'flex'; });
+  document.getElementById('opt-close').addEventListener('click', () => { panel.style.display = 'none'; });
+  hf.addEventListener('change', () => {
+    xrSettings.hideFloorAR = hf.checked; saveXrSettings();
+    if (renderer.xr.isPresenting) setFloorHidden(xrAR && xrSettings.hideFloorAR);
+  });
+  fo.addEventListener('input', () => {
+    xrSettings.floorOffset = +fo.value; fov.textContent = (+fo.value).toFixed(2) + ' m';
+    saveXrSettings();
+    if (xrActiveSession && xrActiveSession.__syncSpace) xrActiveSession.__syncSpace();
+  });
+  sp.addEventListener('input', () => {
+    xrSettings.speed = +sp.value; spv.textContent = sp.value + ' m/s'; saveXrSettings();
+  });
+  document.getElementById('o-recenter').addEventListener('click', () => {
+    if (xrActiveSession && xrActiveSession.__recenter) xrActiveSession.__recenter();
+    else worldToast('🧭 Recenter works inside the headset (enter AR/VR first)');
+  });
+  document.getElementById('o-tutorial').addEventListener('click', () => {
+    panel.style.display = 'none'; tutorStart(true);
+  });
+}
+
+// ---------- 🎓 tutorial — the web mirror of the Roblox onboarding ----------
+// Same shape as game/src/ReplicatedStorage/Modules/Tutorial.lua: titled steps
+// with a reward, and steps that watch REAL game state auto-complete (collect an
+// element, synthesize a fertilizer) instead of trusting a "Next" click.
+const TUTOR_KEY = 'molgang.tutorial';
+const TUTOR_STEPS = [
+  { title: 'Welcome to Moleculia!', reward: 50,
+    desc: 'The Roblox teaser continues here: a chemical-engineering world in space. This tour pays MolCoins per step.' },
+  { title: 'Collect your first element', reward: 100, goto: [0, -104, 0],
+    desc: 'Walk onto a glowing tile in the Periodic Table Biome to collect it. 118 to find!',
+    done: () => collected.size >= 1 },
+  { title: 'Run the Slakkenspoor plant', reward: 100, goto: [-118, 12, 2.2],
+    desc: 'The 12-station line refines steel slag. Use the reactor panel (left): grind fine, de-iron, roast, and set pH ≈ 2.9 for peak vanadium recovery.' },
+  { title: 'Bank your V₂O₅', reward: 50, goto: [-118, 12, 2.2],
+    desc: 'A finished batch banks V₂O₅ — press Sell to turn it into MolCoins (500 per kg).' },
+  { title: 'Synthesize a fertilizer', reward: 100, goto: [0, -104, 0],
+    desc: 'Open the 🌱 Fertilizer Lab (F): collected elements become real NPK fertilizers for the Farm.',
+    done: () => fertMade() >= 1 },
+  { title: 'Explore the archipelago', reward: 100,
+    desc: 'Six zones float in the ring — the signpost & kiosk at Nexus Hub point the way. In the headset, B/Y teleports zone to zone. Have fun!' },
+];
+let tutorState = { step: 0, done: false, paid: 0 };
+try { Object.assign(tutorState, JSON.parse(localStorage.getItem(TUTOR_KEY) || '{}')); } catch (e) { /* fresh */ }
+const saveTutor = () => { try { localStorage.setItem(TUTOR_KEY, JSON.stringify(tutorState)); } catch (e) { /* quota */ } };
+function tutorRender() {
+  const el = document.getElementById('tutor'); if (!el) return;
+  if (tutorState.done || tutorState.step >= TUTOR_STEPS.length) { el.style.display = 'none'; return; }
+  const s = TUTOR_STEPS[tutorState.step];
+  el.style.display = 'block';
+  document.getElementById('t-step').textContent = `Step ${tutorState.step + 1} / ${TUTOR_STEPS.length}`;
+  document.getElementById('t-title').textContent = s.title;
+  document.getElementById('t-desc').textContent = s.desc;
+  document.getElementById('t-reward').textContent = s.reward ? `Reward: +${s.reward} MolCoins` : '';
+  document.getElementById('t-go').style.display = s.goto ? 'inline-block' : 'none';
+  document.getElementById('t-next').textContent = s.done ? 'Waiting… (auto)' : (tutorState.step === TUTOR_STEPS.length - 1 ? 'Finish 🎉' : 'Next →');
+}
+function tutorAdvance() {
+  const s = TUTOR_STEPS[tutorState.step];
+  if (s && s.reward && tutorState.paid <= tutorState.step) {
+    earn(s.reward); tutorState.paid = tutorState.step + 1;
+    worldToast(`🎓 ${s.title} — +${s.reward} MolCoins`);
+  }
+  tutorState.step += 1;
+  if (tutorState.step >= TUTOR_STEPS.length) tutorState.done = true;
+  saveTutor(); tutorRender();
+}
+function tutorTick() {
+  if (tutorState.done) return;
+  const s = TUTOR_STEPS[tutorState.step];
+  if (s && s.done && s.done()) tutorAdvance();     // state-watching steps auto-complete
+}
+function tutorStart(force) {
+  if (force) { tutorState = { step: 0, done: false, paid: tutorState.paid }; saveTutor(); }
+  tutorRender();
+}
+function initTutorial() {
+  const el = document.getElementById('tutor'); if (!el) return;
+  document.getElementById('t-next').addEventListener('click', () => {
+    const s = TUTOR_STEPS[tutorState.step];
+    if (s && s.done && !s.done()) { worldToast('🎓 This step completes by itself — go do it!'); return; }
+    tutorAdvance();
+  });
+  document.getElementById('t-skip').addEventListener('click', () => {
+    tutorState.done = true; saveTutor(); tutorRender();
+  });
+  document.getElementById('t-go').addEventListener('click', () => {
+    const s = TUTOR_STEPS[tutorState.step];
+    if (!s || !s.goto) return;
+    player.pos.x = s.goto[0]; player.pos.z = s.goto[1];
+    if (s.goto[2] != null) player.yaw = s.goto[2];
+  });
+  tutorRender();                                   // resumes where you left off
+}
+
 // ---------- ChemSim: the paid in-game chemical simulator ----------
 // The chemistry-set console in the Quantum Lab. For MolCoins the player runs
 // the process model FORWARD: predicted rate, batch time and V2O5/hour for any
@@ -1636,7 +1748,7 @@ function loop(now) {
   if (!simOk && MOLECULIA) crClientActive = true;   // no server reached -> run chemistry in-browser
   if (crClientActive && !simOk) crTick(dt);
   if (now - lastStream > 180) {
-    lastStream = now; stream(); checkCollect(); checkInteract(now); updateGoals();
+    lastStream = now; stream(); checkCollect(); checkInteract(now); tutorTick(); updateGoals();
     if (crClientActive && !simOk) applyReactorState(crStateObj());
   }
   // Keep the sun (and its shadow frustum) centred on the player for crisp shadows.
@@ -1741,6 +1853,8 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     }
     if (params.get('build')) setTimeout(openFactory, 400);
     initControls();
+    initOptions();
+    initTutorial();
     $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
       + `the web continuation of the Roblox teaser`;
     $('#resolve').innerHTML = `<div style="color:#7fe0a0;margin-bottom:3px">⚗️ Slakkenspoor — BOF slag processing line</div>`
