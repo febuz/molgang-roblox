@@ -27,6 +27,11 @@ assert(payload.events.atomsCollected == 2 and payload.events.guisOpened[1] == "M
 	"payload should retain behavior events")
 assert(payload.events.zoneVisits[2].t == 3,
 	"zone transition events should retain route-relative time")
+session.pathKey = "path_42_100_123"
+local indexEntry = PlayerPathAnalytics.BuildIndexEntry(session, 42, 13)
+assert(indexEntry.pathKey == session.pathKey and indexEntry.sampleCount == 2
+		and indexEntry.zoneCount == 2,
+	"path index entries should make stored sessions discoverable")
 payload.events.guisOpened[1] = "changed"
 assert(session.events.guisOpened[1] == "MiningGui", "payload events must be copied")
 

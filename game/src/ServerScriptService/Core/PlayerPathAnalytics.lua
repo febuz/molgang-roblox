@@ -75,4 +75,19 @@ function PlayerPathAnalytics.BuildPayload(session, userId, playerName, duration)
 	}
 end
 
+function PlayerPathAnalytics.BuildIndexEntry(session, userId, duration)
+	return {
+		schemaVersion = 1,
+		sessionId = session.sessionId,
+		userId = userId,
+		pathKey = session.pathKey,
+		startedAt = session.joinTime,
+		duration = duration,
+		firstAction = session.firstAction,
+		lastAction = session.lastAction,
+		sampleCount = #session.path,
+		zoneCount = #(session.events.zoneVisits or {}),
+	}
+end
+
 return PlayerPathAnalytics

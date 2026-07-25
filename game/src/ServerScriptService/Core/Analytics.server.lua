@@ -17,6 +17,7 @@ local PlayerPathAnalytics = require(script.Parent.PlayerPathAnalytics)
 
 local analyticsStore = DataStoreProvider.GetOrderedDataStore("Analytics_v1")
 local pathStore = DataStoreProvider.GetDataStore("MolGang_PlayerPaths_v1")
+local pathIndexStore = DataStoreProvider.GetDataStore("MolGang_PlayerPathIndex_v1")
 
 -- A route sample is useful for level design, but recording every physics frame
 -- is noisy, expensive, and unnecessary. Keep one rounded sample per player
@@ -44,6 +45,7 @@ local function getSession(userId)
 		})
 		playerSessions[userId].analyticsKey = "session_" .. userId .. "_" .. sessionId
 		playerSessions[userId].pathKey = "path_" .. userId .. "_" .. sessionId
+		playerSessions[userId].pathIndexKey = "player_" .. tostring(userId)
 		playerSessions[userId].firstAction = nil
 		playerSessions[userId].lastAction = joinTime
 	end
@@ -124,8 +126,10 @@ local function persistSession(player, session)
 	local userId = player.UserId
 	local duration = os.time() - session.joinTime
 	local payload = PlayerPathAnalytics.BuildPayload(session, userId, player.Name, duration)
+	local indexEntry = PlayerPathAnalytics.BuildIndexEntry(session, userId, duration)
 	local analyticsSaved = session.analyticsSaved == true
 	local pathSaved = session.pathSaved == true
+	local pathIndexSaved = session.pathIndexSaved == true
 	for attempt = 1, SAVE_RETRIES do
 		if not analyticsSaved then
 			analyticsSaved = pcall(function()
@@ -137,14 +141,30 @@ local function persistSession(player, session)
 				pathStore:SetAsync(session.pathKey, payload)
 			end)
 		end
-		if analyticsSaved and pathSaved then break end
+		if not pathIndexSaved then
+			pathIndexSaved = pcall(function()
+				pathIndexStore:UpdateAsync(session.pathIndexKey, function(previous)
+					local entries = type(previous) == "table" and previous or {}
+					local nextEntries = {indexEntry}
+					for _, entry in ipairs(entries) do
+						if type(entry) == "table" and entry.sessionId ~= indexEntry.sessionId then
+							table.insert(nextEntries, entry)
+						end
+						if #nextEntries >= 100 then break end
+					end
+					return nextEntries
+				end)
+			end)
+		end
+		if analyticsSaved and pathSaved and pathIndexSaved then break end
 		if attempt < SAVE_RETRIES then task.wait(attempt) end
 	end
 
 	session.saving = false
 	session.analyticsSaved = analyticsSaved
 	session.pathSaved = pathSaved
-	session.saved = analyticsSaved and pathSaved
+	session.pathIndexSaved = pathIndexSaved
+	session.saved = analyticsSaved and pathSaved and pathIndexSaved
 	if not session.saved then
 		warn("[Analytics] Could not persist session after retries for " .. player.Name)
 	end
