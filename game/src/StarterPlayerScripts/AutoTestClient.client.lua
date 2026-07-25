@@ -137,11 +137,16 @@ if miniGame then
 		"Proximity prompt must provide a clickable start path")
 	check("HGMS start remote exists", ReplicatedStorage.Remotes:FindFirstChild("RequestStartMiniGame") ~= nil,
 		"HGMS start button has no server remote")
+	local phFrame = miniGame:FindFirstChild("PHSlider", true)
+	local phButton = phFrame and phFrame:FindFirstChildWhichIsA("TextButton", true)
+	check("HGMS pH controls exist", phFrame ~= nil and phButton ~= nil,
+		"pH bonus round must expose an interactive control")
 else
 	check("HGMS mini-game is above HUD", false, "MiniGameGui not found")
 	check("HGMS mini-game uses sibling Z ordering", false, "MiniGameGui not found")
 	check("HGMS start prompt has a real button", false, "MiniGameGui not found")
 	check("HGMS start remote exists", false, "MiniGameGui not found")
+	check("HGMS pH controls exist", false, "MiniGameGui not found")
 end
 
 local wallet = findScreenGui("WalletGui")

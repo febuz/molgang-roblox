@@ -296,6 +296,8 @@ startCorner.Parent = startButton
 local dragging = false
 local currentPH = 7.0
 local currentMetal = "V2O5"
+local phTargets = {}
+local phIndex = 0
 local startRequestPending = false
 
 local function requestStartMiniGame()
@@ -335,7 +337,25 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 phSubmit.Activated:Connect(function()
+	if not phFrame.Visible or currentMetal == "" then return end
+	phSubmit.Active = false
 	Remotes.FireServer("RequestSetPH", currentMetal, currentPH)
+	phIndex = phIndex + 1
+	task.defer(function()
+		if phIndex <= #phTargets then
+			local target = phTargets[phIndex]
+			currentMetal = target.metalName or target.metal or ""
+			phTitle.Text = string.format("SET pH FOR: %s  (%d/%d)",
+				currentMetal, phIndex, #phTargets)
+			currentPH = 7.0
+			sliderKnob.Position = UDim2.new(0.5, -8, 0.5, -12)
+			phValue.Text = "7.0"
+			phSubmit.Active = true
+		else
+			phSubmit.Active = false
+			phTitle.Text = "pH SETTINGS SUBMITTED — EVALUATING"
+		end
+	end)
 end)
 
 startButton.Activated:Connect(requestStartMiniGame)
@@ -403,14 +423,28 @@ end)
 
 -- pH round
 Remotes.MiniGamePHRound.OnClientEvent:Connect(function(data)
-	if data and data.metal then
-		currentMetal = data.metal
-		phTitle.Text = "SET pH FOR: " .. data.metal
+	if data and type(data.metals) == "table" and #data.metals > 0 then
+		phTargets = data.metals
+		phIndex = 1
+		local target = phTargets[phIndex]
+		currentMetal = target.metalName or target.metal or ""
+		phTitle.Text = string.format("SET pH FOR: %s  (1/%d)", currentMetal, #phTargets)
 		phFrame.Visible = true
-		-- Reset slider
 		currentPH = 7.0
 		sliderKnob.Position = UDim2.new(0.5, -8, 0.5, -12)
 		phValue.Text = "7.0"
+		phSubmit.Active = true
+	elseif data and data.metal then
+		-- Backward-compatible single-target payload for older servers.
+		phTargets = {{metalName = data.metal}}
+		phIndex = 1
+		currentMetal = data.metal
+		phTitle.Text = "SET pH FOR: " .. data.metal
+		phFrame.Visible = true
+		currentPH = 7.0
+		sliderKnob.Position = UDim2.new(0.5, -8, 0.5, -12)
+		phValue.Text = "7.0"
+		phSubmit.Active = true
 	end
 end)
 
