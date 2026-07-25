@@ -377,7 +377,8 @@ function impostorTex(type) {
   }
   return _texCache.get(type);
 }
-const glbProto = new Map();      // file -> loaded scene (prototype) or 'loading'
+const glbProto = new Map();      // file -> loaded scene (prototype)
+const glbLoads = new Map();      // file -> shared in-flight load promise
 let objects = [];                // all placements from world.json
 let assetIdx = [];               // indices of GLB-asset placements (streamed)
 let impPlacements = [];          // impostor placements (instanced; kept for AR)
@@ -399,14 +400,24 @@ function shadowMaterial() {
   }
   return shadowMat;
 }
-async function spawnAsset(o) {
-  let proto = glbProto.get(o.ref);
-  if (proto === 'loading') return null;
-  if (!proto) {
-    glbProto.set(o.ref, 'loading');
-    proto = (await gltfLoader.loadAsync(`${ASSET_BASE.model}${o.ref}`)).scene;
-    glbProto.set(o.ref, proto);
+function loadPrototype(ref) {
+  const cached = glbProto.get(ref);
+  if (cached) return Promise.resolve(cached);
+  let load = glbLoads.get(ref);
+  if (!load) {
+    load = gltfLoader.loadAsync(`${ASSET_BASE.model}${ref}`)
+      .then((g) => {
+        const scene = g.scene;
+        glbProto.set(ref, scene);
+        return scene;
+      })
+      .finally(() => glbLoads.delete(ref));
+    glbLoads.set(ref, load);
   }
+  return load;
+}
+async function spawnAsset(o) {
+  const proto = await loadPrototype(o.ref);
   const obj = proto.clone(true);
   obj.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; if (n.material) n.material.envMapIntensity = 1.1; } });
   const box = new THREE.Box3().setFromObject(obj);
@@ -763,10 +774,10 @@ function stream() {
       const dx = o.x - px, dz = o.z - pz;
       if (dx * dx + dz * dz > STREAM_IN * STREAM_IN) continue;
       live.set(i, 'pending');
-      spawnAsset(o).then((obj) => {
+        spawnAsset(o).then((obj) => {
         if (obj && live.get(i) === 'pending') { scene.add(obj); live.set(i, obj); }
         else if (!obj) live.delete(i);
-      });
+      }).catch(() => live.delete(i));
       if (live.size >= MAX_LIVE) break;
     }
   }
@@ -777,12 +788,12 @@ function stream() {
     const fx = px + player.vel.x * 4, fz = pz + player.vel.z * 4;
     for (const i of assetIdx) {
       const o = objects[i];
-      if (glbProto.has(o.ref)) continue;
+      if (glbProto.has(o.ref) || glbLoads.has(o.ref)) continue;
       const dx = o.x - fx, dz = o.z - fz;
       if (dx * dx + dz * dz > STREAM_IN * STREAM_IN) continue;
-      glbProto.set(o.ref, 'loading');
-      gltfLoader.loadAsync(`${ASSET_BASE.model}${o.ref}`)
-        .then((g) => glbProto.set(o.ref, g.scene)).catch(() => glbProto.delete(o.ref));
+      // Warm the same shared promise used by visible placements; this avoids
+      // duplicate network/parse work when the player reaches the next sector.
+      loadPrototype(o.ref).catch(() => {});
     }
   }
   // Doom-style sector culling for the cheap sprite layers: element tiles and
