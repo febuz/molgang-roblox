@@ -32,6 +32,13 @@ local GROWTH_CHECK_INTERVAL = 30     -- seconds between growth ticks
 local GAME_DAY_SECONDS = GameClock.DAY_SECONDS
 local SOIL_TEST_COST = 20            -- MolCoins per soil test
 
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {
+		message = message,
+		rarity = "common",
+	})
+end
+
 local function isValidPlotId(plotId)
 	return type(plotId) == "number"
 		and plotId == plotId
@@ -198,9 +205,9 @@ Remotes.RequestTestSoil.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Invalid farm plot."); return end
 	local plot = farm.plots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Farm plot not found."); return end
 
 	-- Cost
 	local success = PlayerDataBridge.SpendMolCoins(userId, SOIL_TEST_COST)
@@ -243,11 +250,11 @@ Remotes.RequestCraftFertilizer.OnServerEvent:Connect(function(player, fertilizer
 	local farm = getPlayerFarm(userId)
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 
-	if type(fertilizerId) ~= "string" then return end
+	if type(fertilizerId) ~= "string" then reject(player, "Invalid fertilizer selection."); return end
 	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
-	if not fert then return end
+	if not fert then reject(player, "Unknown fertilizer recipe."); return end
 
-	if not playerData then return end
+	if not playerData then reject(player, "Player inventory is still loading."); return end
 	local missing = FertilizerTrack.GetMissingAtoms(playerData.atoms, fertilizerId)
 	local missingList = {}
 	for symbol, amount in pairs(missing or {}) do
@@ -311,7 +318,7 @@ Remotes.RequestSellFertilizer.OnServerEvent:Connect(function(player, fertilizerI
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if type(fertilizerId) ~= "string" then return end
+	if type(fertilizerId) ~= "string" then reject(player, "Invalid fertilizer selection."); return end
 	if (farm.fertilizerInventory[fertilizerId] or 0) <= 0 then
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "No " .. fertilizerId .. " to sell.",
@@ -321,7 +328,7 @@ Remotes.RequestSellFertilizer.OnServerEvent:Connect(function(player, fertilizerI
 	end
 
 	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
-	if not fert then return end
+	if not fert then reject(player, "Unknown fertilizer product."); return end
 
 	local baseSellPrice = math.floor(fert.points * 0.5)
 	local eventEffects = WorldEvents.GetActiveEffects()
@@ -346,9 +353,12 @@ Remotes.RequestApplyFertilizer.OnServerEvent:Connect(function(player, plotId, fe
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if not isValidPlotId(plotId) or type(fertilizerId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(fertilizerId) ~= "string" then
+		reject(player, "Invalid plot or fertilizer selection.")
+		return
+	end
 	local plot = farm.plots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Farm plot not found."); return end
 
 	-- Check fertilizer in inventory
 	if (farm.fertilizerInventory[fertilizerId] or 0) <= 0 then
@@ -360,7 +370,7 @@ Remotes.RequestApplyFertilizer.OnServerEvent:Connect(function(player, plotId, fe
 	end
 
 	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
-	if not fert then return end
+	if not fert then reject(player, "Unknown fertilizer product."); return end
 
 	-- Consume 1 unit
 	farm.fertilizerInventory[fertilizerId] = farm.fertilizerInventory[fertilizerId] - 1
@@ -401,9 +411,12 @@ Remotes.RequestPlantCrop.OnServerEvent:Connect(function(player, plotId, cropId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if not isValidPlotId(plotId) or type(cropId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(cropId) ~= "string" then
+		reject(player, "Invalid plot or crop selection.")
+		return
+	end
 	local plot = farm.plots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Farm plot not found."); return end
 
 	-- Can't plant if already growing
 	if plot.crop then
@@ -428,7 +441,7 @@ Remotes.RequestPlantCrop.OnServerEvent:Connect(function(player, plotId, cropId)
 	for _, c in ipairs(FertilizerTrack.Crops) do
 		if c.id == cropId then crop = c break end
 	end
-	if not crop then return end
+	if not crop then reject(player, "Unknown crop selection."); return end
 
 	-- Planting cost (seeds)
 	local seedCost = 30
@@ -465,9 +478,10 @@ Remotes.RequestHarvestCrop.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Invalid farm plot."); return end
 	local plot = farm.plots[plotId]
-	if not plot or not plot.crop then return end
+	if not plot then reject(player, "Farm plot not found."); return end
+	if not plot.crop then reject(player, "No crop is planted on this plot."); return end
 
 	if not plot.ready then
 		Remotes.FireClient("ServerAnnounce", player, {
@@ -487,7 +501,7 @@ Remotes.RequestHarvestCrop.OnServerEvent:Connect(function(player, plotId)
 	for _, c in ipairs(FertilizerTrack.Crops) do
 		if c.id == plot.crop then crop = c break end
 	end
-	if not crop then return end
+	if not crop then reject(player, "Crop data is unavailable; harvest cancelled safely."); return end
 
 	local coins = math.floor(crop.rewardCoins * yieldPct / 100)
 	coins = math.max(coins, 10)  -- minimum 10 coins
