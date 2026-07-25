@@ -140,17 +140,17 @@
     {
       "id": 10,
       "name": "The Miner",
-      "strategy": "Buy 800 MC license",
+      "strategy": "Buy the 200 MC Practice Outcrop license and hand-survey it",
       "timestamp": "2026-04-25T16:24:52.655978",
       "results": {
-        "final_mc": 381,
+        "final_mc": 481,
         "atoms_collected": 114,
         "products_sold": 0,
         "duration_minutes": 30,
         "total_inputs": 70
       },
-      "notes": "Simulated from code analysis",
-      "rating": "TERRIBLE"
+      "notes": "Updated after practice-outcrop economy validation",
+      "rating": "MODERATE"
     }
   ],
   "test_runs": [],

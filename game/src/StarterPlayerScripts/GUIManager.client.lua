@@ -80,7 +80,7 @@ end
 -- Cost hints for expensive GUIs (#7)
 local GUI_COST_HINTS = {
 	FactoryBuilderGui = {cost = 2000, hint = "Factory rental costs 2000 MC/month"},
-	MiningGui = {cost = 800, hint = "Exploration licenses start at 800 MC"},
+	MiningGui = {cost = 200, hint = "Practice outcrop license: 200 MC; advanced plots cost more"},
 	SlagProcessingGui = {cost = 50, hint = "Raw slag costs 50 MC per batch"},
 	ProcessControlGui = {cost = 25, hint = "Chemical simulator access costs 25 MC per session"},
 }

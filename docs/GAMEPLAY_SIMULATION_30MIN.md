@@ -213,16 +213,16 @@
 
 | Time | Action | Keys | MC Change | Running Total |
 |------|--------|------|-----------|---------------|
-| 0:00-1:30 | Tutorial + claim | various | +300 MC | 800 MC |
-| 1:30 | Open Mining GUI | V key | 0 | 800 MC |
-| 1:30 | Browse exploration licenses | click Explore tab | 0 | 800 MC |
-| 1:35 | Buy cheapest license | click | -800 MC | **0 MC!** |
-| 1:35 | **Broke!** No money for equipment | — | — | — |
-| 1:35-15:00 | Must collect atoms to earn back | WASD | +54 atoms (~181 MC) | 181 MC |
-| 15:00-30:00 | Continue collecting | WASD | +60 atoms (~200 MC) | 381 MC |
-| 30:00 | **END** | | | **381 MC, ~114 atoms, 1 unexplored plot** |
+| 0:00-1:30 | Tutorial + claim | various | +300 MC | 500 MC |
+| 1:30 | Open Mining GUI | V key | 0 | 500 MC |
+| 1:30 | Browse exploration licenses | click Explore tab | 0 | 500 MC |
+| 1:35 | Buy Practice Outcrop license | click | -200 MC | **300 MC** |
+| 1:36 | Hand-survey the surface plot | click Explore | 0 | 300 MC |
+| 1:40-15:00 | Collect samples while learning | WASD | +54 atoms (~181 MC) | 481 MC |
+| 15:00-30:00 | Collect and sell beginner ore | WASD + mining actions | variable | **positive first loop** |
+| 30:00 | **END** | | | **practice mine established; no equipment required** |
 
-**Rating:** TERRIBLE. Mining is a long-term investment, not viable in 30 min.
+**Rating:** MODERATE. The practice outcrop is an affordable onboarding loop; deeper plots remain long-term investments.
 
 ---
 
