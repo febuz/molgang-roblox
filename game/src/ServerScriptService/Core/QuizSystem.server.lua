@@ -159,6 +159,18 @@ end
 
 local questionBank = generateQuestions()
 
+-- Keep the zone selector server-authoritative, while allowing the zones used
+-- by the in-world quiz pillars to reach the matching question subset.
+local validQuizZones = {
+	any = true,
+	biome = true,
+	hub = true,
+	quantum = true,
+	factory = true,
+	chain = true,
+	ank = true,
+}
+
 -- ══════════════════════════════════════════════
 -- QUIZ SESSION MANAGEMENT
 -- ══════════════════════════════════════════════
@@ -266,7 +278,7 @@ Remotes.RequestQuizStart.OnServerEvent:Connect(function(player, zone)
 	if type(zone) ~= "string" then
 		zone = "any"
 	end
-	if zone ~= "any" and zone ~= "biome" and zone ~= "hub" then
+	if not validQuizZones[zone] then
 		zone = "any"
 	end
 	startQuiz(player, zone)
