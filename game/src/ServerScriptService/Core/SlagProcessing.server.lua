@@ -62,12 +62,12 @@ local function getProcessState(userId)
 		local playerData = PlayerDataBridge.GetPlayerData(userId)
 		local saved = playerData and playerData.processControl
 		if saved then
-			state.temperature = saved.temperature or state.temperature
-			state.pressure = saved.pressure or state.pressure
-			state.flowRate = saved.flowRate or state.flowRate
-			state.pH = saved.pH or state.pH
-			ProcessEng.UpdateDerivedValues(state)
+			state.temperature = saved.temperature
+			state.pressure = saved.pressure
+			state.flowRate = saved.flowRate
+			state.pH = saved.pH
 		end
+		ProcessEng.SanitizeProcessState(state)
 		playerProcessState[userId] = state
 	end
 	return playerProcessState[userId]

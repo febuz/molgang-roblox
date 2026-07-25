@@ -62,6 +62,19 @@ assert(not ProcessEngineering.IsFiniteNumber(-math.huge), "negative infinite con
 assert(not ProcessEngineering.IsFiniteNumber(0 / 0), "NaN controls must be rejected")
 assert(ProcessEngineering.IsFiniteNumber(25), "finite controls must be accepted")
 
+local restoredState = ProcessEngineering.CreateProcessState()
+restoredState.temperature = math.huge
+restoredState.pressure = "corrupt"
+restoredState.flowRate = 0
+restoredState.pH = 99
+ProcessEngineering.SanitizeProcessState(restoredState)
+assert(restoredState.temperature == 25 and restoredState.pressure == 101.325,
+	"corrupt persisted controls must fall back to safe defaults")
+assert(restoredState.flowRate == 1 and restoredState.pH == 14,
+	"finite persisted controls must be clamped to the operating input envelope")
+assert(ProcessEngineering.IsFiniteNumber(restoredState.reactionRate),
+	"sanitized controls must produce a finite derived reaction rate")
+
 local balance = ProcessEngineering.CreateMassBalance()
 ProcessEngineering.AddStep(balance, "Crushing", 1.0, 0.99, 0.01)
 ProcessEngineering.AddStep(balance, "Separation", 0.99, 0.87, 0.12)

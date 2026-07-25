@@ -318,6 +318,25 @@ function ProcessEngineering.CreateProcessState()
 	}
 end
 
+-- Restore persisted controls defensively. DataStore records can outlive code
+-- versions, so never feed strings, NaN, infinities, or unbounded values into
+-- Arrhenius/pressure/residence-time calculations.
+function ProcessEngineering.SanitizeProcessState(state)
+	local defaults = ProcessEngineering.CreateProcessState()
+	if type(state) ~= "table" then state = defaults end
+	local function boundedNumber(value, fallback, minimum, maximum)
+		if not isFiniteNumber(value) then return fallback end
+		return math.clamp(value, minimum, maximum)
+	end
+	state.temperature = boundedNumber(state.temperature, defaults.temperature, 0, 1000)
+	state.pressure = boundedNumber(state.pressure, defaults.pressure, 50, 500)
+	state.flowRate = boundedNumber(state.flowRate, defaults.flowRate, 1, 50)
+	state.pH = boundedNumber(state.pH, defaults.pH, 0, 14)
+	state.agitationRPM = boundedNumber(state.agitationRPM, defaults.agitationRPM, 0, 2000)
+	state.reactorVolume = boundedNumber(state.reactorVolume, defaults.reactorVolume, 1, 1000)
+	return ProcessEngineering.UpdateDerivedValues(state)
+end
+
 function ProcessEngineering.UpdateDerivedValues(state)
 	-- Residence time
 	state.residenceTime = state.flowRate > 0 and (state.reactorVolume / state.flowRate) or 999
