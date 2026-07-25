@@ -378,6 +378,18 @@ function ProcessEngineering.ReagentPHFactor(reagent, pH)
 	return math.clamp(1 - deviation / 6, 0.25, 1)
 end
 
+-- Downstream separation is not lossless: filter cake retains a small amount
+-- of leachate and drying/precipitation loses additional product. Keep this
+-- factor shared with recovery settlement so atom production cannot exceed
+-- the final mass-balance product stream.
+ProcessEngineering.FILTRATION_RECOVERY = 0.98
+ProcessEngineering.PRECIPITATION_RECOVERY = 0.95
+
+function ProcessEngineering.CalculateProductRecoveryFactor(processEfficiency, phFactor, eventMultiplier)
+	local upstream = ProcessEngineering.CalculateRecoveryFactor(processEfficiency, phFactor, eventMultiplier)
+	return upstream * ProcessEngineering.FILTRATION_RECOVERY * ProcessEngineering.PRECIPITATION_RECOVERY
+end
+
 -- Combine process controls with a temporary world-event efficiency modifier.
 -- The bounds preserve a physically plausible recovery window.
 function ProcessEngineering.CalculateRecoveryFactor(processEfficiency, phFactor, eventMultiplier)

@@ -428,7 +428,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local processEfficiency = math.clamp(0.75 + reactionRate * 0.125, 0.75, 0.95)
 	local phFactor = ProcessEng.ReagentPHFactor(reagent, processState.pH)
 	local eventEfficiency = math.max(0, tonumber(eventEffects.leachingEfficiencyMult) or 1)
-	local recoveryFactor = ProcessEng.CalculateRecoveryFactor(processEfficiency, phFactor, eventEfficiency)
+	local recoveryFactor = ProcessEng.CalculateProductRecoveryFactor(processEfficiency, phFactor, eventEfficiency)
 	local yield = ProcessEng.ApplyRecovery(idealYield, recoveryFactor)
 
 	-- Create leach record

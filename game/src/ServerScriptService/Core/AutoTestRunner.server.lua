@@ -360,6 +360,9 @@ timeTest("Safe leaching envelope accepts normal conditions", function()
 	local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
 	local safe = ProcessEng.ValidateOperatingEnvelope({temperature = 65, pressure = 101.325, pH = 2, flowRate = 10})
 	assert(safe, "Normal leach conditions were rejected")
+	local productRecovery = ProcessEng.CalculateProductRecoveryFactor(0.8, 1, 1)
+	assert(math.abs(productRecovery - (0.8 * 0.98 * 0.95)) < 0.000001,
+		"Product recovery did not include downstream separation losses")
 end)
 
 timeTest("Slag pipeline preserves mass and yields product", function()
