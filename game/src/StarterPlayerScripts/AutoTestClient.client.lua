@@ -125,7 +125,11 @@ if loadingScreen then
 		check("LoadingScreen enter control is ready", playButton.Visible and playButton.Active,
 			"PlayBtn is not visible/active after the loading phase")
 		if playButton.Visible and playButton.Active then
-			playButton:Activate()
+			local testEnter = loadingScreen:FindFirstChild("AutoTestEnter")
+			check("LoadingScreen has a testable enter route",
+				testEnter ~= nil and testEnter:IsA("BindableEvent"),
+				"AutoTestEnter BindableEvent is missing")
+			if testEnter and testEnter:IsA("BindableEvent") then testEnter:Fire() end
 			task.wait(0.9)
 			check("LoadingScreen enter control responds", findScreenGui("LoadingScreen") == nil,
 				"PlayBtn activation did not close the intro screen")
@@ -346,7 +350,10 @@ if quizStart and quizStart:IsA("GuiButton") then
 			quizGui.Enabled = false
 		end
 		dashboard.Enabled = true
-		quizStart:Activate()
+		-- GuiButton:Activate() is not a Roblox API. The button/remote wiring is
+		-- checked above; invoke the same server contract directly for a stable
+		-- response-flow smoke test in embedded Studio.
+		quizRemote:FireServer()
 		task.wait(0.8)
 		if announceConnection then
 			announceConnection:Disconnect()
@@ -413,7 +420,10 @@ if slagGui then
 				local announceConnection = announceEvent and announceEvent.OnClientEvent:Connect(function()
 					gotServerResponse = true
 				end)
-				hammer:Activate()
+				-- GuiButton:Activate() is not a Roblox API. The button/remote
+				-- contract is checked above; invoke the server route directly for
+				-- a deterministic response-flow probe in embedded Studio.
+				crushRemote:FireServer()
 				task.wait(0.6)
 				if progressConnection then
 					progressConnection:Disconnect()

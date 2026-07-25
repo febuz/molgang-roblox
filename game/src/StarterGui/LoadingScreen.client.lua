@@ -540,6 +540,17 @@ local function fadeOutAndDestroy()
 	end)
 end
 
+-- Studio-only test seam. GuiButton:Activate() is not a Roblox API, and
+-- synthetic mouse input is unreliable in embedded Wine surfaces. The normal
+-- player paths remain Activated, MouseButton1Click, keyboard and raw mouse;
+-- AutoTestClient uses this BindableEvent only while running in Studio.
+if RunService:IsStudio() then
+	local autoTestEnter = Instance.new("BindableEvent")
+	autoTestEnter.Name = "AutoTestEnter"
+	autoTestEnter.Parent = screenGui
+	autoTestEnter.Event:Connect(fadeOutAndDestroy)
+end
+
 -- Some Wine/Studio embedded-surface builds do not route a click through
 -- GuiButton.Activated or MouseButton1Click. Keep the normal button events,
 -- but also handle raw input at the screen level so the intro cannot strand

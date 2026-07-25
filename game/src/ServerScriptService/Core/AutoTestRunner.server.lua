@@ -221,7 +221,8 @@ timeTest("Teleport pads have valid targets", function()
 end)
 
 timeTest("Nexus return uses a safe world spawn", function()
-	local returnRemote = Remotes:FindFirstChild("RequestReturnToNexus")
+	local remoteFolder = ReplicatedStorage:FindFirstChild("Remotes")
+	local returnRemote = remoteFolder and remoteFolder:FindFirstChild("RequestReturnToNexus")
 	local spawn = Workspace:FindFirstChild("MolGangSpawn", true)
 	local returnPad = Workspace:FindFirstChild("TeleportPad_ReturnToNexus", true)
 	assert(returnRemote and returnRemote:IsA("RemoteEvent"),

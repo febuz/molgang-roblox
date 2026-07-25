@@ -7,6 +7,12 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
 local modalNames = {
 	DashboardGui = true, PeriodicTableGui = true, RecipeBookGui = true,
 	InventoryGui = true, SettingsGui = true, AchievementsGui = true,
@@ -63,8 +69,8 @@ local function closeOthers(openGui)
 	-- A live quiz is an answer-state modal. Do not let a shortcut or a delayed
 	-- GUI response close it before the player can answer; reject the competing
 	-- menu instead and keep the question on screen.
-	local activeQuiz = playerGui:FindFirstChild("QuizGui")
-	if activeQuiz and activeQuiz:IsA("ScreenGui") and activeQuiz.Enabled and openGui ~= activeQuiz then
+	local activeQuiz = findScreenGui("QuizGui")
+	if activeQuiz and activeQuiz.Enabled and openGui ~= activeQuiz then
 		if openGui and openGui:IsA("ScreenGui") then
 			openGui.Enabled = false
 			traceGui("reject-open", openGui, "quiz remained active")
