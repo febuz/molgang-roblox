@@ -261,6 +261,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleGui("GuildGui")
 	end
 
+	-- F2 = Toggle Feedback
+	if input.KeyCode == Enum.KeyCode.F2 then
+		toggleGui("FeedbackGui")
+	end
+
 	-- ESC = Close all overlays
 	if input.KeyCode == Enum.KeyCode.Escape then
 		closeAllOverlays()

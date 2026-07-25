@@ -119,6 +119,7 @@ MOLGANG/
 | **L** | Leaderboards | **B** | Bubble Tea Bar |
 | **Q** | Quest Tracker | **Tab** | Wallet |
 | **R** | Recipe Book | **/** | Settings |
+| **F2** | Feedback | **.** | Atom Trading |
 | **M** | Minimap | **Esc** | Close All |
 
 ## Chemical Engineering Systems

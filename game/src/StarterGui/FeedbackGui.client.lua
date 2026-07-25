@@ -8,7 +8,7 @@
 	- Submit feature requests
 	- Write free-text comments
 
-	Opens via ? key or periodic prompt after 10 minutes.
+	Opens via F2 or periodic prompt after 10 minutes.
 	Feedback stored in DataStore for developer review.
 ]]
 
@@ -312,4 +312,4 @@ if ratingEvent then
 	end)
 end
 
-print("[MOLGANG] FeedbackGui loaded — GUIManager owns the . shortcut")
+print("[MOLGANG] FeedbackGui loaded — Press F2 to open feedback")

@@ -140,6 +140,7 @@ local shortcuts = {
 	{key = "V", action = "Vanadium Mining (explore/mine/trade)"},
 	{key = "X", action = "Product Exchange (sell metals)"},
 	{key = ".", action = "Atom Trading (nearby players)"},
+	{key = "F2", action = "Feedback / Bug Report"},
 	{key = "Tab", action = "Wallet & MolChain Explorer"},
 	{key = "M", action = "Toggle Minimap"},
 	{key = "/", action = "This Settings Panel"},
