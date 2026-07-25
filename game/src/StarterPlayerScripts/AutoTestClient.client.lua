@@ -135,6 +135,17 @@ else
 	check("HGMS mini-game uses sibling Z ordering", false, "MiniGameGui not found")
 end
 
+local wallet = findScreenGui("WalletGui")
+if wallet then
+	check("Wallet modal is above HUD", wallet.DisplayOrder > (hud and hud.DisplayOrder or 0),
+		"WalletGui DisplayOrder must exceed HUDWidget so wallet tabs receive input")
+	check("Wallet modal uses sibling Z ordering", wallet.ZIndexBehavior == Enum.ZIndexBehavior.Sibling,
+		"WalletGui must use sibling ZIndex ordering for reliable modal hit testing")
+else
+	check("Wallet modal is above HUD", false, "WalletGui not found")
+	check("Wallet modal uses sibling Z ordering", false, "WalletGui not found")
+end
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")

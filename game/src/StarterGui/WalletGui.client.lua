@@ -59,7 +59,10 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "WalletGui"
 gui.Enabled = false
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Wallet is a full-screen interactive modal; keep it above HUD/status layers.
+gui.DisplayOrder = 23
 gui.Parent = playerGui
 
 -- Background
