@@ -214,7 +214,7 @@ PROCESS_LINE = [
     ("Ball Mill", "ball_mill.glb"),
     ("HGMS Magnetic Separator", "magnetic_separator.glb"),
     ("Roasting Kiln", "roasting_kiln.glb"),
-    ("Leaching Tank", "leaching_tank.glb"),
+    ("Leaching Tank", "leaching_tank_hd.glb"),   # HD pilot (assets/blender/generate_hd_stations.py)
     ("Filtration Press", "filtration_press.glb"),
     ("Precipitation Reactor", "thickener_tank.glb"),
     ("Drying Oven", "spray_dryer.glb"),

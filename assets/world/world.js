@@ -245,6 +245,7 @@ const CAMS = {
   factory: { pos: [-90, 62, 44], yaw: -2.09, pitch: -0.64 },          // the Slakkenspoor processing line
   biome: { pos: [0, 26, -95], yaw: Math.PI, pitch: -0.8 },            // the periodic table (element collection)
   pt: { pos: [16.6, 1.8, -128], yaw: Math.PI, pitch: 0.02 },          // standing in the table (by Oxygen)
+  tank: { pos: [-110, 4.0, 17], yaw: -2.42, pitch: 0.04 },            // close-up: the HD leaching reactor
   plaza: { pos: [6, 1.8, 10], yaw: -0.6, pitch: 0.0 },
   plaza2: { pos: [6, 1.8, 30], yaw: Math.PI, pitch: -0.03 },  // looks toward plaza (for MP demo)
 };
