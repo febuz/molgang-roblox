@@ -22,7 +22,7 @@ local function getQuestProgress(userId)
 	progress.completed = progress.completed or {}
 	progress.inProgress = progress.inProgress or {}
 	progress.lastDaily = progress.lastDaily or {}
-	Quests.EnsureStarterQuest(progress)
+	Quests.EnsureGuidedQuest(progress)
 	return data, progress
 end
 
@@ -51,6 +51,7 @@ local function completeReadyQuests(player, data, progress)
 			changed = true
 		end
 	end
+	if changed then Quests.EnsureGuidedQuest(progress) end
 	return changed
 end
 

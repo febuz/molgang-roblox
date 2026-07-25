@@ -233,6 +233,24 @@ function Quests.GetAvailableQuests(progress)
 	return available
 end
 
+-- Continue the guided path when the player has no active quest. Daily quests
+-- remain opt-in; only permanent progression is auto-activated.
+function Quests.EnsureGuidedQuest(progress)
+	if type(progress) ~= "table" then return false end
+	progress.active = progress.active or {}
+	progress.completed = progress.completed or {}
+	if next(progress.active) ~= nil then return false end
+	if next(progress.completed) == nil then
+		return Quests.EnsureStarterQuest(progress)
+	end
+	for _, quest in ipairs(Quests.GetAvailableQuests(progress)) do
+		if not quest.repeatable then
+			return Quests.AcceptQuest(progress, quest.id)
+		end
+	end
+	return false
+end
+
 function Quests.CanAccept(progress, questId)
 	local quest = Quests.GetQuest(questId)
 	if not quest or type(progress) ~= "table" then return false, "Unknown quest" end

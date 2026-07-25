@@ -12,6 +12,10 @@ assert(not Quests.CanAccept(progress, "collect_atoms"), "prerequisites must be e
 assert(Quests.CompleteQuest(progress, "first_atom"), "completed quest must move to completed state")
 assert(not Quests.EnsureStarterQuest(progress), "completed progress must not restart the starter quest")
 assert(Quests.CanAccept(progress, "collect_atoms"), "completed prerequisites must unlock the next quest")
+assert(Quests.EnsureGuidedQuest(progress), "completed starter quest should advance the guided path")
+assert(Quests.GetActiveQuests(progress)[1].id == "collect_atoms",
+	"guided path should activate the next collection objective")
+assert(not Quests.EnsureGuidedQuest(progress), "guided path must not duplicate an active quest")
 
 progress.lastDaily.daily_collect = os.date("%Y-%m-%d")
 assert(not Quests.CanAccept(progress, "daily_collect"), "daily quests must not repeat on the same day")
@@ -24,4 +28,4 @@ local atomAchievement = Achievements.List.TenAtoms
 assert(Achievements.CheckProgress(consumedAtoms, atomAchievement) == 10,
 	"lifetime achievement progress must survive consumed atoms")
 
-print("Quest Flow Tests: 12 passed, 0 failed")
+print("Quest Flow Tests: 15 passed, 0 failed")
