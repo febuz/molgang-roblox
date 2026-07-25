@@ -595,6 +595,7 @@ if remoteFolder then
 		"RequestTestSoil", "RequestCraftFertilizer", "RequestApplyFertilizer",
 		"RequestPlantCrop", "RequestHarvestCrop", "RequestFertilizerInfo",
 		"RequestCompleteOnboarding",
+		"RequestReturnToNexus",
 	}
 	for _, name in ipairs(requiredInteractiveRemotes) do
 		test("Interactive remote " .. name, remoteFolder:FindFirstChild(name) ~= nil)

@@ -265,6 +265,11 @@ local miningScale = mining and mining:FindFirstChild("ResponsiveScale")
 check("Mining scales to viewport", miningScale ~= nil and miningScale:IsA("UIScale")
 	and miningScale.Scale > 0 and miningScale.Scale <= 1,
 	"mining modal must have a bounded ResponsiveScale")
+local returnToNexusButton = mining and mining:FindFirstChild("ReturnToNexusBtn", true)
+local returnToNexusRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestReturnToNexus")
+check("Mining has safe return to Nexus", returnToNexusButton ~= nil
+	and returnToNexusButton:IsA("GuiButton") and returnToNexusRemote ~= nil,
+	"mining outpost must expose a safe Nexus return button and remote")
 
 local fertilizer = findScreenGui("FertilizerGui")
 local fertilizerScale = fertilizer and fertilizer:FindFirstChild("ResponsiveScale")
