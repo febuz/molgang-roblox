@@ -148,27 +148,35 @@ fi
 # the local-place state machine to report a successful open before claiming
 # that OTAP is ready; this prevents a false-positive "READY" on Vinegar 0.731.
 PLACE_READY=0
+AUTH_FAILURE=0
 for _ in $(seq 1 20); do
   LATEST_STUDIO_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/appdata/Roblox/logs/*Studio*_last.log 2>/dev/null | head -1)
+  LATEST_VINEGAR_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/cache/vinegar/logs/*.log 2>/dev/null | head -1)
   if [ -n "$LATEST_STUDIO_LOG" ] && rg -q "State: OpenPlaceSuccess|OpenPlaceSuccess" "$LATEST_STUDIO_LOG"; then
     PLACE_READY=1
+    break
+  fi
+  if { [ -n "$LATEST_STUDIO_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_STUDIO_LOG"; } \
+    || { [ -n "$LATEST_VINEGAR_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_VINEGAR_LOG"; }; then
+    AUTH_FAILURE=1
     break
   fi
   sleep 1
 done
 if [ "$PLACE_READY" -ne 1 ]; then
   echo "      WARNING: Studio did not report OpenPlaceSuccess for $WINE_PLACE"
-  LATEST_VINEGAR_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/cache/vinegar/logs/*.log 2>/dev/null | head -1)
-  if { [ -n "$LATEST_STUDIO_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_STUDIO_LOG"; } \
+  if [ "$AUTH_FAILURE" -eq 1 ] || { [ -n "$LATEST_STUDIO_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_STUDIO_LOG"; } \
     || { [ -n "$LATEST_VINEGAR_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_VINEGAR_LOG"; }; then
-    KEEP_STUDIO=1
     echo "      Studio authentication is unavailable; sign in to Roblox Studio/Vinegar and retry"
     echo "      Browser flow: open Vinegar Settings → Log in via browser → Continue → Open Vinegar"
     echo "      If WebView is blank, disable Web Pages in Vinegar Settings and use browser login"
     echo "      CLI settings: flatpak run org.vinegarhq.Vinegar manage"
-    echo "      Studio is being left open so the browser-login flow can complete"
-    echo "      This launcher remains attached until Studio is closed"
-    wait "$STUDIO_PID" 2>/dev/null || true
+    if [ "${KEEP_STUDIO:-0}" -eq 1 ]; then
+      echo "      KEEP_STUDIO=1: Studio is left open for browser login"
+      wait "$STUDIO_PID" 2>/dev/null || true
+    else
+      echo "      Studio will be closed; use KEEP_STUDIO=1 to keep it open"
+    fi
   else
     echo "      The process is alive, but the place is not loaded; inspect the latest Studio log"
   fi
