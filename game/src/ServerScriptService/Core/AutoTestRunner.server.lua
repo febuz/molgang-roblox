@@ -527,6 +527,21 @@ timeTest("Practice mine costs 200 MC", function()
 	assert(found, "No 200 MC practice mine found")
 end)
 
+timeTest("Starter mining path has a free hand pick", function()
+	local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
+	assert(DataTemplate.mining and DataTemplate.mining.equipment
+		and DataTemplate.mining.equipment.hand_pick == 1,
+		"New players have no starter hand pick")
+end)
+
+timeTest("Haul truck increases transport capacity", function()
+	local Mining = require(ReplicatedStorage.Modules.MiningSystem)
+	local manual = Mining.CalculateTransportCapacity({"hand_pick"})
+	local truck = Mining.CalculateTransportCapacity({"hand_pick", "haul_truck"})
+	assert(manual == 250, "Unexpected manual transport capacity: " .. tostring(manual))
+	assert(truck == 30000 and truck > manual, "Haul truck does not increase transport capacity")
+end)
+
 -- ═══════════════════════════════════════════════
 -- TEST 8: REMOTES REGISTERED
 -- ═══════════════════════════════════════════════
