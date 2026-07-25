@@ -251,25 +251,27 @@ local function generateLeachId()
 	return "leach_" .. tostring(leachIdCounter) .. "_" .. tostring(os.time())
 end
 
+local function getCrushProgress(userId)
+	local crushState = playerCrushState[userId]
+	if not crushState or not tonumber(crushState.currentHits) or crushState.currentHits <= 0 then
+		return nil
+	end
+	local target = SteelSlag.ParticleSizes[crushState.targetSize]
+	local totalHits = target and target.crushHits or 0
+	if totalHits <= 0 then return nil end
+	return {
+		hits = crushState.currentHits,
+		totalHits = totalHits,
+		targetSize = crushState.targetSize,
+	}
+end
+
 local function sendSlagUpdate(player, userId)
 	local slag = getPlayerSlag(userId)
-	local crushState = playerCrushState[userId]
-	local crushProgress = nil
-	if crushState and tonumber(crushState.currentHits) and crushState.currentHits > 0 then
-		local target = SteelSlag.ParticleSizes[crushState.targetSize]
-		local totalHits = target and target.crushHits or 0
-		if totalHits > 0 then
-			crushProgress = {
-				hits = crushState.currentHits,
-				totalHits = totalHits,
-				targetSize = crushState.targetSize,
-			}
-		end
-	end
 	Remotes.FireClient("SlagInventoryUpdate", player, {
 		slagInventory = slag,
 		activeLeaches = countActiveLeaches(userId),
-		crushProgress = crushProgress,
+		crushProgress = getCrushProgress(userId),
 	})
 end
 
@@ -724,6 +726,7 @@ Remotes.RequestSlagInfo.OnServerEvent:Connect(function(player)
 		slagInventory = slag,
 		activeLeaches = countActiveLeaches(userId),
 		leachList = leachList,
+		crushProgress = getCrushProgress(userId),
 	})
 end)
 
