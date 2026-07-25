@@ -11,6 +11,7 @@ local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local MiningMilestones = require(ReplicatedStorage.Modules.GameObjects.MiningMilestones)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATIE
@@ -363,6 +364,17 @@ local function onRequestCollect(player, atomName)
 	-- Collect succesvol!
 	local elementZ = data.elementZ
 	local elem = Elements.Table[elementZ]
+	local economyData = PlayerDataBridge.GetPlayerData(player.UserId)
+	if not economyData then
+		rejectCollect(player, "Je opslag wordt nog geladen. Probeer zo opnieuw.")
+		return
+	end
+	local freeSlots = InventoryLimits.GetFreeAtomSlots(economyData.atoms, economyData.facilities)
+	local queuedAtoms = PlayerDataBridge.GetPendingAtomAmount(player.UserId)
+	if freeSlots - queuedAtoms < 1 then
+		rejectCollect(player, "Je atoomopslag is vol. Gebruik eerst atomen of bouw een Office.")
+		return
+	end
 
 	-- Verwijder atoom uit wereld
 	activeAtoms[atom] = nil
