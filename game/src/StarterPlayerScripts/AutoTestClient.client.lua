@@ -124,6 +124,17 @@ else
 		check("Dashboard quick action is clickable", false, "Dash button not found")
 end
 
+local miniGame = findScreenGui("MiniGameGui")
+if miniGame then
+	check("HGMS mini-game is above HUD", miniGame.DisplayOrder > (hud and hud.DisplayOrder or 0),
+		"MiniGameGui DisplayOrder must exceed HUDWidget so bins receive input")
+	check("HGMS mini-game uses sibling Z ordering", miniGame.ZIndexBehavior == Enum.ZIndexBehavior.Sibling,
+		"MiniGameGui must use sibling ZIndex ordering for reliable modal hit testing")
+else
+	check("HGMS mini-game is above HUD", false, "MiniGameGui not found")
+	check("HGMS mini-game uses sibling Z ordering", false, "MiniGameGui not found")
+end
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")

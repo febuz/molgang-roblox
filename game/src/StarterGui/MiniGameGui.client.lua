@@ -38,6 +38,11 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "MiniGameGui"
 gui.Enabled = false
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- HGMS is an interactive modal. Keep its bins above the HUD and status
+-- widgets so a visible bin always owns the click/touch target.
+gui.DisplayOrder = 60
 gui.Parent = playerGui
 
 -- Score + Timer header
