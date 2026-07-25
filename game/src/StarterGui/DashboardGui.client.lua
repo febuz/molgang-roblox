@@ -319,13 +319,34 @@ quizBtn.Font = Enum.Font.GothamBold
 quizBtn.Parent = dashboardPanel
 createCorner(quizBtn, 6)
 
+local quizStartRequest = 0
 quizBtn.Activated:Connect(function()
+	if not quizBtn.Active then return end
 	local r = Remotes:FindFirstChild("RequestQuizStart")
 	if r then
+		quizStartRequest += 1
+		local requestId = quizStartRequest
+		quizBtn.Active = false
+		quizBtn.Text = "Starting quiz..."
 		r:FireServer("any")
 		screenGui.Enabled = false
+		-- The quiz modal is opened by the authoritative first-question event.
+		-- Keep a recovery path for a delayed/missing server response instead of
+		-- leaving the player with a silently closed dashboard.
+		task.delay(2, function()
+			if requestId ~= quizStartRequest then return end
+			local quizGui = playerGui:FindFirstChild("QuizGui")
+			if quizGui and quizGui:IsA("ScreenGui") and quizGui.Enabled then return end
+			quizBtn.Text = "Start Chemistry Quiz"
+			quizBtn.Active = true
+			screenGui.Enabled = true
+		end)
 	else
 		warn("[DashboardGui] RequestQuizStart remote is missing")
+		quizBtn.Text = "Quiz unavailable"
+		task.delay(2, function()
+			quizBtn.Text = "Start Chemistry Quiz"
+		end)
 	end
 end)
 
