@@ -173,7 +173,7 @@ ZONES = {
     "Periodic Table Biome": {"x": 0,    "z": -120, "r": 40, "landmarks": ["periodic_table_display", "molecule_model", "beaker_1L", "erlenmeyer_flask", "reagent_shelf"]},
     "Quantum Lab":          {"x": 120,  "z": 0,    "r": 36, "landmarks": ["quantum_tunnel_ring", "quantum_dot", "hero_shield_generator", "microscope", "fume_hood"]},
     "Slakkenspoor Fabriek": {"x": -140, "z": 0,    "r": 60, "landmarks": []},   # the hero zone — the processing line
-    "MolChain Tower":       {"x": 95,   "z": -95,  "r": 30, "landmarks": ["distillation_column", "storage_silo", "diploma_frame"]},
+    "MolChain Tower":       {"x": 95,   "z": -95,  "r": 30, "landmarks": ["distillation_column_hd", "storage_silo_hd", "diploma_frame"]},
     "ANK Kredietunie":      {"x": -95,  "z": -95,  "r": 30, "landmarks": ["victory_trophy", "diploma_frame", "plaza_bench", "cafe_counter"]},
 }
 
@@ -191,12 +191,23 @@ ZONE_PROPS = {
         ("portable_generator.glb", -22, -15, 1.6, 2.2),
         ("ladder_sectioned_01.glb", 40, -12, 0.3, 2.6),
         ("caged_hanging_light.glb", -20, 0, 0.0, 0.9), ("caged_hanging_light.glb", 20, 0, 0.0, 0.9),
+        # HD plant props (generate_hd_props.py) — the utilities a real hydromet
+        # plant has around its line, three of them interactive in world.js:
+        ("cooling_tower_hd.glb", -22, 26, 0.0, 10.0, {"steam": 1}),
+        ("pipe_rack_hd.glb", -24, -19, 1.5708, 8.0),
+        ("pipe_rack_hd.glb", 16, 19, 1.5708, 8.0),
+        ("gas_cylinder_rack_hd.glb", 36, -15, 0.4, 2.2),
+        ("control_console_hd.glb", 0, -22, 0.0, 2.4, {"interact": "console"}),
+        ("safety_station_hd.glb", -30, 19, 3.14, 2.4, {"interact": "safety"}),
+        ("sample_station_hd.glb", 26, 13, 1.2, 2.2, {"interact": "assay"}),
     ],
     "Quantum Lab": [
         ("chemistry_set.glb", 0, -8, 0.2, 2.6, {"console": "chemsim"}),   # the paid ChemSim console
         ("bunsen_burner.glb", 3, -7, 0.0, 0.9),
         ("metal_toolbox.glb", -4, -8, 1.2, 1.0),
         ("caged_hanging_light.glb", 0, -12, 0.0, 0.9),
+        ("gas_cylinder_rack_hd.glb", 6, -10, 2.6, 1.8),
+        ("safety_station_hd.glb", -8, -9, 0.8, 2.2, {"interact": "safety"}),
     ],
     "Periodic Table Biome": [
         ("Barrel_01.glb", -30, 28, 0.7, 1.8), ("cement_bag.glb", 29, 27, 0.0, 1.4),
@@ -248,9 +259,9 @@ def build():
                     nx = cx - span / 2 + span * ((i + 1) / (n - 1))
                     mx, mz = (sx + nx) / 2, cz
                     add("asset", "conveyor_hd.glb", mx, mz, math.pi / 2, 5)
-            # a couple of silos + a slag ladle for flavour
-            add("asset", "storage_silo.glb", cx + span / 2 + 6, cz + 12, 0, 12)
-            add("asset", "slag_ladle.glb", cx - span / 2 - 6, cz - 10, 0, 6)
+            # a couple of silos + a slag ladle for flavour (HD, generate_hd_props.py)
+            add("asset", "storage_silo_hd.glb", cx + span / 2 + 6, cz + 12, 0, 12)
+            add("asset", "slag_ladle_hd.glb", cx - span / 2 - 6, cz - 10, 0, 6)
         elif name == "Periodic Table Biome":
             # Collectible element tiles laid out as a real periodic table. Landmarks
             # ring the edge; the 118 elements fill the centre as a walkable chart.
