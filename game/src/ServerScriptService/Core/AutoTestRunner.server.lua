@@ -123,7 +123,7 @@ timeTest("Slakkenspoor factory exists", function()
 	assert(found, "Slakkenspoor factory not found")
 end)
 
-timeTest("Slag stations exist and match the interaction contract", function()
+	timeTest("Slag stations exist and match the interaction contract", function()
 	for stationKey, contract in pairs(StationAccess.Stations) do
 		local station = Workspace:FindFirstChild(contract.partName, true)
 		assert(station and station:IsA("BasePart"),

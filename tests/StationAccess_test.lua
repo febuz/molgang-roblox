@@ -11,6 +11,13 @@ assert(StationAccess.Stations.leach.partName == "LeachPlatform"
 	"leaching station contract must match the world geometry")
 assert(StationAccess.Stations.crush.mapPosition.z == -40,
 	"crushing station map position must match the world geometry")
+assert(StationAccess.Stations.cone.partName == "ConeCrusherBase"
+	and StationAccess.Stations.cone.interactionType == "SlagConeCrusher"
+	and StationAccess.Stations.cone.radius == 24
+	and StationAccess.Stations.mill.partName == "MillBase"
+	and StationAccess.Stations.mill.interactionType == "SlagBallMill"
+	and StationAccess.Stations.mill.radius == 30,
+	"machine station contracts must match the physical cone crusher and ball mill")
 
 local station = {x = 10, y = 5, z = -2}
 assert(StationAccess.WithinRange({x = 10, y = 5, z = -2}, station, 0),

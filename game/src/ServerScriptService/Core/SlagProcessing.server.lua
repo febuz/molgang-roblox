@@ -307,13 +307,15 @@ end)
 Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 	local userId = player.UserId
 	local slag = getPlayerSlag(userId)
-	local station = StationAccess.Stations.crush
-	if not requireStation(player, station) then return end
 
 	-- Validate target size
 	if type(targetSize) ~= "string" then return end
 	local sizeData = SteelSlag.ParticleSizes[targetSize]
 	if not sizeData then return end
+	local station = targetSize == "ground" and StationAccess.Stations.cone
+		or targetSize == "powder" and StationAccess.Stations.mill
+		or targetSize == "crushed" and StationAccess.Stations.crush
+	if not station or not requireStation(player, station) then return end
 	local sizeAllowed, sizeRequirement = ResearchAccess.CanUseParticleSize(getResearchState(userId), targetSize)
 	if not sizeAllowed then
 		Remotes.FireClient("ServerAnnounce", player, {

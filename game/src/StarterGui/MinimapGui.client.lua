@@ -150,22 +150,29 @@ end
 -- inside the factory zone. Their positions come from the shared station
 -- contract used by server access validation.
 local setWaypoint
-for _, stationKey in ipairs({"crush", "leach"}) do
+for _, stationKey in ipairs({"crush", "cone", "mill", "leach"}) do
 	local station = StationAccess.Stations[stationKey]
 	local map = station.mapPosition
 	local stationDot = Instance.new("Frame")
 	stationDot.Name = "Station_" .. stationKey
 	stationDot.Size = UDim2.fromOffset(9, 9)
-	stationDot.BackgroundColor3 = stationKey == "crush"
-		and Color3.fromRGB(255, 150, 50)
-		or Color3.fromRGB(80, 210, 255)
+	local stationColor = {
+		crush = Color3.fromRGB(255, 150, 50),
+		cone = Color3.fromRGB(255, 190, 80),
+		mill = Color3.fromRGB(190, 120, 255),
+		leach = Color3.fromRGB(80, 210, 255),
+	}
+	stationDot.BackgroundColor3 = stationColor[stationKey]
 	stationDot.Parent = mapFrame
 	corner(stationDot, 4)
 	local stationLabel = Instance.new("TextLabel")
 	stationLabel.Size = UDim2.fromOffset(72, 12)
 	stationLabel.Position = UDim2.new(0.5, -36, 1, 1)
 	stationLabel.BackgroundTransparency = 1
-	stationLabel.Text = stationKey == "crush" and "CRUSH" or "LEACH"
+	stationLabel.Text = stationKey == "crush" and "CRUSH"
+		or stationKey == "cone" and "CONE"
+		or stationKey == "mill" and "MILL"
+		or "LEACH"
 	stationLabel.TextColor3 = stationDot.BackgroundColor3
 	stationLabel.TextScaled = true
 	stationLabel.Font = Enum.Font.GothamBold

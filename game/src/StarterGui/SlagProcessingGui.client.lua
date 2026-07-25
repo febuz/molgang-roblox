@@ -329,7 +329,7 @@ label(slagPanel, {Name="CrushTitle", Size=UDim2.new(1,-20,0,22), Position=UDim2.
 	Text="Crushing Station", Color=C.accent, Font=Enum.Font.GothamBold})
 
 label(slagPanel, {Name="CrushDesc", Size=UDim2.new(1,-20,0,16), Position=UDim2.new(0,10,0,actionY+68),
-	Text="Walk to the West industrial platform; hammer raw chunks or use machines.", Color=C.textDim})
+	Text="Use the minimap markers: CRUSH, CONE and MILL are separate stations.", Color=C.textDim})
 
 -- Crush progress bar
 local crushBarBg = Instance.new("Frame")

@@ -14,6 +14,20 @@ StationAccess.Stations = {
 		label = "Crushing Station",
 		mapPosition = {x = -1850, y = 10, z = -40},
 	},
+	cone = {
+		partName = "ConeCrusherBase",
+		interactionType = "SlagConeCrusher",
+		radius = 24,
+		label = "Cone Crusher",
+		mapPosition = {x = -2090, y = 10, z = -55},
+	},
+	mill = {
+		partName = "MillBase",
+		interactionType = "SlagBallMill",
+		radius = 30,
+		label = "Ball Mill",
+		mapPosition = {x = -2050, y = 10, z = -40},
+	},
 	leach = {
 		partName = "LeachPlatform",
 		interactionType = "SlagLeachStation",
