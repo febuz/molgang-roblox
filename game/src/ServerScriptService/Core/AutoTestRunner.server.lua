@@ -346,6 +346,35 @@ timeTest("V2O5 is high value", function()
 end)
 
 -- ═══════════════════════════════════════════════
+-- TEST 5B: FERTILIZER / ACT 3 CHEMISTRY
+-- ═══════════════════════════════════════════════
+
+print("\n[AutoTest] ========== FERTILIZER TRACK ==========")
+
+timeTest("Fertilizer catalog contains Act 3 remediation", function()
+	local FertilizerTrack = require(ReplicatedStorage.Modules.FertilizerTrack)
+	assert(#FertilizerTrack.Fertilizers >= 10, "Fertilizer catalog is incomplete")
+	assert(FertilizerTrack.GetFertilizer("slag_fertilizer"), "Slag Bio-Enhancer recipe missing")
+	assert(FertilizerTrack.GetFertilizer("slag_fertilizer").special == true,
+		"Slag Bio-Enhancer must be marked as remediation fertilizer")
+end)
+
+timeTest("Act 3 contaminated soil transition is canonical", function()
+	local FertilizerTrack = require(ReplicatedStorage.Modules.FertilizerTrack)
+	local plot = {soilType = "loam", nutrients = {N = 20, P = 20, K = 25}}
+	assert(FertilizerTrack.ApplyContaminatedSoil(plot), "Contaminated transition failed")
+	assert(plot.soilType == "contaminated" and plot.pH == 3.0, "Contaminated chemistry is incorrect")
+	assert(#plot.contaminants == 3, "Heavy-metal sample is incomplete")
+end)
+
+timeTest("Crop yield responds to pH stress", function()
+	local FertilizerTrack = require(ReplicatedStorage.Modules.FertilizerTrack)
+	local healthy = FertilizerTrack.CalculateYield({N = 120, P = 40, K = 40}, "wheat", 6.8)
+	local stressed = FertilizerTrack.CalculateYield({N = 120, P = 40, K = 40}, "wheat", 3.0)
+	assert(healthy > stressed, "Crop yield ignored soil pH stress")
+end)
+
+-- ═══════════════════════════════════════════════
 -- TEST 6: SLAG PROCESSING
 -- ═══════════════════════════════════════════════
 
@@ -533,6 +562,8 @@ if remoteFolder then
 		"RequestAtomTransfer", "RequestBuildMolecule", "RequestMarketTrade",
 		"RequestLoan", "RequestQuizStart", "RequestQuizAnswer",
 		"RequestStartLeach", "RequestExtractProducts", "RequestStartResearch",
+		"RequestTestSoil", "RequestCraftFertilizer", "RequestApplyFertilizer",
+		"RequestPlantCrop", "RequestHarvestCrop", "RequestFertilizerInfo",
 	}
 	for _, name in ipairs(requiredInteractiveRemotes) do
 		test("Interactive remote " .. name, remoteFolder:FindFirstChild(name) ~= nil)
