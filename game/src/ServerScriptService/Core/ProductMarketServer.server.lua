@@ -23,7 +23,9 @@ local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 -- STATE
 -- ═══════════════════════════════════════════════
 
-local currentGameDay = 1
+-- Use the shared absolute clock so a server restart does not reset market
+-- prices to day 1 or make two live servers quote different market days.
+local currentGameDay = GameClock.DayAt()
 local playerLedgers = {}  -- {userId = ProfitLoss ledger}
 
 local function persistLedger(userId, ledger)
@@ -220,6 +222,7 @@ end)
 -- ═══════════════════════════════════════════════
 
 Remotes.RequestProductPrices.OnServerEvent:Connect(function(player)
+	currentGameDay = GameClock.DayAt()
 	local prices = ProductMarket.GetAllPrices(currentGameDay, WorldEvents.GetActiveEffects().priceMultipliers)
 	local ledger = getLedger(player.UserId)
 
@@ -240,7 +243,11 @@ end)
 task.spawn(function()
 	while true do
 		task.wait(GameClock.DAY_SECONDS)  -- shared clock: 10 real minutes = 1 game day
-		currentGameDay = currentGameDay + 1
+		local nextGameDay = GameClock.DayAt()
+		if nextGameDay == currentGameDay then
+			continue
+		end
+		currentGameDay = nextGameDay
 		local prices = ProductMarket.GetAllPrices(
 			currentGameDay, WorldEvents.GetActiveEffects().priceMultipliers
 		)
