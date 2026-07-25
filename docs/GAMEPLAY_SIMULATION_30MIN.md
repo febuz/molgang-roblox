@@ -119,7 +119,7 @@
 | 4:00 | Select HCl reagent | click Select | 0 | 750 MC |
 | 4:05 | Select "crushed" size | click Crushed | 0 | 750 MC |
 | 4:10 | Start leaching | click START | -80 MC (HCl) | 670 MC |
-| 4:10 | **Leach timer starts** (1200 min = 20 real min with crushed+HCl) | — | 0 | 670 MC |
+| 4:10 | **Leach timer starts** (3600 game min; duration follows the OTAP clock and process controls) | — | 0 | 670 MC |
 | 4:10-24:00 | Collect atoms while leaching | WASD | +80 atoms (~268 MC) | 938 MC |
 | 24:00 | Leach complete! | auto notification | 0 | 938 MC |
 | 24:05 | Extract products | S key → Monitor → Extract | 0 | 938 MC |
@@ -143,13 +143,13 @@
 | 1:30 | Walk to Slakkenspoor | WASD (2 min) | 0 | 800 MC |
 | 3:30 | Buy slag + hammer crush | S, clicks | -50 MC | 750 MC |
 | 4:00 | Start H2O leach (FREE!) | S, clicks | 0 MC | 750 MC |
-| 4:00 | **Leach timer: 2880 min reduced** | — | — | — |
-| 4:00 | **Problem: H2O leach too slow for 30min** | — | — | — |
+| 4:00 | **Leach timer: 2160 game min base (720 × crushed multiplier)** | — | — | — |
+| 4:00 | **OTAP timing:** 1 game day is 10 real minutes; temperature, flow and particle size change the estimate | — | — | — |
 | 4:00-30:00 | Collect atoms while waiting | WASD | +104 atoms (~348 MC) | 1098 MC |
-| 30:00 | Leach NOT complete (needs hours) | — | — | — |
+| 30:00 | Leach completion depends on the selected process settings | — | — | — |
 | 30:00 | **END** | | | **1098 MC, ~104 atoms, 0 products** |
 
-**Rating:** BAD for 30-min session. H2O leach is tutorial-only viable in longer sessions.
+**Rating:** MODERATE. H2O is a free, selective learning route; acid or finer particles are faster when a player needs a short-session payout.
 
 ---
 
@@ -333,14 +333,14 @@
 
 ### What Needs Fixing
 1. **Deep mining is a trap** for new players — premium licenses remain expensive, but the Practice Outcrop now costs 200 MC and can be explored by hand for free
-2. **H2O leach is useless** in short sessions — 2880 min base time is days, not minutes
+2. **Leach timing must be communicated clearly** — the current OTAP clock is 10 real minutes per game day, and particle size/process controls materially change completion time
 3. **Factory rent (2000 MC)** is impossible in 30 min — need ~45+ min or prior session wealth
 4. **Ground/Powder crush costs** (200/500 MC) are steep for new players
 5. **Atom spawn rate** limits collection to ~4/min regardless of strategy
 
 ### Recommended Balance Changes
 1. Use the 200 MC Practice Outcrop and free hand survey as the tutorial mine; keep premium deposits gated behind equipment and capital
-2. Reduce H2O leach time further (or make it tutorial-only)
+2. Keep reagent/particle-size trade-offs visible in the leach estimate and avoid stale “days” messaging
 3. Add "First Molecule" quest: build H2O = 200 MC bonus
 4. Consider factory "trial rental" (500 MC for 1 game month)
 5. Increase atom spawn density at Nexus Hub for first 5 minutes

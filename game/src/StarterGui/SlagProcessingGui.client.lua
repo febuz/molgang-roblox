@@ -23,6 +23,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
 local ProcessEngineering = require(ReplicatedStorage.Modules.ProcessEngineering)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 
 -- UI click sound helper (#55)
 local function playUIClick()
@@ -462,6 +463,19 @@ local processPressure = 101.325
 local processFlowRate = 10
 local processReactorVolume = 50
 
+local function formatOtapDuration(gameMinutes)
+	local realSeconds = math.max(0, (tonumber(gameMinutes) or 0) * GameClock.DAY_SECONDS / 1440)
+	if realSeconds < 60 then
+		return string.format("OTAP ~%ds", math.floor(realSeconds + 0.5))
+	end
+	return string.format("OTAP ~%dm", math.floor(realSeconds / 60 + 0.5))
+end
+
+local function formatLeachEstimate(minutes, rate)
+	return string.format("Est. time: %s | %s (rate %.2fx)",
+		SteelSlag.FormatLeachTime(minutes), formatOtapDuration(minutes), rate)
+end
+
 local function getLeachEstimate(particleSize, reagentId)
 	local baseMinutes = SteelSlag.CalculateLeachTime(particleSize, reagentId)
 	local duration, rate = ProcessEngineering.CalculateEffectiveLeachDuration(baseMinutes, reagentId, {
@@ -493,7 +507,7 @@ Remotes.ProcessControlState.OnClientEvent:Connect(function(data)
 	updateYieldPreview()
 	if selectedReagent and selectedSize then
 		local mins, rate = getLeachEstimate(selectedSize, selectedReagent)
-		leachTimeLabel.Text = string.format("Est. time: %s (rate %.2fx)", SteelSlag.FormatLeachTime(mins), rate)
+		leachTimeLabel.Text = formatLeachEstimate(mins, rate)
 		leachTimeLabel.TextColor3 = C.text
 	end
 end)
@@ -579,7 +593,7 @@ for _, rId in ipairs(reagentOrder) do
 		-- Update time estimate if size also selected
 		if selectedSize then
 			local mins, rate = getLeachEstimate(selectedSize, rId)
-			leachTimeLabel.Text = string.format("Est. time: %s (rate %.2fx)", SteelSlag.FormatLeachTime(mins), rate)
+			leachTimeLabel.Text = formatLeachEstimate(mins, rate)
 			leachTimeLabel.TextColor3 = C.text
 			updateYieldPreview()
 		end
@@ -623,7 +637,7 @@ for i, sizeKey in ipairs(SteelSlag.SizeOrder) do
 		-- Update time estimate
 		if selectedReagent then
 			local mins, rate = getLeachEstimate(sizeKey, selectedReagent)
-			leachTimeLabel.Text = string.format("Est. time: %s (rate %.2fx)", SteelSlag.FormatLeachTime(mins), rate)
+			leachTimeLabel.Text = formatLeachEstimate(mins, rate)
 		end
 		updateYieldPreview()
 	end)
