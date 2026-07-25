@@ -137,6 +137,46 @@ local function getPlayerSlag(userId)
 	return playerSlagData[userId]
 end
 
+local function restoreLeachState(leachId, saved)
+	if type(leachId) ~= "string" or type(saved) ~= "table" then return nil end
+	local reagentId = saved.reagentId
+	local particleSize = saved.particleSize
+	if type(reagentId) ~= "string" or not SteelSlag.Reagents[reagentId]
+		or type(particleSize) ~= "string" or not SteelSlag.ParticleSizes[particleSize] then
+		return nil
+	end
+	local startTime = tonumber(saved.startTime)
+	local durationSeconds = tonumber(saved.durationSeconds or saved.duration)
+	if not ProcessEng.IsFiniteNumber(startTime) or startTime < 0
+		or not ProcessEng.IsFiniteNumber(durationSeconds) or durationSeconds <= 0 then
+		return nil
+	end
+
+	local yield = {}
+	for _, entry in ipairs(type(saved.yield) == "table" and saved.yield or {}) do
+		if type(entry) == "table" and SteelSlag.OxideToElements[entry.oxide]
+			and ProcessEng.IsFiniteNumber(entry.atomCount) and entry.atomCount >= 1 then
+			local copy = {}
+			for key, value in pairs(entry) do copy[key] = value end
+			copy.atomCount = math.floor(entry.atomCount)
+			copy.gramsExtracted = math.max(0, tonumber(entry.gramsExtracted) or 0)
+			table.insert(yield, copy)
+		end
+	end
+
+	local restored = {}
+	for key, value in pairs(saved) do restored[key] = value end
+	restored.id = leachId
+	restored.reagentId = reagentId
+	restored.particleSize = particleSize
+	restored.startTime = startTime
+	restored.durationSeconds = durationSeconds
+	restored.yield = yield
+	restored.extracted = saved.extracted == true
+	restored.complete = saved.complete == true
+	return restored
+end
+
 local function getPlayerLeaches(userId)
 	if not playerLeaches[userId] then
 		-- Try to restore from saved data (#77 crash recovery)
@@ -144,7 +184,10 @@ local function getPlayerLeaches(userId)
 		if pData and pData.activeLeaches then
 			playerLeaches[userId] = {}
 			for leachId, saved in pairs(pData.activeLeaches) do
-				playerLeaches[userId][leachId] = saved
+				local restored = restoreLeachState(leachId, saved)
+				if restored then
+					playerLeaches[userId][leachId] = restored
+				end
 			end
 		else
 			playerLeaches[userId] = {}
