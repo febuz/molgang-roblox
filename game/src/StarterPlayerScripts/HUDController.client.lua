@@ -1390,7 +1390,7 @@ if UserInputService.TouchEnabled then
 		end)
 	end
 
-	createMobileBtn2("S", Color3.fromRGB(220, 140, 40), "SlagProcessingGui")
+	createMobileBtn2("J", Color3.fromRGB(220, 140, 40), "SlagProcessingGui")
 	createMobileBtn2("F", Color3.fromRGB(80, 200, 60), "FertilizerGui")
 	createMobileBtn2("G", Color3.fromRGB(0, 200, 130), "FactoryBuilderGui")
 	createMobileBtn2("V", Color3.fromRGB(255, 200, 0), "MiningGui")

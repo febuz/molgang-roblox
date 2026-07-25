@@ -267,4 +267,4 @@ screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	end
 end)
 
-print("[MOLGANG] AtomTradeGui loaded — press / to trade atoms with nearby players")
+print("[MOLGANG] AtomTradeGui loaded — press . to trade atoms with nearby players")
