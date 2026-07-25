@@ -35,7 +35,7 @@ local movementKeysDown = {}
 -- Vinegar/embedded Studio can deliver a delayed keyboard event after the
 -- physical WASD input has already ended. Keep a short movement lock so that
 -- such an event cannot reopen a modal during traversal.
-local MOVEMENT_GUI_LOCK_SECONDS = 0.45
+local MOVEMENT_GUI_LOCK_SECONDS = 1.0
 local movementGuiLockUntil = 0
 
 -- Track which GUI panels are open (for ESC close-all)
@@ -91,6 +91,24 @@ local function findScreenGui(guiName)
 		end
 	end
 	return nil
+end
+
+local function forEachScreenGui(guiName, callback)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == guiName and child:IsA("ScreenGui") then
+			callback(child)
+		end
+	end
+end
+
+local function closeAchievementGuis(reason)
+	forEachScreenGui("AchievementsGui", function(gui)
+		if gui.Enabled then
+			gui.Enabled = false
+			print("[GUIManager] Closed AchievementsGui (" .. reason .. ")")
+		end
+	end)
+	guiStates.AchievementsGui = false
 end
 
 -- Cost hints for expensive GUIs (#7)
@@ -178,12 +196,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		player:SetAttribute("MovementGuiLockUntil", movementGuiLockUntil)
 		-- If a stale shortcut or an external script left this modal open, the
 		-- first movement input is an unambiguous signal to return control to play.
-		local achievements = findScreenGui("AchievementsGui")
-		if achievements and achievements.Enabled then
-			achievements.Enabled = false
-			guiStates.AchievementsGui = false
-			print("[GUIManager] Closed AchievementsGui on movement input")
-		end
+		closeAchievementGuis("movement input")
 		return
 	end
 	if gameProcessed then return end
@@ -315,7 +328,8 @@ local function guardAchievementsGui(gui)
 	if not gui:IsA("ScreenGui") or gui.Name ~= "AchievementsGui" then return end
 	gui:GetPropertyChangedSignal("Enabled"):Connect(function()
 		if not gui.Enabled then return end
-		if os.clock() < movementGuiLockUntil then
+		local sharedLockUntil = player:GetAttribute("MovementGuiLockUntil") or 0
+		if os.clock() < math.max(movementGuiLockUntil, sharedLockUntil) then
 			gui.Enabled = false
 			guiStates.AchievementsGui = false
 			print("[GUIManager] Rejected delayed AchievementsGui after movement input")
@@ -331,6 +345,20 @@ local function guardAchievementsGui(gui)
 		end
 	end)
 end
+
+local function enforceMovementModalLock()
+	local sharedLockUntil = player:GetAttribute("MovementGuiLockUntil") or 0
+	if os.clock() >= math.max(movementGuiLockUntil, sharedLockUntil) then return end
+	forEachScreenGui("AchievementsGui", function(gui)
+		if gui.Enabled then
+			gui.Enabled = false
+			guiStates.AchievementsGui = false
+			print("[GUIManager] Rejected AchievementsGui during movement lock")
+		end
+	end)
+end
+
+RunService.Heartbeat:Connect(enforceMovementModalLock)
 
 for _, child in ipairs(playerGui:GetChildren()) do guardAchievementsGui(child) end
 playerGui.ChildAdded:Connect(guardAchievementsGui)
