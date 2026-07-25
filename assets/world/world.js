@@ -72,6 +72,7 @@ composer.addPass(new OutputPass());
 
 // Ground shows immediately too.
 let WORLD = 240, roadAts = null, ROAD = 14;
+let worldLoaded = false;         // world bounds only clamp once the real size is known
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 1 });
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD), groundMat);
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
@@ -205,7 +206,7 @@ function updateSteam(dt) {
   for (const sp of steam) {
     const u = sp.userData; u.t += dt * 0.12; if (u.t > 1) u.t -= 1;
     const s = 5 + u.t * 9;
-    sp.position.set(u.bx, 2 + u.t * 13, u.bz); sp.scale.set(s, s, 1);
+    sp.position.set(u.bx, (u.lift || 0) + 2 + u.t * 13, u.bz); sp.scale.set(s, s, 1);
     sp.material.opacity = Math.sin(u.t * Math.PI) * 0.2;
   }
 }
@@ -251,6 +252,12 @@ const CAMS = {
 };
 const preset = CAMS[params.get('cam')];
 if (preset) { player.pos.set(...preset.pos); player.yaw = preset.yaw; player.pitch = preset.pitch; }
+// ?tp=x,z[,yaw] — spawn at an exact spot (deep-links + headless e2e verification)
+const tp = (params.get('tp') || '').split(',').map(Number);
+if (tp.length >= 2 && tp.slice(0, 2).every(Number.isFinite)) {
+  player.pos.x = tp[0]; player.pos.z = tp[1];
+  if (Number.isFinite(tp[2])) player.yaw = tp[2];
+}
 const keys = {};
 // Analog input from Quest Touch controllers / gamepads (fed by pollGamepads):
 // mx/mz = left-stick move, lx/ly = right-stick look, sprint = stick click.
@@ -296,9 +303,11 @@ function step(dt) {
     player.pos.add(mv.clone().multiplyScalar(sp * dt));
     player.vel = mv.multiplyScalar(sp);          // units/s — feeds predictive prefetch
   } else if (player.vel) player.vel.multiplyScalar(0.9);
-  const half = WORLD / 2 - 2;
-  player.pos.x = Math.max(-half, Math.min(half, player.pos.x));
-  player.pos.z = Math.max(-half, Math.min(half, player.pos.z));
+  if (worldLoaded) {             // pre-load WORLD is the legacy default (240) and
+    const half = WORLD / 2 - 2;  // would wrongly clip deep-link spawns in Moleculia
+    player.pos.x = Math.max(-half, Math.min(half, player.pos.x));
+    player.pos.z = Math.max(-half, Math.min(half, player.pos.z));
+  }
   camera.position.copy(player.pos);
   const d = new THREE.Vector3(Math.sin(player.yaw) * Math.cos(player.pitch),
     Math.sin(player.pitch), Math.cos(player.yaw) * Math.cos(player.pitch));
@@ -635,6 +644,7 @@ function pushControls(d) {
 }
 // Render one reactor state object (server- or client-sourced) into the HUD/panel.
 function applyReactorState(rx) {
+  if (rx) lastRx = rx;                 // kept for the XRF sample-station readout
   const rel = document.getElementById('reactor');
   if (rx && rel) rel.innerHTML = `⚗️ leach reactor · ${(rx.conversion * 100) | 0}% converted `
     + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)`
@@ -1375,6 +1385,56 @@ function openFactory() {
   if (c) c.addEventListener('click', () => { document.getElementById('factory').style.display = 'none'; });
 })();
 
+// ---------- proximity interactions on the HD plant props ----------
+// Objects carrying an `interact` tag in moleculia.json come alive when the
+// player walks up to them (same 2.5–3.5 m feel as element collection):
+//  · safety  — safety shower / eyewash: one PPE check per visit, small reward
+//  · assay   — XRF sample bench: reads the LIVE reactor state as an assay
+//  · console — operator console: points the player at the reactor panel
+let lastRx = null;
+let interactables = [];
+const safetyChecked = new Set();       // one reward per station per session
+let lastInteractAt = 0;
+let _toastEl = null, _toastTimer = null;
+function worldToast(msg) {
+  if (!_toastEl) {
+    _toastEl = document.createElement('div');
+    _toastEl.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);'
+      + 'z-index:30;background:rgba(14,18,26,.92);color:#eef4fb;border:1px solid #2c704a;'
+      + 'border-radius:10px;padding:10px 16px;font:13px system-ui;max-width:70vw;'
+      + 'box-shadow:0 6px 24px rgba(0,0,0,.5);transition:opacity .3s;pointer-events:none';
+    document.body.appendChild(_toastEl);
+  }
+  _toastEl.textContent = msg; _toastEl.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { _toastEl.style.opacity = '0'; }, 3600);
+}
+function checkInteract(now) {
+  if (!interactables.length || now - lastInteractAt < 4000) return;
+  const px = player.pos.x, pz = player.pos.z;
+  for (const o of interactables) {
+    const dx = o.x - px, dz = o.z - pz;
+    if (dx * dx + dz * dz > 12.25) continue;             // within 3.5 m
+    lastInteractAt = now;
+    if (o.interact === 'safety') {
+      const key = `${o.x},${o.z}`;
+      if (!safetyChecked.has(key)) {
+        safetyChecked.add(key); earn(25);
+        worldToast('🚿 Safety shower & eyewash checked — PPE bonus +25 MolCoins');
+      } else worldToast('🚿 Safety station — shower and eyewash operational');
+    } else if (o.interact === 'assay') {
+      worldToast(lastRx
+        ? `🔬 XRF assay: ${(lastRx.conversion * 100) | 0}% leached · pH ${lastRx.pH} · `
+          + `${lastRx.temperature}°C · V-recovery ${((lastRx.yield || 0) * 100) | 0}%`
+        : '🔬 XRF assay: no leach batch running yet — start the reactor first');
+    } else if (o.interact === 'console') {
+      worldToast('🎛 Operator console — drive the plant with the reactor panel (left): '
+        + 'grind, de-iron, roast, then set T/P/flow/pH');
+    }
+    return;
+  }
+}
+
 // ---------- ChemSim: the paid in-game chemical simulator ----------
 // The chemistry-set console in the Quantum Lab. For MolCoins the player runs
 // the process model FORWARD: predicted rate, batch time and V2O5/hour for any
@@ -1497,7 +1557,7 @@ function loop(now) {
   if (!simOk && MOLECULIA) crClientActive = true;   // no server reached -> run chemistry in-browser
   if (crClientActive && !simOk) crTick(dt);
   if (now - lastStream > 180) {
-    lastStream = now; stream(); checkCollect(); updateGoals();
+    lastStream = now; stream(); checkCollect(); checkInteract(now); updateGoals();
     if (crClientActive && !simOk) applyReactorState(crStateObj());
   }
   // Keep the sun (and its shadow frustum) centred on the player for crisp shadows.
@@ -1530,6 +1590,7 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
   setAR(arOn);
   const w = await (await fetch(WORLDFILE, { cache: 'no-cache' })).json();
   WORLD = w.meta.world; roadAts = w.meta.roadAts || null; ROAD = w.meta.road || 14;
+  worldLoaded = true;
   MOLECULIA = !!w.meta.space;
   objects = w.objects;
   assetIdx = objects.map((o, i) => (o.t === 'asset' ? i : -1)).filter((i) => i >= 0);
@@ -1560,6 +1621,17 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     { const bb = document.getElementById('build-btn'); if (bb) bb.style.display = 'block'; }
     { const mc = document.getElementById('molcoins'); if (mc) mc.style.display = 'block'; updateMcHUD(false); }
     chemsimPos = objects.find((o) => o.console === 'chemsim') || null;
+    interactables = objects.filter((o) => o.interact);
+    // steam-flagged props (the cooling tower) get their own vapour plume
+    for (const o of objects.filter((x) => x.steam)) {
+      const tex = steamTexture();
+      for (let i = 0; i < 10; i++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false }));
+        sp.userData = { bx: o.x - 2 + Math.random() * 4, bz: o.z - 2 + Math.random() * 4,
+          t: Math.random(), lift: 9 };            // plume rises from the tower rim
+        scene.add(sp); steam.push(sp);
+      }
+    }
     { const cb = document.getElementById('chemsim-btn'); if (cb) cb.style.display = 'block'; }
     if (params.get('chemsim')) setTimeout(openChemSim, 400);
     { const g = document.getElementById('goals'); if (g) g.style.display = 'block'; updateGoals(); }
@@ -1590,7 +1662,9 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     $('#resolve').innerHTML = `<div style="color:#7fe0a0;margin-bottom:3px">⚗️ Slakkenspoor — BOF slag processing line</div>`
       + line.map((s, i) => `<div><span class="a">${String(i + 1).padStart(2, '0')}</span> ${s}</div>`).join('');
     window.__molgangWorld = { world: 'moleculia', zones: (w.meta.zones || []).length,
-      stations: line.length, assets: assetIdx.length };
+      stations: line.length, assets: assetIdx.length, interactables: interactables.length };
+    window.__molgangDebug = () => ({ px: player.pos.x, pz: player.pos.z,
+      near: interactables.map((o) => Math.hypot(o.x - player.pos.x, o.z - player.pos.z) | 0) });
   } else {
     // legacy city (roads + diffusion) — kept behind ?world=./world.json
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.9 });

@@ -196,9 +196,9 @@ ZONE_PROPS = {
         ("cooling_tower_hd.glb", -22, 26, 0.0, 10.0, {"steam": 1}),
         ("pipe_rack_hd.glb", -24, -19, 1.5708, 8.0),
         ("pipe_rack_hd.glb", 16, 19, 1.5708, 8.0),
-        ("gas_cylinder_rack_hd.glb", 36, -15, 0.4, 2.2),
+        ("gas_cylinder_rack_hd.glb", 36, -15, 0.4, 2.8),
         ("control_console_hd.glb", 0, -22, 0.0, 2.4, {"interact": "console"}),
-        ("safety_station_hd.glb", -30, 19, 3.14, 2.4, {"interact": "safety"}),
+        ("safety_station_hd.glb", -30, 19, 3.14, 0.9, {"interact": "safety"}),
         ("sample_station_hd.glb", 26, 13, 1.2, 2.2, {"interact": "assay"}),
     ],
     "Quantum Lab": [
@@ -207,7 +207,7 @@ ZONE_PROPS = {
         ("metal_toolbox.glb", -4, -8, 1.2, 1.0),
         ("caged_hanging_light.glb", 0, -12, 0.0, 0.9),
         ("gas_cylinder_rack_hd.glb", 6, -10, 2.6, 1.8),
-        ("safety_station_hd.glb", -8, -9, 0.8, 2.2, {"interact": "safety"}),
+        ("safety_station_hd.glb", -8, -9, 0.8, 0.9, {"interact": "safety"}),
     ],
     "Periodic Table Biome": [
         ("Barrel_01.glb", -30, 28, 0.7, 1.8), ("cement_bag.glb", 29, 27, 0.0, 1.4),

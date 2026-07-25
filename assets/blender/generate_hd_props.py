@@ -280,8 +280,8 @@ def build_control_console_hd():
     clear_scene()
     body = mat("console_body", (0.16, 0.18, 0.22), 0.5, 0.5)
     dark = mat("dark_steel", (0.10, 0.11, 0.13), 0.85, 0.5)
-    scr = mat("screen_glow", (0.30, 0.95, 0.80), 0.0, 0.3, emission=2.2)
-    scr2 = mat("screen_amber", (0.95, 0.70, 0.25), 0.0, 0.3, emission=1.8)
+    scr = mat("screen_glow", (0.30, 0.95, 0.80), 0.0, 0.3, emission=0.9)
+    scr2 = mat("screen_amber", (0.95, 0.70, 0.25), 0.0, 0.3, emission=0.8)
     box((2.6, 0.9, 0.9), (0, 0, 0.45), body)                # desk body
     box((2.6, 0.7, 0.10), (0, -0.25, 1.0), body,            # sloped operator panel
         rot=(-0.35, 0, 0))
@@ -321,7 +321,7 @@ def build_sample_station_hd():
     frame = mat("bench_frame", (0.14, 0.15, 0.17), 0.8, 0.5)
     top = mat("bench_top", (0.80, 0.80, 0.78), 0.1, 0.4)
     dev = mat("xrf_body", (0.85, 0.60, 0.10), 0.3, 0.45)     # handheld-XRF yellow
-    scr = mat("readout", (0.30, 0.95, 0.80), 0.0, 0.3, emission=2.0)
+    scr = mat("readout", (0.30, 0.95, 0.80), 0.0, 0.3, emission=0.9)
     cup = mat("sample_cup", (0.70, 0.72, 0.75), 0.3, 0.4)
     slagm = mat("slag_sample", (0.22, 0.19, 0.17), 0.2, 0.9)
     box((2.0, 0.8, 0.08), (0, 0, 0.92), top)                # bench top
