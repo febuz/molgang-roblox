@@ -3878,7 +3878,9 @@ local function buildGlobalElements(zonesFolder: Folder)
 		local returnPad = createPart(outpost, {
 			Name = "TeleportPad_ReturnToNexus",
 			Size = Vector3.new(16, 1, 16),
-			Position = region.center + Vector3.new(0, 7, 45),
+			-- Keep the exit within sight of the landing point. Players should
+			-- never need to leave the platform or fall to recover from mining.
+			Position = region.center + Vector3.new(0, 7, 28),
 			Color = Color3.fromRGB(0, 210, 150),
 			Material = Enum.Material.Neon,
 		})
@@ -3894,7 +3896,7 @@ local function buildGlobalElements(zonesFolder: Folder)
 		returnPad:SetAttribute("TeleportTarget", Vector3.new(0, 10, 0))
 		returnPad:SetAttribute("TeleportName", "Nexus Hub")
 		addBillboard(returnPad, {
-			Text = "RETURN TO NEXUS\n[E] Hub / Factory",
+			Text = "RETURN TO NEXUS\n[E] Exit  •  [H] Anywhere",
 			Size = UDim2.new(10, 0, 3, 0),
 			StudsOffset = Vector3.new(0, 4, 0),
 			TextColor = Color3.fromRGB(0, 255, 180),

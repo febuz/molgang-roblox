@@ -144,7 +144,14 @@ returnBtn.Activated:Connect(function()
 	playUIClick()
 	setActionStatus("Returning to Nexus Hub…", C.green)
 	local r = Remotes:FindFirstChild("RequestReturnToNexus")
-	if r then r:FireServer() else setActionStatus("Return service unavailable.", C.red) end
+	if r then
+		-- Close the mining overlay immediately. The server owns the teleport;
+		-- leaving the overlay open made a successful return look like a freeze.
+		r:FireServer()
+		screenGui.Enabled = false
+	else
+		setActionStatus("Return service unavailable.", C.red)
+	end
 end)
 
 -- Tabs
