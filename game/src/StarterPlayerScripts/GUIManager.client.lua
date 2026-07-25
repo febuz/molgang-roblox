@@ -177,8 +177,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleGui("InventoryGui")
 	end
 
-	-- A = Toggle Achievements
-	if input.KeyCode == Enum.KeyCode.A then
+	-- K = Toggle Achievements. A is reserved for left movement (WASD); using
+	-- it as a global shortcut caused the menu to open while walking in Vinegar.
+	if input.KeyCode == Enum.KeyCode.K then
 		toggleGui("AchievementsGui")
 	end
 

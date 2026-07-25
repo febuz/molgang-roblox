@@ -429,4 +429,4 @@ _G.AchievementsGuiToggle = function()
 	end
 end
 
-print("[AchievementsGui] Loaded — Press A to toggle achievements")
+print("[AchievementsGui] Loaded — Press K to toggle achievements")

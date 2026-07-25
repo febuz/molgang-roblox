@@ -215,7 +215,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 25:40   Sprint-collect atoms    WASD (faster!)      Noticeable speed increase
                                                     Factory ambient sound
                                                     Day/night shifts toward afternoon
-27:00   Check achievements      A key               Progress bars shown
+27:00   Check achievements      K key               Progress bars shown
                                                     Recent achievements list (#66)
 27:10   Check minimap distance  N key               "Zone: Slakkenspoor"
                                                     "To HUB: 2m5s"

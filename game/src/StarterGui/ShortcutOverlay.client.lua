@@ -89,7 +89,7 @@ local shortcuts = {
 	{col = 3, key = "V", desc = "Mining"},
 	{col = 3, key = "B", desc = "Bubble Tea Bar"},
 	{col = 3, key = "Q", desc = "Quest Log"},
-	{col = 3, key = "A", desc = "Achievements"},
+	{col = 3, key = "K", desc = "Achievements"},
 	{col = 3, key = "L", desc = "Leaderboards"},
 	{col = 3, key = ";", desc = "Guilds"},
 	{col = 3, key = ".", desc = "Atom Trading"},

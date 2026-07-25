@@ -115,7 +115,7 @@ MOLGANG/
 | **P** | Periodic Table | **S** | Slag Processing |
 | **D** | Dashboard | **F** | Fertilizer Lab |
 | **I** | Inventory | **G** | Factory Builder |
-| **A** | Achievements | **C** | Process Control |
+| **K** | Achievements | **C** | Process Control |
 | **L** | Leaderboards | **B** | Bubble Tea Bar |
 | **Q** | Quest Tracker | **Tab** | Wallet |
 | **R** | Recipe Book | **/** | Settings |
