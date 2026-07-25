@@ -567,6 +567,20 @@ end)
 -- SERVER EVENT HANDLERS
 -- ═══════════════════════════════════════════════
 
+local serverAnnounce = Remotes:FindFirstChild("ServerAnnounce")
+if serverAnnounce then
+	serverAnnounce.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" or type(data.message) ~= "string" then return end
+		local message = string.lower(data.message)
+		if string.find(message, "factory", 1, true)
+			or string.find(message, "equipment", 1, true)
+			or string.find(message, "grid", 1, true)
+			or string.find(message, "power", 1, true) then
+			setFactoryStatus(data.message, C.invalidPlace)
+		end
+	end)
+end
+
 local factoryEvent = Remotes:FindFirstChild("FactoryUpdate")
 if factoryEvent then
 	factoryEvent.OnClientEvent:Connect(function(data)

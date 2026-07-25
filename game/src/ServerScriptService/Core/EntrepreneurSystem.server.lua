@@ -427,8 +427,20 @@ Remotes.RequestPlaceEquipment.OnServerEvent:Connect(function(player, itemId, gri
 	local userId = player.UserId
 	local factory = getFactory(userId)
 
-	if not factory.rented then return end
-	if type(itemId) ~= "string" or type(gridX) ~= "number" or type(gridY) ~= "number" then return end
+	if not factory.rented then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Rent a factory before placing equipment.",
+			rarity = "common",
+		})
+		return
+	end
+	if type(itemId) ~= "string" or type(gridX) ~= "number" or type(gridY) ~= "number" then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Invalid factory grid placement.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Check inventory
 	if (factory.equipmentInventory[itemId] or 0) <= 0 then
@@ -515,8 +527,20 @@ Remotes.RequestRemoveEquipment.OnServerEvent:Connect(function(player, gridX, gri
 	local userId = player.UserId
 	local factory = getFactory(userId)
 
-	if not factory.rented then return end
-	if type(gridX) ~= "number" or type(gridY) ~= "number" then return end
+	if not factory.rented then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Rent a factory before removing equipment.",
+			rarity = "common",
+		})
+		return
+	end
+	if type(gridX) ~= "number" or type(gridY) ~= "number" then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Invalid factory grid coordinate.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Find which placement is at this position
 	local foundIdx = nil
@@ -536,7 +560,13 @@ Remotes.RequestRemoveEquipment.OnServerEvent:Connect(function(player, gridX, gri
 		end
 	end
 
-	if not foundIdx or not foundItem then return end
+	if not foundIdx or not foundItem then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "No equipment is installed at that grid cell.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Remove from grid
 	local item = FactoryEquipment.GetItem(foundItem.itemId)
