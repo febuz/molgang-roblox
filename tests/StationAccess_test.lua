@@ -24,6 +24,8 @@ assert(StationAccess.WithinRange({x = 10, y = 5, z = -2}, station, 0),
 	"player at station must be accepted")
 assert(StationAccess.WithinRange({x = 12, y = 5, z = -2}, station, 2),
 	"player on station radius boundary must be accepted")
+assert(StationAccess.WithinRange({x = "12", y = "5", z = "-2"}, station, "2"),
+	"numeric coordinate strings must be normalized safely")
 assert(not StationAccess.WithinRange({x = 13, y = 5, z = -2}, station, 2),
 	"player outside station radius must be rejected")
 assert(not StationAccess.WithinRange(nil, station, 10),
@@ -33,4 +35,4 @@ assert(not StationAccess.WithinRange({x = 10, y = 5}, station, 10),
 assert(not StationAccess.WithinRange({x = 0 / 0, y = 5, z = -2}, station, 10),
 	"non-finite player positions must be rejected")
 
-print("Station Access Tests: 10 passed, 0 failed")
+print("Station Access Tests: 11 passed, 0 failed")

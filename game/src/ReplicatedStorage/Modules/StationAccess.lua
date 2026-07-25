@@ -48,14 +48,15 @@ function StationAccess.WithinRange(playerPosition, stationPosition, radius)
 	end
 	local maxDistance = tonumber(radius)
 	if not finiteCoordinate(maxDistance) or maxDistance < 0 then return false end
-	if not finiteCoordinate(playerPosition.x) or not finiteCoordinate(playerPosition.y)
-		or not finiteCoordinate(playerPosition.z) or not finiteCoordinate(stationPosition.x)
-		or not finiteCoordinate(stationPosition.y) or not finiteCoordinate(stationPosition.z) then
+	local px, py, pz = tonumber(playerPosition.x), tonumber(playerPosition.y), tonumber(playerPosition.z)
+	local sx, sy, sz = tonumber(stationPosition.x), tonumber(stationPosition.y), tonumber(stationPosition.z)
+	if not finiteCoordinate(px) or not finiteCoordinate(py) or not finiteCoordinate(pz)
+		or not finiteCoordinate(sx) or not finiteCoordinate(sy) or not finiteCoordinate(sz) then
 		return false
 	end
-	local dx = playerPosition.x - stationPosition.x
-	local dy = playerPosition.y - stationPosition.y
-	local dz = playerPosition.z - stationPosition.z
+	local dx = px - sx
+	local dy = py - sy
+	local dz = pz - sz
 	return dx * dx + dy * dy + dz * dz <= maxDistance * maxDistance
 end
 
