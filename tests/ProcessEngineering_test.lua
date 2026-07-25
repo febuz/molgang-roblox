@@ -43,6 +43,20 @@ assert(ProcessEngineering.CalculateRecoveryFactor(0.9, 1, 1.2) == 0.95,
 local productRecovery = ProcessEngineering.CalculateProductRecoveryFactor(0.8, 1, 1)
 assert(math.abs(productRecovery - (0.8 * 0.98 * 0.95)) < 0.000001,
 	"product recovery must include filtration and precipitation losses")
+local function totalYieldMass(entries)
+	local total = 0
+	for _, entry in ipairs(entries) do
+		total = total + (entry.gramsExtracted or 0)
+	end
+	return total
+end
+local eventBalance = ProcessEngineering.CalculateSlagMassBalance("ground", "H2SO4", 65, SteelSlag)
+local eventYield = ProcessEngineering.ApplyRecovery(
+	SteelSlag.CalculateYield("ground", "H2SO4", 1, 65),
+	ProcessEngineering.CalculateProductRecoveryFactor(0.95, 1, 1.20)
+)
+assert(totalYieldMass(eventYield) <= eventBalance.outputKg * 1000 + 1,
+	"event bonus must not produce more recovered mass than the final product stream")
 assert(not ProcessEngineering.IsFiniteNumber(math.huge), "infinite controls must be rejected")
 assert(not ProcessEngineering.IsFiniteNumber(-math.huge), "negative infinite controls must be rejected")
 assert(not ProcessEngineering.IsFiniteNumber(0 / 0), "NaN controls must be rejected")

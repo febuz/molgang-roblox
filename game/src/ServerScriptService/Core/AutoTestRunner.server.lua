@@ -391,6 +391,22 @@ timeTest("Slag temperature improves leach yield", function()
 		"Higher leach temperature did not improve product yield")
 end)
 
+timeTest("Leach event bonus stays inside final product mass", function()
+	local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
+	local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
+	local balance = ProcessEng.CalculateSlagMassBalance("ground", "H2SO4", 65)
+	local recovered = ProcessEng.ApplyRecovery(
+		SteelSlag.CalculateYield("ground", "H2SO4", 1, 65),
+		ProcessEng.CalculateProductRecoveryFactor(0.95, 1, 1.20)
+	)
+	local grams = 0
+	for _, entry in ipairs(recovered) do
+		grams = grams + (entry.gramsExtracted or 0)
+	end
+	assert(grams <= balance.outputKg * 1000 + 1,
+		"Event bonus created more product than the final mass balance allows")
+end)
+
 -- ═══════════════════════════════════════════════
 -- TEST 7: ECONOMY BALANCE
 -- ═══════════════════════════════════════════════
