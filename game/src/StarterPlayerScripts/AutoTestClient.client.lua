@@ -253,6 +253,12 @@ local processScale = processControl and processControl:FindFirstChild("Responsiv
 check("Process control scales to viewport", processScale ~= nil and processScale:IsA("UIScale")
 	and processScale.Scale > 0 and processScale.Scale <= 1,
 	"process-control modal must have a bounded ResponsiveScale")
+local chemicalAccess = ReplicatedStorage.Remotes:FindFirstChild("RequestChemicalSimulatorAccess")
+local chemicalAccessResult = ReplicatedStorage.Remotes:FindFirstChild("ChemicalSimulatorAccess")
+check("Chemical simulator payment contract is wired",
+	chemicalAccess ~= nil and chemicalAccess:IsA("RemoteEvent")
+		and chemicalAccessResult ~= nil and chemicalAccessResult:IsA("RemoteEvent"),
+	"chemical simulator access request/result remotes are missing")
 
 local mining = findScreenGui("MiningGui")
 local miningScale = mining and mining:FindFirstChild("ResponsiveScale")
