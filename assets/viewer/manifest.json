@@ -1,6 +1,6 @@
 {
   "generated_by": "assets/viewer/build_manifest.py",
-  "count": 97,
+  "count": 105,
   "models": [
     {
       "file": "Barrel_01.glb",
@@ -141,6 +141,12 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "cone_crusher_hd.glb",
+      "stem": "cone_crusher_hd",
+      "label": "Cone Crusher Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "conveyor_belt.glb",
       "stem": "conveyor_belt",
       "label": "Conveyor Belt",
@@ -150,6 +156,12 @@
       "file": "cooling_pit.glb",
       "stem": "cooling_pit",
       "label": "Cooling Pit",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "cooling_pit_hd.glb",
+      "stem": "cooling_pit_hd",
+      "label": "Cooling Pit Hd",
       "set": "Industrial & Game"
     },
     {
@@ -195,6 +207,12 @@
       "set": "Bubble Tea Caf\u00e9"
     },
     {
+      "file": "drying_oven_hd.glb",
+      "stem": "drying_oven_hd",
+      "label": "Drying Oven Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "erlenmeyer_flask.glb",
       "stem": "erlenmeyer_flask",
       "label": "Erlenmeyer Flask",
@@ -210,6 +228,12 @@
       "file": "filtration_press.glb",
       "stem": "filtration_press",
       "label": "Filtration Press",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "filtration_press_hd.glb",
+      "stem": "filtration_press_hd",
+      "label": "Filtration Press Hd",
       "set": "Industrial & Game"
     },
     {
@@ -321,6 +345,12 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "magnetic_separator_hd.glb",
+      "stem": "magnetic_separator_hd",
+      "label": "Magnetic Separator Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "metal_jerrycan.glb",
       "stem": "metal_jerrycan",
       "label": "Metal Jerrycan",
@@ -420,6 +450,12 @@
       "file": "portable_generator.glb",
       "stem": "portable_generator",
       "label": "Portable Generator",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "precipitation_reactor_hd.glb",
+      "stem": "precipitation_reactor_hd",
+      "label": "Precipitation Reactor Hd",
       "set": "Industrial & Game"
     },
     {
@@ -555,9 +591,21 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "vibrating_feeder_hd.glb",
+      "stem": "vibrating_feeder_hd",
+      "label": "Vibrating Feeder Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "vibrating_screen.glb",
       "stem": "vibrating_screen",
       "label": "Vibrating Screen",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "vibrating_screen_hd.glb",
+      "stem": "vibrating_screen_hd",
+      "label": "Vibrating Screen Hd",
       "set": "Industrial & Game"
     },
     {

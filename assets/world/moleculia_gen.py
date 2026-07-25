@@ -206,18 +206,18 @@ ZONE_PROPS = {
 # The real 12-station BOF slag processing chain (SteelSlag.ProcessingStations),
 # in order, mapped to the equipment GLBs we have.
 PROCESS_LINE = [
-    ("Slag Cooling Pit", "cooling_pit.glb"),
-    ("Vibrating Feeder", "screw_conveyor.glb"),
+    ("Slag Cooling Pit", "cooling_pit_hd.glb"),
+    ("Vibrating Feeder", "vibrating_feeder_hd.glb"),
     ("Jaw Crusher", "jaw_crusher_hd.glb"),
-    ("Vibrating Screen", "vibrating_screen.glb"),
-    ("Cone Crusher", "cone_crusher.glb"),
+    ("Vibrating Screen", "vibrating_screen_hd.glb"),
+    ("Cone Crusher", "cone_crusher_hd.glb"),
     ("Ball Mill", "ball_mill_hd.glb"),
-    ("HGMS Magnetic Separator", "magnetic_separator.glb"),
+    ("HGMS Magnetic Separator", "magnetic_separator_hd.glb"),
     ("Roasting Kiln", "roasting_kiln_hd.glb"),
     ("Leaching Tank", "leaching_tank_hd.glb"),   # HD pilot (assets/blender/generate_hd_stations.py)
-    ("Filtration Press", "filtration_press.glb"),
-    ("Precipitation Reactor", "thickener_tank.glb"),
-    ("Drying Oven", "spray_dryer.glb"),
+    ("Filtration Press", "filtration_press_hd.glb"),
+    ("Precipitation Reactor", "precipitation_reactor_hd.glb"),
+    ("Drying Oven", "drying_oven_hd.glb"),
 ]
 
 

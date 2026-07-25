@@ -220,6 +220,15 @@ timeTest("Teleport pads have valid targets", function()
 	assert(padCount > 0, "No teleport pads were built")
 end)
 
+timeTest("Nexus return uses a safe world spawn", function()
+	local returnRemote = Remotes:FindFirstChild("RequestReturnToNexus")
+	local spawn = Workspace:FindFirstChild("MolGangSpawn", true)
+	assert(returnRemote and returnRemote:IsA("RemoteEvent"),
+		"RequestReturnToNexus remote is missing")
+	assert(spawn and spawn:IsA("BasePart") and spawn.Anchored and spawn.CanCollide,
+		"Nexus return has no anchored collidable spawn target")
+end)
+
 timeTest("Atoms folder created", function()
 	local atoms = Workspace:FindFirstChild("Atoms")
 	assert(atoms and atoms:IsA("Folder"), "AtomSpawner did not create Workspace.Atoms")

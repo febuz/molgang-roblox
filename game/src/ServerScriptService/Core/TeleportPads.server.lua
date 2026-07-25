@@ -15,6 +15,21 @@ local boundPads = {}
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
+local function findNexusSpawn()
+	local spawn = workspace:FindFirstChild("MolGangSpawn", true)
+	return spawn and spawn:IsA("BasePart") and spawn or nil
+end
+
+local function nexusCFrame()
+	local spawn = findNexusSpawn()
+	if spawn then
+		-- Keep the player above the actual safe pad; this follows world-builder
+		-- changes instead of silently depending on one hardcoded coordinate.
+		return spawn.CFrame + Vector3.new(0, 5, 0)
+	end
+	return CFrame.new(0, 15, 0) -- startup fallback before world construction
+end
+
 local function returnToNexus(player)
 	local now = os.clock()
 	if playerCooldowns[player.UserId] and now - playerCooldowns[player.UserId] < COOLDOWN then
@@ -24,9 +39,9 @@ local function returnToNexus(player)
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not hrp or not humanoid or humanoid.Health <= 0 then return end
-	-- Fixed server-owned destination; the client cannot supply an arbitrary CFrame.
+	-- Server-owned destination; the client cannot supply an arbitrary CFrame.
 	playerCooldowns[player.UserId] = now
-	character:PivotTo(CFrame.new(0, 15, 0))
+	character:PivotTo(nexusCFrame())
 	hrp.AssemblyLinearVelocity = Vector3.zero
 	hrp.AssemblyAngularVelocity = Vector3.zero
 	humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
