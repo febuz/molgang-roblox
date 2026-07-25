@@ -70,6 +70,28 @@ local function findSoil(soilId)
 	return FertilizerTrack.SoilTypes[1]
 end
 
+-- Act 3 needs a real contaminated sample. Keep it out of the onboarding
+-- plots, then unlock one deterministic empty plot when the player reaches
+-- the crisis chapter instead of leaving the remediation quest impossible.
+local function unlockContaminatedPlot(farm)
+	if type(farm) ~= "table" or type(farm.plots) ~= "table" then return nil end
+	for _, plot in ipairs(farm.plots) do
+		if plot.soilType == "contaminated" then return plot, false end
+	end
+
+	local target
+	for _, plot in ipairs(farm.plots) do
+		if not plot.crop then
+			target = plot
+			break
+		end
+	end
+	if not target then return nil, false end
+
+	if not FertilizerTrack.ApplyContaminatedSoil(target) then return nil, false end
+	return target, true
+end
+
 local function findCrop(cropId)
 	if type(cropId) ~= "string" then return nil end
 	for _, crop in ipairs(FertilizerTrack.Crops) do
@@ -680,6 +702,17 @@ local function checkQuestProgress(player, userId)
 			end
 
 			print("[FertilizerSystem]", player.Name, "completed quest:", quest.id, quest.title)
+		end
+	end
+
+	-- Retry on every sync so a temporarily full farm cannot strand Act 3.
+	if farm.currentAct >= 3 then
+		local crisisPlot, unlocked = unlockContaminatedPlot(farm)
+		if unlocked and crisisPlot then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "ACT 3 UNLOCKED: Contaminated Plot " .. crisisPlot.id .. " is now available for soil analysis and remediation.",
+				rarity = "epic",
+			})
 		end
 	end
 

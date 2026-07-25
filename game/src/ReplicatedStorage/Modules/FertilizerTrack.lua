@@ -206,6 +206,38 @@ FertilizerTrack.SoilTypes = {
 	},
 }
 
+-- Apply the Act 3 contaminated-soil state as one canonical transition. This
+-- keeps the server migration and the chemistry tests aligned on the same
+-- nutrients, pH and contaminant inventory.
+function FertilizerTrack.ApplyContaminatedSoil(plot)
+	if type(plot) ~= "table" then return false end
+	local soil = nil
+	for _, candidate in ipairs(FertilizerTrack.SoilTypes) do
+		if candidate.id == "contaminated" then
+			soil = candidate
+			break
+		end
+	end
+	if not soil then return false end
+
+	plot.soilType = soil.id
+	plot.soilName = soil.name
+	plot.pH = soil.pH
+	plot.nutrients = {
+		N = soil.baseNutrients.N,
+		P = soil.baseNutrients.P,
+		K = soil.baseNutrients.K,
+	}
+	plot.tested = false
+	plot.fertilized = false
+	plot.fertilizerUsed = nil
+	plot.contaminants = {}
+	for _, contaminant in ipairs(soil.contaminants or {}) do
+		table.insert(plot.contaminants, contaminant)
+	end
+	return true
+end
+
 -- ═══════════════════════════════════════════════
 -- CROP TYPES
 -- Each crop has ideal NPK and pH requirements

@@ -39,4 +39,14 @@ assert(FertilizerTrack.ApplyDemandMultiplier(100, 1.6) == 160,
 assert(FertilizerTrack.ApplyDemandMultiplier(100, 0.8) == 80,
 	"low fertilizer demand must reduce sale price")
 
-print("Fertilizer Tests: 13 passed, 0 failed")
+local crisisPlot = {soilType = "loam", soilName = "Loam Soil", tested = true, fertilized = true}
+assert(FertilizerTrack.ApplyContaminatedSoil(crisisPlot),
+	"Act 3 must expose a canonical contaminated-soil transition")
+assert(crisisPlot.soilType == "contaminated" and crisisPlot.pH == 3.0,
+		"contaminated soil must reset to its authored chemistry")
+assert(crisisPlot.nutrients.N == 5 and crisisPlot.nutrients.P == 3 and crisisPlot.nutrients.K == 5,
+		"contaminated soil must use the low-nutrient baseline")
+assert(#crisisPlot.contaminants == 3 and crisisPlot.contaminants[1] == "Cr",
+		"contaminated soil must carry the heavy-metal sample")
+
+print("Fertilizer Tests: 17 passed, 0 failed")
