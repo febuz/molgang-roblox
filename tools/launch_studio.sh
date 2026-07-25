@@ -1,7 +1,7 @@
 #!/bin/bash
 # MOLGANG — Launch Roblox Studio with the latest build
 #
-# Usage: ./launch_studio.sh
+# Usage: ./launch_studio.sh [--software-render]
 #
 # 1. Builds the .rbxl from Rojo
 # 2. Copies to Wine Documents folder
@@ -16,6 +16,24 @@ WINE_DOCS="/home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/prefixes/st
 WINE_PLACE="Z:/home/knight2/Documents/MOLGANG_OTAP_Test.rbxl"
 PARENT_SESSION_GUID=$(cat /proc/sys/kernel/random/uuid)
 KEEP_STUDIO=0
+
+case "${1:-}" in
+  --software-render)
+    MOLGANG_SOFTWARE_RENDER=1
+    ;;
+  --help|-h)
+    echo "Usage: $0 [--software-render]"
+    echo "  --software-render  use llvmpipe fallback for EGL/DRI3 hosts"
+    echo "  Set KEEP_STUDIO=1 to keep Studio open when the launcher exits"
+    exit 0
+    ;;
+  "")
+    ;;
+  *)
+    echo "Unknown option: $1 (use --help)" >&2
+    exit 2
+    ;;
+esac
 
 echo "=== MOLGANG Studio Launcher ==="
 echo ""
