@@ -414,19 +414,12 @@ closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 
--- GUIManager owns the A shortcut; refresh when any opener enables this GUI.
+-- GUIManager owns the achievement shortcut; refresh when any opener enables this GUI.
 screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	if screenGui.Enabled then
 		if not playerData then refreshPlayerData() end
 		updateDisplay()
 	end
 end)
-
-_G.AchievementsGuiToggle = function()
-	screenGui.Enabled = not screenGui.Enabled
-	if screenGui.Enabled then
-		updateDisplay()
-	end
-end
 
 print("[AchievementsGui] Loaded — Press K to toggle achievements")

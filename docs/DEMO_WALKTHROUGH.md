@@ -37,13 +37,13 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
                                                     Camera sparkle effect
 0:15    Open Periodic Table     P key               Tutorial step 3 clears
 0:16    Close it                P key               Back to 3D view
-0:17    Open Dashboard          D key               Tutorial step 4 clears
-0:18    Close it                D key               
+0:17    Open Dashboard          U key               Tutorial step 4 clears
+0:18    Close it                U key               
 0:19    Walk + collect 3 atoms  W+A keys            Glowing orbs nearby
 0:30    Tutorial Step 5 done    —                   "Collect 3 More" cleared
 0:31    Open Recipe Book        R key               Tutorial step 6
 0:32    Close Recipe Book       R key               
-0:33    Open Slag Processing    S key               Tutorial step 7
+0:33    Open Slag Processing    J key               Tutorial step 7
 0:34    Close all               Esc key             
 0:35    Open Process Control    C key               Tutorial step 8
 0:36    Close                   Esc key             
@@ -158,7 +158,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
                                                     Brightness increases subtly
 10:00   Buff expires            auto                Cup disappears from hand
                                                     Continue collecting at normal rate
-12:00   Check leach progress    S key → Monitor     Progress bar ~95%
+12:00   Check leach progress    J key -> Monitor    Progress bar ~95%
 12:30   Close, keep collecting  Esc                 Almost done!
 ```
 
@@ -169,7 +169,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 ```
 13:10   NOTIFICATION!           auto                "Leach complete!" fanfare sound
                                                     Screen flash (molecule synthesis effect)
-13:12   Open Slag Processing    S key               
+13:12   Open Slag Processing    J key               
 13:13   Click Monitor tab       left click          Leach shows "COMPLETE!" in green
                                                     Progress bar 100%
 13:15   Click "EXTRACT"         left click          Products appear in inventory!
@@ -191,7 +191,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 ### Phase 9: Second Leach Cycle (13:25 - 25:30)
 
 ```
-13:26   Open Slag Processing    S key               Start second batch
+13:26   Open Slag Processing    J key               Start second batch
 13:27   Buy Raw Slag            click               -50 MC
 13:28   Hammer ×8               8 clicks            Crush bar fills
 13:30   Ball Mill grind         click               -200 MC

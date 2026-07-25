@@ -74,7 +74,7 @@ local shortcuts = {
 	{col = 2, header = "CHEMISTRY & PRODUCTION"},
 	{col = 2, key = "P", desc = "Periodic Table"},
 	{col = 2, key = "R", desc = "Recipe Book (molecules)"},
-	{col = 2, key = "S", desc = "Slag Processing"},
+	{col = 2, key = "J", desc = "Slag Processing"},
 	{col = 2, key = "C", desc = "Process Control"},
 	{col = 2, key = "T", desc = "Research Tree"},
 	{col = 2, key = "F", desc = "Fertilizer Lab"},
@@ -83,7 +83,7 @@ local shortcuts = {
 
 	-- Column 3: Economy & Social
 	{col = 3, header = "ECONOMY & SOCIAL"},
-	{col = 3, key = "D", desc = "Dashboard"},
+	{col = 3, key = "U", desc = "Dashboard"},
 	{col = 3, key = "I", desc = "Inventory"},
 	{col = 3, key = "Tab", desc = "Wallet"},
 	{col = 3, key = "V", desc = "Mining"},

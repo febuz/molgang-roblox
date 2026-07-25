@@ -122,7 +122,7 @@ local hintLabel = Instance.new("TextLabel")
 hintLabel.Size = UDim2.new(1, -16, 0, 16)
 hintLabel.Position = UDim2.new(0, 8, 0, 44)
 hintLabel.BackgroundTransparency = 1
-hintLabel.Text = "TIP: Process slag (S key) → extract atoms → sell as refined products here for MolCoins!"
+hintLabel.Text = "TIP: Process slag (J key) -> extract atoms -> sell as refined products here for MolCoins!"
 hintLabel.TextColor3 = Color3.fromRGB(100, 180, 130)
 hintLabel.TextScaled = true; hintLabel.Font = Enum.Font.Gotham
 hintLabel.TextXAlignment = Enum.TextXAlignment.Left

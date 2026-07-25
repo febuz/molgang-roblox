@@ -125,13 +125,13 @@ shortcutsHeader.Parent = scroll
 
 local shortcuts = {
 	{key = "P", action = "Periodic Table (118 elements)"},
-	{key = "D", action = "Dashboard (build/trade/research)"},
+	{key = "U", action = "Dashboard (build/trade/research)"},
 	{key = "I", action = "Inventory (atoms & molecules)"},
 	{key = "K", action = "Achievements & Badges"},
 	{key = "L", action = "Leaderboards (top 100)"},
 	{key = "Q", action = "Quest Tracker"},
 	{key = "R", action = "Recipe Book (molecule crafting)"},
-	{key = "S", action = "Slag Processing (ChemEng)"},
+	{key = "J", action = "Slag Processing (ChemEng)"},
 	{key = "F", action = "Fertilizer Lab (NPK farming)"},
 	{key = "G", action = "Factory Builder (entrepreneur)"},
 	{key = "C", action = "Process Control Panel (gauges)"},

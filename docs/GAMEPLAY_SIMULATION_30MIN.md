@@ -67,13 +67,13 @@
 | 0:16 | Quest hint appears | — | 6s | "Press Q for Quest Log" banner |
 | 0:20 | Read tutorial Step 3 | P (key) | 1s | Open Periodic Table → shows collected element |
 | 0:21 | Close Periodic Table | P or Esc | 0.5s | Tutorial step 3 cleared |
-| 0:22 | Open Dashboard | D (key) | 1s | Tutorial step 4 |
-| 0:23 | Close Dashboard | D or Esc | 0.5s | |
+| 0:22 | Open Dashboard | U (key) | 1s | Tutorial step 4 |
+| 0:23 | Close Dashboard | U or Esc | 0.5s | |
 | 0:25 | Collect 3 more atoms | WASD + proximity | 30-60s | Walk around hub collecting atoms |
 | 1:00 | Tutorial Step 5 done | — | auto | "Collect 3 More Atoms" cleared |
 | 1:00 | Tutorial Step 6 | R (key) | 1s | "Build a Molecule!" → opens Recipe Book |
 | 1:01 | Browse recipes | scroll + click | 10s | See H2O, NaCl, etc. with valence hints |
-| 1:10 | Tutorial Step 7 | S (key) | 1s | "Process Steel Slag!" → opens Slag Processing |
+| 1:10 | Tutorial Step 7 | J (key) | 1s | "Process Steel Slag!" -> opens Slag Processing |
 | 1:12 | Tutorial Step 8 | C (key) | 1s | Process Control Panel |
 | 1:15 | Tutorial Step 9 | — | 8s auto | "Become an Entrepreneur!" |
 | 1:25 | Tutorial complete | — | 10s auto | "You're Ready!" final step |

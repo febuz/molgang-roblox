@@ -156,6 +156,8 @@ end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
+	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+	if UserInputService:GetFocusedTextBox() then return end
 
 	-- P = Toggle Periodic Table
 	if input.KeyCode == Enum.KeyCode.P then
@@ -167,8 +169,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleGui("WalletGui")
 	end
 
-	-- D = Toggle Dashboard
-	if input.KeyCode == Enum.KeyCode.D then
+	-- U = Toggle Dashboard. D is reserved for right movement in WASD.
+	if input.KeyCode == Enum.KeyCode.U then
 		toggleGui("DashboardGui")
 	end
 
@@ -201,8 +203,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 	end
 
-	-- S = Toggle Slag Processing
-	if input.KeyCode == Enum.KeyCode.S then
+	-- J = Toggle Slag Processing. S is reserved for backward movement in WASD.
+	if input.KeyCode == Enum.KeyCode.J then
 		toggleGui("SlagProcessingGui")
 	end
 

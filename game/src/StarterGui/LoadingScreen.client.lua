@@ -297,7 +297,7 @@ local controlsData = {
 	{"WASD", "Bewegen"},
 	{"Space", "Springen"},
 	{"P", "Elementen bekijken"},
-	{"D", "Dashboard openen"},
+	{"U", "Dashboard openen"},
 }
 
 local controlsFrame = Instance.new("Frame")

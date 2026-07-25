@@ -69,14 +69,14 @@ local PATHS = {
 	explorer = {
 		{title = "Welkom, ontdekker!", text = "Beweeg met WASD. Zoek één gloeiende bol en raak hem aan.", condition = "collect_atom"},
 		{title = "Je eerste element!", text = "Goed gevonden. Druk P om te zien welk element je hebt ontdekt.", condition = "press_key", key = Enum.KeyCode.P},
-		{title = "Kies je volgende stap", text = "Verken rustig verder. Met D open je later je dashboard.", condition = "auto", delay = 5},
+		{title = "Kies je volgende stap", text = "Verken rustig verder. Met U open je later je dashboard.", condition = "auto", delay = 5},
 		{title = "Klaar om te ontdekken", text = "Je kunt nu vrij rondlopen. Vraag hulp bij een NPC als je vastloopt.", condition = "auto", delay = 6, isFinal = true},
 	},
 	scientist = {
 		{title = "Welkom, jonge onderzoeker!", text = "Verzamel drie elementen en gebruik P om de Periodieke Tabel te lezen.", condition = "collect_atoms", target = 3},
 		{title = "Lees je meetresultaat", text = "Open P en vergelijk symbool, atoomnummer en zeldzaamheid.", condition = "press_key", key = Enum.KeyCode.P},
 		{title = "Bouw een molecule", text = "Open R en combineer alleen de elementen die een recept vraagt.", condition = "press_key", key = Enum.KeyCode.R},
-		{title = "Test je kennis", text = "Open D voor je dashboard en start daarna een quiz bij een quizpunt.", condition = "press_key", key = Enum.KeyCode.D},
+		{title = "Test je kennis", text = "Open U voor je dashboard en start daarna een quiz bij een quizpunt.", condition = "press_key", key = Enum.KeyCode.U},
 		{title = "Klaar voor experimenten", text = "Probeer daarna de farm of het laboratorium. Je kunt altijd terug naar de basis.", condition = "auto", delay = 7, isFinal = true},
 	},
 	engineer = {
@@ -99,9 +99,9 @@ local PATHS = {
 	},
 	{
 		title = "Bekijk je dashboard",
-		text = "Druk D om je dashboard te openen. Daar bouw je faciliteiten en beheer je je bedrijf.",
+		text = "Druk U om je dashboard te openen. Daar bouw je faciliteiten en beheer je je bedrijf.",
 		condition = "press_key",
-		key = Enum.KeyCode.D,
+		key = Enum.KeyCode.U,
 	},
 	{
 		title = "Verzamel nog drie atomen",
@@ -117,9 +117,9 @@ local PATHS = {
 	},
 	{
 		title = "Verwerk staalslak",
-		text = "Druk S voor het Slakverwerkingslab. Koop slak, vermaal hem en loog metalen uit met zuur.",
+		text = "Druk J voor het Slakverwerkingslab. Koop slak, vermaal hem en loog metalen uit met zuur.",
 		condition = "press_key",
-		key = Enum.KeyCode.S,
+		key = Enum.KeyCode.J,
 	},
 	{
 		title = "Bestuur je proces",

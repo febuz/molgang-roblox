@@ -143,7 +143,7 @@ function NPCDialogues.GetQuestDialogue(npcName, playerData)
 		elseif atomCount < 10 then
 			return {text = "Good job collecting " .. atomCount .. " atoms! Try pressing R to combine them into molecules.", choices = {"How do molecules work?", "Thanks!"}}
 		else
-			return {text = "You're becoming a real chemist! Have you tried the Slag Processing lab? Press S!", choices = {"Tell me about slag", "I'll try it!"}}
+			return {text = "You're becoming a real chemist! Have you tried the Slag Processing lab? Press J!", choices = {"Tell me about slag", "I'll try it!"}}
 		end
 	elseif npcName == "Prof. Femke" then
 		if not hasFactory then

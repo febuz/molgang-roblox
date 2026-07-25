@@ -67,11 +67,11 @@ Then press **F5** to play!
 - Spawn in Nexus Hub
 - Walk around (WASD)
 - Collect atoms (yellow spheres)
-- Open Dashboard (D key)
+- Open Dashboard (U key)
 - Build facilities, trade, check leaderboards
 
 ### Step 4: Explore
-- **D** = Dashboard (main UI)
+- **U** = Dashboard (main UI)
 - **L** = Leaderboards
 - **P** = Periodic Table
 - **R** = Recipe Book
@@ -335,4 +335,3 @@ Everything is ready:
 **Happy gaming! 🎮**
 
 Ready to launch? Run: `/home/knight2/demo-molgang.sh`
-
