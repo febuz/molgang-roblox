@@ -14,6 +14,7 @@ local requiredGuis = {
 	"HUDWidget", "DashboardGui", "QuizGui", "SlagProcessingGui",
 	"FactoryBuilderGui", "MiningGui", "ResearchGui", "InventoryGui",
 	"WalletGui", "ProductMarketGui", "MinimapGui", "QuestModal",
+	"OTAPNavigationOverlay",
 }
 
 -- GUI LocalScripts start independently and Studio/Wine can spend 15–30s
