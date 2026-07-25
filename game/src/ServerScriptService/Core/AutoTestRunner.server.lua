@@ -133,6 +133,12 @@ end)
 		assert(station:GetAttribute("InteractionType") == contract.interactionType,
 			stationKey .. " station interaction type drifted")
 		assert(contract.radius > 0, stationKey .. " station has no positive access radius")
+		local mapPosition = contract.mapPosition
+		assert(type(mapPosition) == "table"
+			and math.abs(station.Position.X - mapPosition.x) <= 1
+			and math.abs(station.Position.Y - mapPosition.y) <= 1
+			and math.abs(station.Position.Z - mapPosition.z) <= 1,
+			stationKey .. " station drifted from its minimap position")
 	end
 end)
 
