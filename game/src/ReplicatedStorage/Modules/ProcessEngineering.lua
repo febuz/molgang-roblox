@@ -142,6 +142,7 @@ function ProcessEngineering.CreateMassBalance()
 		wasteKg = 0,
 		lossKg = 0,       -- unaccounted loss
 		recovery = 0,      -- % recovery
+		aggregateKg = 0,   -- solid leach residue suitable for aggregate sales
 		steps = {},        -- {stepName, inputKg, outputKg, wasteKg, efficiency}
 	}
 end
@@ -226,6 +227,7 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 		residue = residue + afterMagSep * unlistedFraction
 		ProcessEngineering.AddStep(balance, "Leaching (" .. (reagent.name or reagentId) .. " @ " .. temperature .. "°C)",
 			afterMagSep, dissolved, residue)
+		balance.aggregateKg = math.floor(residue * 1000 + 0.5) / 1000
 
 		-- Step 4: Filtration (separates solution from residue)
 		local filtLoss = dissolved * 0.02  -- 2% loss in filter cake

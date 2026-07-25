@@ -62,6 +62,8 @@ assert(pipeline.inputKg == 1, "full slag pipeline must use one kilogram feed")
 assert(pipeline.lossKg >= -0.001 and pipeline.lossKg <= 0.001,
 	"full slag pipeline must conserve mass")
 assert(#pipeline.steps == 5, "full slag pipeline must report all five stages")
+assert(pipeline.aggregateKg > 0 and pipeline.aggregateKg < pipeline.inputKg,
+	"aggregate residue must be a positive substream of the feed")
 
 local chunk = ProcessEngineering.CalculateSlagMassBalance("chunk", "H2SO4", 65, SteelSlag)
 local crushed = ProcessEngineering.CalculateSlagMassBalance("crushed", "H2SO4", 65, SteelSlag)

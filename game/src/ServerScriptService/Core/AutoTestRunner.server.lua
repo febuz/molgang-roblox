@@ -369,6 +369,8 @@ timeTest("Slag pipeline preserves mass and yields product", function()
 	assert(math.abs(balance.inputKg - 1) < 0.001, "Unexpected feed mass: " .. tostring(balance.inputKg))
 	assert(balance.outputKg > 0, "Pipeline produced no final product mass")
 	assert(balance.wasteKg >= 0, "Pipeline produced negative waste")
+	assert(balance.aggregateKg > 0 and balance.aggregateKg < balance.inputKg,
+		"Pipeline did not expose a physical aggregate residue stream")
 	assert(balance.lossKg >= -0.001, "Mass balance gained material: " .. tostring(balance.lossKg))
 	local accounted = balance.outputKg + balance.wasteKg + math.max(0, balance.lossKg)
 	assert(math.abs(accounted - balance.inputKg) < 0.01,

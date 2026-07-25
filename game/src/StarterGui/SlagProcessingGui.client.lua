@@ -792,11 +792,12 @@ if slagInvEvent then
 					if type(balance) == "table" and type(balance.inputKg) == "number" then
 						local outputKg = tonumber(balance.outputKg) or 0
 						local wasteKg = tonumber(balance.wasteKg) or 0
+						local aggregateKg = tonumber(balance.aggregateKg) or wasteKg
 						local recovery = tonumber(balance.recovery) or 0
 						label(card, {Name="MassBalance", Size=UDim2.new(0.58,0,0,14),
 							Position=UDim2.new(0.05,0,0,86),
-							Text=string.format("Mass: %.2f → %.2f kg | residue %.2f kg | %.1f%% recovery",
-								balance.inputKg, outputKg, wasteKg, recovery),
+							Text=string.format("Mass: %.2f → %.2f kg | aggregate %.2f kg | %.1f%% recovery",
+								balance.inputKg, outputKg, aggregateKg, recovery),
 							Color=C.gold})
 					end
 
