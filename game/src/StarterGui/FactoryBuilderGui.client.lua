@@ -85,6 +85,13 @@ main.BackgroundTransparency = 0.02
 main.Parent = screenGui
 corner(main, 12)
 local ms = Instance.new("UIStroke"); ms.Color = C.accent; ms.Thickness = 2; ms.Parent = main
+local factoryStatusLabel
+local function setFactoryStatus(text, color)
+	if factoryStatusLabel then
+		factoryStatusLabel.Text = text
+		factoryStatusLabel.TextColor3 = color or C.textDim
+	end
+end
 
 -- Title bar
 local titleBar = Instance.new("Frame")
@@ -171,7 +178,12 @@ corner(rentBtn, 6)
 rentBtn.Activated:Connect(function()
 	playUIClick()
 	local r = Remotes:FindFirstChild("RequestRentFactory")
-	if r then r:FireServer() end
+	if r then
+		setFactoryStatus("Rent request sent — checking balance…", C.gold)
+		r:FireServer()
+	else
+		setFactoryStatus("Factory service is still loading.", C.invalidPlace)
+	end
 end)
 
 -- Catalog scroll
@@ -275,7 +287,12 @@ for _, item in ipairs(FactoryEquipment.Items) do
 
 	buyBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestBuyEquipment")
-		if r then r:FireServer(item.id) end
+		if r then
+			setFactoryStatus("Buying " .. item.name .. "…", C.gold)
+			r:FireServer(item.id)
+		else
+			setFactoryStatus("Factory service is still loading.", C.invalidPlace)
+		end
 	end)
 
 	-- Select for placement on click
@@ -310,13 +327,25 @@ corner(gridPanel, 8)
 
 -- Grid header
 local gridHeader = Instance.new("TextLabel")
-gridHeader.Size = UDim2.new(1, 0, 0, 18)
+gridHeader.Size = UDim2.new(0.55, 0, 0, 18)
 gridHeader.BackgroundTransparency = 1
 gridHeader.Text = "Click grid to place selected equipment | R=Rotate | X=Remove | Scroll=Zoom"
 gridHeader.TextColor3 = C.textDim
 gridHeader.TextScaled = true
 gridHeader.Font = Enum.Font.Gotham
 gridHeader.Parent = gridPanel
+
+factoryStatusLabel = Instance.new("TextLabel")
+factoryStatusLabel.Name = "ActionStatus"
+factoryStatusLabel.Size = UDim2.new(0.45, -8, 0, 18)
+factoryStatusLabel.Position = UDim2.new(0.55, 4, 0, 0)
+factoryStatusLabel.BackgroundTransparency = 1
+factoryStatusLabel.Text = "Select equipment, then click a grid cell."
+factoryStatusLabel.TextColor3 = C.textDim
+factoryStatusLabel.TextScaled = true
+factoryStatusLabel.Font = Enum.Font.Gotham
+factoryStatusLabel.TextXAlignment = Enum.TextXAlignment.Right
+factoryStatusLabel.Parent = gridPanel
 
 -- Grid canvas (scrollable/zoomable)
 local gridCanvas = Instance.new("Frame")
@@ -344,7 +373,12 @@ for x = 1, GRID_W do
 		cell.Activated:Connect(function()
 			if selectedEquipment then
 				local r = Remotes:FindFirstChild("RequestPlaceEquipment")
-				if r then r:FireServer(selectedEquipment, x, y, currentRotation) end
+				if r then
+					setFactoryStatus("Placing " .. selectedEquipment .. " at (" .. x .. "," .. y .. ")…", C.gold)
+					r:FireServer(selectedEquipment, x, y, currentRotation)
+				else
+					setFactoryStatus("Factory service is still loading.", C.invalidPlace)
+				end
 			end
 		end)
 
@@ -381,7 +415,12 @@ for x = 1, GRID_W do
 				task.delay(5, function() if cg.Parent then cg:Destroy() end end)
 			else
 				local r = Remotes:FindFirstChild("RequestRemoveEquipment")
-				if r then r:FireServer(x, y) end
+				if r then
+					setFactoryStatus("Removing equipment at (" .. x .. "," .. y .. ")…", C.gold)
+					r:FireServer(x, y)
+				else
+					setFactoryStatus("Factory service is still loading.", C.invalidPlace)
+				end
 			end
 		end)
 
@@ -616,6 +655,20 @@ if factoryEvent then
 				end
 			end
 		end
+	end)
+end
+
+local equipmentPlacedEvent = Remotes:FindFirstChild("EquipmentPlaced")
+if equipmentPlacedEvent then
+	equipmentPlacedEvent.OnClientEvent:Connect(function(data)
+		setFactoryStatus("Placed " .. (data.name or data.itemId or "equipment") .. " ✓", C.validPlace)
+	end)
+end
+
+local equipmentRemovedEvent = Remotes:FindFirstChild("EquipmentRemoved")
+if equipmentRemovedEvent then
+	equipmentRemovedEvent.OnClientEvent:Connect(function(data)
+		setFactoryStatus("Equipment removed and returned to inventory ✓", C.validPlace)
 	end)
 end
 
