@@ -141,6 +141,11 @@ if loadingScreen then
 		local routeSelector = tutorial:FindFirstChild("PathSelector", true)
 		check("Tutorial presents age-aware route selector", routeSelector ~= nil,
 			"PathSelector is missing from the first-run tutorial")
+		local routeScrim = tutorial:FindFirstChild("RouteSelectorScrim", true)
+		check("Tutorial selector isolates underlying HUD", routeScrim ~= nil
+			and routeScrim:IsA("GuiObject") and routeScrim.Active
+			and tutorial.DisplayOrder > 100,
+			"route selector needs an active scrim above the loading/HUD layers")
 		for _, routeKey in ipairs({"explorer", "scientist", "engineer"}) do
 			local routeButton = routeSelector and routeSelector:FindFirstChild(routeKey .. "Path", true)
 			check("Tutorial route exists: " .. routeKey,
@@ -166,7 +171,8 @@ local mainHud = findScreenGui("MolgangHUD")
 local universalReturn = mainHud and mainHud:FindFirstChild("ReturnToNexus", true)
 local returnRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestReturnToNexus")
 check("HUD has universal Nexus return", universalReturn ~= nil
-	and universalReturn:IsA("GuiButton") and universalReturn.Active and returnRemote ~= nil,
+	and universalReturn:IsA("GuiButton") and universalReturn.Active
+	and universalReturn.Visible and returnRemote ~= nil,
 	"player must be able to return to Nexus without falling or opening mining")
 local dashboard = findScreenGui("DashboardGui")
 local dashboardButton = findButtonByText(hud, "Dash")
@@ -274,7 +280,8 @@ check("Mining scales to viewport", miningScale ~= nil and miningScale:IsA("UISca
 local returnToNexusButton = mining and mining:FindFirstChild("ReturnToNexusBtn", true)
 local returnToNexusRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestReturnToNexus")
 check("Mining has safe return to Nexus", returnToNexusButton ~= nil
-	and returnToNexusButton:IsA("GuiButton") and returnToNexusRemote ~= nil,
+	and returnToNexusButton:IsA("GuiButton") and returnToNexusButton.Active
+	and returnToNexusButton.Visible and returnToNexusRemote ~= nil,
 	"mining outpost must expose a safe Nexus return button and remote")
 
 local fertilizer = findScreenGui("FertilizerGui")
