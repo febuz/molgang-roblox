@@ -438,6 +438,81 @@ const SIM_BASE = params.get('sim') || 'http://127.0.0.1:8077';
 const SIM_URL = SIM_BASE + '/state';
 const agentMeshes = new Map();   // id -> { sprite, from, to, t }
 let simOk = false, simPollMs = 150;
+
+// ---------- client-side reactor: the same chemistry, no server needed ----------
+// Ports process_sim.py so the process loop (operate -> V2O5 -> sell) works on a
+// static host where the Python sim isn't running (the normal case for a published
+// site). Activates whenever the sim is unreachable.
+const CR = {
+  temperature: 70, pressure: 180, flowRate: 4, pH: 2.5, reactorVolume: 50,
+  particleSize: 'ground', deironized: false, roasted: false,
+  conversion: 0, v2o5_kg: 0, batches: 0, manual: false, _tempTarget: 70, _t: 0,
+};
+let crClientActive = false;                       // true once we know there's no server
+const LEACH_MULT = { chunk: 7, crushed: 3, ground: 1, powder: 0.3 };
+const PRECIP = { Fe: [3.0, 4.5], Al: [4.0, 5.5], V: [1.8, 3.0] };
+const clampf = (x, a, b) => Math.max(a, Math.min(b, x));
+const arrheniusM = (tc, ea = 50) => Math.exp(-(ea * 1000) / 8.314 * (1 / (tc + 273.15) - 1 / 298.15));
+const pressureM = (kPa) => clampf(kPa / 101.325, 0.3, 4);
+const residenceM = (flow, vol) => (flow <= 0 ? 1 : clampf((1 - Math.exp(-((vol / flow) / 30))) / 0.632, 0.1, 1.5));
+function precipF(metal, pH) { const w = PRECIP[metal]; if (!w) return 0; if (pH <= w[0]) return 0; if (pH >= w[1]) return 1; return (pH - w[0]) / (w[1] - w[0]); }
+const crRate = () => arrheniusM(CR.temperature) * pressureM(CR.pressure) * residenceM(CR.flowRate, CR.reactorVolume);
+const crRecovery = () => CR.conversion * precipF('V', CR.pH) * (CR.deironized ? 1 : (1 - precipF('Fe', CR.pH))) * (1 - precipF('Al', CR.pH));
+function crTick(dt) {
+  CR._t += dt;
+  if (CR.manual) CR.temperature += (CR._tempTarget - CR.temperature) * Math.min(1, dt * 0.6);
+  else CR.temperature = 70 + 18 * Math.sin(CR._t * 0.15);
+  let k = 0.05 / (LEACH_MULT[CR.particleSize] || 1); if (CR.roasted) k *= 1.25;
+  CR.conversion = clampf(CR.conversion + k * crRate() * (1 - CR.conversion) * dt, 0, 1);
+  if (CR.conversion >= 0.995) { CR.v2o5_kg += 100 * 0.015 * crRecovery(); CR.batches++; CR.conversion = 0; }
+}
+const crStateObj = () => ({
+  temperature: Math.round(CR.temperature * 10) / 10, pressure: Math.round(CR.pressure * 10) / 10,
+  flowRate: CR.flowRate, pH: CR.pH, conversion: Math.round(CR.conversion * 1000) / 1000,
+  rate: Math.round(crRate() * 100) / 100, yield: Math.round(crRecovery() * 1000) / 1000,
+  particleSize: CR.particleSize, leachSpeed: Math.round(100 / (LEACH_MULT[CR.particleSize] || 1)) / 100,
+  deironized: CR.deironized, roasted: CR.roasted, v2o5: Math.round(CR.v2o5_kg * 100) / 100,
+  batches: CR.batches, manual: CR.manual,
+});
+function crSet(d) {
+  CR.manual = true;
+  const R = { temperature: [25, 95], pressure: [100, 300], flowRate: [1, 10], pH: [1, 6] };
+  for (const k in R) if (k in d) { const v = clampf(+d[k], R[k][0], R[k][1]); if (k === 'temperature') CR._tempTarget = v; else CR[k] = v; }
+  if (d.particleSize in LEACH_MULT) CR.particleSize = d.particleSize;
+  for (const f of ['deironized', 'roasted']) if (f in d) CR[f] = !!d[f];
+}
+const crSell = () => { const kg = CR.v2o5_kg; CR.v2o5_kg = 0; return { kg: Math.round(kg * 100) / 100, coins: Math.round(kg * 500) }; };
+// Push control changes to the client reactor (works offline) AND the server (if any).
+function pushControls(d) {
+  crSet(d);
+  fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).catch(() => {});
+}
+// Render one reactor state object (server- or client-sourced) into the HUD/panel.
+function applyReactorState(rx) {
+  const rel = document.getElementById('reactor');
+  if (rx && rel) rel.innerHTML = `⚗️ leach reactor · ${(rx.conversion * 100) | 0}% converted `
+    + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)`
+    + `${rx.manual ? '' : ' · idling'}</span>`;
+  if (!rx || rx.yield == null) return;
+  const yv = document.getElementById('y-val'); if (yv) yv.textContent = `${(rx.yield * 100) | 0}%`;
+  const yp = document.getElementById('y-parts'); if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
+  if (rx.particleSize) reflectParticleSize(rx.particleSize, rx.leachSpeed);
+  reflectPrep(rx);
+  if (rx.v2o5 != null) {
+    const pv = document.getElementById('p-val'); if (pv) pv.textContent = `${rx.v2o5.toFixed(2)} kg`;
+    const pb = document.getElementById('p-batches'); if (pb) pb.textContent = rx.batches ? `· ${rx.batches} batch${rx.batches === 1 ? '' : 'es'}` : '';
+    if (lastBatches >= 0 && rx.batches > lastBatches && pv) { pv.classList.add('flash'); setTimeout(() => pv.classList.remove('flash'), 500); }
+    lastBatches = rx.batches;
+  }
+  if (!controlsSynced && MOLECULIA) {
+    controlsSynced = true;
+    const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`, flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
+    for (const key of ['temperature', 'pressure', 'flowRate', 'pH']) {
+      const el = document.getElementById('c-' + key), lab = document.getElementById('v-' + key);
+      if (el && rx[key] != null) { el.value = rx[key]; if (lab) lab.textContent = fmt[key](rx[key]); }
+    }
+  }
+}
 let controlsSynced = false;   // sync the slider panel to the reactor once, on first poll
 let lastBatches = -1;          // detect batch completion to flash the product tally
 
@@ -514,42 +589,14 @@ async function pollSim() {
     if (el) el.textContent = MOLECULIA
       ? `🐍 Python process sim live (Arrhenius/Henry/pH kinetics)`
       : `🐍 Python sim: ${st.n} live agents driving/walking`;
-    const rx = st.reactor, rel = document.getElementById('reactor');
-    if (rx && rel) rel.innerHTML = `⚗️ leach reactor · ${(rx.conversion * 100) | 0}% converted `
-      + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)`
-      + `${rx.manual ? '' : ' · idling'}</span>`;
-    if (rx && rx.yield != null) {
-      const yv = document.getElementById('y-val');
-      if (yv) yv.textContent = `${(rx.yield * 100) | 0}%`;
-      const yp = document.getElementById('y-parts');
-      if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
-      if (rx.particleSize) reflectParticleSize(rx.particleSize, rx.leachSpeed);
-      reflectPrep(rx);
-      if (rx.v2o5 != null) {                          // tangible end product
-        const pv = document.getElementById('p-val');
-        if (pv) pv.textContent = `${rx.v2o5.toFixed(2)} kg`;
-        const pb = document.getElementById('p-batches');
-        if (pb) pb.textContent = rx.batches ? `· ${rx.batches} batch${rx.batches === 1 ? '' : 'es'}` : '';
-        if (lastBatches >= 0 && rx.batches > lastBatches && pv) {
-          pv.classList.add('flash'); setTimeout(() => pv.classList.remove('flash'), 500);
-        }
-        lastBatches = rx.batches;
-      }
-      if (!controlsSynced && MOLECULIA) {   // reflect the actual reactor in the sliders once
-        controlsSynced = true;
-        const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
-                      flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
-        for (const key of ['temperature', 'pressure', 'flowRate', 'pH']) {
-          const el = document.getElementById('c-' + key), lab = document.getElementById('v-' + key);
-          if (el && rx[key] != null) { el.value = rx[key]; if (lab) lab.textContent = fmt[key](rx[key]); }
-        }
-      }
-    }
+    applyReactorState(st.reactor);
   } catch (e) {
-    simOk = false;
-    const el = document.getElementById('sim'); if (el) el.textContent = '🐍 Python sim offline (static world) — run sim_server.py';
+    simOk = false;                          // no server -> the client reactor drives the process
+    const el = document.getElementById('sim');
+    if (el) el.textContent = MOLECULIA ? '⚗️ process chemistry running in-browser (no server needed)'
+                                       : '🐍 Python sim offline (static world) — run sim_server.py';
   }
-  setTimeout(pollSim, simPollMs);
+  setTimeout(pollSim, simOk ? simPollMs : 3000);   // back off when there's no server
 }
 function updateAgents(dt) {
   if (!simOk) return;
@@ -651,12 +698,7 @@ function initControls() {
   const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
                 flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
   let timer = null, pending = {};
-  const flush = () => {
-    timer = null;
-    fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(pending) }).catch(() => {});
-    pending = {};
-  };
+  const flush = () => { timer = null; pushControls(pending); pending = {}; };
   for (const key of ['temperature', 'pressure', 'flowRate', 'pH']) {
     const el = document.getElementById('c-' + key), lab = document.getElementById('v-' + key);
     if (!el) continue;
@@ -668,18 +710,11 @@ function initControls() {
   }
   // Feed particle size from the crushing chain — sets the leach speed.
   for (const b of document.querySelectorAll('#grind button')) {
-    b.addEventListener('click', () => {
-      fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ particleSize: b.dataset.size }) }).catch(() => {});
-    });
+    b.addEventListener('click', () => pushControls({ particleSize: b.dataset.size }));
   }
   // Pre-leach stations: magnetic separation + roasting (toggles).
   for (const b of document.querySelectorAll('#prep button')) {
-    b.addEventListener('click', () => {
-      const on = !b.classList.contains('on');
-      fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [b.dataset.flag]: on }) }).catch(() => {});
-    });
+    b.addEventListener('click', () => pushControls({ [b.dataset.flag]: !b.classList.contains('on') }));
   }
 }
 function reflectPrep(rx) {
@@ -928,10 +963,10 @@ let hasSold = false;
 try { hasSold = JSON.parse(localStorage.getItem('molgang.sold') || 'false'); } catch (e) { /* fresh */ }
 (function wireSell() {
   const b = document.getElementById('sell-btn');
+  const bank = (d) => { if (d && d.coins > 0) { earn(d.coins); hasSold = true; try { localStorage.setItem('molgang.sold', 'true'); } catch (e) { /* quota */ } } };
   if (b) b.addEventListener('click', () => {
-    fetch(SIM_BASE + '/reactor/sell', { method: 'POST' }).then((r) => r.json()).then((d) => {
-      if (d && d.coins > 0) { earn(d.coins); hasSold = true; try { localStorage.setItem('molgang.sold', 'true'); } catch (e) { /* quota */ } }
-    }).catch(() => {});
+    if (simOk) fetch(SIM_BASE + '/reactor/sell', { method: 'POST' }).then((r) => r.json()).then(bank).catch(() => bank(crSell()));
+    else bank(crSell());                          // no server -> sell from the client reactor
   });
 })();
 
@@ -1063,7 +1098,12 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
   step(dt);
   updateAgents(dt);
-  if (now - lastStream > 180) { lastStream = now; stream(); checkCollect(); updateGoals(); }
+  if (!simOk && MOLECULIA) crClientActive = true;   // no server reached -> run chemistry in-browser
+  if (crClientActive && !simOk) crTick(dt);
+  if (now - lastStream > 180) {
+    lastStream = now; stream(); checkCollect(); updateGoals();
+    if (crClientActive && !simOk) applyReactorState(crStateObj());
+  }
   const xr = renderer.xr.isPresenting;
   if (xr) {
     const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons();
