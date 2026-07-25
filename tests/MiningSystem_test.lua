@@ -11,6 +11,14 @@ Vector3 = {
 
 local MiningSystem = require("../game/src/ReplicatedStorage/Modules/MiningSystem")
 
+local practice = MiningSystem.PlotTypes[1]
+assert(MiningSystem.GetExplorationLicenseCost(practice) == 200,
+	"practice outcrop should use its defined affordable license cost")
+assert(MiningSystem.GetManualExplorationCost({plotType = "practice_outcrop", depth = 0}) == 0,
+	"surface practice outcrop should be free to explore by hand")
+assert(MiningSystem.GetManualExplorationCost({plotType = "magnetite_low", depth = 5}) == 500,
+	"non-practice deposits should retain the manual survey cost")
+
 local ids = {}
 for _, plotType in ipairs(MiningSystem.PlotTypes) do
 	assert(not ids[plotType.id], "mining plot type IDs must be unique: " .. plotType.id)

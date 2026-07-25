@@ -273,6 +273,23 @@ MiningSystem.PLOTS_PER_REGION = 6
 MiningSystem.TOTAL_PLOTS = #MiningSystem.PlotLocations * MiningSystem.PLOTS_PER_REGION
 MiningSystem.PLOT_SIZE_STUDS = 100  -- each plot is 100×100 studs
 
+-- Keep the economic rule next to the geological plot data so the UI and
+-- server cannot silently drift apart. Practice outcrops are deliberately
+-- cheap; deeper deposits add a small survey premium.
+function MiningSystem.GetExplorationLicenseCost(plot)
+	if type(plot) ~= "table" then return 0 end
+	local baseCost = math.max(0, tonumber(plot.cost) or 0)
+	local depth = math.max(0, tonumber(plot.depth) or 0)
+	return math.floor(baseCost + depth * 20)
+end
+
+function MiningSystem.GetManualExplorationCost(plot)
+	if type(plot) == "table" and plot.plotType == "practice_outcrop" and (tonumber(plot.depth) or 0) <= 0 then
+		return 0
+	end
+	return 500
+end
+
 -- Generate all mining plots with randomized compositions
 function MiningSystem.GeneratePlots()
 	local plots = {}

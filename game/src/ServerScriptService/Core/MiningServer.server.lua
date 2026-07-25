@@ -32,7 +32,6 @@ local MiningPersistence = require(ReplicatedStorage.Modules.MiningPersistence)
 -- Generate world plots (consistent across all players)
 local worldPlots = MiningSystem.GeneratePlots()
 local MINING_TICK_INTERVAL = 30  -- seconds between mining production ticks
-local EXPLORATION_COST = 1000    -- base cost for exploration license (composition unknown)
 
 local function isValidPlotId(plotId)
 	return type(plotId) == "number"
@@ -183,7 +182,7 @@ Remotes.RequestBuyExplorationLicense.OnServerEvent:Connect(function(player, plot
 	end
 
 	-- Exploration license cost (you DON'T know the composition yet!)
-	local licenseCost = EXPLORATION_COST + (plot.depth * 20)  -- deeper = more expensive license
+	local licenseCost = MiningSystem.GetExplorationLicenseCost(plot)
 	local success = PlayerDataBridge.SpendMolCoins(userId, licenseCost)
 	if not success then
 		Remotes.FireClient("ServerAnnounce", player, {
@@ -246,11 +245,11 @@ Remotes.RequestExplorePlot.OnServerEvent:Connect(function(player, plotId)
 	local pm = getPlayerMining(userId)
 	if not pm.equipment.drill_rig or pm.equipment.drill_rig <= 0 then
 		-- Allow basic exploration with hand tools (slower, costs more)
-		local exploreCost = 500
-		local success = PlayerDataBridge.SpendMolCoins(userId, exploreCost)
+		local exploreCost = MiningSystem.GetManualExplorationCost(plot)
+		local success = exploreCost == 0 or PlayerDataBridge.SpendMolCoins(userId, exploreCost)
 		if not success then
 			Remotes.FireClient("ServerAnnounce", player, {
-				message = "Manual exploration costs 500 MC, or buy a Drill Rig for faster surveys.",
+				message = "Manual exploration costs " .. exploreCost .. " MC, or buy a Drill Rig for faster surveys.",
 				rarity = "common",
 			})
 			return
@@ -633,7 +632,7 @@ function sendMiningUpdate(player, userId)
 				id = plot.id,
 				region = plot.region,
 				depth = plot.depth,
-				licenseCost = EXPLORATION_COST + (plot.depth * 20),
+				licenseCost = MiningSystem.GetExplorationLicenseCost(plot),
 			})
 		end
 	end

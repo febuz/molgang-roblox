@@ -332,14 +332,14 @@
 5. **HSE incidents** are the highest MC/min activity (500-2000 MC per 5-min mission)
 
 ### What Needs Fixing
-1. **Mining is a trap** for new players — 800 MC license depletes starting funds with no short-term return
+1. **Deep mining is a trap** for new players — premium licenses remain expensive, but the Practice Outcrop now costs 200 MC and can be explored by hand for free
 2. **H2O leach is useless** in short sessions — 2880 min base time is days, not minutes
 3. **Factory rent (2000 MC)** is impossible in 30 min — need ~45+ min or prior session wealth
 4. **Ground/Powder crush costs** (200/500 MC) are steep for new players
 5. **Atom spawn rate** limits collection to ~4/min regardless of strategy
 
 ### Recommended Balance Changes
-1. Add a "Practice Mine" that costs 200 MC (vs 800 MC) for tutorial
+1. Use the 200 MC Practice Outcrop and free hand survey as the tutorial mine; keep premium deposits gated behind equipment and capital
 2. Reduce H2O leach time further (or make it tutorial-only)
 3. Add "First Molecule" quest: build H2O = 200 MC bonus
 4. Consider factory "trial rental" (500 MC for 1 game month)
