@@ -164,6 +164,12 @@ for _, guiName in ipairs({"InventoryGui", "LeaderboardGui", "AchievementsGui"}) 
 		"large modal must have a bounded ResponsiveScale")
 end
 
+local slagProcessing = findScreenGui("SlagProcessingGui")
+local slagScale = slagProcessing and slagProcessing:FindFirstChild("ResponsiveScale")
+check("Slag processing scales to viewport", slagScale ~= nil and slagScale:IsA("UIScale")
+	and slagScale.Scale > 0 and slagScale.Scale <= 1,
+	"core production modal must have a bounded ResponsiveScale")
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")

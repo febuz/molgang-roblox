@@ -117,11 +117,28 @@ screenGui.DisplayOrder = 15
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local slagCamera = workspace.CurrentCamera
+local function updateSlagScale()
+	if not slagCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(slagCamera.ViewportSize.X - 20) / 820,
+		(slagCamera.ViewportSize.Y - 20) / 560
+	), 0.65, 1)
+end
+updateSlagScale()
+if slagCamera then
+	slagCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateSlagScale)
+end
+
 -- Main panel
 local main = Instance.new("Frame")
 main.Name = "MainPanel"
 main.Size = UDim2.new(0, 820, 0, 560)
-main.Position = UDim2.new(0.5, -410, 0.5, -280)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
