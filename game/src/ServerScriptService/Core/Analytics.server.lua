@@ -32,6 +32,7 @@ local function getSession(userId)
 		local sessionId = tostring(joinTime) .. "_" .. tostring(math.floor(os.clock() * 1000))
 		playerSessions[userId] = PlayerPathAnalytics.NewSession(joinTime, os.clock(), sessionId, {
 				atomsCollected = 0,
+				atomsProduced = 0,
 				moleculesBuilt = 0,
 				leachesStarted = 0,
 				productsSold = 0,
@@ -103,6 +104,11 @@ end
 -- Dots (which share the remote but are not normal atom production).
 PlayerDataBridge.OnAtomCollected(function(userId)
 	trackEvent(userId, "atomsCollected", 1)
+end)
+
+PlayerDataBridge.OnProductionCycle(function(userId, atomsProduced, moleculesProduced)
+	trackEvent(userId, "atomsProduced", atomsProduced)
+	trackEvent(userId, "moleculesBuilt", moleculesProduced)
 end)
 
 local function persistSession(player, session)

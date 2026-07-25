@@ -156,6 +156,11 @@ local function runProductionCycle(player, playerData, facilities, factoryCycles)
 		playerData.totalMoleculesBuilt = (playerData.totalMoleculesBuilt or 0) + count
 		DailyStats.Increment(playerData, "moleculesBuilt", count)
 	end
+	local producedMoleculeCount = 0
+	for _, count in pairs(moleculesProduced) do
+		producedMoleculeCount = producedMoleculeCount + count
+	end
+	PlayerDataBridge.RecordProduction(player.UserId, producedAtomCount, producedMoleculeCount)
 
 	-- A completed factory cycle with no molecule output is a real blocked
 	-- state, not a successful zero-output cycle: the player needs feedstock or

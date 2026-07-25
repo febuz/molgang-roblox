@@ -24,6 +24,7 @@ local drinkPurchaseCounts = {} -- {userId = count}
 local atomCollectedCounts = {} -- {userId = count}
 local quizAnswerResults = {} -- {userId = {true|false, ...}}
 local atomCollectedListeners = {}
+local productionListeners = {}
 local MAX_DAILY_REWARD = 2000
 
 -- ══════════════════════════════════════════════
@@ -288,6 +289,32 @@ end
 function PlayerDataBridge.OnAtomCollected(listener)
 	if type(listener) ~= "function" then return false end
 	table.insert(atomCollectedListeners, listener)
+	return true
+end
+
+-- Notify server-only consumers after a completed, server-authoritative
+-- production cycle. Counts are the amounts actually added to inventory, not
+-- requested factory capacity, so blocked or storage-limited cycles are not
+-- reported as successful production.
+function PlayerDataBridge.RecordProduction(userId, atomsProduced, moleculesProduced)
+	atomsProduced = tonumber(atomsProduced) or 0
+	moleculesProduced = tonumber(moleculesProduced) or 0
+	if atomsProduced < 0 or moleculesProduced < 0
+		or atomsProduced ~= math.floor(atomsProduced)
+		or moleculesProduced ~= math.floor(moleculesProduced) then
+		return false
+	end
+	if atomsProduced == 0 and moleculesProduced == 0 then return true end
+	for _, listener in ipairs(productionListeners) do
+		local ok, err = pcall(listener, userId, atomsProduced, moleculesProduced)
+		if not ok then warn("[PlayerDataBridge] production listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnProductionCycle(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(productionListeners, listener)
 	return true
 end
 

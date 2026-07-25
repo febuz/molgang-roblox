@@ -9,6 +9,17 @@ assert(PlayerDataBridge.RecordAtomCollected(50) == 1,
 assert(callbackUser == 50 and callbackCount == 1,
 	"validated atom collection should notify analytics consumers")
 
+local productionUser, productionAtoms, productionMolecules
+assert(PlayerDataBridge.OnProductionCycle(function(userId, atoms, molecules)
+	productionUser, productionAtoms, productionMolecules = userId, atoms, molecules
+end), "production listeners should register")
+assert(PlayerDataBridge.RecordProduction(51, 12, 3),
+	"validated production should notify analytics consumers")
+assert(productionUser == 51 and productionAtoms == 12 and productionMolecules == 3,
+	"production analytics should receive actual atom and molecule counts")
+assert(not PlayerDataBridge.RecordProduction(51, -1, 0),
+	"negative production must be rejected")
+
 PlayerDataBridge.RecordAtomCollect(42, 1, "H", 2)
 PlayerDataBridge.RecordAtomCollect(42, 8, "O", 2)
 assert(PlayerDataBridge.RecordAtomCollectBatch(47, 23, "V", 12, 5),
