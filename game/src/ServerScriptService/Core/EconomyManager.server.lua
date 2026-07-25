@@ -366,13 +366,18 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	local eventEffects = WorldEvents.GetActiveEffects()
 	local moleculeBonusMultiplier = math.max(0, tonumber(eventEffects.moleculeBonusMultiplier) or 1)
 	local moleculeReward = Chemistry.ApplyMoleculeBonus(recipe.points, moleculeBonusMultiplier)
+	local rewardPaid = addMolCoins(player, moleculeReward, "molecule_build")
+	if not rewardPaid then
+		moleculeReward = 0
+	end
+
 	Remotes.FireClient("MoleculeBuilt", player, {
 		name = molName,
 		molName = molName,
 		moleculeName = molName,
 		formula = molName,
 		molCoinsEarned = moleculeReward,
-		points = moleculeReward,
+		points = recipe.points,
 		basePoints = recipe.points,
 		moleculeBonusMultiplier = moleculeBonusMultiplier,
 		chainTokensEarned = 0,
@@ -382,9 +387,6 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	if not data.moleculesBuilt[molName] then
 		data.moleculesBuilt[molName] = true
 	end
-
-	-- Award MolCoins for molecule
-	addMolCoins(player, moleculeReward, "molecule_build")
 
 	-- Update statistics
 	data.totalMoleculesBuilt = data.totalMoleculesBuilt + 1
