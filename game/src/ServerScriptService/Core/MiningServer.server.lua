@@ -401,7 +401,8 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	end
 
 	-- Convert ore to atoms based on composition
-	local oreKg = plot.oreStockpile
+	local transportCapacity = MiningSystem.CalculateTransportCapacity(plot.mineEquipment)
+	local oreKg = math.min(plot.oreStockpile, transportCapacity)
 	local value = MiningSystem.CalculateOreValue(plot.composition, oreKg)
 
 	-- Add atoms based on composition
@@ -473,8 +474,8 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	pm.totalOreMined = pm.totalOreMined + oreKg
 	pm.totalOreValue = pm.totalOreValue + value
 
-	-- Clear stockpile
-	plot.oreStockpile = 0
+	-- Clear only the hauled amount; the remainder stays physically stockpiled.
+	plot.oreStockpile = math.max(0, plot.oreStockpile - oreKg)
 	persistPlotState(userId, plot)
 
 	-- Build result string
@@ -484,7 +485,8 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	end
 
 	Remotes.FireClient("ServerAnnounce", player, {
-		message = "Collected " .. math.floor(oreKg) .. "kg ore from Plot #" .. plotId .. "!\nAtoms: " .. atomStr .. "\n+" .. math.floor(value / 10) .. " MolCoins",
+		message = "Hauled " .. math.floor(oreKg) .. "kg ore from Plot #" .. plotId .. "!\nAtoms: " .. atomStr .. "\n+" .. math.floor(value / 10) .. " MolCoins"
+			.. (plot.oreStockpile > 0 and ("\nRemaining stockpile: " .. math.floor(plot.oreStockpile) .. "kg — add a haul truck for larger loads.") or ""),
 		rarity = "rare",
 	})
 
@@ -595,6 +597,7 @@ function sendMiningUpdate(player, userId)
 				vanadiumPct = plot.explored and plot.vanadiumPct or nil,
 				rarity = plot.explored and plot.rarity or "unknown",
 				equipment = plot.mineEquipment,
+				transportCapacity = MiningSystem.CalculateTransportCapacity(plot.mineEquipment),
 				oreStockpile = plot.oreStockpile,
 				totalMined = plot.totalMined,
 				forSale = plot.forSale,

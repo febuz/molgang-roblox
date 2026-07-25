@@ -374,6 +374,20 @@ function MiningSystem.CalculateMiningRate(plot, equipment)
 	return totalRate * hardnessFactor * depthFactor
 end
 
+-- Ore must be hauled from the pit to the processing plant. Without a haul
+-- truck, a small manual transfer is still possible for onboarding, but the
+-- stockpile cannot be teleported into inventory at unlimited volume.
+function MiningSystem.CalculateTransportCapacity(equipment)
+	local capacity = 250
+	for _, equipId in ipairs(equipment or {}) do
+		local equipData = MiningSystem.GetEquipment(equipId)
+		if equipData and equipData.transportRate then
+			capacity = math.max(capacity, equipData.transportRate)
+		end
+	end
+	return capacity
+end
+
 -- Calculate ore value based on mineral composition
 function MiningSystem.CalculateOreValue(composition, kgOre)
 	local value = 0

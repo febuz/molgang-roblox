@@ -32,4 +32,10 @@ local deepRate = MiningSystem.CalculateMiningRate(MiningSystem.PlotTypes[4], {"h
 assert(deepRate > 0 and deepRate < surfaceRate,
 	"deep mining must be slower than a surface outcrop")
 
-print("Mining System Tests: 5 passed, 0 failed")
+local manualCapacity = MiningSystem.CalculateTransportCapacity({"hand_pick"})
+local truckCapacity = MiningSystem.CalculateTransportCapacity({"hand_pick", "haul_truck"})
+assert(manualCapacity == 250, "manual mining must retain a small onboarding transport capacity")
+assert(truckCapacity == 30000 and truckCapacity > manualCapacity,
+	"haul truck must materially increase ore transport capacity")
+
+print("Mining System Tests: 7 passed, 0 failed")
