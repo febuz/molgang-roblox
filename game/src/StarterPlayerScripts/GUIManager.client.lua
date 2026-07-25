@@ -130,6 +130,10 @@ local function toggleGui(guiName)
 		end
 		gui.Enabled = shouldEnable
 		guiStates[guiName] = gui.Enabled
+		if gui.Enabled then
+			local analyticsRemote = Remotes.RecordAnalyticsEvent
+			if analyticsRemote then analyticsRemote:FireServer("gui_open", guiName) end
+		end
 		playSound(gui.Enabled and "ui_open" or "ui_close")
 		-- Cost warning when opening expensive GUIs (#7)
 		if gui.Enabled and playerData and GUI_COST_HINTS[guiName] then

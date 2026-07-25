@@ -114,6 +114,7 @@ local clientToServerEvents = {
 	"RequestChainQuery",     -- {query} chain explorer zoekquery
 	"RequestDailyClaim",     -- {} login bonus claimen
 	"RequestCompleteOnboarding", -- {path} persist first-run route choice
+	"RecordAnalyticsEvent", -- {eventName, value} low-risk behavior telemetry
 	"RequestAtomTransfer",   -- {targetId, elementZ} atoom sturen naar vriend
 	"RequestQuizAnswer",     -- {questionId, answer} quiz antwoord
 	"RequestQuizStart",      -- {zone} start een quiz vanuit dashboard/NPC

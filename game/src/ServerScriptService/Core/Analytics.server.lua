@@ -14,6 +14,7 @@ local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local PlayerPathAnalytics = require(script.Parent.PlayerPathAnalytics)
+local AnalyticsEventRules = require(ReplicatedStorage.Modules.AnalyticsEventRules)
 
 local analyticsStore = DataStoreProvider.GetOrderedDataStore("Analytics_v1")
 local pathStore = DataStoreProvider.GetDataStore("MolGang_PlayerPaths_v1")
@@ -26,6 +27,9 @@ local SAVE_RETRIES = 3
 
 -- Session data per player
 local playerSessions = {}
+local guiEventWindows = {}
+local GUI_EVENT_WINDOW_SECONDS = 60
+local GUI_EVENT_LIMIT = 120
 
 local function getSession(userId)
 	if not playerSessions[userId] then
@@ -118,6 +122,19 @@ end)
 PlayerDataBridge.OnQuestCompleted(function(userId, questId)
 	trackEvent(userId, "questsCompleted", 1)
 	trackEvent(userId, "questIds", questId)
+end)
+
+Remotes.RecordAnalyticsEvent.OnServerEvent:Connect(function(player, eventName, value)
+	if eventName ~= "gui_open" or not AnalyticsEventRules.IsAllowedGuiName(value) then return end
+	local now = os.clock()
+	local window = guiEventWindows[player.UserId]
+	if not window or now - window.startedAt >= GUI_EVENT_WINDOW_SECONDS then
+		window = {startedAt = now, count = 0}
+		guiEventWindows[player.UserId] = window
+	end
+	if window.count >= GUI_EVENT_LIMIT then return end
+	window.count = window.count + 1
+	trackEvent(player.UserId, "guisOpened", value)
 end)
 
 local function persistSession(player, session)
