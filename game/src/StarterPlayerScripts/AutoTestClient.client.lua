@@ -155,6 +155,10 @@ check("Recipe book stays inside viewport", recipePanel ~= nil and recipePanel.Cl
 	and recipePanel.Size.X.Scale > 0 and recipePanel.Size.X.Scale <= 1
 	and recipePanel.Size.Y.Scale > 0 and recipePanel.Size.Y.Scale <= 1,
 	"RecipeBook MainPanel must use bounded responsive scale dimensions")
+local craftButton = recipeBook and recipeBook:FindFirstChild("CraftBtn", true)
+local craftRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestBuildMolecule")
+check("Recipe crafting is wired", craftButton ~= nil and craftRemote ~= nil,
+	"Recipe Book needs a CraftBtn and RequestBuildMolecule remote")
 
 for _, guiName in ipairs({"InventoryGui", "LeaderboardGui", "AchievementsGui"}) do
 	local responsiveGui = findScreenGui(guiName)

@@ -133,6 +133,20 @@ Remotes.PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	refreshCraftButtons()
 end)
 
+local function refreshFromServer()
+	local success, data = pcall(function()
+		return GetPlayerData:InvokeServer()
+	end)
+	if success and type(data) == "table" then
+		playerData = data
+		refreshCraftButtons()
+	end
+end
+
+-- MoleculeBuilt is authoritative: refresh atom counts after the server has
+-- consumed ingredients so Craft/Need Items never reflects stale inventory.
+Remotes.MoleculeBuilt.OnClientEvent:Connect(refreshFromServer)
+
 -- Sort molecules by points (reward)
 local molList = {}
 for molName, recipe in pairs(Chemistry.Molecules) do
@@ -231,8 +245,17 @@ for _, mol in ipairs(molList) do
 
 	craftBtn.Activated:Connect(function()
 		print("[RecipeBook] Craft requested:", molName)
+		craftBtn.Active = false
+		craftBtn.Text = "Crafting..."
 		-- Send craft request to server via RequestBuildMolecule
 		Remotes.RequestBuildMolecule:FireServer(recipe.atoms)
+		-- A rejected request does not emit MoleculeBuilt; restore the button after
+		-- a short roundtrip window without assuming the craft succeeded.
+		task.delay(1, function()
+			if craftBtn.Parent then
+				refreshFromServer()
+			end
+		end)
 	end)
 end
 
