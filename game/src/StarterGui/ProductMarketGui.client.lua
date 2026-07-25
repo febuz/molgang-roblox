@@ -140,6 +140,20 @@ dayLabel.Font = Enum.Font.Gotham
 dayLabel.TextXAlignment = Enum.TextXAlignment.Left
 dayLabel.Parent = main
 
+-- Immediate transaction feedback. ProductSold is the authoritative response
+-- for a sale; without this, a successful click could look inert.
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "TransactionStatus"
+statusLabel.Size = UDim2.new(0.64, -16, 0, 18)
+statusLabel.Position = UDim2.new(0, 8, 0, 78)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Select a product and quantity to trade."
+statusLabel.TextColor3 = C.textDim
+statusLabel.TextScaled = true
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = main
+
 -- Sell All button (#36)
 local sellAllBtn = Instance.new("TextButton")
 sellAllBtn.Size = UDim2.new(0, 120, 0, 26)
@@ -194,6 +208,7 @@ sellAllBtn.Activated:Connect(function()
 	end
 	local atoms = ok and type(playerData) == "table" and playerData.atoms or {}
 	local slagInventory = ok and type(playerData) == "table" and playerData.slagInventory or {}
+	local queued = 0
 	for _, product in ipairs(ProductMarket.Products) do
 		local r = Remotes:FindFirstChild("RequestSellProduct")
 		local maxQuantity = math.huge
@@ -207,9 +222,12 @@ sellAllBtn.Activated:Connect(function()
 			maxQuantity = math.min(maxQuantity, math.floor((slagInventory[residue] or 0) / countPerUnit))
 		end
 		if r and hasRequirements and maxQuantity > 0 then
+			queued += 1
 			r:FireServer(product.id, math.min(maxQuantity, 1000))
 		end
 	end
+	statusLabel.Text = queued > 0 and ("Selling " .. queued .. " stocked product types…") or "Nothing to sell: process slag and extract products first."
+	statusLabel.TextColor3 = queued > 0 and C.gold or C.textDim
 	sellAllBtn.Text = "SELLING..."
 	sellAllBtn.BackgroundColor3 = C.gold
 	task.delay(1, function()
@@ -225,7 +243,7 @@ end)
 -- Product list
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, -16, 1, -92)
-scroll.Position = UDim2.new(0, 8, 0, 86)
+scroll.Position = UDim2.new(0, 8, 0, 104)
 scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 6
 scroll.CanvasSize = UDim2.new(0, 0, 0, #ProductMarket.Products * 62)
@@ -372,7 +390,14 @@ for _, product in ipairs(ProductMarket.Products) do
 		sellBusy = true
 		sellBtn.Active = false
 		local r = Remotes:FindFirstChild("RequestSellProduct")
-		if r then r:FireServer(pid, qty) end
+		if r then
+			statusLabel.Text = "Submitting " .. qty .. "x " .. product.name .. "…"
+			statusLabel.TextColor3 = C.gold
+			r:FireServer(pid, qty)
+		else
+			statusLabel.Text = "Market service is unavailable; try again shortly."
+			statusLabel.TextColor3 = C.loss
+		end
 		sellBtn.BackgroundColor3 = C.gold
 		task.delay(0.3, function() sellBtn.BackgroundColor3 = C.accent end)
 		task.delay(0.75, function()
@@ -418,6 +443,17 @@ if priceEvent then
 			pnlLabel.TextColor3 = (data.pnl.netProfit or 0) >= 0 and C.profit or C.loss
 		end
 	end)
+end
+
+local soldEvent = Remotes:FindFirstChild("ProductSold")
+if soldEvent then
+	 soldEvent.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then return end
+		local quantity = tonumber(data.quantity) or 0
+		local revenue = tonumber(data.totalRevenue) or 0
+		statusLabel.Text = string.format("SOLD ✓ %dx %s → +%d MC", quantity, data.name or data.productId or "product", revenue)
+		statusLabel.TextColor3 = C.profit
+	 end)
 end
 
 -- Refresh on open
