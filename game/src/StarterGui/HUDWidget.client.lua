@@ -283,7 +283,10 @@ end
 
 createQuickBtn("P Table", COLORS.accent, "PeriodicTableGui")
 createQuickBtn("Dash", Color3.fromRGB(80, 150, 255), "DashboardGui")
-createQuickBtn("Quests", Color3.fromRGB(200, 140, 50), "QuestTrackerGui")
+-- The quick action should open the full quest modal, not the always-on compact
+-- tracker shell. Using QuestTrackerGui here made the HUD button look alive
+-- while leaving the real quest menu inaccessible from the shortcut lane.
+createQuickBtn("Quests", Color3.fromRGB(200, 140, 50), "QuestModal")
 
 -- ── Save indicator (#76) ──
 
