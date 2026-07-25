@@ -527,7 +527,11 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 		return
 	end
 	playerData.slagInventory = playerData.slagInventory or {}
-	playerData.slagInventory.residue = (playerData.slagInventory.residue or 0) + 1
+	-- Keep the aggregate byproduct aligned with the batch mass balance rather
+	-- than inventing a fixed kilogram for every feed size/operating condition.
+	local residueKg = tonumber(leach.massBalance and leach.massBalance.wasteKg) or 1
+	residueKg = math.max(0, math.floor(residueKg * 1000 + 0.5) / 1000)
+	playerData.slagInventory.residue = (playerData.slagInventory.residue or 0) + residueKg
 
 	local Elements = require(ReplicatedStorage.Data.Elements)
 	for elem, count in pairs(atoms) do
