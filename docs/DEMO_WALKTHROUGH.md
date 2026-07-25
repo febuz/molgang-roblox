@@ -201,7 +201,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 20:01   Build H2O (2H + 1O)    click Build          +100 MC! Green flash!
 20:03   Build NaCl              click Build          +100 MC!
 25:30   2nd leach complete!     auto notification   Fanfare!
-25:32   Extract + sell all      S → Extract → X     +620 MC total products
+25:32   Extract + sell all      J → Extract → X     +620 MC total products
 ```
 
 **Verify:** ~1917 MC, 2 full production cycles, multiple molecules built
@@ -252,10 +252,10 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 ```
 Most pressed keys:
   W ████████████████████████████ (movement, ~40% of time)
-  S ████████ (slag GUI, ~5 opens)
+  J ████████ (slag GUI, ~5 opens)
   Esc ██████ (close panels, ~8×)
   Left Click ████████████████████ (buttons, ~45 clicks)
-  P/D/R/C █ each (tutorial shortcuts)
+  P/U/R/C █ each (tutorial shortcuts)
   X ██ (product exchange, 2 opens)
   B ██ (bubble tea, 2 buys)
   N ██ (minimap, 2 toggles)

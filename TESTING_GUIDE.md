@@ -136,7 +136,7 @@
 
 **Test C4: Achievements**
 - [ ] Achievements unlock on milestones
-- [ ] Badge displays in Achievements GUI (A key)
+- [ ] Badge displays in Achievements GUI (K key)
 - [ ] Achievement count increments
 
 ---
@@ -216,7 +216,7 @@
 ### Section F: Mini-Games
 
 **Test F1: Mahjong Game**
-- [ ] Press M → Mahjong GUI opens
+- [ ] Dashboard → Mahjong tab opens Mahjong GUI
 - [ ] 136 tiles displayed in 3D
 - [ ] 3 AI opponents show with scores
 - [ ] Draw tile → hand updates
