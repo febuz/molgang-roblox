@@ -208,12 +208,12 @@ ZONE_PROPS = {
 PROCESS_LINE = [
     ("Slag Cooling Pit", "cooling_pit.glb"),
     ("Vibrating Feeder", "screw_conveyor.glb"),
-    ("Jaw Crusher", "jaw_crusher.glb"),
+    ("Jaw Crusher", "jaw_crusher_hd.glb"),
     ("Vibrating Screen", "vibrating_screen.glb"),
     ("Cone Crusher", "cone_crusher.glb"),
-    ("Ball Mill", "ball_mill.glb"),
+    ("Ball Mill", "ball_mill_hd.glb"),
     ("HGMS Magnetic Separator", "magnetic_separator.glb"),
-    ("Roasting Kiln", "roasting_kiln.glb"),
+    ("Roasting Kiln", "roasting_kiln_hd.glb"),
     ("Leaching Tank", "leaching_tank_hd.glb"),   # HD pilot (assets/blender/generate_hd_stations.py)
     ("Filtration Press", "filtration_press.glb"),
     ("Precipitation Reactor", "thickener_tank.glb"),
