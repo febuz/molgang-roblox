@@ -213,12 +213,12 @@
 
 | Time | Action | Keys | MC Change | Running Total |
 |------|--------|------|-----------|---------------|
-| 0:00-1:30 | Tutorial + claim | various | +300 MC | 500 MC |
-| 1:30 | Open Mining GUI | V key | 0 | 500 MC |
-| 1:30 | Browse exploration licenses | click Explore tab | 0 | 500 MC |
-| 1:35 | Buy Practice Outcrop license | click | -200 MC | **300 MC** |
+| 0:00-1:30 | Tutorial + claim + first quest | various | +300 MC | 800 MC |
+| 1:30 | Open Mining GUI | V key | 0 | 800 MC |
+| 1:30 | Browse exploration licenses | click Explore tab | 0 | 800 MC |
+| 1:35 | Buy Practice Outcrop license | click | -200 MC | **600 MC** |
 | 1:36 | Hand-survey the surface plot | click Explore | 0 | 300 MC |
-| 1:40-15:00 | Collect samples while learning | WASD | +54 atoms (~181 MC) | 481 MC |
+| 1:40-15:00 | Collect samples while learning | WASD | +54 atoms (~181 MC) | 781 MC |
 | 15:00-30:00 | Collect and sell beginner ore | WASD + mining actions | variable | **positive first loop** |
 | 30:00 | **END** | | | **practice mine established; no equipment required** |
 
@@ -318,7 +318,7 @@
 | 7 | **PATH 3** | Water Leacher | **1098 MC** | ~104 | none (too slow) | BAD |
 | 8 | **PATH 2** | Slag Processor | **988 MC** | ~100 | 1 leach done | MODERATE |
 | 9 | **PATH 8** | Bubble Tea Addict | **988 MC** | ~110 | 4 teas wasted | POOR |
-| 10 | **PATH 6** | The Miner | **381 MC** | ~114 | 1 empty plot | TERRIBLE |
+| 10 | **PATH 6** | The Miner | **781 MC** | ~114 | practice plot | MODERATE |
 
 ---
 
