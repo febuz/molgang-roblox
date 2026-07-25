@@ -460,6 +460,9 @@ local function returnToNexus()
 end
 
 returnNexusBtn.Activated:Connect(returnToNexus)
+-- Vinegar/desktop Studio can occasionally swallow Activated while the game
+-- view has focus. Keep the visible safety route clickable in that case too.
+returnNexusBtn.MouseButton1Click:Connect(returnToNexus)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed or UserInputService:GetFocusedTextBox() then return end
