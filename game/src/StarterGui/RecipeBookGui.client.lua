@@ -52,8 +52,11 @@ screenGui.Parent = playerGui
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
-mainPanel.Size = UDim2.new(0, 800, 0, 700)
-mainPanel.Position = UDim2.new(0.5, -400, 0.5, -350)
+-- Use viewport-relative bounds so the recipe list and Craft buttons remain
+-- reachable in compact Studio/Wine windows.
+mainPanel.Size = UDim2.new(0.92, 0, 0.86, 0)
+mainPanel.Position = UDim2.new(0.04, 0, 0.07, 0)
+mainPanel.ClipsDescendants = true
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui

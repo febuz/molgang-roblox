@@ -149,6 +149,13 @@ else
 	check("Wallet modal uses sibling Z ordering", false, "WalletGui not found")
 end
 
+local recipeBook = findScreenGui("RecipeBookGui")
+local recipePanel = recipeBook and recipeBook:FindFirstChild("MainPanel", true)
+check("Recipe book stays inside viewport", recipePanel ~= nil and recipePanel.ClipsDescendants
+	and recipePanel.Size.X.Scale > 0 and recipePanel.Size.X.Scale <= 1
+	and recipePanel.Size.Y.Scale > 0 and recipePanel.Size.Y.Scale <= 1,
+	"RecipeBook MainPanel must use bounded responsive scale dimensions")
+
 local quizStart = findButtonByText(dashboard, "Start Chemistry Quiz")
 if quizStart and quizStart:IsA("GuiButton") then
 	local quizRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestQuizStart")
