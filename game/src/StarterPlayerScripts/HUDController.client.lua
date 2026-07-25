@@ -674,7 +674,9 @@ end)
 local tickerFrame = Instance.new("Frame")
 tickerFrame.Name = "ServerTicker"
 tickerFrame.Size = UDim2.new(0, 500, 0, 30)
-tickerFrame.Position = UDim2.new(0.5, 0, 0, 50)
+-- Keep the ticker in the dedicated top strip. The molecule builder starts at
+-- y=50, so a ticker there would cover its drop zone and atom labels.
+tickerFrame.Position = UDim2.new(0.5, 0, 0, 8)
 tickerFrame.AnchorPoint = Vector2.new(0.5, 0)
 tickerFrame.BackgroundColor3 = COLORS.panel
 tickerFrame.BackgroundTransparency = 0.3
