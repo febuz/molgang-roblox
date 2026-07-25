@@ -790,22 +790,36 @@ Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperat
 
 	ProcessEng.UpdateDerivedValues(state)
 	persistProcessState(userId, state)
+	local operatingSafe, interlockCode, interlockMessage = ProcessEng.ValidateOperatingEnvelope(state)
 
 	-- Set player attributes for other scripts to read
 	player:SetAttribute("ProcessTemp", state.temperature)
 	player:SetAttribute("ProcessPressure", state.pressure)
 	player:SetAttribute("ProcessPH", state.pH)
 	player:SetAttribute("ReactionRate", state.reactionRate)
-end)
-
-Remotes.RequestProcessControlState.OnServerEvent:Connect(function(player)
-	local state = getProcessState(player.UserId)
-	ProcessEng.UpdateDerivedValues(state)
 	Remotes.FireClient("ProcessControlState", player, {
 		temperature = state.temperature,
 		pressure = state.pressure,
 		pH = state.pH,
 		flowRate = state.flowRate,
+		operatingSafe = operatingSafe,
+		interlockCode = interlockCode,
+		interlockMessage = interlockMessage,
+	})
+end)
+
+Remotes.RequestProcessControlState.OnServerEvent:Connect(function(player)
+	local state = getProcessState(player.UserId)
+	ProcessEng.UpdateDerivedValues(state)
+	local operatingSafe, interlockCode, interlockMessage = ProcessEng.ValidateOperatingEnvelope(state)
+	Remotes.FireClient("ProcessControlState", player, {
+		temperature = state.temperature,
+		pressure = state.pressure,
+		pH = state.pH,
+		flowRate = state.flowRate,
+		operatingSafe = operatingSafe,
+		interlockCode = interlockCode,
+		interlockMessage = interlockMessage,
 	})
 end)
 

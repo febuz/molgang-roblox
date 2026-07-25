@@ -439,6 +439,13 @@ if processStateEvent then
 		if data.pressure then pressGauge.setValue(data.pressure) end
 		if data.pH then phGauge.setValue(data.pH) end
 		if data.flowRate then flowGauge.setValue(data.flowRate) end
+		if data.operatingSafe == false and type(data.interlockMessage) == "string" then
+			helpBar.Text = "INTERLOCK  |  " .. data.interlockMessage .. "  |  Adjust the gauges before starting a batch."
+			helpBar.TextColor3 = C.danger
+		elseif data.operatingSafe == true then
+			helpBar.Text = "SYSTEM SAFE  |  Server operating envelope accepted."
+			helpBar.TextColor3 = C.accent
+		end
 		controlsReady = true
 	end)
 end
