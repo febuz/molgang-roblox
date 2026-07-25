@@ -45,6 +45,19 @@ if dataOk and type(playerData) == "table"
 	return
 end
 
+-- The tutorial can start a few seconds after the world has become interactive.
+-- Seed progress from the authoritative snapshot so atoms collected during the
+-- loading/route-selection window do not leave a player stuck on "find an atom".
+local function countAtomInventory(data)
+	local total = 0
+	if type(data) == "table" and type(data.atoms) == "table" then
+		for _, amount in pairs(data.atoms) do
+			if type(amount) == "number" then total += math.max(0, amount) end
+		end
+	end
+	return total
+end
+
 -- ═══════════════════════════════════════════════
 -- COLORS
 -- ═══════════════════════════════════════════════
@@ -150,7 +163,10 @@ local STEPS = PATHS.explorer
 -- ═══════════════════════════════════════════════
 
 local currentStep = 1
-local atomsCollected = 0
+local atomsCollected = math.max(
+	type(playerData) == "table" and tonumber(playerData.totalAtomsCollected) or 0,
+	countAtomInventory(playerData)
+)
 local tutorialComplete = false
 local selectedPath = "explorer"
 
@@ -436,6 +452,18 @@ showStep = function(stepIdx)
 	end)
 
 	updateDots()
+
+	-- Collection milestones are monotonic server data. Re-check them whenever a
+	-- step becomes active so delayed tutorial startup cannot create a dead end.
+	if step.condition == "collect_atom"
+		or (step.condition == "collect_atoms" and atomsCollected >= (step.target or 1)) then
+		task.defer(function()
+			if currentStep == stepIdx and not tutorialComplete then
+				showStep(stepIdx + 1)
+			end
+		end)
+		return
+	end
 
 	-- Handle auto-complete steps
 	if step.condition == "auto" then
