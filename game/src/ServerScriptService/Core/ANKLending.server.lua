@@ -99,6 +99,7 @@ local function requestLoan(borrower, lenderId, amount, duration)
 
 	amount = math.floor(amount)
 	duration = math.clamp(math.floor(duration), 1, 30)
+	restoreLoansForPlayer(borrower.UserId)
 
 	if amount < MIN_LOAN then return false, "Minimum loan: " .. MIN_LOAN .. " MolCoins" end
 	if amount > MAX_LOAN then return false, "Maximum loan: " .. MAX_LOAN .. " MolCoins" end
@@ -121,7 +122,6 @@ local function requestLoan(borrower, lenderId, amount, duration)
 	end
 	if not lender then return false, "Lender not online" end
 	if lender.UserId == borrower.UserId then return false, "Cannot lend to yourself" end
-	restoreLoansForPlayer(borrower.UserId)
 	restoreLoansForPlayer(lender.UserId)
 
 	-- Calculate finances
