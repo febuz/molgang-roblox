@@ -23,10 +23,17 @@ end
 
 function DailyStats.Increment(data, field, amount, now)
 	local stats = DailyStats.Ensure(data, now)
-	if type(amount) ~= "number" or amount <= 0 or amount ~= amount then
-		return stats[field] or 0
+	local current = stats[field]
+	if type(current) ~= "number" or current ~= current
+		or current == math.huge or current == -math.huge or current < 0 then
+		current = 0
+		stats[field] = 0
 	end
-	stats[field] = (stats[field] or 0) + amount
+	if type(amount) ~= "number" or amount <= 0 or amount ~= amount
+		or amount == math.huge or amount == -math.huge then
+		return current
+	end
+	stats[field] = current + amount
 	return stats[field]
 end
 

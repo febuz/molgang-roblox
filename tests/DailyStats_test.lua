@@ -17,6 +17,12 @@ DailyStats.Increment(data, "molCoinsEarned", 40)
 assert(data.dailyStats.atomsCollected == 3 and data.dailyStats.moleculesBuilt == 2 and data.dailyStats.molCoinsEarned == 40,
 	"daily increments must be isolated from lifetime totals")
 
+data.dailyStats.corruptCounter = "not-a-number"
+assert(DailyStats.Increment(data, "corruptCounter", 5) == 5,
+	"corrupt persisted counters must reset before incrementing")
+assert(DailyStats.Increment(data, "corruptCounter", math.huge) == 5,
+	"infinite increments must be rejected")
+
 local daily = {condition = {type = "atomsCollected", target = 5, daily = true}}
 assert(Quests.CheckProgress(data, daily) == 3, "daily quest progress must use today's counter")
 data.dailyStats.date = "2000-01-01"
