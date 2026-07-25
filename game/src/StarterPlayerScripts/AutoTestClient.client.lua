@@ -328,6 +328,9 @@ if modalDashboard and modalQuiz then
 		task.wait(0.1)
 		check("Announcements remain enabled with modal open", announcements.Enabled,
 			"GuiCoordinator incorrectly disabled the transient announcement layer")
+		check("Announcements render above normal modals",
+			announcements.DisplayOrder > modalDashboard.DisplayOrder,
+			"announcement DisplayOrder must exceed DashboardGui")
 		modalDashboard.Enabled = false
 	end
 else

@@ -31,7 +31,10 @@ screenGui.Name = "GlobalAnnouncements"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.DisplayOrder = 9
+-- Announcements are non-interactive feedback, but must render above normal
+-- modal panels so a market/process window cannot hide an important warning.
+-- LoadingScreen and ShortcutOverlay remain higher priority (100/95).
+screenGui.DisplayOrder = 92
 screenGui.Parent = playerGui
 
 -- Announcement queue
