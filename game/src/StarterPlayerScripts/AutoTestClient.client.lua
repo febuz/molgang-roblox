@@ -486,6 +486,21 @@ if achievementProbe then
 	check("Achievements rejects delayed movement opener", not achievementProbe.Enabled,
 		"AchievementsGui reopened while the movement GUI lock was active")
 	player:SetAttribute("MovementGuiLockUntil", 0)
+	achievementProbe.Enabled = true
+	task.wait(0.3)
+	local progressScroll = achievementProbe:FindFirstChild("ProgressScroll", true)
+	local renderedProgress = false
+	if progressScroll then
+		for _, child in ipairs(progressScroll:GetChildren()) do
+			if child:IsA("Frame") then
+				renderedProgress = true
+				break
+			end
+		end
+	end
+	check("Achievements render progress content", renderedProgress,
+		"AchievementsGui opened without a badge/progress card")
+	achievementProbe.Enabled = false
 end
 else
 	check("Modal menus are mutually exclusive", false, "DashboardGui or QuizGui is missing")

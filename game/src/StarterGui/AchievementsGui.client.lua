@@ -165,6 +165,7 @@ progressLayout.Parent = progressScroll
 -- ═════════════════════════════════════════════════
 
 local playerData = nil
+local refreshInFlight = false
 
 PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
@@ -173,13 +174,20 @@ end)
 -- This GUI can be created after the one-shot PlayerDataLoaded event. Recover
 -- the authoritative snapshot so the panel never opens as an empty shell.
 local function refreshPlayerData()
+	if refreshInFlight then return false end
+	refreshInFlight = true
 	local getData = Remotes:FindFirstChild("GetPlayerData")
-	if not getData or not getData:IsA("RemoteFunction") then return false end
+	if not getData or not getData:IsA("RemoteFunction") then
+		refreshInFlight = false
+		return false
+	end
 	local ok, data = pcall(function() return getData:InvokeServer() end)
 	if ok and type(data) == "table" then
 		playerData = data
+		refreshInFlight = false
 		return true
 	end
+	refreshInFlight = false
 	return false
 end
 
@@ -403,8 +411,12 @@ end
 task.spawn(function()
 	while true do
 		task.wait(5)
-		if screenGui.Enabled and playerData then
-			updateDisplay()
+		if screenGui.Enabled then
+			-- The one-shot PlayerDataLoaded event can precede this script or
+			-- arrive while the profile is still loading. Keep retrying so the
+			-- achievements panel cannot remain an empty/loading shell.
+			if not playerData then refreshPlayerData() end
+			if playerData then updateDisplay() end
 		end
 	end
 end)
