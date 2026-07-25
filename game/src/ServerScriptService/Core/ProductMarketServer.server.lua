@@ -191,6 +191,7 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 		ProfitLoss.RecordTransaction(ledger, "opex", "trade_tax", tradeTax,
 			"Market trade tax: " .. tradeTax .. " MC")
 	end
+	PlayerDataBridge.RecordProductSale(userId, productId, quantity)
 	persistLedger(userId, ledger)
 
 	-- Notify

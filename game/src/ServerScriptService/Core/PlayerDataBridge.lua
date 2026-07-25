@@ -27,6 +27,8 @@ local atomCollectedListeners = {}
 local productionListeners = {}
 local questCompletedListeners = {}
 local fallRecoveryListeners = {}
+local leachStartedListeners = {}
+local productSaleListeners = {}
 local MAX_DAILY_REWARD = 2000
 
 -- ══════════════════════════════════════════════
@@ -349,6 +351,38 @@ end
 function PlayerDataBridge.OnFallRecovery(listener)
 	if type(listener) ~= "function" then return false end
 	table.insert(fallRecoveryListeners, listener)
+	return true
+end
+
+function PlayerDataBridge.RecordLeachStarted(userId, leachId)
+	if type(userId) ~= "number" or type(leachId) ~= "string" or leachId == "" then return false end
+	for _, listener in ipairs(leachStartedListeners) do
+		local ok, err = pcall(listener, userId, leachId)
+		if not ok then warn("[PlayerDataBridge] leach listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnLeachStarted(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(leachStartedListeners, listener)
+	return true
+end
+
+function PlayerDataBridge.RecordProductSale(userId, productId, quantity)
+	if type(userId) ~= "number" or type(productId) ~= "string" or productId == "" then return false end
+	quantity = tonumber(quantity)
+	if not quantity or quantity ~= math.floor(quantity) or quantity < 1 then return false end
+	for _, listener in ipairs(productSaleListeners) do
+		local ok, err = pcall(listener, userId, productId, quantity)
+		if not ok then warn("[PlayerDataBridge] sale listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnProductSale(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(productSaleListeners, listener)
 	return true
 end
 

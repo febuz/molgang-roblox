@@ -572,6 +572,7 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		complete = false,
 		extracted = false,
 	}
+	PlayerDataBridge.RecordLeachStarted(userId, leachId)
 
 	-- Notify client
 	local timeStr = SteelSlag.FormatLeachTime(leachMinutes)

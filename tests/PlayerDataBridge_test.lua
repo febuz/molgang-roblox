@@ -42,6 +42,24 @@ assert(recoveryUser == 53 and recoveryY == -42,
 assert(not PlayerDataBridge.RecordFallRecovery(53, "invalid"),
 	"invalid fall positions must be rejected")
 
+local leachUser, leachId, saleUser, saleId, saleQuantity
+assert(PlayerDataBridge.OnLeachStarted(function(userId, startedId)
+	leachUser, leachId = userId, startedId
+end), "server leach listeners should register")
+assert(PlayerDataBridge.RecordLeachStarted(54, "leach-1"),
+	"server leach start should notify analytics consumers")
+assert(leachUser == 54 and leachId == "leach-1",
+	"leach analytics should retain the process id")
+assert(PlayerDataBridge.OnProductSale(function(userId, productId, quantity)
+	saleUser, saleId, saleQuantity = userId, productId, quantity
+end), "server product-sale listeners should register")
+assert(PlayerDataBridge.RecordProductSale(55, "V2O5", 3),
+	"server product sales should notify analytics consumers")
+assert(saleUser == 55 and saleId == "V2O5" and saleQuantity == 3,
+	"sale analytics should retain product and quantity")
+assert(not PlayerDataBridge.RecordProductSale(55, "", 1),
+	"empty product ids must be rejected")
+
 PlayerDataBridge.RecordAtomCollect(42, 1, "H", 2)
 PlayerDataBridge.RecordAtomCollect(42, 8, "O", 2)
 assert(PlayerDataBridge.RecordAtomCollectBatch(47, 23, "V", 12, 5),
@@ -107,4 +125,4 @@ local reloaded = {molCoins = 3}
 PlayerDataBridge.SetEconomyData(44, reloaded)
 assert(reloaded.molCoins == 10, "queued balance adjustments should apply on load")
 
-print("PlayerDataBridge Tests: 37 passed, 0 failed")
+print("PlayerDataBridge Tests: 44 passed, 0 failed")

@@ -40,7 +40,9 @@ local function getSession(userId)
 				atomsProduced = 0,
 				moleculesBuilt = 0,
 				leachesStarted = 0,
+				leachIds = {},
 				productsSold = 0,
+				productIds = {},
 				guisOpened = {},
 				questsCompleted = 0,
 				questIds = {},
@@ -129,6 +131,16 @@ end)
 PlayerDataBridge.OnFallRecovery(function(userId, yPosition)
 	trackEvent(userId, "voidRecoveries", 1)
 	trackEvent(userId, "voidRecoveryY", yPosition)
+end)
+
+PlayerDataBridge.OnLeachStarted(function(userId, leachId)
+	trackEvent(userId, "leachesStarted", 1)
+	trackEvent(userId, "leachIds", leachId)
+end)
+
+PlayerDataBridge.OnProductSale(function(userId, productId, quantity)
+	trackEvent(userId, "productsSold", quantity)
+	trackEvent(userId, "productIds", productId)
 end)
 
 Remotes.RecordAnalyticsEvent.OnServerEvent:Connect(function(player, eventName, value)
