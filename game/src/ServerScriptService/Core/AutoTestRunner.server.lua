@@ -545,6 +545,15 @@ timeTest("Haul truck increases transport capacity", function()
 	assert(truck == 30000 and truck > manual, "Haul truck does not increase transport capacity")
 end)
 
+timeTest("Chromite-vanadium mining exposes Cr(VI) hazard", function()
+	local Mining = require(ReplicatedStorage.Modules.MiningSystem)
+	local hazardous = false
+	for _, plotType in ipairs(Mining.PlotTypes) do
+		if plotType.hazard == "Cr(VI)" then hazardous = true end
+	end
+	assert(hazardous, "Mining safety hazard metadata is missing")
+end)
+
 -- ═══════════════════════════════════════════════
 -- TEST 8: REMOTES REGISTERED
 -- ═══════════════════════════════════════════════

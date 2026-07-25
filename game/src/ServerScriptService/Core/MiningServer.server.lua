@@ -280,6 +280,7 @@ Remotes.RequestExplorePlot.OnServerEvent:Connect(function(player, plotId)
 		composition = plot.composition,
 		vanadiumPct = plot.vanadiumPct,
 		plotType = plot.plotType,
+		hazard = plot.hazard,
 		rarity = plot.rarity,
 		region = plot.region,
 	})
@@ -603,6 +604,7 @@ function sendMiningUpdate(player, userId)
 				composition = plot.explored and plot.composition or nil,
 				vanadiumPct = plot.explored and plot.vanadiumPct or nil,
 				rarity = plot.explored and plot.rarity or "unknown",
+				hazard = plot.explored and plot.hazard or nil,
 				equipment = plot.mineEquipment,
 				transportCapacity = MiningSystem.CalculateTransportCapacity(plot.mineEquipment),
 				oreStockpile = plot.oreStockpile,

@@ -348,8 +348,11 @@ if miningEvent then
 							end
 						end
 					end
+					if plot.hazard then
+						compStr = "⚠ Hazard: " .. plot.hazard .. "  " .. compStr
+					end
 					lbl(card, {N="Comp", S=UDim2.new(0.6,0,0,12), P=UDim2.new(0,14,0,44),
-						T=compStr, C=C.textDim})
+						T=compStr, C=plot.hazard and C.red or C.textDim})
 				else
 					lbl(card, {N="Unknown", S=UDim2.new(0.4,0,0,18), P=UDim2.new(0,14,0,24),
 						T="UNEXPLORED — Click Explore!", C=C.unknown})

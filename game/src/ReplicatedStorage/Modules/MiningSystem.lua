@@ -328,6 +328,7 @@ function MiningSystem.GeneratePlots()
 				depth = plotType.depth,
 				color = plotType.color,
 				rarity = plotType.rarity,
+				hazard = plotType.hazard,
 				owner = nil,           -- nil = unclaimed
 				mineEquipment = {},    -- equipment placed on this plot
 				totalMined = 0,        -- kg ore mined total

@@ -24,6 +24,8 @@ for _, location in ipairs(MiningSystem.PlotLocations) do
 end
 assert(MiningSystem.PlotTypes[5].rarity == "legendary",
 	"the fifth plot type must retain the legendary geology tier")
+assert(MiningSystem.PlotTypes[5].hazard == "Cr(VI)",
+	"the chromite-vanadium deposit must retain its Cr(VI) hazard")
 
 local surfaceRate = MiningSystem.CalculateMiningRate(MiningSystem.PlotTypes[1], {"hand_pick"})
 assert(surfaceRate == surfaceRate and surfaceRate < math.huge and surfaceRate > 0,
