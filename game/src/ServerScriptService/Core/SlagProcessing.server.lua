@@ -559,7 +559,9 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	local atoms = SteelSlag.YieldToAtoms(leach.yield)
 	local totalAtoms = 0
 	local bonusCoins = 0
-	for _, count in pairs(atoms) do totalAtoms = totalAtoms + count end
+	for _, count in pairs(atoms) do
+		totalAtoms = totalAtoms + count
+	end
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 	if not playerData or not InventoryLimits.CanAddAtoms(
 		playerData.atoms, playerData.facilities, totalAtoms) then
@@ -569,16 +571,9 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 		})
 		return
 	end
-	playerData.slagInventory = playerData.slagInventory or {}
-	-- Keep the aggregate byproduct aligned with the batch mass balance rather
-	-- than inventing a fixed kilogram for every feed size/operating condition.
-	local residueKg = tonumber(leach.massBalance and (leach.massBalance.aggregateKg or leach.massBalance.wasteKg)) or 1
-	residueKg = math.max(0, math.floor(residueKg * 1000 + 0.5) / 1000)
-	playerData.slagInventory.residue = (playerData.slagInventory.residue or 0) + residueKg
-
 	local Elements = require(ReplicatedStorage.Data.Elements)
+	local batchEntries = {}
 	for elem, count in pairs(atoms) do
-		-- Queue one secure production batch per element, not one item per atom.
 		local elementZ = nil
 		for z, data in pairs(Elements.Table) do
 			if data.sym == elem then
@@ -586,10 +581,27 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 				break
 			end
 		end
-		if elementZ and PlayerDataBridge.RecordAtomCollectBatch(userId, elementZ, elem, count, 5) then
-			bonusCoins = bonusCoins + count * 5
+		if not elementZ then
+			return
 		end
+		table.insert(batchEntries, {
+			elementZ = elementZ,
+			symbol = elem,
+			amount = count,
+			coinReward = 5,
+		})
 	end
+	if #batchEntries < 1 or not PlayerDataBridge.RecordAtomCollectMultiBatch(userId, batchEntries) then
+		return
+	end
+	bonusCoins = totalAtoms * 5
+
+	playerData.slagInventory = playerData.slagInventory or {}
+	-- Keep the aggregate byproduct aligned with the batch mass balance rather
+	-- than inventing a fixed kilogram for every feed size/operating condition.
+	local residueKg = tonumber(leach.massBalance and (leach.massBalance.aggregateKg or leach.massBalance.wasteKg)) or 1
+	residueKg = math.max(0, math.floor(residueKg * 1000 + 0.5) / 1000)
+	playerData.slagInventory.residue = (playerData.slagInventory.residue or 0) + residueKg
 
 	leach.extracted = true
 	leach.complete = true
