@@ -809,10 +809,11 @@ task.spawn(function()
 				-- Notify at most once every 15 seconds
 				if not lastNotify or (now - lastNotify) > 15 then
 					proximityNotified[userId] = now
-					Remotes.FireClient("ServerAnnounce", player, {
-						message = "HGMS Separator detected nearby! Press [E] or tap to start the mineral sorting challenge.",
-						rarity = "common",
-					})
+				Remotes.FireClient("ServerAnnounce", player, {
+					message = "HGMS Separator detected nearby! Press [E] or tap to start the mineral sorting challenge.",
+					rarity = "common",
+					miniGamePrompt = true,
+				})
 				end
 			end
 		end

@@ -133,9 +133,15 @@ if miniGame then
 		"MiniGameGui DisplayOrder must exceed HUDWidget so bins receive input")
 	check("HGMS mini-game uses sibling Z ordering", miniGame.ZIndexBehavior == Enum.ZIndexBehavior.Sibling,
 		"MiniGameGui must use sibling ZIndex ordering for reliable modal hit testing")
+	check("HGMS start prompt has a real button", miniGame:FindFirstChild("StartButton", true) ~= nil,
+		"Proximity prompt must provide a clickable start path")
+	check("HGMS start remote exists", ReplicatedStorage.Remotes:FindFirstChild("RequestStartMiniGame") ~= nil,
+		"HGMS start button has no server remote")
 else
 	check("HGMS mini-game is above HUD", false, "MiniGameGui not found")
 	check("HGMS mini-game uses sibling Z ordering", false, "MiniGameGui not found")
+	check("HGMS start prompt has a real button", false, "MiniGameGui not found")
+	check("HGMS start remote exists", false, "MiniGameGui not found")
 end
 
 local wallet = findScreenGui("WalletGui")

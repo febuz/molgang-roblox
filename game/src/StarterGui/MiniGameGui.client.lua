@@ -122,21 +122,21 @@ local currentOrbId = nil
 
 createBin("magnetic", "MAGNETIC\n(Fe3O4)", BIN_COLORS.magnetic, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "magnetic")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, "LEFT")
 		currentOrbId = nil
 	end
 end)
 
 createBin("valuable", "VALUABLE\n(V2O5/TiO2)", BIN_COLORS.valuable, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "valuable")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, "CENTER")
 		currentOrbId = nil
 	end
 end)
 
 createBin("hazard", "HAZARD\n(Cr VI)", BIN_COLORS.hazard, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "hazard")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, "RIGHT")
 		currentOrbId = nil
 	end
 end)
@@ -248,10 +248,64 @@ phSubmit.Font = Enum.Font.GothamBold
 phSubmit.Parent = phFrame
 local phSubCorner = Instance.new("UICorner"); phSubCorner.CornerRadius = UDim.new(0, 6); phSubCorner.Parent = phSubmit
 
+-- Proximity start prompt. The server used to announce an [E] action without
+-- providing a client input path, leaving the HGMS game apparently inert.
+local startPrompt = Instance.new("Frame")
+startPrompt.Name = "StartPrompt"
+startPrompt.Size = UDim2.new(0.62, 0, 0, 118)
+startPrompt.Position = UDim2.new(0.19, 0, 0.5, -59)
+startPrompt.BackgroundColor3 = Color3.fromRGB(18, 27, 42)
+startPrompt.BackgroundTransparency = 0.05
+startPrompt.Visible = false
+startPrompt.Parent = gui
+local promptCorner = Instance.new("UICorner")
+promptCorner.CornerRadius = UDim.new(0, 12)
+promptCorner.Parent = startPrompt
+local promptStroke = Instance.new("UIStroke")
+promptStroke.Color = Color3.fromRGB(0, 220, 140)
+promptStroke.Thickness = 2
+promptStroke.Parent = startPrompt
+
+local promptLabel = Instance.new("TextLabel")
+promptLabel.Size = UDim2.new(1, -20, 0, 48)
+promptLabel.Position = UDim2.fromOffset(10, 8)
+promptLabel.BackgroundTransparency = 1
+promptLabel.Text = "HGMS SEPARATOR\nSort BOF-mineralen op de lopende band"
+promptLabel.TextColor3 = Color3.fromRGB(235, 240, 250)
+promptLabel.TextScaled = true
+promptLabel.TextWrapped = true
+promptLabel.Font = Enum.Font.GothamBold
+promptLabel.Parent = startPrompt
+
+local startButton = Instance.new("TextButton")
+startButton.Name = "StartButton"
+startButton.Size = UDim2.new(0.62, 0, 0, 42)
+startButton.Position = UDim2.new(0.19, 0, 1, -50)
+startButton.BackgroundColor3 = Color3.fromRGB(0, 210, 130)
+startButton.Text = "START HGMS  [E]"
+startButton.TextColor3 = Color3.fromRGB(5, 15, 20)
+startButton.TextScaled = true
+startButton.Font = Enum.Font.GothamBold
+startButton.Parent = startPrompt
+local startCorner = Instance.new("UICorner")
+startCorner.CornerRadius = UDim.new(0, 8)
+startCorner.Parent = startButton
+
 -- Slider drag logic
 local dragging = false
 local currentPH = 7.0
 local currentMetal = "V2O5"
+local startRequestPending = false
+
+local function requestStartMiniGame()
+	if startRequestPending then return end
+	startRequestPending = true
+	startPrompt.Visible = false
+	Remotes.FireServer("RequestStartMiniGame")
+	task.delay(2, function()
+		startRequestPending = false
+	end)
+end
 
 sliderTrack.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -281,6 +335,15 @@ end)
 
 phSubmit.Activated:Connect(function()
 	Remotes.FireServer("RequestSetPH", currentMetal, currentPH)
+end)
+
+startButton.Activated:Connect(requestStartMiniGame)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or not startPrompt.Visible then return end
+	if input.KeyCode == Enum.KeyCode.E or input.KeyCode == Enum.KeyCode.Return then
+		requestStartMiniGame()
+	end
 end)
 
 -- ══════════════════════════════════════════════
@@ -353,6 +416,7 @@ end)
 -- Game result
 Remotes.MiniGameResult.OnClientEvent:Connect(function(data)
 	-- Hide game UI
+	startPrompt.Visible = false
 	orbDisplay.Visible = false
 	phFrame.Visible = false
 
@@ -427,6 +491,11 @@ end
 
 -- Listen for score updates via ServerAnnounce with special miniGame flag
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
+	if data and data.miniGamePrompt then
+		gui.Enabled = true
+		startPrompt.Visible = true
+		return
+	end
 	if data and data.miniGameScore then
 		updateHUD(data.miniGameScore, data.miniGameTimer or 0)
 	end
