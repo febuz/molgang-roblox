@@ -1,6 +1,6 @@
 {
   "generated_by": "assets/viewer/build_manifest.py",
-  "count": 105,
+  "count": 106,
   "models": [
     {
       "file": "Barrel_01.glb",
@@ -150,6 +150,12 @@
       "file": "conveyor_belt.glb",
       "stem": "conveyor_belt",
       "label": "Conveyor Belt",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "conveyor_hd.glb",
+      "stem": "conveyor_hd",
+      "label": "Conveyor Hd",
       "set": "Industrial & Game"
     },
     {

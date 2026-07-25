@@ -247,7 +247,7 @@ def build():
                 if i < n - 1:
                     nx = cx - span / 2 + span * ((i + 1) / (n - 1))
                     mx, mz = (sx + nx) / 2, cz
-                    add("asset", "conveyor_belt.glb", mx, mz, math.pi / 2, 5)
+                    add("asset", "conveyor_hd.glb", mx, mz, math.pi / 2, 5)
             # a couple of silos + a slag ladle for flavour
             add("asset", "storage_silo.glb", cx + span / 2 + 6, cz + 12, 0, 12)
             add("asset", "slag_ladle.glb", cx - span / 2 - 6, cz - 10, 0, 6)

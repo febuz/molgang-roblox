@@ -502,6 +502,51 @@ def build_drying_oven_hd():
     export_glb("drying_oven_hd")
 
 
+def build_conveyor_hd():
+    """Troughed belt conveyor on a truss frame: pulleys, idler sets, drive."""
+    clear_scene()
+    dark = mat("dark_steel", (0.10, 0.11, 0.13), 0.85, 0.5)
+    belt = mat("belt_rubber", (0.06, 0.06, 0.07), 0.0, 0.85)
+    safety = mat("safety_orange", (0.75, 0.28, 0.05), 0.3, 0.6)
+    steel = mat("pipe_steel", (0.45, 0.47, 0.5), 0.9, 0.35)
+    L = 4.4
+
+    # truss side frames with diagonal braces
+    for sy in (-0.55, 0.55):
+        box((L, 0.08, 0.1), (0, sy, 1.15), dark)
+        box((L, 0.08, 0.1), (0, sy, 0.75), dark)
+        for k in range(6):
+            b = box((0.06, 0.06, 0.5), (-1.85 + k * 0.74, sy, 0.95), dark)
+            b.rotation_euler = (0, 0.6 if k % 2 else -0.6, 0)
+    # belt runs (top trough + return) and side skirts
+    box((L - 0.3, 0.9, 0.04), (0, 0, 1.22), belt)
+    box((L - 0.3, 0.8, 0.03), (0, 0, 0.7), belt)
+    for sy in (-0.5, 0.5):
+        s = box((L - 0.5, 0.04, 0.16), (0, sy, 1.32), belt); s.rotation_euler = (0.5 * (1 if sy > 0 else -1), 0, 0)
+    # head/tail pulleys + drive motor with guard
+    for sx, drive in ((L / 2, True), (-L / 2, False)):
+        cyl(0.16, 1.0, (sx, 0, 1.18), steel, verts=20, rot=(math.pi / 2, 0, 0))
+        if drive:
+            cyl(0.18, 0.5, (sx, 0.85, 1.18), safety, verts=16, rot=(math.pi / 2, 0, 0))
+            box((0.45, 0.3, 0.45), (sx - 0.35, 0.85, 1.18), dark)
+    # troughing idler sets every ~0.75 m (3 rollers) + return idlers
+    x = -L / 2 + 0.55
+    while x < L / 2 - 0.4:
+        cyl(0.05, 0.44, (x, 0, 1.14), steel, verts=10, rot=(math.pi / 2, 0, 0))
+        for sy in (-0.36, 0.36):
+            r = cyl(0.05, 0.3, (x, sy, 1.2), steel, verts=10)
+            r.rotation_euler = (math.pi / 2, 0.55 * (1 if sy > 0 else -1), 0)
+        if int((x + L / 2) / 1.5) != int((x + L / 2 - 0.75) / 1.5):
+            cyl(0.05, 0.9, (x, 0, 0.66), steel, verts=10, rot=(math.pi / 2, 0, 0))
+        x += 0.75
+    # legs with feet
+    for sx in (-L / 2 + 0.4, 0, L / 2 - 0.4):
+        for sy in (-0.5, 0.5):
+            box((0.09, 0.09, 0.75), (sx, sy, 0.37), dark)
+        box((0.5, 1.3, 0.05), (sx, 0, 0.02), dark)
+    export_glb("conveyor_hd")
+
+
 if __name__ == "__main__":
     build_leaching_tank_hd()
     build_jaw_crusher_hd()
@@ -515,3 +560,4 @@ if __name__ == "__main__":
     build_filtration_press_hd()
     build_precipitation_reactor_hd()
     build_drying_oven_hd()
+    build_conveyor_hd()
