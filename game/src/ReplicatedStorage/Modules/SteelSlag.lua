@@ -443,9 +443,12 @@ function SteelSlag.GetPostMagneticSeparationMasses(batchWeightKg)
 		representedMass = representedMass + mass
 	end
 
+	local referenceBatch = math.max(SteelSlag.BATCH_WEIGHT_KG, 0.000001)
+	local requestedMagneticRecovery = SteelSlag.MAGNETIC_IRON_RECOVERY_KG
+		* (batchWeight / referenceBatch)
 	local magneticRecovery = math.min(
 		math.max(0, oxideMasses.FeO or 0),
-		SteelSlag.MAGNETIC_IRON_RECOVERY_KG
+		requestedMagneticRecovery
 	)
 	oxideMasses.FeO = math.max(0, (oxideMasses.FeO or 0) - magneticRecovery)
 	return oxideMasses, afterCrushing - magneticRecovery, magneticRecovery,

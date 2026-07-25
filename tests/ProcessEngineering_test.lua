@@ -70,6 +70,10 @@ assert(math.abs(postSepTotal - 0.87) < 0.000001 and math.abs(magneticRecovery - 
 	"pre-treatment mass stream must remove dust and magnetic iron")
 assert(postSepMasses.FeO < 0.06,
 	"magnetic separation must reduce the FeO mass reaching the leach tank")
+local _, doubleBatchTotal, doubleBatchRecovery = SteelSlag.GetPostMagneticSeparationMasses(2)
+assert(math.abs(doubleBatchTotal - 1.74) < 0.000001
+	and math.abs(doubleBatchRecovery - 0.24) < 0.000001,
+	"pre-treatment mass streams must scale with batch weight")
 local hotYield = SteelSlag.CalculateYield("powder", "H2SO4", 1, 65)
 for _, entry in ipairs(hotYield) do
 	if entry.oxide == "FeO" then
