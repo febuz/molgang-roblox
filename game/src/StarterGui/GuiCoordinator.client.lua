@@ -3,6 +3,7 @@
 -- opening one interactive menu closes the other menu that could steal input.
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -25,6 +26,33 @@ local modalNames = {
 }
 
 local busy = false
+local guiTraceEnabled = RunService:IsStudio() or game:GetAttribute("EnableOtapGuiTrace") == true
+
+local function getOpenModalNames()
+	local names = {}
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child:IsA("ScreenGui") and modalNames[child.Name] and child.Enabled then
+			table.insert(names, child.Name .. "@" .. tostring(child.DisplayOrder))
+		end
+	end
+	table.sort(names)
+	return names
+end
+
+local function traceGui(action, gui, detail)
+	if not guiTraceEnabled then return end
+	local name = gui and gui.Name or "unknown"
+	local order = gui and gui:IsA("ScreenGui") and gui.DisplayOrder or -1
+	local openNames = getOpenModalNames()
+	local suffix = detail and (" | " .. detail) or ""
+	print(string.format("[GuiTrace] %s %s@%s | open=[%s]%s",
+		action,
+		name,
+		tostring(order),
+		table.concat(openNames, ", "),
+		suffix))
+end
+
 local function closeOthers(openGui)
 	if busy then return end
 	-- A live quiz is an answer-state modal. Do not let a shortcut or a delayed
@@ -34,6 +62,7 @@ local function closeOthers(openGui)
 	if activeQuiz and activeQuiz:IsA("ScreenGui") and activeQuiz.Enabled and openGui ~= activeQuiz then
 		if openGui and openGui:IsA("ScreenGui") then
 			openGui.Enabled = false
+			traceGui("reject-open", openGui, "quiz remained active")
 		end
 		return
 	end
@@ -41,6 +70,7 @@ local function closeOthers(openGui)
 	for _, child in ipairs(playerGui:GetChildren()) do
 		if child:IsA("ScreenGui") and child ~= openGui and modalNames[child.Name] and child.Enabled then
 			child.Enabled = false
+			traceGui("forced-close", child, "opened by " .. (openGui and openGui.Name or "unknown"))
 		end
 	end
 	busy = false
@@ -49,7 +79,17 @@ end
 local function watch(gui)
 	if not gui:IsA("ScreenGui") or not modalNames[gui.Name] then return end
 	gui:GetPropertyChangedSignal("Enabled"):Connect(function()
-		if gui.Enabled then closeOthers(gui) end
+		if gui.Enabled then
+			traceGui("enabled", gui)
+			closeOthers(gui)
+		else
+			traceGui("disabled", gui)
+		end
+	end)
+	gui:GetPropertyChangedSignal("DisplayOrder"):Connect(function()
+		if gui.Enabled then
+			traceGui("display-order", gui, "display order changed while enabled")
+		end
 	end)
 	if gui.Enabled then closeOthers(gui) end
 end
@@ -61,7 +101,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end
 	if input.KeyCode == Enum.KeyCode.Escape then
 		for _, child in ipairs(playerGui:GetChildren()) do
-			if child:IsA("ScreenGui") and modalNames[child.Name] then child.Enabled = false end
+			if child:IsA("ScreenGui") and modalNames[child.Name] and child.Enabled then
+				child.Enabled = false
+				traceGui("escape-close", child)
+			end
 		end
 	end
 end)
