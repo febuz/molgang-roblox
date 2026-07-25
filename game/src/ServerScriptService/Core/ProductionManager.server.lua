@@ -20,13 +20,13 @@ local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 local ProductionState = require(ReplicatedStorage.Modules.ProductionState)
+local ProductionProfiles = require(ReplicatedStorage.Modules.ProductionProfiles)
 
 -- ═══════════════════════════════════════════════
 -- PRODUCTION CONFIGURATION
 -- ═══════════════════════════════════════════════
 
 local PRODUCTION_INTERVAL = 60  -- 60 seconds per production cycle
-local BASE_ATOMS = {"H", "O", "C", "N", "Fe", "Cu", "Au", "V", "W", "Al"}
 local FACTORY_CYCLE_SECONDS = Facilities.GetFacility("Factory").productionTime
 
 -- ═══════════════════════════════════════════════
@@ -37,6 +37,8 @@ local function produceAtoms(facilities, playerData, outdoorPenalty, productionSp
 	if not facilities or ((facilities.mines or 0) == 0 and (facilities.starterBenches or 0) == 0) then return {} end
 
 	local produced = {}
+	local atomPool = ProductionProfiles.GetAtomPool(facilities)
+	if #atomPool == 0 then return produced end
 
 	-- Use the same capacity table as the facility purchase/build system.
 	-- This prevents the production loop from silently drifting from the UI.
@@ -50,7 +52,7 @@ local function produceAtoms(facilities, playerData, outdoorPenalty, productionSp
 		remainder = 0
 	end
 	for _ = 1, atomCount do
-		local atom = BASE_ATOMS[math.random(#BASE_ATOMS)]
+		local atom = atomPool[math.random(#atomPool)]
 		produced[atom] = (produced[atom] or 0) + 1
 	end
 
