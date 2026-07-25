@@ -182,6 +182,47 @@ local function processAtomCollect(player, collectData)
 		return
 	end
 
+	local entries = collectData.entries
+	if type(entries) == "table" then
+		local totalAmount = 0
+		local totalReward = 0
+		for _, entry in ipairs(entries) do
+			local amount = math.floor(tonumber(entry.amount) or 0)
+			if amount < 1 or type(entry.symbol) ~= "string" or entry.symbol == "" then return end
+			totalAmount = totalAmount + amount
+			totalReward = totalReward + amount * (tonumber(entry.coinReward) or 0)
+		end
+		if totalAmount < 1 or not InventoryLimits.CanAddAtoms(data.atoms, data.facilities, totalAmount) then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Atom storage is full. Build an Office or use existing atoms first.",
+				rarity = "common",
+			})
+			return
+		end
+		for _, entry in ipairs(entries) do
+			data.atoms[entry.symbol] = (data.atoms[entry.symbol] or 0) + math.floor(entry.amount)
+			data.elementsFound[tostring(entry.elementZ)] = true
+		end
+		addMolCoins(player, totalReward, "atom_collect")
+		data.totalAtomsCollected = data.totalAtomsCollected + totalAmount
+		DailyStats.Increment(data, "atomsCollected", totalAmount)
+		local totalElements = 0
+		for _ in pairs(data.elementsFound) do
+			totalElements = totalElements + 1
+		end
+		local badgeMilestones = {
+			{count = 10, id = "Beginner", name = "Beginner", description = "Collect 10 different elements"},
+			{count = 50, id = "Chemist", name = "Chemist", description = "Collect 50 different elements"},
+		}
+		for _, milestone in ipairs(badgeMilestones) do
+			if totalElements >= milestone.count and not data.badges[milestone.id] then
+				data.badges[milestone.id] = true
+				Remotes.FireClient("AchievementUnlocked", player, milestone)
+			end
+		end
+		return
+	end
+
 	local elementZ = collectData.elementZ
 	local symbol = collectData.symbol
 	local coinReward = collectData.coinReward

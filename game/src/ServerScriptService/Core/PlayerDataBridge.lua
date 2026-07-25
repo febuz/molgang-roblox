@@ -60,6 +60,41 @@ function PlayerDataBridge.RecordAtomCollectBatch(userId, elementZ, symbol, amoun
 	return true
 end
 
+-- Queue a mixed-element collection as one atomic operation.  The economy
+-- worker checks capacity once for the complete batch, so mining cannot lose
+-- ore when another collection reaches the inventory between two entries.
+function PlayerDataBridge.RecordAtomCollectMultiBatch(userId, entries)
+	if type(entries) ~= "table" or #entries < 1 or #entries > 32 then return false end
+	local normalized = {}
+	local total = 0
+	for _, entry in ipairs(entries) do
+		if type(entry) ~= "table" then return false end
+		local amount = tonumber(entry.amount)
+		local elementZ = tonumber(entry.elementZ)
+		if not elementZ or elementZ ~= math.floor(elementZ) or elementZ < 1
+			or type(entry.symbol) ~= "string" or entry.symbol == ""
+			or not amount or amount ~= math.floor(amount) or amount < 1 or amount > 10000 then
+			return false
+		end
+		total = total + amount
+		if total > 10000 then return false end
+		table.insert(normalized, {
+			elementZ = elementZ,
+			symbol = entry.symbol,
+			amount = amount,
+			coinReward = tonumber(entry.coinReward) or 0,
+		})
+	end
+	if not pendingCollections[userId] then
+		pendingCollections[userId] = {}
+	end
+	table.insert(pendingCollections[userId], {
+		entries = normalized,
+		timestamp = tick and tick() or os.clock(),
+	})
+	return true
+end
+
 function PlayerDataBridge.GetPendingCollect(userId)
 	local queue = pendingCollections[userId]
 	if queue and #queue > 0 then

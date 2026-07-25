@@ -399,8 +399,6 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	local atomsGained = {}
 	local pendingAtoms = {}
 	local pendingAtomTotal = 0
-	local Elements = require(ReplicatedStorage.Data.Elements)
-
 	-- Map oxide compositions to element atoms
 	local oxideToElem = {
 		V2O5 = {sym = "V", z = 23, factor = 2},
@@ -425,6 +423,14 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 		end
 	end
 
+	if pendingAtomTotal < 1 then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "This ore has no recoverable element yield yet. Keep mining for a richer seam.",
+			rarity = "common",
+		})
+		return
+	end
+
 	if not InventoryLimits.CanAddAtoms(
 		playerData.atoms,
 		playerData.facilities,
@@ -437,10 +443,17 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 		return
 	end
 
+	local batchEntries = {}
 	for _, pending in ipairs(pendingAtoms) do
-		for _ = 1, pending.count do
-			PlayerDataBridge.RecordAtomCollect(userId, pending.z, pending.sym, 2)
-		end
+		table.insert(batchEntries, {
+			elementZ = pending.z,
+			symbol = pending.sym,
+			amount = pending.count,
+			coinReward = 2,
+		})
+	end
+	if pendingAtomTotal > 0 and not PlayerDataBridge.RecordAtomCollectMultiBatch(userId, batchEntries) then
+		return
 	end
 
 	-- Award MolCoins for ore value
