@@ -90,6 +90,18 @@
       <button id="b-slag">Stort: +1 kg slak</button>
       <button id="b-reset" class="wide">Opnieuw (bezonken start)</button>
     </div>
+    <div class="lbl">Level: Si-afvloei (ultrasound)</div>
+    <div class="card">
+      <div class="btns">
+        <button id="b-lvl">Start level</button>
+        <button id="b-28">28 kHz: uit</button>
+        <button id="b-40">40 kHz: uit</button>
+      </div>
+      <div class="row" style="margin-top:8px"><span class="k">Si afgevangen</span><b id="l-cap">—</b></div>
+      <div class="row"><span class="k">Froth / cavitatie</span><b id="l-froth">—</b></div>
+      <div class="row"><span class="k">Energie level</span><b id="l-energy">—</b></div>
+      <div id="l-hint" style="font-size:.82em;color:#89a0b0;margin-top:6px"></div>
+    </div>
     <div class="lbl">Meting</div>
     <div class="card" id="readouts">
       <div id="status"></div>
@@ -119,13 +131,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
-import { MixingTank } from './viscosity-sim.js';
+import { MixingTank, SiliconWashLevel } from './viscosity-sim.js';
 
 const $ = s => document.querySelector(s);
 
 /* ---------- simulation (Python-parity core) ---------- */
 const GRID_N = 64;
 let tank = newTank(20);
+let level = new SiliconWashLevel(tank);
 function newTank(wPct){
   const t = new MixingTank({ n: GRID_N, diameter: 0.40, waterL: 14, wPct });
   t.settleBottom();
@@ -221,8 +234,66 @@ const liquidSide = new THREE.Mesh(
   new THREE.CylinderGeometry(TANK_R*0.94, TANK_R*0.92, 1, 48, 1, true),
   new THREE.MeshStandardMaterial({color:0x4d6f8f, roughness:.4, transparent:true, opacity:.92}));
 tankGroup.add(surf, liquidSide);
+/* froth layer (silicon-rich light fraction rafted up by sono-flotation) */
+const frothMat = new THREE.MeshStandardMaterial({
+  color: 0xeef2f6, roughness:.85, transparent:true, opacity:0});
+const froth = new THREE.Mesh(new THREE.CircleGeometry(TANK_R*0.94, 48), frothMat);
+froth.rotation.x = -Math.PI/2;
+tankGroup.add(froth);
+/* transducer ring around the tank base (ultrasound bath) */
+const usRing = new THREE.Mesh(
+  new THREE.TorusGeometry(TANK_R*1.02, 0.016, 10, 40),
+  new THREE.MeshStandardMaterial({color:0x39424e, metalness:.7, roughness:.4}));
+usRing.rotation.x = Math.PI/2; usRing.position.y = -TANK_H/2 + 0.05;
+tankGroup.add(usRing);
+for (let i = 0; i < 6; i++) {
+  const a = i / 6 * Math.PI * 2;
+  const td = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.03, 10),
+    MAT.steelDark);
+  td.position.set(Math.cos(a)*TANK_R*1.02, -TANK_H/2 + 0.05, Math.sin(a)*TANK_R*1.02);
+  td.rotation.z = Math.PI/2; td.lookAt(new THREE.Vector3(0, td.position.y, 0));
+  tankGroup.add(td);
+}
+/* overflow spout on the rim, feeding the launder */
+const spout = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.03, 0.05), MAT.steel);
+spout.position.set(TANK_R*1.05, TANK_H/2 - 0.03, 0);
+tankGroup.add(spout);
 tankGroup.position.copy(TANK_POS);
 scene.add(tankGroup);
+
+/* ---------- ultrasound generator + launder (silicon-wash level) ---------- */
+const genBox = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.12),
+  new THREE.MeshStandardMaterial({color:0x25303c, metalness:.5, roughness:.5}));
+genBox.position.set(-0.52, 0.96, 0.28); genBox.castShadow = true;
+scene.add(genBox);
+const genLabelCv = document.createElement('canvas');
+genLabelCv.width = 256; genLabelCv.height = 128;
+const genLabelTex = new THREE.CanvasTexture(genLabelCv);
+const genLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.075),
+  new THREE.MeshBasicMaterial({map:genLabelTex, transparent:true}));
+genLabel.position.set(-0.52, 0.99, 0.341); scene.add(genLabel);
+function usBtn(x){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.03, 0.014),
+    new THREE.MeshStandardMaterial({color:0x39424e, emissive:0x000000}));
+  m.position.set(x, 0.935, 0.341); scene.add(m); return m;
+}
+const btn28 = usBtn(-0.555), btn40 = usBtn(-0.485);
+const launder = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.09),
+  MAT.steelDark);
+launder.position.set(0.33, 0.955, 0.02); launder.rotation.z = -0.12;
+scene.add(launder);
+const siBin = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.075, 0.065, 0.09, 20, 1, true),
+  MAT.steelDark.clone());
+siBin.material.side = THREE.DoubleSide;
+siBin.position.set(0.50, 0.95, 0.02); scene.add(siBin);
+const siHeap = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.05, 20),
+  new THREE.MeshStandardMaterial({color:0xd8dde2, roughness:.9}));
+siHeap.position.set(0.50, 0.94, 0.02); siHeap.scale.setScalar(0.01);
+scene.add(siHeap);
+const outflow = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 1, 8),
+  new THREE.MeshStandardMaterial({color:0xe8edf2, transparent:true, opacity:.8}));
+outflow.visible = false; scene.add(outflow);
 
 /* ---------- overhead stirrer (roerapparaat) ---------- */
 const rig = new THREE.Group();
@@ -349,6 +420,17 @@ const actions = {
   rpmMin(){ setRpm(Math.max(0, tank.stirrer.rpmSet - 60)); },
   rpmPlus(){ setRpm(Math.min(600, tank.stirrer.rpmSet + 60)); },
   fuse(){ tank.stirrer.resetTrip(); toast("Zekering gereset"); },
+  lvlStart(){
+    level = new SiliconWashLevel(tank);
+    level.start();
+    starToastDone = 0;
+    syncSliders(); syncLevelButtons();
+    toast("🧪 Level: was het silicium uit het slib — 28 én 40 kHz!");
+  },
+  us28(){ if (!level.active) return toast("Start eerst het level");
+    level.bath.on28 = !level.bath.on28; syncLevelButtons(); },
+  us40(){ if (!level.active) return toast("Start eerst het level");
+    level.bath.on40 = !level.bath.on40; syncLevelButtons(); },
 };
 const interactables = [
   [tankGroup, 'tank', 'bak pakken / plaatsen'],
@@ -359,6 +441,8 @@ const interactables = [
   [motor, 'power', 'roerder aan/uit'], [btnOn, 'power', ''],
   [btnMin, 'rpmMin', 'RPM −60'], [btnPlus, 'rpmPlus', 'RPM +60'],
   [board, 'fuse', 'meterbord / zekering'],
+  [genBox, 'lvlStart', 'ultrasound-generator: start level'],
+  [btn28, 'us28', '28 kHz'], [btn40, 'us40', '40 kHz'],
 ];
 for (const [obj, act] of interactables) obj.traverse
   ? obj.traverse(o => { o.userData.action = o.userData.action || act; })
@@ -463,8 +547,53 @@ $("#b-slag").onclick = actions.slag;
 $("#b-reset").onclick = () => {
   tank = newTank(parseFloat($("#s-w").value));
   tank.stirrer.rpmSet = parseFloat($("#s-rpm").value);
-  layCable(false); syncButtons(); toast("Verse bezonken start");
+  level = new SiliconWashLevel(tank);
+  layCable(false); syncButtons(); syncLevelButtons();
+  toast("Verse bezonken start");
 };
+$("#b-lvl").onclick = actions.lvlStart;
+$("#b-28").onclick = actions.us28;
+$("#b-40").onclick = actions.us40;
+let starToastDone = 0;
+function syncLevelButtons(){
+  $("#b-28").textContent = `28 kHz: ${level.bath.on28 ? 'AAN' : 'uit'}`;
+  $("#b-40").textContent = `40 kHz: ${level.bath.on40 ? 'AAN' : 'uit'}`;
+  $("#b-lvl").textContent = level.active ? 'Herstart level' : 'Start level';
+  const on = (b, isOn) => b.material.emissive.setHex(isOn ? 0x2a8f5a : 0x000000);
+  on(btn28, level.bath.on28); on(btn40, level.bath.on40);
+}
+function drawGenLabel(s){
+  const c = genLabelCv.getContext('2d');
+  c.clearRect(0, 0, 256, 128);
+  c.fillStyle = "#10151d"; c.fillRect(0, 0, 256, 128);
+  c.fillStyle = "#89a0b0"; c.font = "20px monospace";
+  c.fillText("ULTRASOON", 12, 28);
+  c.font = "bold 26px monospace";
+  c.fillStyle = s && s.on_28 ? "#38d39f" : "#4a5866";
+  c.fillText("28 kHz", 12, 66);
+  c.fillStyle = s && s.on_40 ? "#38d39f" : "#4a5866";
+  c.fillText("40 kHz", 12, 102);
+  c.fillStyle = "#f4b41a"; c.font = "18px monospace";
+  if (s && s.active) c.fillText(`cav ${(s.cav_eff*100)|0}%`, 150, 84);
+  genLabelTex.needsUpdate = true;
+}
+function updateLevelReadouts(s){
+  if (!s.active) {
+    $("#l-cap").textContent = "—";
+    $("#l-froth").textContent = "—";
+    $("#l-energy").textContent = "—";
+    $("#l-hint").textContent =
+      "Klik de generator (of Start): was het silicium uit het slib.";
+    return;
+  }
+  const stars = "★".repeat(s.stars) + "☆".repeat(3 - s.stars);
+  $("#l-cap").textContent =
+    `${s.captured_pct.toFixed(0)}% (${s.captured_kg.toFixed(2)} kg) ${stars}`;
+  $("#l-froth").textContent =
+    `${s.froth_kg.toFixed(2)} kg · ${(s.cav_eff*100).toFixed(0)}%`;
+  $("#l-energy").textContent = `${(s.energy_kwh*1000).toFixed(1)} Wh`;
+  $("#l-hint").textContent = s.hint;
+}
 function syncButtons(){
   $("#b-place").textContent = `Bak: ${tank.placed ? 'geplaatst' : 'gepakt'}`;
   $("#b-plug").textContent = `Stekker: ${tank.stirrer.pluggedIn ? 'in' : 'uit'}`;
@@ -475,6 +604,26 @@ function syncSliders(){
   $("#s-w").value = w; $("#v-w").textContent = w;
 }
 setRpm(300);
+syncLevelButtons();
+drawGenLabel(null);
+updateLevelReadouts({ active: false });
+
+/* Test/debug hook: lets the e2e smoke fast-forward the sim deterministically. */
+window.__visc = {
+  get tank() { return tank; },
+  get level() { return level; },
+  fastForward(seconds, dt = 0.1, hoseToRim = true) {
+    const steps = Math.round(seconds / dt);
+    for (let i = 0; i < steps; i++) {
+      if (hoseToRim && i % 10 === 0 && tank.volumeL < tank.capacityL * 0.97) {
+        tank.addWater(0.5);
+      }
+      tank.step(dt);
+      level.step(dt);
+    }
+    return level.snapshot();
+  },
+};
 
 /* ---------- field texture + board ---------- */
 const WATER = [22, 56, 112], SLIB = [150, 133, 108];
@@ -552,6 +701,7 @@ renderer.setAnimationLoop((tMs) => {
   acc += dt;
   while (acc >= SIM_DT) {
     tank.step(SIM_DT, mouseSplat);
+    level.step(SIM_DT);
     mouseSplat = null;
     acc -= SIM_DT;
   }
@@ -589,14 +739,40 @@ renderer.setAnimationLoop((tMs) => {
     slagStream.lookAt(b); slagStream.rotateX(Math.PI/2);
   } else slagStream.visible = false;
 
+  /* silicon-wash level visuals */
+  froth.material.opacity = level.active
+    ? Math.min(0.85, level.froth * 0.5) : 0;
+  froth.position.y = surf.position.y + 0.004;
+  const capFrac = level.active && level.lightTotal > 0
+    ? level.captured / level.lightTotal : 0;
+  siHeap.scale.setScalar(Math.max(0.01, capFrac));
+  const flowing = level.active && level.froth > 0.02 &&
+    tank.volumeL >= tank.capacityL * 0.92 && tank.placed;
+  outflow.visible = flowing;
+  if (flowing) {
+    const a = tankGroup.position.clone()
+      .add(new THREE.Vector3(TANK_R*1.08, TANK_H/2 - 0.05, 0));
+    const b = new THREE.Vector3(0.44, 0.97, 0.02);
+    outflow.position.copy(a.clone().add(b).multiplyScalar(0.5));
+    outflow.scale.y = a.distanceTo(b);
+    outflow.lookAt(b); outflow.rotateX(Math.PI/2);
+  }
+
   if (frame % 2 === 0) updateSurfaceTexture();
   if (frame % 8 === 0) {
     const s = tank.snapshot();
     drawBoard(s);
-    if (!renderer.xr.isPresenting) updateReadouts(s);
+    const ls = level.snapshot();
+    drawGenLabel(ls);
+    if (!renderer.xr.isPresenting) { updateReadouts(s); updateLevelReadouts(ls); }
     if (s.mixedness_pct >= 95 && !mixedToastDone && tank.stirrer.on) {
       mixedToastDone = true; toast("Goed gemengd! ✓ (menggraad ≥ 95%)");
     } else if (s.mixedness_pct < 80) mixedToastDone = false;
+    if (ls.active && ls.stars > starToastDone) {
+      starToastDone = ls.stars;
+      toast(`⭐ ${"★".repeat(ls.stars)} — ${ls.captured_pct.toFixed(0)}% `
+        + `silicium afgevangen!`);
+    }
   }
 
   if (!renderer.xr.isPresenting) controls.update();

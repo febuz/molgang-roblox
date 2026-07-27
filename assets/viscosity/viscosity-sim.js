@@ -659,3 +659,197 @@ export class MixingTank {
     };
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Silicon-wash level: ultrasound 28/40 kHz sono-flotation.
+ * 1:1 port of molgang-web simulation/viscosity_lab/ultrasound.py —
+ * change formulas only together with the Python authority. */
+
+export const P_28KHZ_W = 180.0;
+export const P_40KHZ_W = 150.0;
+export const LIGHT_FRACTION_OF_SLAG = 0.15;
+export const COARSE_SHARE = 0.60;
+export const K_FREE_28 = 0.028;
+export const K_FREE_40 = 0.026;
+export const CROSS_TALK = 0.10;
+export const K_FLOAT = 0.030;
+export const K_OVERFLOW = 0.060;
+export const K_REMIX = 0.020;
+export const K_REAGG = 0.004;
+export const RIM_FILL_FRACTION = 0.92;
+export const ETA_CAV_LO = 0.005;
+export const ETA_CAV_HI = 0.050;
+export const PHI_CAV_KILL = 0.30;
+export const RPM_GENTLE = 80.0;
+export const RPM_REMIX_ONSET = 140.0;
+export const STAR_1_PCT = 40.0;
+export const STAR_2_PCT = 60.0;
+export const STAR_3_PCT = 75.0;
+export const STAR_3_KWH = 0.040;
+
+export class UltrasoundBath {
+  constructor() { this.on28 = false; this.on40 = false; }
+
+  powerW() {
+    return (this.on28 ? P_28KHZ_W : 0) + (this.on40 ? P_40KHZ_W : 0);
+  }
+
+  static cavitationEfficiency(etaApp, phi) {
+    const e = Math.min(Math.max(etaApp, 1e-6), 10.0);
+    let visc = (Math.log10(ETA_CAV_HI) - Math.log10(e))
+      / (Math.log10(ETA_CAV_HI) - Math.log10(ETA_CAV_LO));
+    visc = Math.min(Math.max(visc, 0), 1);
+    const solids = Math.min(Math.max(1 - phi / PHI_CAV_KILL, 0), 1);
+    return visc * solids;
+  }
+}
+
+export class SiliconWashLevel {
+  constructor(tank) {
+    this.tank = tank;
+    this.bath = new UltrasoundBath();
+    this.active = false;
+    this.boundCoarse = 0; this.boundFine = 0;
+    this.free = 0; this.froth = 0; this.captured = 0;
+    this.lightTotal = 0;
+    this.energyStartKwh = 0;
+    this.timeS = 0;
+    this.cavEff = 0;
+  }
+
+  start(wPct = 62.0, waterL = 8.0) {
+    const t = this.tank;
+    t.waterKg = waterL;               // 1 L water = 1 kg
+    t.setComposition(wPct, true);
+    const light = t.slagKg * LIGHT_FRACTION_OF_SLAG;
+    this.lightTotal = light;
+    this.boundCoarse = light * COARSE_SHARE;
+    this.boundFine = light * (1 - COARSE_SHARE);
+    this.free = 0; this.froth = 0; this.captured = 0;
+    this.energyStartKwh = t.meter.energyKwh;
+    this.timeS = 0;
+    this.active = true;
+  }
+
+  step(dt) {
+    if (!this.active) return;
+    const t = this.tank, st = t.stirrer;
+
+    const genP = (t.placed && st.pluggedIn) ? this.bath.powerW() : 0;
+    if (genP > 0) t.meter.add(genP, dt);
+    t.meter.pWatt = st.pElectric + genP;
+
+    const eff = genP > 0
+      ? UltrasoundBath.cavitationEfficiency(st.etaApp, t.phiBulk()) : 0;
+    this.cavEff = eff;
+    const on28 = this.bath.on28 && genP > 0;
+    const on40 = this.bath.on40 && genP > 0;
+
+    const rCoarse = ((on28 ? K_FREE_28 : 0)
+      + (on40 ? K_FREE_40 * CROSS_TALK : 0)) * eff;
+    const rFine = ((on40 ? K_FREE_40 : 0)
+      + (on28 ? K_FREE_28 * CROSS_TALK : 0)) * eff;
+    const dC = this.boundCoarse * Math.min(rCoarse * dt, 0.5);
+    const dF = this.boundFine * Math.min(rFine * dt, 0.5);
+    this.boundCoarse -= dC; this.boundFine -= dF;
+    this.free += dC + dF;
+
+    const rpm = st.rpmActual;
+    let stirBoost = 1 + 0.6 * Math.min(Math.max(rpm / RPM_GENTLE, 0), 1);
+    if (rpm > RPM_REMIX_ONSET) {
+      stirBoost = Math.max(0.25, 1.6 - 1.35 * (rpm - RPM_REMIX_ONSET) / 160.0);
+    }
+    const kFloat = K_FLOAT * eff * ((on28 || on40) ? 1 : 0) * stirBoost;
+    const dUp = this.free * Math.min(kFloat * dt, 0.5);
+    this.free -= dUp; this.froth += dUp;
+    if (rpm > RPM_REMIX_ONSET) {
+      const frac = ((rpm - RPM_REMIX_ONSET) / 160.0) ** 2;
+      const dRemix = this.froth * Math.min(K_REMIX * frac * dt, 0.5);
+      this.froth -= dRemix; this.free += dRemix;
+    }
+
+    const rimL = t.capacityL * RIM_FILL_FRACTION;
+    let head = (t.volumeL - rimL) / (t.capacityL - rimL);
+    head = Math.min(Math.max(head, 0), 1);
+    const dOut = this.froth * Math.min(K_OVERFLOW * head * dt, 0.5);
+    if (dOut > 0) {
+      this.froth -= dOut; this.captured += dOut;
+      if (t.slagKg > 1e-9) {
+        const s = Math.max(0, 1 - dOut / t.slagKg);
+        for (let i = 0; i < t.grid.c.length; i++) t.grid.c[i] *= s;
+      }
+      t.slagKg = Math.max(0, t.slagKg - dOut);
+    }
+
+    if (!(on28 || on40)) {
+      const dRe = this.free * Math.min(K_REAGG * dt, 0.5);
+      this.free -= dRe;
+      this.boundCoarse += dRe * COARSE_SHARE;
+      this.boundFine += dRe * (1 - COARSE_SHARE);
+    }
+
+    this.timeS += dt;
+  }
+
+  capturedPct() {
+    return this.lightTotal > 0 ? 100 * this.captured / this.lightTotal : 0;
+  }
+
+  energyKwh() { return this.tank.meter.energyKwh - this.energyStartKwh; }
+
+  stars() {
+    const pct = this.capturedPct();
+    let s = 0;
+    if (pct >= STAR_1_PCT) s = 1;
+    if (pct >= STAR_2_PCT) s = 2;
+    if (pct >= STAR_3_PCT && this.energyKwh() <= STAR_3_KWH) s = 3;
+    return s;
+  }
+
+  hint() {
+    const t = this.tank;
+    if (!this.active) return "Start het level";
+    if (!(t.placed && t.stirrer.pluggedIn)) {
+      return "Plaats de bak en steek de stekker in het stopcontact";
+    }
+    if (!(this.bath.on28 || this.bath.on40)) {
+      return "Zet de ultrasound-generator aan (28 én 40 kHz)";
+    }
+    if (this.cavEff < 0.15) {
+      return "Slib te dik voor cavitatie — verdun met de slang (viscositeit omlaag)";
+    }
+    if (this.bath.on28 !== this.bath.on40) {
+      return "Eén frequentie mist een deeltjesklasse — zet 28 én 40 kHz aan";
+    }
+    if (t.volumeL < t.capacityL * RIM_FILL_FRACTION) {
+      return "Vul tot de overlooprand met de slang zodat de froth afvloeit";
+    }
+    if (t.stirrer.rpmActual > RPM_REMIX_ONSET) {
+      return "Te hard geroerd — de froth mengt terug (max ~120 RPM)";
+    }
+    if (t.stirrer.rpmActual < 10) {
+      return "Roer zachtjes (30–80 RPM) om de froth aan te voeren";
+    }
+    return "Goed bezig — silicium vloeit af";
+  }
+
+  snapshot() {
+    return {
+      active: this.active,
+      time_s: this.timeS,
+      cav_eff: this.cavEff,
+      on_28: this.bath.on28,
+      on_40: this.bath.on40,
+      generator_w: this.bath.powerW(),
+      bound_kg: this.boundCoarse + this.boundFine,
+      free_kg: this.free,
+      froth_kg: this.froth,
+      captured_kg: this.captured,
+      light_total_kg: this.lightTotal,
+      captured_pct: this.capturedPct(),
+      energy_kwh: this.energyKwh(),
+      stars: this.stars(),
+      hint: this.hint(),
+    };
+  }
+}
