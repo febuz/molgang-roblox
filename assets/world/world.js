@@ -1604,7 +1604,8 @@ function checkInteract(now) {
     } else if (o.interact === 'directory') {
       worldToast('🗺 Moleculia — ⛏ Slakkenspoor: run the plant · 🧪 Periodic Biome: '
         + 'collect 118 elements · ⚛️ Quantum Lab: ChemSim · 🔬 Quantum Computer Lab: '
-        + 'refine Si-28 · 🌱 Lab & Farm: fertilize & harvest · 🏦 ANK: your MolCoins');
+        + 'refine Si-28 · 🌱 Lab & Farm: fertilize & harvest · 🏦 ANK: your MolCoins · '
+        + '🀄 Theehuis: Kantonese mahjong bij het café');
     } else if (o.interact === 'bank') {
       worldToast(`🏦 ANK Kredietunie — balance ${molcoins.toLocaleString('en-US')} MolCoins. `
         + 'Earn: sell V₂O₅ from the plant, harvest crops, pass PPE checks');
@@ -1625,6 +1626,16 @@ function checkInteract(now) {
         worldToast('⚛️ Kwantumcomputer-lab — zuiver afgevloeid silicium tot ²⁸Si, '
           + 'bouw je eerste kwantumcomputer en speel de quantum-gate levels (WebXR AR). '
           + 'Stap dichterbij om binnen te gaan');
+        lastInteractAt = now - 3000;   // re-arm fast so stepping in triggers
+      }
+    } else if (o.interact === 'mahjong') {
+      if (dx * dx + dz * dz < 2.25) {                    // within 1.5 m: enter
+        worldToast('🀄 Naar het theehuis…');
+        setTimeout(() => { location.href = '../mahjong/'; }, 600);
+      } else {
+        worldToast('🀄 Theehuis — rustplek: speel 3D Kantonese mahjong (144 stenen, '
+          + 'bloemen & faan-telling) tegen Ming, Yuki en Carlos. '
+          + 'Stap dichterbij om aan te schuiven');
         lastInteractAt = now - 3000;   // re-arm fast so stepping in triggers
       }
     } else if (o.interact === 'weigh') {
