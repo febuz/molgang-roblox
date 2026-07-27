@@ -7,6 +7,7 @@
 // the diffusion gap-fill. Renders on a 49% duty cycle to spare the GPU.
 
 import * as THREE from 'three';
+import { Garden } from './garden.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
@@ -17,8 +18,12 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
-// The web experience CONTINUES the Roblox teaser: the same world (Moleculia — a
-// floating archipelago in space, MOLGANG's Chemical Engineering Simulator).
+// The web experience CONTINUES the Roblox teaser: the same world (Moleculia —
+// MOLGANG's Chemical Engineering Simulator), grounded on the real terrain of
+// whichever steel plant the player picked on the steelworks map (steelworks/
+// -> ?site=<id> or localStorage 'molgang.site' -> the SAME OSM data renders
+// here as real rivers/water next to the Slakkenspoor zone: one connected
+// place, not a separate space setting).
 // ?world=./world.json falls back to the old city for comparison.
 const WORLDFILE = params.get('world') || './moleculia.json';
 let MOLECULIA = true;   // set from meta.space after the map loads
@@ -77,10 +82,14 @@ const groundMat = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 1
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD), groundMat);
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
-// ---------- Moleculia: floating archipelago in space ----------
-// Switch the instant sky/ground/lighting to a deep-space setting and paint a
-// starfield behind the zones. Called from init() when meta.space is set.
-function setSpace() {
+// ---------- Moleculia: grounded on the real steel-plant terrain ----------
+// Used to be a starfield void beneath floating platforms; now the zones sit
+// on ordinary daylight ground, and the site the player picked on the
+// steelworks map is rendered as real rivers/water next to Slakkenspoor —
+// the map and the walkable world show the same place. Called from init()
+// when meta.space is set (kept as the JSON key; it now means "Moleculia
+// layout", not "outer space").
+function setGrounded(site) {
   // Real HDRI lighting (CC0 Poly Haven "industrial workshop foundry"): warm,
   // directional industrial reflections on every PBR surface — replaces the
   // neutral RoomEnvironment once loaded (which stays as the instant fallback).
@@ -89,36 +98,73 @@ function setSpace() {
     scene.environment = pmrem.fromEquirectangular(t).texture;
     t.dispose();
   }, undefined, () => { /* keep RoomEnvironment */ });
-  const c = document.createElement('canvas'); c.width = c.height = 1024;
-  const g = c.getContext('2d');
-  const grd = g.createLinearGradient(0, 0, 0, 1024);
-  grd.addColorStop(0, '#05060d'); grd.addColorStop(0.6, '#0a0b1c'); grd.addColorStop(1, '#12102a');
-  g.fillStyle = grd; g.fillRect(0, 0, 1024, 1024);
-  for (let i = 0; i < 1400; i++) {                 // stars
-    const x = Math.random() * 1024, y = Math.random() * 1024, r = Math.random() * 1.4;
-    g.globalAlpha = 0.35 + Math.random() * 0.65;
-    g.fillStyle = Math.random() < 0.1 ? '#bcd8ff' : '#ffffff';
-    g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-  }
-  g.globalAlpha = 0.10;                              // a soft nebula wash
-  for (const col of ['#3a6ea5', '#6a3aa5', '#2aa58a']) {
-    const rg = g.createRadialGradient(Math.random() * 1024, Math.random() * 1024, 20,
-      Math.random() * 1024, Math.random() * 1024, 400);
-    rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = rg; g.fillRect(0, 0, 1024, 1024);
-  }
-  g.globalAlpha = 1;
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
-  scene.background = tex;
-  scene.fog = new THREE.Fog(0x0a0b1c, 90, 340);
-  groundMat.color.set(0x07070f); groundMat.roughness = 1;   // the void below the platforms
-  // Cooler, dimmer space lighting.
-  scene.traverse((n) => { if (n.isHemisphereLight || n.isDirectionalLight) n.intensity *= 0.75; });
-  scene.add(new THREE.PointLight(0x88aaff, 0.6, 600));
+  // Daylight sky + fog already painted at module load (see sky() above) —
+  // just extend the fog draw distance to match Moleculia's larger world so
+  // the far zones don't fade out early.
+  scene.fog = new THREE.Fog(0xc4dae8, 60, 320);
+  // groundMat keeps its default daylight grass/earth tone (no more void).
+  if (site) buildRealTerrain(site);
 }
 
-// Each zone is a floating disc platform (a low cylinder) with a glowing rim so
-// the archipelago reads as separate islands in space.
+// Real rivers/water/coastline from the steelworks OSM dataset (see
+// molgang-knitweb tools/build_steel_sites.py), scaled down and placed just
+// north of Slakkenspoor so the plant visibly sits on its real river.
+const TERRAIN_AT = { x: -140, z: 150, scale: 0.026 };
+function terrainRibbon(pts, width, mat, y) {
+  if (pts.length < 2) return null;
+  const pos = [], idx = [], hw = width / 2;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i], q = pts[Math.min(i + 1, pts.length - 1)], r = pts[Math.max(i - 1, 0)];
+    let dx = q[0] - r[0], dz = q[1] - r[1];
+    const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
+    pos.push(p[0] - dz * hw, y, p[1] + dx * hw, p[0] + dz * hw, y, p[1] - dx * hw);
+    if (i) { const a = (i - 1) * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+function terrainPoly(pts, mat, y) {
+  if (pts.length < 3) return null;
+  const shape = new THREE.Shape(pts.map((p) => new THREE.Vector2(p[0], -p[1])));
+  const g = new THREE.ShapeGeometry(shape); g.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(g, mat); m.position.y = y; return m;
+}
+function buildRealTerrain(site) {
+  const { x: ox, z: oz, scale } = TERRAIN_AT;
+  const tf = (p) => [p[0] * scale + ox, p[1] * scale + oz];
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x1a567a, roughness: .25, metalness: .1 });
+  const riverMat = new THREE.MeshStandardMaterial({ color: 0x2d7aa8, roughness: .3 });
+  const group = new THREE.Group();
+  for (const poly of site.water || []) {
+    const m = terrainPoly(poly.map(tf), waterMat, 0.12); if (m) group.add(m);
+  }
+  for (const seg of site.coast || []) {
+    const m = terrainRibbon(seg.map(tf), 24, waterMat, 0.15); if (m) group.add(m);
+  }
+  for (const rv of site.rivers || []) {
+    const w = rv.kind === 'river' ? 11 : 6;
+    const m = terrainRibbon(rv.pts.map(tf), w, riverMat, 0.18); if (m) group.add(m);
+  }
+  scene.add(group);
+  // A small waterside sign names the real place — the connective tissue
+  // between the steelworks map and this ground.
+  if (site.name) {
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 96;
+    const g = cv.getContext('2d');
+    g.fillStyle = '#10151dcc'; g.fillRect(0, 0, 512, 96);
+    g.fillStyle = '#eaf2f5'; g.font = '30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(`🏞 ${site.name}${site.river_names && site.river_names[0] ? ' · ' + site.river_names[0] : ''}`, 256, 48);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.7),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }));
+    sign.position.set(ox, 3.2, oz + 60); sign.rotation.y = Math.PI;
+    scene.add(sign);
+  }
+}
+
+// Each zone is a raised disc platform (a low cylinder) with a glowing rim so
+// it reads as a distinct district on the grounded terrain.
 // A procedural industrial deck texture (radial, so it suits the circular
 // platforms): dark metal with concentric panel seams, radial segments, a
 // hazard-stripe border and grunge. Shared across platforms.
@@ -468,12 +514,14 @@ function inspectFrom(origin, dir) {
   _inspectCaster.far = 60;
   const pool = [];
   for (const obj of live.values()) pool.push(obj);
+  if (gardenGroup) pool.push(gardenGroup);
   const hits = _inspectCaster.intersectObjects(pool, true);
   for (const h of hits) {
     let n = h.object;
     while (n && !n.userData.def) n = n.parent;
     if (!n) continue;
     const def = n.userData.def;
+    if (def.garden) return gardenActivate(def.garden);
     const info = PROP_INFO[def.ref];
     const name = info ? info[0]
       : def.ref.replace(/\.glb$/, '').replace(/_/g, ' ');
@@ -1693,7 +1741,7 @@ function initOptions() {
 const TUTOR_KEY = 'molgang.tutorial';
 const TUTOR_STEPS = [
   { title: 'Welcome to Moleculia!', reward: 50,
-    desc: 'The Roblox teaser continues here: a chemical-engineering world in space. This tour pays MolCoins per step.' },
+    desc: 'The Roblox teaser continues here: a chemical-engineering world grounded on your real steel plant. This tour pays MolCoins per step.' },
   { title: 'Collect your first element', reward: 100, goto: [0, -104, 0],
     desc: 'Walk onto a glowing tile in the Periodic Table Biome to collect it. 118 to find!',
     done: () => collected.size >= 1 },
@@ -1704,8 +1752,8 @@ const TUTOR_STEPS = [
   { title: 'Synthesize a fertilizer', reward: 100, goto: [0, -104, 0],
     desc: 'Open the 🌱 Fertilizer Lab (F): collected elements become real NPK fertilizers for the Farm.',
     done: () => fertMade() >= 1 },
-  { title: 'Explore the archipelago', reward: 100,
-    desc: 'Six zones float in the ring — the signpost & kiosk at Nexus Hub point the way. In the headset, B/Y teleports zone to zone. Have fun!' },
+  { title: 'Explore Moleculia', reward: 100,
+    desc: 'Six zones ring the plant, standing on the real river you saw on the steelworks map — the signpost & kiosk at Nexus Hub point the way. In the headset, B/Y teleports zone to zone. Have fun!' },
 ];
 let tutorState = { step: 0, done: false, paid: 0 };
 try { Object.assign(tutorState, JSON.parse(localStorage.getItem(TUTOR_KEY) || '{}')); } catch (e) { /* fresh */ }
@@ -1883,6 +1931,7 @@ function loop(now) {
   if (crClientActive && !simOk) crTick(dt);
   if (now - lastStream > 180) {
     lastStream = now; stream(); checkCollect(); checkInteract(now); tutorTick(); updateGoals();
+    gardenTick(now);
     if (crClientActive && !simOk) applyReactorState(crStateObj());
   }
   // Keep the sun (and its shadow frustum) centred on the player for crisp shadows.
@@ -1930,7 +1979,20 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
   pollSim();                                              // reactor + multiplayer (EVE-style)
 
   if (MOLECULIA) {
-    setSpace();
+    // Which real steel plant did the player pick on the steelworks map?
+    // ?site=<id> (deep link) wins, else whatever they last chose there,
+    // else Tata Steel IJmuiden — the map and this world share one dataset.
+    let siteId = params.get('site');
+    if (!siteId) {
+      try { siteId = (JSON.parse(localStorage.getItem('molgang.site') || 'null') || {}).id; }
+      catch (e) { /* fresh */ }
+    }
+    let site = null;
+    try {
+      site = await (await fetch(`../steelworks/data/sites/${siteId || 'c0'}.json`,
+        { cache: 'no-cache' })).json();
+    } catch (e) { /* grounded look still works without the terrain overlay */ }
+    setGrounded(site);
     for (const o of objects) if (o.t === 'platform') buildPlatform(o);
     for (const z of (w.meta.zones || [])) {
       buildZoneLabel(z);
@@ -1943,6 +2005,7 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     buildFertilizerLab();
     crops = w.meta.crops || [];
     buildFarm();
+    initGarden();
     equipment = w.meta.equipment || [];
     floorConfig = w.meta.floorConfig || floorConfig;
     buildFactory();
@@ -1989,13 +2052,14 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     initControls();
     initOptions();
     initTutorial();
-    $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
-      + `the web continuation of the Roblox teaser`;
+    $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} zones` +
+      (site ? ` · grounded at ${site.name}` : '') + ` · the web continuation of the Roblox teaser`;
     $('#resolve').innerHTML = `<div style="color:#7fe0a0;margin-bottom:3px">⚗️ Slakkenspoor — BOF slag processing line</div>`
       + line.map((s, i) => `<div><span class="a">${String(i + 1).padStart(2, '0')}</span> ${s}</div>`).join('');
     window.__molgangZones = w.meta.zones || [];      // XR zone-teleport targets
     window.__molgangWorld = { world: 'moleculia', zones: (w.meta.zones || []).length,
-      stations: line.length, assets: assetIdx.length, interactables: interactables.length };
+      stations: line.length, assets: assetIdx.length, interactables: interactables.length,
+      groundedSite: site ? site.name : null, groundColor: groundMat.color.getHexString() };
     window.__molgangDebug = () => ({ px: player.pos.x, pz: player.pos.z,
       near: interactables.map((o) => Math.hypot(o.x - player.pos.x, o.z - player.pos.z) | 0) });
   } else {
@@ -2017,3 +2081,243 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
   }
   stream(); // first populate
 })();
+
+// ---------- 🏡 every player's own garden (Liebig NPK growth) ----------
+// A personal 6-plot bed near spawn — the walkable, VR-reachable front end
+// for the SAME element -> Fertilizer Lab -> Farm economy above (crops[],
+// fertInv, fertById, earn()). No second crop/fertiliser list: the garden's
+// crop pedestals are literally `crops` (Wheat/Tomato/Rice/Grape Vine/
+// Phytoremediation Plant) and its fertiliser tool spends real synthesized
+// fertInv stock. Pure chemistry lives in garden.js; here we render it and
+// wire the pedestals into the same click/trigger inspection ray as
+// everything else.
+const GARDEN_AT = { x: 14, z: 24 };
+const cropOf = (id) => crops.find((c) => c.id === id);
+let garden = null;      // built once `crops` is loaded (see init(), below)
+let gardenGroup = null, gardenTool = null;
+const gardenPlots3D = [], gardenPedestals = {};
+let gardenBoardCtx = null, gardenBoardTex = null;
+let gardenLastVis = 0, gardenLastSave = 0, gardenLastBoard = 0;
+
+function gardenLabel(text, w = 256, h = 96, size = 34) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#10151d'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#2f4356'; g.lineWidth = 4; g.strokeRect(2, 2, w - 4, h - 4);
+  g.fillStyle = '#eaf2f5'; g.font = `${size}px sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2);
+  const tex = new THREE.CanvasTexture(cv);
+  return new THREE.MeshBasicMaterial({ map: tex });
+}
+
+function buildGarden() {
+  gardenGroup = new THREE.Group();
+  const wood = new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: .8 });
+  const soil = new THREE.MeshStandardMaterial({ color: 0x2e2118, roughness: 1 });
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.5, 3.6), wood);
+  frame.position.y = 0.25; gardenGroup.add(frame);
+  for (let i = 0; i < 6; i++) {
+    const px = (i % 3 - 1) * 1.55, pz = (i < 3 ? -0.85 : 0.85);
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 1.5), soil);
+    bed.position.set(px, 0.53, pz);
+    bed.userData.def = { garden: `plot:${i}` };
+    gardenGroup.add(bed);
+    const plantG = new THREE.Group();
+    plantG.position.set(px, 0.58, pz);
+    gardenGroup.add(plantG);
+    gardenPlots3D.push({ bed, plantG, sig: '' });
+  }
+  const cropIcon = { wheat: '🌾', tomato: '🍅', rice: '🌾', grape: '🍇',
+                    phytoremediation: '🌿' };
+  const tools = [
+    ...crops.map((c) => [c.id, `${cropIcon[c.id] || '🌱'} ${c.name}`]),
+    ['water', '💧 Water'], ['fertilize', '🧪 Bemesten'], ['harvest', '✂️ Oogst'],
+  ];
+  tools.forEach(([key, label], i) => {
+    const px = -0.55 * (tools.length - 1) + i * 1.1;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.0, 8),
+      new THREE.MeshStandardMaterial({ color: 0x39424e }));
+    pole.position.set(px, 0.5, 2.6);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.34),
+      gardenLabel(label, 256, 96, label.length > 16 ? 20 : label.length > 9 ? 26 : 34));
+    sign.position.set(px, 1.15, 2.6);
+    sign.rotation.y = Math.PI;
+    sign.userData.def = { garden: `tool:${key}` };
+    pole.userData.def = { garden: `tool:${key}` };
+    gardenGroup.add(pole, sign);
+    gardenPedestals[key] = sign;
+  });
+  const boardCv = document.createElement('canvas');
+  boardCv.width = 512; boardCv.height = 340;
+  gardenBoardCtx = boardCv.getContext('2d');
+  gardenBoardTex = new THREE.CanvasTexture(boardCv);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.7),
+    new THREE.MeshBasicMaterial({ map: gardenBoardTex }));
+  board.position.set(0, 1.9, -2.4);
+  gardenGroup.add(board);
+  const title = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.4),
+    gardenLabel('🏡 Mijn tuintje', 512, 96, 44));
+  title.position.set(0, 3.0, -2.42);
+  gardenGroup.add(title);
+  gardenGroup.position.set(GARDEN_AT.x, 0, GARDEN_AT.z);
+  scene.add(gardenGroup);
+  gardenDrawBoard();
+}
+
+const GARDEN_SYMPTOM_COLORS = {
+  ok: 0x3f9b45, geel: 0xd9c34a, paars: 0x7a4a8a, bladrand: 0x8a6a3a, ph: 0x6a7a4a,
+};
+const GARDEN_FRUIT = { wheat: 0xd9c34a, tomato: 0xc23b2e, rice: 0xe8dfc0,
+  grape: 0x5a3a7a, phytoremediation: 0x4a8a5a };
+function gardenPlantVisual(i) {
+  const p = garden.plots[i], v = gardenPlots3D[i];
+  const crop = cropOf(p.crop);
+  const sym = garden.symptoms(p, crop);
+  const sig = p.crop ? `${p.crop}:${(p.growth * 20) | 0}:${sym.join()}` : 'leeg';
+  if (sig === v.sig) return;
+  v.sig = sig;
+  v.plantG.clear();
+  if (!p.crop || !crop) return;
+  const leafCol = sym.includes('geel') ? GARDEN_SYMPTOM_COLORS.geel
+    : sym.includes('paars') ? GARDEN_SYMPTOM_COLORS.paars
+    : sym.includes('bladrand') ? GARDEN_SYMPTOM_COLORS.bladrand
+    : GARDEN_SYMPTOM_COLORS.ok;
+  const h = 0.15 + p.growth * (crop.id === 'grape' ? 1.3 : 0.9);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, h, 6),
+    new THREE.MeshStandardMaterial({ color: 0x3a6b30, roughness: .8 }));
+  stem.position.y = h / 2;
+  if (sym.includes('slap')) stem.rotation.z = 0.5;      // wilting
+  v.plantG.add(stem);
+  const leafMat = new THREE.MeshStandardMaterial({
+    color: leafCol, roughness: .7, side: THREE.DoubleSide });
+  for (let k = 0; k < 4; k++) {
+    const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.14), leafMat);
+    leaf.position.set(Math.cos(k * 1.6) * 0.14, h * (0.35 + k * 0.15),
+                      Math.sin(k * 1.6) * 0.14);
+    leaf.rotation.set(-0.5, k * 1.6, 0);
+    if (sym.includes('slap')) leaf.rotation.x = -1.2;
+    v.plantG.add(leaf);
+  }
+  if (p.growth > 0.7) {
+    const fruitCol = GARDEN_FRUIT[crop.id] || 0xd9c34a;
+    const n = crop.id === 'grape' ? 5 : crop.id === 'phytoremediation' ? 1 : 3;
+    for (let k = 0; k < n; k++) {
+      const fr = new THREE.Mesh(new THREE.SphereGeometry(
+        crop.id === 'phytoremediation' ? 0.16 : 0.06, 10, 8),
+        new THREE.MeshStandardMaterial({ color: fruitCol, roughness: .5 }));
+      fr.position.set(Math.cos(k * 2.1) * 0.1, h - k * 0.06,
+                      Math.sin(k * 2.1) * 0.1);
+      v.plantG.add(fr);
+    }
+  }
+}
+
+function gardenDrawBoard() {
+  if (!gardenBoardCtx) return;
+  const g = gardenBoardCtx;
+  g.fillStyle = '#10151d'; g.fillRect(0, 0, 512, 340);
+  g.font = '17px monospace'; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  garden.plots.forEach((p, i) => {
+    const crop = cropOf(p.crop);
+    const x = 14 + (i % 2) * 256, y = 26 + Math.floor(i / 2) * 106;
+    g.fillStyle = '#89a0b0';
+    g.fillText(`${i + 1}. ${crop ? crop.name : 'leeg'} (pH ${p.soil.ph.toFixed(1)})`, x, y);
+    if (crop) {
+      const lim = garden.limiting(p, crop);
+      g.fillStyle = '#eaf2f5';
+      g.fillText(`groei ${(p.growth * 100) | 0}%  ` +
+        (p.growth >= 0.95 ? 'RIJP ✂️' : `min: ${lim.name}`), x, y + 20);
+    }
+    const bars = [['N', p.soil.N / 300, '#5aa5e0'], ['P', p.soil.P / 200, '#b07ae0'],
+                  ['K', p.soil.K / 300, '#e0a05a'], ['w', p.soil.water / 40, '#7ec8f7']];
+    bars.forEach(([lbl, frac, col], b) => {
+      g.fillStyle = '#243342'; g.fillRect(x + b * 58, y + 32, 50, 12);
+      g.fillStyle = col;
+      g.fillRect(x + b * 58, y + 32, 50 * Math.min(1, Math.max(0, frac)), 12);
+      g.fillStyle = '#89a0b0'; g.fillText(lbl, x + b * 58 + 20, y + 60);
+    });
+  });
+  g.fillStyle = '#f4b41a'; g.font = '16px monospace';
+  const toolLabel = gardenTool ? (cropOf(gardenTool) ? cropOf(gardenTool).name : gardenTool) : null;
+  g.fillText(toolLabel ? `gereedschap: ${toolLabel}` : 'kies gereedschap op een bordje →', 14, 330);
+  gardenBoardTex.needsUpdate = true;
+}
+
+function gardenActivate(tag) {
+  const [kind, val] = tag.split(':');
+  if (kind === 'tool') {
+    gardenTool = val;
+    for (const [k, sign] of Object.entries(gardenPedestals)) {
+      sign.material.color.setHex(k === val ? 0x9fffd9 : 0xffffff);
+    }
+    gardenDrawBoard();
+    const crop = cropOf(val);
+    if (crop) {
+      return `🧰 ${crop.name} gekozen (NPK ${crop.idealNPK.join('-')}, pH `
+        + `${crop.idealPH[0]}–${crop.idealPH[1]}) — klik nu op een plantvak.`;
+    }
+    const hints = { water: 'tegen verwelken', fertilize: 'gebruikt je in de '
+      + 'Fertilizer Lab (F) gesynthetiseerde meststof', harvest: 'alleen rijp (95%+)' };
+    return `🧰 ${val} gekozen — ${hints[val] || ''}. Klik nu op een plantvak.`;
+  }
+  const i = +val;
+  if (!gardenTool) return '🏡 Kies eerst gereedschap op een bordje';
+  let r;
+  if (cropOf(gardenTool)) {
+    r = garden.sow(i, gardenTool);
+  } else if (gardenTool === 'water') {
+    r = garden.waterPlot(i);
+  } else if (gardenTool === 'harvest') {
+    r = garden.harvest(i, cropOf);
+    if (r.ok) earn(r.pay);
+  } else if (gardenTool === 'fertilize') {
+    // Spend real synthesized stock — the SAME fertInv the Fertilizer Lab
+    // fills from collected elements. No made-up fertiliser purchase.
+    const owned = fertilizers.filter((f) => (fertInv[f.id] || 0) > 0)
+      .sort((a, b) => (fertInv[b.id] || 0) - (fertInv[a.id] || 0));
+    if (!owned.length) {
+      r = { ok: false, msg: 'Geen meststof — synthetiseer eerst in de '
+        + 'Fertilizer Lab (F, gebruikt verzamelde elementen)' };
+    } else {
+      const f = owned[0];
+      fertInv[f.id]--;
+      try { localStorage.setItem(FERT_KEY, JSON.stringify(fertInv)); } catch (e) { /* quota */ }
+      r = garden.fertilise(i, f);
+    }
+  }
+  gardenPlantVisual(i);
+  gardenDrawBoard();
+  garden.save(localStorage);
+  return (r.ok ? '✅ ' : '⚠️ ') + r.msg;
+}
+
+function gardenTick(now) {
+  if (!gardenGroup) return;
+  garden.step(0.18, cropOf);               // called from the 180 ms throttle
+  if (now - gardenLastVis > 500) {
+    gardenLastVis = now;
+    for (let i = 0; i < garden.plots.length; i++) gardenPlantVisual(i);
+  }
+  if (now - gardenLastBoard > 1000) { gardenLastBoard = now; gardenDrawBoard(); }
+  if (now - gardenLastSave > 5000) { gardenLastSave = now; garden.save(localStorage); }
+}
+// Built from init() once `crops` (real Wheat/Tomato/Rice/Grape Vine/
+// Phytoremediation Plant, ported from the Lua game data) is loaded.
+function initGarden() {
+  garden = Garden.load(localStorage, cropOf);
+  buildGarden();
+  window.__garden = {
+    garden, crops, fertilizers,
+    get fertInv() { return fertInv; },
+    activate: gardenActivate,
+    fastForward(seconds) {
+      for (let t = 0; t < seconds; t += 5) garden.step(5, cropOf);
+      for (let i = 0; i < garden.plots.length; i++) gardenPlantVisual(i);
+      gardenDrawBoard();
+      return garden.plots.map((p) => ({ crop: p.crop, growth: p.growth,
+        health: p.health, symptoms: garden.symptoms(p, cropOf(p.crop)) }));
+    },
+  };
+}

@@ -27,9 +27,17 @@ python3 assets/world/world_smoke.py             # includes Lua-parity asserts:
                                                 #  - SteelSlag leachMultipliers == web LEACH_MULT
                                                 #  - SteelSlag roasting boostFactor == web ROAST_BOOST
                                                 #  - ProductMarket V2O5 basePrice == web V2O5_PRICE
+bash assets/world/build_deploy.sh && python3 assets/world/garden_smoke.py
+                                                # browser guard (Playwright): the personal garden
+                                                # stays the walkable front end for the REAL
+                                                # elements -> Fertilizer Lab -> crop economy
+                                                # (crops[]/fertInv/fertById) — fails if it ever
+                                                # grows a second, invented crop/fertiliser economy
+                                                # instead; also guards world grounding (real
+                                                # steelworks terrain, never the old space void)
 ```
 
-Both exit non-zero on drift, so they can gate CI or a pre-commit hook.
+All three exit non-zero on drift, so they can gate CI or a pre-commit hook.
 
 ## Rule 3 — web keeps its realism surplus
 

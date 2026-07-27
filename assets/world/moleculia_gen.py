@@ -3,12 +3,15 @@
 moleculia_gen.py — build the ACTUAL MOLGANG world ("Moleculia") for the web,
 grounded in the Roblox game's goals + vision instead of a generic city.
 
-MOLGANG is a Chemical Engineering Simulator: a floating archipelago in space
-with 6 zones, whose core loop is the Slakkenspoor factory processing BOF steel
-slag through 12 real stations under real process kinetics (see process_sim.py,
-ported from ProcessEngineering.lua). This emits moleculia.json — 6 floating
-platform zones, the Slakkenspoor processing LINE laid out with the game's real
-equipment GLBs and conveyors, and each zone's landmark assets.
+MOLGANG is a Chemical Engineering Simulator with 6 zones ringing a real steel
+plant, whose core loop is the Slakkenspoor factory processing BOF steel slag
+through 12 real stations under real process kinetics (see process_sim.py,
+ported from ProcessEngineering.lua). This emits moleculia.json — 6 platform
+zones, the Slakkenspoor processing LINE laid out with the game's real
+equipment GLBs and conveyors, and each zone's landmark assets. world.js
+grounds the ring on the real terrain of whichever plant the player picked on
+the steelworks map (molgang-knitweb tools/build_steel_sites.py) — one
+connected place, not a separate space setting.
 
 Reuses the engine (streaming renderer, WebXR, the process sim); only the world
 CONTENT changes from "GTA city" to the real Moleculia. Run:

@@ -1045,6 +1045,56 @@
       "path": "assets/models/welcome_arch_hd.glb",
       "bytes": 428180,
       "sha256": "fc547c79022d05d88028a0c0f304b15c2e88f79402f60c3107ed0cd5b67b50b1"
+    },
+    {
+      "path": "assets/quantumlab/assets/ball_mill.glb",
+      "bytes": 54976,
+      "sha256": "821fa83dccdce1be463a2a442546320487c26b56f95b2561ecb0f406fbbc653a"
+    },
+    {
+      "path": "assets/quantumlab/assets/beaker_1L.glb",
+      "bytes": 60624,
+      "sha256": "9c6d8ef62d64f89f756ac2faff3ad27fe4b73cd9a032c862584f5766a758433b"
+    },
+    {
+      "path": "assets/quantumlab/assets/bof_converter.glb",
+      "bytes": 99008,
+      "sha256": "c6d52c38398ea3688be87e651edc0c17a7479ca625385c5ead98794cb1a069f8"
+    },
+    {
+      "path": "assets/quantumlab/assets/centrifuge.glb",
+      "bytes": 47372,
+      "sha256": "8674c12b12f37f9791ee9a12c3255b627c871fe982af84f6b402a5c66069b0c4"
+    },
+    {
+      "path": "assets/quantumlab/assets/conveyor_belt.glb",
+      "bytes": 108552,
+      "sha256": "5e9a3377e7a317e10d8d2155e0240f29347e003207bbfc77f4f8181b7bf9d23f"
+    },
+    {
+      "path": "assets/quantumlab/assets/cooling_pit.glb",
+      "bytes": 35992,
+      "sha256": "2a2591541e5fc4fb2199d09311184009c5fbfb6806daaccc07e8272dfe0a14be"
+    },
+    {
+      "path": "assets/quantumlab/assets/cyclone_separator.glb",
+      "bytes": 50312,
+      "sha256": "a8f4313d1c3b75316281b6c893b90849719ce9fb9a2a3a40306f6f5b31a57e48"
+    },
+    {
+      "path": "assets/quantumlab/assets/distillation_column.glb",
+      "bytes": 144216,
+      "sha256": "45ccc7a285c693cbbba236a812cebd8c5ba7b5a1a0722bb05cdca3c894d68bdf"
+    },
+    {
+      "path": "assets/quantumlab/assets/drill_rig.glb",
+      "bytes": 47312,
+      "sha256": "97ae13bd680384cda1e8a50e0a8e1d496db05cb1f6cc75576992fee64fcdbc5d"
+    },
+    {
+      "path": "assets/quantumlab/assets/lab_bench.glb",
+      "bytes": 45720,
+      "sha256": "454c7f433ff0e382e2d2b59d7b47c17c2b3a09728cb83242c76ce355948956eb"
     }
   ]
 }

@@ -16,7 +16,7 @@ MOLGANG is a **Chemical Engineering Simulator** where players operate a complete
 - **Farm with science** — test soil pH/nutrients, apply fertilizers, grow crops using Liebig's Law of the Minimum
 - **Build your factory** — rent 1000m² indoor space, place 22 types of equipment on a grid, manage power and adjacency bonuses
 - **Survive weather** — rain/storms/hail damage outdoor operations, motivating the indoor factory
-- **Collect all 118 elements** across 6 floating zones in space
+- **Collect all 118 elements** across 6 zones grounded on your real steel plant
 - **Play Mahjong** with full Cantonese rules (chi/pong/kong, faan scoring, smart AI)
 - **Experience in VR/AR** — laser pointer interaction, teleport locomotion, comfort vignette
 
