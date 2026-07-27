@@ -283,6 +283,25 @@ function updateDappHud() {
   document.getElementById('pulse-hash').textContent = journal.at(-1)?.hash || 'GENESIS';
   refreshPulseIntegrity();
 }
+// Server checkpoint of the chain tip: binds the local journal to the signed
+// epoch export (journalRoots). Debounced; degrades silently standalone.
+let checkpointTimer = null;
+function scheduleCheckpoint() {
+  clearTimeout(checkpointTimer);
+  checkpointTimer = setTimeout(async () => {
+    const journal = pulseJournal();
+    const tip = journal.at(-1)?.hash;
+    if (!tip) return;
+    try {
+      await fetch('/api/bridge/checkpoint', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        // Bind to the same id the economy writes receipts under (?player=),
+        // falling back to the local wallet id for standalone sessions.
+        body: JSON.stringify({ playerId: playerId || pulseWallet, root: tip, eventCount: journal.length }),
+      });
+    } catch { /* chain stays local until a backend is reachable */ }
+  }, 3000);
+}
 async function recordPulse(type, payload = {}) {
   const journal = pulseJournal();
   const previousHash = journal.at(-1)?.hash || 'GENESIS';
@@ -291,6 +310,7 @@ async function recordPulse(type, payload = {}) {
   event.status = 'local';
   localStorage.setItem(pulseStoreKey, JSON.stringify([...journal, event].slice(-500)));
   updateDappHud();
+  scheduleCheckpoint();
   return event;
 }
 async function checkP2PNode() {
@@ -508,15 +528,212 @@ armPlacementBtn.onclick = () => {
 };
 document.body.appendChild(armPlacementBtn);
 
+// ---- geospatial field: record a placed object as a signed observation.
+// The explicit tap is the consent surface: geolocation is requested only
+// here, and coordinates are rounded to 2 decimals (~1.1 km) client-side
+// before they leave the device -- the server rounds again before signing.
+const GEOHASH32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+function geohashEncode(lat, lon, precision = 6) {
+  let latLo = -90, latHi = 90, lonLo = -180, lonHi = 180;
+  let bits = 0, bit = 0, even = true, out = '';
+  while (out.length < precision) {
+    if (even) {
+      const mid = (lonLo + lonHi) / 2;
+      if (lon >= mid) { bits = (bits << 1) | 1; lonLo = mid; } else { bits <<= 1; lonHi = mid; }
+    } else {
+      const mid = (latLo + latHi) / 2;
+      if (lat >= mid) { bits = (bits << 1) | 1; latLo = mid; } else { bits <<= 1; latHi = mid; }
+    }
+    even = !even;
+    if (++bit === 5) { out += GEOHASH32[bits]; bits = 0; bit = 0; }
+  }
+  return out;
+}
+const fieldBtn = document.createElement('button');
+fieldBtn.id = 'field-observe';
+fieldBtn.style.cssText =
+  'position:absolute;bottom:120px;left:calc(50% - 130px);width:260px;z-index:999;' +
+  'display:none;border:1px solid #7fdcff;border-radius:6px;background:rgba(0,30,50,.75);' +
+  'color:#cdefff;font:12px sans-serif;padding:9px 6px;cursor:pointer;';
+let fieldLabel = null;
+function offerFieldObservation(apiId, name) {
+  if (!apiId) return;
+  fieldLabel = apiId;
+  fieldBtn.disabled = false;
+  fieldBtn.textContent = `📍 ${name} vastleggen in geoveld`;
+  fieldBtn.style.display = 'block';
+}
+function hideFieldBtn(delay) {
+  setTimeout(() => { fieldBtn.style.display = 'none'; fieldBtn.disabled = false; fieldLabel = null; }, delay);
+}
+fieldBtn.onclick = () => {
+  if (!fieldLabel || !navigator.geolocation || fieldBtn.disabled) return;
+  fieldBtn.disabled = true;
+  fieldBtn.textContent = '📍 locatie bepalen…';
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = Math.round(pos.coords.latitude * 100) / 100;
+    const lon = Math.round(pos.coords.longitude * 100) / 100;
+    const cell = geohashEncode(lat, lon);
+    let payload = { label: fieldLabel, cell, local: true };
+    try {
+      const r = await fetch('/api/field/observe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: playerId || pulseWallet, label: fieldLabel, lat, lon }),
+      });
+      const j = await r.json();
+      if (j.success) payload = { label: fieldLabel, cell: j.cell, envelopeId: j.envelopeId, nearby: j.nearby, local: false };
+    } catch { /* standalone bundle: journal-only, still chained */ }
+    await recordPulse('field_observe', payload);
+    if (payload.local) {
+      fieldBtn.textContent = `📍 lokaal vastgelegd · cel ${cell} (offline)`;
+    } else {
+      const near = Object.values(payload.nearby || {}).reduce((a, b) => a + b, 0);
+      fieldBtn.textContent = `📍 cel ${payload.cell} · ${near} waarneming(en) hier`;
+    }
+    hideFieldBtn(4000);
+  }, () => {
+    fieldBtn.textContent = '📍 locatie geweigerd — niets vastgelegd';
+    hideFieldBtn(3000);
+  }, { enableHighAccuracy: false, timeout: 10000 });
+};
+document.body.appendChild(fieldBtn);
+
+// ---- veldvangst: photograph a real object, YOLO identifies it, claim it as
+// an owned portable 3D object. Device-agnostic capture: getUserMedia first
+// (Quest Browser exposes the passthrough camera as a device on Horizon OS
+// v74+; phones use the rear camera), file-input capture as fallback. In-XR
+// frame grabs are not possible in WebXR (privacy), so catching happens
+// outside the immersive session and placement inside it.
+const CATCH_CACHE_KEY = 'molgang.catch.collection';
+let catchCollection = (() => {
+  try { return JSON.parse(localStorage.getItem(CATCH_CACHE_KEY) || '[]'); } catch { return []; }
+})();
+async function refreshCollection() {
+  try {
+    const r = await fetch(`/api/catch/collection/${encodeURIComponent(playerId || pulseWallet)}`);
+    const j = await r.json();
+    if (j.success) {
+      catchCollection = j.objects;
+      localStorage.setItem(CATCH_CACHE_KEY, JSON.stringify(catchCollection.slice(0, 50)));
+    }
+  } catch { /* offline: keep cache */ }
+}
+refreshCollection();
+
+const catchBtn = document.createElement('button');
+catchBtn.id = 'catch-object';
+catchBtn.textContent = '📷 Vang object';
+catchBtn.style.cssText =
+  'position:absolute;bottom:20px;right:16px;z-index:999;border:1px solid #ffd27f;' +
+  'border-radius:6px;background:rgba(50,30,0,.75);color:#ffe9c4;font:13px sans-serif;' +
+  'padding:10px 12px;cursor:pointer;';
+const catchInput = document.createElement('input');
+catchInput.type = 'file';
+catchInput.accept = 'image/*';
+catchInput.capture = 'environment';
+catchInput.style.display = 'none';
+
+async function submitCatchFrame(blob) {
+  catchBtn.disabled = true;
+  catchBtn.textContent = '📷 herkennen…';
+  try {
+    const fd = new FormData();
+    fd.append('frame', blob, 'frame.jpg');
+    const d = await (await fetch('/api/catch/detect', { method: 'POST', body: fd })).json();
+    if (!d.success || !d.catchable) {
+      const why = { protected: 'beschermd (mens/dier)', low_confidence: 'niet zeker genoeg',
+                    unmapped: 'nog geen spelobject', nothing_detected: 'niets herkend' }[d.reason] || d.reason;
+      catchBtn.textContent = `📷 ${d.label || '—'}: ${why}`;
+    } else {
+      const c = await (await fetch('/api/catch/claim', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: playerId || pulseWallet, frameDigest: d.frameDigest }),
+      })).json();
+      if (c.success) {
+        catchBtn.textContent = c.duplicate
+          ? `📷 al gevangen: ${c.label}`
+          : `🎉 ${c.name} gevangen · +${c.reward} MOL`;
+        await recordPulse('catch_claim', { objectId: c.objectId, label: c.label, glb: c.glb });
+        refreshCollection();
+      } else {
+        catchBtn.textContent = '📷 claim mislukt';
+      }
+    }
+  } catch {
+    catchBtn.textContent = '📷 offline — probeer later';
+  }
+  setTimeout(() => { catchBtn.disabled = false; catchBtn.textContent = '📷 Vang object'; }, 4500);
+}
+
+catchBtn.onclick = async () => {
+  if (catchBtn.disabled) return;
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  } catch { /* no camera permission/device: fall back to the file picker */ }
+  if (!stream) { catchInput.click(); return; }
+  const video = document.createElement('video');
+  video.srcObject = stream;
+  video.style.cssText = 'position:absolute;bottom:70px;right:16px;width:240px;z-index:1000;border:2px solid #ffd27f;border-radius:8px;';
+  const snap = document.createElement('button');
+  snap.textContent = '📸';
+  snap.style.cssText = 'position:absolute;bottom:78px;right:24px;z-index:1001;font-size:22px;border-radius:50%;border:none;padding:8px 10px;cursor:pointer;';
+  const cleanup = () => { stream.getTracks().forEach((t) => t.stop()); video.remove(); snap.remove(); };
+  snap.onclick = () => {
+    const cv = document.createElement('canvas');
+    cv.width = video.videoWidth; cv.height = video.videoHeight;
+    cv.getContext('2d').drawImage(video, 0, 0);
+    cleanup();
+    cv.toBlob((blob) => blob && submitCatchFrame(blob), 'image/jpeg', 0.85);
+  };
+  document.body.appendChild(video);
+  document.body.appendChild(snap);
+  await video.play();
+};
+catchInput.onchange = () => {
+  if (catchInput.files && catchInput.files[0]) submitCatchFrame(catchInput.files[0]);
+  catchInput.value = '';
+};
+document.body.appendChild(catchBtn);
+document.body.appendChild(catchInput);
+
+// 🎒 place owned objects anywhere (AR): cycles through the collection and
+// arms the regular hit-test placement with the chosen catch.
+let collectionPick = -1;
+let armedCatch = null;
+const collectionBtn = document.createElement('button');
+collectionBtn.id = 'place-collection';
+collectionBtn.textContent = '🎒 Collectie';
+collectionBtn.style.cssText =
+  'position:absolute;bottom:70px;left:calc(50% + 90px);width:170px;z-index:999;' +
+  'display:none;border:1px solid #d9b3ff;border-radius:6px;background:rgba(30,0,50,.6);' +
+  'color:#efdcff;font:13px sans-serif;padding:10px 6px;cursor:pointer;';
+collectionBtn.onclick = () => {
+  if (!catchCollection.length) { collectionBtn.textContent = '🎒 (leeg — vang eerst iets)'; return; }
+  collectionPick = (collectionPick + 1) % catchCollection.length;
+  const o = catchCollection[collectionPick];
+  armedCatch = { file: o.glb, name: o.name, scale: 1.2, catchObjectId: o.objectId };
+  placementArmed = true;
+  collectionBtn.textContent = `🎒 ${o.name} — tik op de vloer`;
+};
+document.body.appendChild(collectionBtn);
+
 const arController = renderer.xr.getController(0);
 arController.addEventListener('select', () => {
   if (!placementArmed || !reticle.visible) return;
-  const eq = (highlighted && highlighted.userData.equipment) || QUANTUM_EQUIPMENT[0];
+  const eq = armedCatch || (highlighted && highlighted.userData.equipment) || QUANTUM_EQUIPMENT[0];
   const matrix = reticle.matrix.clone();
   placeEquipmentInstance(eq, matrix);
   const list = loadPlacedObjects();
   list.push({ file: eq.file, name: eq.name, matrix: matrix.toArray(), placedAt: new Date().toISOString() });
   savePlacedObjects(list);
+  if (eq.catchObjectId) {
+    recordPulse('catch_place', { objectId: eq.catchObjectId, glb: eq.file });
+    collectionBtn.textContent = '🎒 Collectie';
+    armedCatch = null;
+  } else {
+    offerFieldObservation(eq.apiEquipment, eq.name);
+  }
   placementArmed = false;
   armPlacementBtn.textContent = '🎯 Plaats object';
   armPlacementBtn.style.background = 'rgba(0,0,0,.5)';
@@ -526,6 +743,8 @@ scene.add(arController);
 renderer.xr.addEventListener('sessionstart', () => {
   controls.enabled = false; // headset pose drives the camera in AR, not the mouse
   armPlacementBtn.style.display = 'block';
+  collectionBtn.style.display = 'block';
+  catchBtn.style.display = 'none'; // no in-XR frame grabs on Quest (privacy)
   for (const p of loadPlacedObjects()) {
     const eq = ALL_EQUIPMENT.find((e) => e.file === p.file) || { file: p.file, name: p.name, scale: 1.4 };
     placeEquipmentInstance(eq, new THREE.Matrix4().fromArray(p.matrix));
@@ -536,6 +755,11 @@ renderer.xr.addEventListener('sessionend', () => {
   reticle.visible = false;
   placementArmed = false;
   armPlacementBtn.style.display = 'none';
+  collectionBtn.style.display = 'none';
+  catchBtn.style.display = 'block';
+  armedCatch = null;
+  fieldBtn.style.display = 'none';
+  fieldLabel = null;
   hitTestSourceRequested = false;
   hitTestSource = null;
 });
