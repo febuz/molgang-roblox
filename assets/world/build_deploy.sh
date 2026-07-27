@@ -29,6 +29,9 @@ cp -r "$ROOT/assets/viscosity" "$OUT/viscosity"
 # 4b. quantum computer lab (parallel lane's synced bundle; ship it whenever
 # the assets are present so a steelworks deploy never drops their work)
 [ -d "$ROOT/assets/quantumlab" ] && cp -r "$ROOT/assets/quantumlab" "$OUT/quantumlab"
+# p2p-assets.json is quantumlab's asset-integrity manifest, fetched as
+# '../p2p-assets.json' relative to quantumlab/index.html -- must land as a sibling.
+[ -f "$ROOT/assets/p2p-assets.json" ] && cp "$ROOT/assets/p2p-assets.json" "$OUT/p2p-assets.json"
 
 # 4c. steelworks start-environment (synced copy of molgang-knitweb
 # web/steelworks.html + OSM terrain dataset, see SYNC.md): the game now

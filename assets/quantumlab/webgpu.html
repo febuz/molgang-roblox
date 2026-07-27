@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <title>MOLGANG WebGPU asset gallery</title>
+  <style>
+    html,body { margin:0; height:100%; overflow:hidden; background:#080b10; color:#dce8ff; font:14px system-ui,sans-serif }
+    #scene { display:block; width:100%; height:100%; }
+    #hud { position:fixed; inset:16px auto auto 16px; padding:12px 16px; border:1px solid #29466e; border-radius:10px; background:#0b1422dd; box-shadow:0 8px 30px #0008 }
+    #status { color:#8fd3ff; margin-top:4px }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="hud"><strong>MOLGANG 0.1 · WebGPU asset gallery</strong><div id="status">initializing…</div></div>
+  <script type="importmap">
+  {"imports":{"three":"./vendor/three/three.webgpu.js","three/addons/":"./vendor/three/jsm/"}}
+  </script>
+  <script type="module" src="./webgpu-gallery.js?v=20260721-1"></script>
+</body>
+</html>

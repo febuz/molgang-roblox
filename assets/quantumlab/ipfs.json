@@ -1,0 +1,5 @@
+{
+  "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+  "gateway": "http://127.0.0.1:8080",
+  "note": "Full mirrored model set pinned to the local P2P/IPFS node; the loader falls back to ./assets/ automatically."
+}
