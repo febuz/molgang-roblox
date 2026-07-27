@@ -402,6 +402,11 @@
       "sha256": "fad8020d6696b535852e1f345f847f9a1942b3cc0d2791972fe1f0bd4de86314"
     },
     {
+      "path": "assets/models/gantry_crane_hd.glb",
+      "bytes": 129104,
+      "sha256": "2ecc18a781691597b4815b87070b051e5046bbad2edb568898de6bff532197e6"
+    },
+    {
       "path": "assets/models/gas_cylinder_rack_hd.glb",
       "bytes": 479380,
       "sha256": "e5a2e74428b17cdbb718def66193273c4d850686b6de87803aed3122ace7760b"
@@ -872,6 +877,11 @@
       "sha256": "d55e29e3a53b400f47d293304610d712b73b766a9405491d17eb7a9717fe4839"
     },
     {
+      "path": "assets/models/slag_pot_hd.glb",
+      "bytes": 39812,
+      "sha256": "840b0f53b7119b25df2b315ee6abbe415d430913c89d1cfe7d76aa31df87f47f"
+    },
+    {
       "path": "assets/models/small_lpg_tank.glb",
       "bytes": 2749376,
       "sha256": "0f431009a874d7a38c7e9c629a42147100fbadfa85d97d8bcdbdb095fced714a"
@@ -962,6 +972,11 @@
       "sha256": "3922b79f159d83e5465772dfafb16f991bb6479d65bd90deedf3dddf55199be7"
     },
     {
+      "path": "assets/models/torpedo_ladle_hd.glb",
+      "bytes": 89012,
+      "sha256": "042608e3f2f663ae0fbac4f8f2ae91b58842988f85d16cd1b93413d85d536a58"
+    },
+    {
       "path": "assets/models/vibrating_feeder_hd.glb",
       "bytes": 591084,
       "sha256": "319e7fa05b01ac7a5fe433c935558c7b895d388650a55c69a6e887d1f6ca4347"
@@ -1010,6 +1025,11 @@
       "path": "assets/models/warning_beacon.glb",
       "bytes": 85616,
       "sha256": "1edd8bee1e55e7a5590232eb3e0bba2fdf721dde33f7beb74f8141ce3cd5118b"
+    },
+    {
+      "path": "assets/models/weighbridge_hd.glb",
+      "bytes": 78520,
+      "sha256": "ab1bc83d4c78ed9c96160c6b22a807d45e3a0f0256088e7e1e9ce6c36414d10e"
     },
     {
       "path": "assets/models/welcome_arch.fbx",
