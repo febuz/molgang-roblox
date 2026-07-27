@@ -53,9 +53,26 @@ screenGui.DisplayOrder = 22
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local marketCamera = workspace.CurrentCamera
+local function updateMarketScale()
+	if not marketCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(marketCamera.ViewportSize.X - 20) / 700,
+		(marketCamera.ViewportSize.Y - 20) / 520
+	), 0.65, 1)
+end
+updateMarketScale()
+if marketCamera then
+	marketCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateMarketScale)
+end
+
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 700, 0, 520)
-main.Position = UDim2.new(0.5, -350, 0.5, -260)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.02
 main.Parent = screenGui
@@ -98,14 +115,14 @@ closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 
 closeBtn.BackgroundColor3 = C.red; closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- Hint for new players
 local hintLabel = Instance.new("TextLabel")
 hintLabel.Size = UDim2.new(1, -16, 0, 16)
 hintLabel.Position = UDim2.new(0, 8, 0, 44)
 hintLabel.BackgroundTransparency = 1
-hintLabel.Text = "TIP: Process slag (S key) → extract atoms → sell as refined products here for MolCoins!"
+hintLabel.Text = "TIP: Process slag (J key) -> extract atoms -> sell as refined products here for MolCoins!"
 hintLabel.TextColor3 = Color3.fromRGB(100, 180, 130)
 hintLabel.TextScaled = true; hintLabel.Font = Enum.Font.Gotham
 hintLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -123,6 +140,20 @@ dayLabel.Font = Enum.Font.Gotham
 dayLabel.TextXAlignment = Enum.TextXAlignment.Left
 dayLabel.Parent = main
 
+-- Immediate transaction feedback. ProductSold is the authoritative response
+-- for a sale; without this, a successful click could look inert.
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "TransactionStatus"
+statusLabel.Size = UDim2.new(0.64, -16, 0, 18)
+statusLabel.Position = UDim2.new(0, 8, 0, 78)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Select a product and quantity to trade."
+statusLabel.TextColor3 = C.textDim
+statusLabel.TextScaled = true
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Parent = main
+
 -- Sell All button (#36)
 local sellAllBtn = Instance.new("TextButton")
 sellAllBtn.Size = UDim2.new(0, 120, 0, 26)
@@ -137,8 +168,36 @@ local saCorner = Instance.new("UICorner")
 saCorner.CornerRadius = UDim.new(0, 6)
 saCorner.Parent = sellAllBtn
 
-sellAllBtn.MouseButton1Click:Connect(function()
+-- Order book entry point: the competitive bid/sell market must be reachable
+-- from the exchange itself, not only through an undocumented shortcut.
+local orderBookBtn = Instance.new("TextButton")
+orderBookBtn.Name = "OrderBookBtn"
+orderBookBtn.Size = UDim2.new(0, 120, 0, 26)
+orderBookBtn.Position = UDim2.new(1, -266, 0, 60)
+orderBookBtn.BackgroundColor3 = C.panelLight
+orderBookBtn.Text = "ORDER BOOK"
+orderBookBtn.TextColor3 = C.accent
+orderBookBtn.Font = Enum.Font.GothamBold
+orderBookBtn.TextScaled = true
+orderBookBtn.Parent = main
+corner(orderBookBtn, 6)
+
+orderBookBtn.Activated:Connect(function()
 	playUIClick()
+	local orderBook = playerGui:FindFirstChild("MarketBiddingGui")
+	if orderBook and orderBook:IsA("ScreenGui") then
+		screenGui.Enabled = false
+		orderBook.Enabled = true
+	end
+end)
+
+local sellAllBusy = false
+
+sellAllBtn.Activated:Connect(function()
+	playUIClick()
+	if sellAllBusy then return end
+	sellAllBusy = true
+	sellAllBtn.Active = false
 	-- requiredAtoms is a dictionary, so #requiredAtoms is always zero in
 	-- Luau. Calculate the current sellable quantity from the live inventory;
 	-- the server still performs the authoritative ownership check.
@@ -148,6 +207,8 @@ sellAllBtn.MouseButton1Click:Connect(function()
 		ok, playerData = pcall(function() return dataRemote:InvokeServer() end)
 	end
 	local atoms = ok and type(playerData) == "table" and playerData.atoms or {}
+	local slagInventory = ok and type(playerData) == "table" and playerData.slagInventory or {}
+	local queued = 0
 	for _, product in ipairs(ProductMarket.Products) do
 		local r = Remotes:FindFirstChild("RequestSellProduct")
 		local maxQuantity = math.huge
@@ -156,22 +217,33 @@ sellAllBtn.MouseButton1Click:Connect(function()
 			hasRequirements = true
 			maxQuantity = math.min(maxQuantity, math.floor((atoms[atom] or 0) / countPerUnit))
 		end
+		for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+			hasRequirements = true
+			maxQuantity = math.min(maxQuantity, math.floor((slagInventory[residue] or 0) / countPerUnit))
+		end
 		if r and hasRequirements and maxQuantity > 0 then
+			queued += 1
 			r:FireServer(product.id, math.min(maxQuantity, 1000))
 		end
 	end
+	statusLabel.Text = queued > 0 and ("Selling " .. queued .. " stocked product types…") or "Nothing to sell: process slag and extract products first."
+	statusLabel.TextColor3 = queued > 0 and C.gold or C.textDim
 	sellAllBtn.Text = "SELLING..."
 	sellAllBtn.BackgroundColor3 = C.gold
 	task.delay(1, function()
 		sellAllBtn.Text = "SELL ALL"
 		sellAllBtn.BackgroundColor3 = C.accent
 	end)
+	task.delay(0.75, function()
+		sellAllBusy = false
+		if sellAllBtn.Parent then sellAllBtn.Active = true end
+	end)
 end)
 
 -- Product list
 local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, -16, 1, -92)
-scroll.Position = UDim2.new(0, 8, 0, 86)
+scroll.Size = UDim2.new(1, -16, 1, -110)
+scroll.Position = UDim2.new(0, 8, 0, 104)
 scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 6
 scroll.CanvasSize = UDim2.new(0, 0, 0, #ProductMarket.Products * 62)
@@ -229,6 +301,9 @@ for _, product in ipairs(ProductMarket.Products) do
 	local atomStr = ""
 	for atom, count in pairs(product.requiredAtoms) do
 		atomStr = atomStr .. count .. atom .. " "
+	end
+	for residue, count in pairs(product.requiredSlag or {}) do
+		atomStr = atomStr .. count .. " slag " .. residue .. " "
 	end
 	local atomL = Instance.new("TextLabel")
 	atomL.Size = UDim2.new(0.15, 0, 0, 14)
@@ -289,10 +364,10 @@ for _, product in ipairs(ProductMarket.Products) do
 	plusBtn.Parent = qtyFrame
 
 	local qty = 1
-	minusBtn.MouseButton1Click:Connect(function()
+	minusBtn.Activated:Connect(function()
 		qty = math.max(1, qty - 1); qtyLabel.Text = tostring(qty)
 	end)
-	plusBtn.MouseButton1Click:Connect(function()
+	plusBtn.Activated:Connect(function()
 		qty = math.min(99, qty + 1); qtyLabel.Text = tostring(qty)
 	end)
 
@@ -309,11 +384,26 @@ for _, product in ipairs(ProductMarket.Products) do
 	corner(sellBtn, 6)
 
 	local pid = product.id
-	sellBtn.MouseButton1Click:Connect(function()
+	local sellBusy = false
+	sellBtn.Activated:Connect(function()
+		if sellBusy then return end
+		sellBusy = true
+		sellBtn.Active = false
 		local r = Remotes:FindFirstChild("RequestSellProduct")
-		if r then r:FireServer(pid, qty) end
+		if r then
+			statusLabel.Text = "Submitting " .. qty .. "x " .. product.name .. "…"
+			statusLabel.TextColor3 = C.gold
+			r:FireServer(pid, qty)
+		else
+			statusLabel.Text = "Market service is unavailable; try again shortly."
+			statusLabel.TextColor3 = C.loss
+		end
 		sellBtn.BackgroundColor3 = C.gold
 		task.delay(0.3, function() sellBtn.BackgroundColor3 = C.accent end)
+		task.delay(0.75, function()
+			sellBusy = false
+			if sellBtn.Parent then sellBtn.Active = true end
+		end)
 	end)
 
 	productCards[product.id] = {card = card, priceLabel = priceL, qtyLabel = qtyLabel}
@@ -353,6 +443,17 @@ if priceEvent then
 			pnlLabel.TextColor3 = (data.pnl.netProfit or 0) >= 0 and C.profit or C.loss
 		end
 	end)
+end
+
+local soldEvent = Remotes:FindFirstChild("ProductSold")
+if soldEvent then
+	 soldEvent.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then return end
+		local quantity = tonumber(data.quantity) or 0
+		local revenue = tonumber(data.totalRevenue) or 0
+		statusLabel.Text = string.format("SOLD ✓ %dx %s → +%d MC", quantity, data.name or data.productId or "product", revenue)
+		statusLabel.TextColor3 = C.profit
+	 end)
 end
 
 -- Refresh on open

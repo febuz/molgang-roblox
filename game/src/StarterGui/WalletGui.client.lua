@@ -11,6 +11,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -59,8 +60,12 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "WalletGui"
 gui.Enabled = false
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Wallet is a full-screen interactive modal; keep it above HUD/status layers.
+gui.DisplayOrder = 23
 gui.Parent = playerGui
+ResponsiveGui.Attach(gui, 580, 480)
 
 -- Background
 local bg = Instance.new("Frame")
@@ -73,7 +78,8 @@ bg.Parent = gui
 -- Panel
 local panel = Instance.new("Frame")
 panel.Size = UDim2.fromOffset(580, 480)
-panel.Position = UDim2.new(0.5, -290, 0.5, -240)
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = UDim2.fromScale(0.5, 0.5)
 panel.BackgroundColor3 = C.panel
 panel.BackgroundTransparency = 0.05
 panel.BorderSizePixel = 0
@@ -101,7 +107,7 @@ xBtn.TextScaled = true
 xBtn.Font = Enum.Font.GothamBold
 xBtn.Parent = hdr
 corner(xBtn, 6)
-xBtn.MouseButton1Click:Connect(function() gui.Enabled = false end)
+xBtn.Activated:Connect(function() gui.Enabled = false end)
 
 -- ══════════════════════════════════════════════
 -- TABS
@@ -149,7 +155,7 @@ for i, name in ipairs(TABS) do
 	tFrames[name] = f
 	local ly = Instance.new("UIListLayout"); ly.Padding = UDim.new(0, 6); ly.Parent = f
 
-	b.MouseButton1Click:Connect(function()
+	b.Activated:Connect(function()
 		for n, fr in pairs(tFrames) do fr.Visible = (n == name) end
 		for n, bt in pairs(tBtns) do bt.TextColor3 = (n == name) and C.accent or C.dim end
 	end)
@@ -193,7 +199,7 @@ claim.TextScaled = true
 claim.Font = Enum.Font.GothamBold
 claim.Parent = bf
 corner(claim, 6)
-claim.MouseButton1Click:Connect(function()
+claim.Activated:Connect(function()
 	Remotes.FireServer("RequestDailyClaim")
 end)
 
@@ -233,7 +239,7 @@ sbtn.TextScaled = true
 sbtn.Font = Enum.Font.GothamBold
 sbtn.Parent = sr
 corner(sbtn, 4)
-sbtn.MouseButton1Click:Connect(function()
+sbtn.Activated:Connect(function()
 	if sb.Text ~= "" then Remotes.FireServer("RequestChainQuery", sb.Text) end
 end)
 
@@ -312,7 +318,7 @@ Remotes.DailyClaimResult.OnClientEvent:Connect(function(d)
 	else
 		local h = math.floor((d.remaining or 0) / 3600)
 		local m = math.floor(((d.remaining or 0) % 3600) / 60)
-		claim.Text = "Next: "..h.."h "..m.."m"
+		claim.Text = d.reason or ("Next: "..h.."h "..m.."m")
 	end
 end)
 

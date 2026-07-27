@@ -57,9 +57,26 @@ screenGui.DisplayOrder = 17
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local fertilizerCamera = workspace.CurrentCamera
+local function updateFertilizerScale()
+	if not fertilizerCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(fertilizerCamera.ViewportSize.X - 20) / 780,
+		(fertilizerCamera.ViewportSize.Y - 20) / 540
+	), 0.65, 1)
+end
+updateFertilizerScale()
+if fertilizerCamera then
+	fertilizerCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateFertilizerScale)
+end
+
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 780, 0, 540)
-main.Position = UDim2.new(0.5, -390, 0.5, -270)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
@@ -72,15 +89,23 @@ titleBar.Size = UDim2.new(1, 0, 0, 42)
 titleBar.BackgroundColor3 = C.panel
 titleBar.Parent = main
 corner(titleBar, 12)
-lbl(titleBar, {N="Title", S=UDim2.new(0.8,0,1,0), P=UDim2.new(0,14,0,0),
+lbl(titleBar, {N="Title", S=UDim2.new(0.8,0,0,22), P=UDim2.new(0,14,0,0),
 	T="FERTILIZER CHEMISTRY LAB", C=C.accent, F=Enum.Font.GothamBold})
+
+local actionStatusLabel = lbl(titleBar, {N="ActionStatus", S=UDim2.new(0.8,0,0,16), P=UDim2.new(0,14,0,23),
+	T="Ready — choose a farm, lab, or quest action", C=C.textDim, F=Enum.Font.Gotham, A=Enum.TextXAlignment.Left})
+
+local function setActionStatus(text, color)
+	actionStatusLabel.Text = tostring(text or "")
+	actionStatusLabel.TextColor3 = color or C.textDim
+	end
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 0, 7)
 closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60); closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.new(1,1,1); closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true; closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Tabs
 local tabFrame = Instance.new("Frame")
@@ -119,7 +144,7 @@ for _, tab in ipairs(tabs) do
 	panel.Visible = (tab.key == "farm"); panel.Parent = contentFrame
 	tabPanels[tab.key] = panel
 
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do b.BackgroundColor3 = C.tabInactive; b.TextColor3 = C.textDim end
 		panel.Visible = true; btn.BackgroundColor3 = C.tabActive; btn.TextColor3 = C.text
@@ -208,34 +233,38 @@ for i = 1, 4 do
 	fertBtn.TextScaled = true; fertBtn.Parent = card; corner(fertBtn, 4)
 
 	-- Wire buttons
-	testBtn.MouseButton1Click:Connect(function()
+	testBtn.Activated:Connect(function()
+		setActionStatus("Testing soil at Plot " .. i .. "…", C.waterBlue)
 		local r = Remotes:FindFirstChild("RequestTestSoil")
-		if r then r:FireServer(i) end
+		if r then r:FireServer(i) else setActionStatus("Soil test service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 
 	-- Simple crop picker: cycle through available crops
 	local cropIdx = 0
 	local availCrops = FertilizerTrack.Crops
-	plantBtn.MouseButton1Click:Connect(function()
+	plantBtn.Activated:Connect(function()
 		cropIdx = (cropIdx % #availCrops) + 1
 		local crop = availCrops[cropIdx]
+		setActionStatus("Planting " .. crop.name .. " at Plot " .. i .. "…", C.accent)
 		local r = Remotes:FindFirstChild("RequestPlantCrop")
-		if r then r:FireServer(i, crop.id) end
+		if r then r:FireServer(i, crop.id) else setActionStatus("Plant service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 
-	harvestBtn.MouseButton1Click:Connect(function()
+	harvestBtn.Activated:Connect(function()
+		setActionStatus("Harvesting Plot " .. i .. "…", C.gold)
 		local r = Remotes:FindFirstChild("RequestHarvestCrop")
-		if r then r:FireServer(i) end
+		if r then r:FireServer(i) else setActionStatus("Harvest service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 
 	-- Simple fertilizer picker
 	local fertIdx = 0
 	local availFerts = FertilizerTrack.Fertilizers
-	fertBtn.MouseButton1Click:Connect(function()
+	fertBtn.Activated:Connect(function()
 		fertIdx = (fertIdx % #availFerts) + 1
 		local fert = availFerts[fertIdx]
+		setActionStatus("Applying " .. fert.name .. " at Plot " .. i .. "…", C.soilBrown)
 		local r = Remotes:FindFirstChild("RequestApplyFertilizer")
-		if r then r:FireServer(i, fert.id) end
+		if r then r:FireServer(i, fert.id) else setActionStatus("Fertilizer service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 
 	plotCards[i] = {
@@ -303,9 +332,10 @@ for _, fert in ipairs(FertilizerTrack.Fertilizers) do
 	craftBtn.TextColor3 = Color3.new(0,0,0); craftBtn.Font = Enum.Font.GothamBold
 	craftBtn.TextScaled = true; craftBtn.Parent = fCard; corner(craftBtn, 6)
 
-	craftBtn.MouseButton1Click:Connect(function()
+	craftBtn.Activated:Connect(function()
+		setActionStatus("Synthesizing " .. fert.name .. "…", C.accent)
 		local r = Remotes:FindFirstChild("RequestCraftFertilizer")
-		if r then r:FireServer(fert.id) end
+		if r then r:FireServer(fert.id) else setActionStatus("Fertilizer lab service unavailable.", Color3.fromRGB(255, 110, 110)) end
 	end)
 end
 
@@ -379,6 +409,39 @@ end
 -- SERVER EVENT HANDLERS
 -- ═══════════════════════════════════════════════
 
+local function connectStatusEvent(name, message)
+	local event = Remotes:FindFirstChild(name)
+	if event then
+		event.OnClientEvent:Connect(function(data)
+			setActionStatus(message(data), C.ready)
+		end)
+	end
+end
+
+connectStatusEvent("SoilTestResult", function(data)
+	return string.format("Soil test complete: %s, pH %.1f", tostring(data.soilType or "sample"), tonumber(data.pH) or 0)
+end)
+connectStatusEvent("FertilizerCrafted", function(data)
+	return "Crafted " .. tostring(data.name or data.fertilizerId or "fertilizer") .. "."
+end)
+connectStatusEvent("CropHarvested", function(data)
+	return string.format("Harvest complete: %s × %s (+%s MC)", tostring(data.cropName or "crop"), tostring(data.yield or 0), tostring(data.coins or 0))
+end)
+
+local announceEvent = Remotes:FindFirstChild("ServerAnnounce")
+if announceEvent then
+	announceEvent.OnClientEvent:Connect(function(data)
+		local message = type(data) == "table" and data.message or data
+		if type(message) ~= "string" then return end
+		local lower = string.lower(message)
+		if lower:find("soil", 1, true) or lower:find("fertilizer", 1, true) or lower:find("fertiliser", 1, true)
+			or lower:find("plot", 1, true) or lower:find("crop", 1, true) or lower:find("harvest", 1, true)
+			or lower:find("plant", 1, true) or lower:find("synth", 1, true) then
+			setActionStatus(message, Color3.fromRGB(255, 120, 120))
+		end
+	end)
+end
+
 local fertUpdateEvent = Remotes:FindFirstChild("FertilizerUpdate")
 if fertUpdateEvent then
 	fertUpdateEvent.OnClientEvent:Connect(function(data)
@@ -387,11 +450,19 @@ if fertUpdateEvent then
 				local pc = plotCards[i]
 				if pc then
 					if plot.tested then
-						pc.soilLabel.Text = "Soil: " .. plot.soilName
+						local soilText = "Soil: " .. plot.soilName
+						if type(plot.contaminants) == "table" and #plot.contaminants > 0 then
+							soilText = soilText .. "  ⚠ " .. table.concat(plot.contaminants, "/")
+							pc.soilLabel.TextColor3 = Color3.fromRGB(255, 150, 70)
+						else
+							pc.soilLabel.TextColor3 = C.soilBrown
+						end
+						pc.soilLabel.Text = soilText
 						pc.npkLabel.Text = string.format("N:%d P:%d K:%d pH:%.1f",
 							plot.nutrients.N, plot.nutrients.P, plot.nutrients.K, plot.pH)
 					else
 						pc.soilLabel.Text = "Soil: Unknown (test it!)"
+						pc.soilLabel.TextColor3 = C.soilBrown
 						pc.npkLabel.Text = "N:? P:? K:? pH:?"
 					end
 

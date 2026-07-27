@@ -10,6 +10,15 @@ local TooltipSystem = {}
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
+
+-- The module is also included in the server-side invariant sweep. It is a
+-- client GUI helper, so loading it on the server must be harmless.
+if not player then
+	function TooltipSystem.AddTooltip() end
+	function TooltipSystem.AddBatch() end
+	return TooltipSystem
+end
+
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- Shared tooltip GUI

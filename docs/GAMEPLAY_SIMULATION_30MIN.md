@@ -67,13 +67,13 @@
 | 0:16 | Quest hint appears | — | 6s | "Press Q for Quest Log" banner |
 | 0:20 | Read tutorial Step 3 | P (key) | 1s | Open Periodic Table → shows collected element |
 | 0:21 | Close Periodic Table | P or Esc | 0.5s | Tutorial step 3 cleared |
-| 0:22 | Open Dashboard | D (key) | 1s | Tutorial step 4 |
-| 0:23 | Close Dashboard | D or Esc | 0.5s | |
+| 0:22 | Open Dashboard | U (key) | 1s | Tutorial step 4 |
+| 0:23 | Close Dashboard | U or Esc | 0.5s | |
 | 0:25 | Collect 3 more atoms | WASD + proximity | 30-60s | Walk around hub collecting atoms |
 | 1:00 | Tutorial Step 5 done | — | auto | "Collect 3 More Atoms" cleared |
 | 1:00 | Tutorial Step 6 | R (key) | 1s | "Build a Molecule!" → opens Recipe Book |
 | 1:01 | Browse recipes | scroll + click | 10s | See H2O, NaCl, etc. with valence hints |
-| 1:10 | Tutorial Step 7 | S (key) | 1s | "Process Steel Slag!" → opens Slag Processing |
+| 1:10 | Tutorial Step 7 | J (key) | 1s | "Process Steel Slag!" -> opens Slag Processing |
 | 1:12 | Tutorial Step 8 | C (key) | 1s | Process Control Panel |
 | 1:15 | Tutorial Step 9 | — | 8s auto | "Become an Entrepreneur!" |
 | 1:25 | Tutorial complete | — | 10s auto | "You're Ready!" final step |
@@ -113,16 +113,16 @@
 | 0:00-1:30 | Tutorial + daily claim | various | +300 MC | 800 MC |
 | 1:30 | Walk to Slakkenspoor (-2000 studs) | WASD | 0 | 800 MC |
 | 3:35 | Arrive at factory zone | — | 0 | 800 MC |
-| 3:35 | Open Slag Processing | S key | 0 | 800 MC |
+| 3:35 | Open Slag Processing | J key | 0 | 800 MC |
 | 3:40 | Buy raw slag | click Buy | -50 MC | 750 MC |
 | 3:45 | Hammer crush (8 clicks) | click hammer ×8 | 0 | 750 MC |
 | 4:00 | Select HCl reagent | click Select | 0 | 750 MC |
 | 4:05 | Select "crushed" size | click Crushed | 0 | 750 MC |
 | 4:10 | Start leaching | click START | -80 MC (HCl) | 670 MC |
-| 4:10 | **Leach timer starts** (1200 min = 20 real min with crushed+HCl) | — | 0 | 670 MC |
+| 4:10 | **Leach timer starts** (3600 game min; duration follows the OTAP clock and process controls) | — | 0 | 670 MC |
 | 4:10-24:00 | Collect atoms while leaching | WASD | +80 atoms (~268 MC) | 938 MC |
 | 24:00 | Leach complete! | auto notification | 0 | 938 MC |
-| 24:05 | Extract products | S key → Monitor → Extract | 0 | 938 MC |
+| 24:05 | Extract products | J key -> Monitor -> Extract | 0 | 938 MC |
 | 24:10 | Open Product Exchange | X key | 0 | 938 MC |
 | 24:15 | Sell Fe2O3 (from HCl leach) | click Sell | +50 MC | 988 MC |
 | 24:15 | Sell other products | click Sell | +30 MC | 1018 MC |
@@ -143,13 +143,13 @@
 | 1:30 | Walk to Slakkenspoor | WASD (2 min) | 0 | 800 MC |
 | 3:30 | Buy slag + hammer crush | S, clicks | -50 MC | 750 MC |
 | 4:00 | Start H2O leach (FREE!) | S, clicks | 0 MC | 750 MC |
-| 4:00 | **Leach timer: 2880 min reduced** | — | — | — |
-| 4:00 | **Problem: H2O leach too slow for 30min** | — | — | — |
+| 4:00 | **Leach timer: 2160 game min base (720 × crushed multiplier)** | — | — | — |
+| 4:00 | **OTAP timing:** 1 game day is 10 real minutes; temperature, flow and particle size change the estimate | — | — | — |
 | 4:00-30:00 | Collect atoms while waiting | WASD | +104 atoms (~348 MC) | 1098 MC |
-| 30:00 | Leach NOT complete (needs hours) | — | — | — |
+| 30:00 | Leach completion depends on the selected process settings | — | — | — |
 | 30:00 | **END** | | | **1098 MC, ~104 atoms, 0 products** |
 
-**Rating:** BAD for 30-min session. H2O leach is tutorial-only viable in longer sessions.
+**Rating:** MODERATE. H2O is a free, selective learning route; acid or finer particles are faster when a player needs a short-session payout.
 
 ---
 
@@ -213,16 +213,16 @@
 
 | Time | Action | Keys | MC Change | Running Total |
 |------|--------|------|-----------|---------------|
-| 0:00-1:30 | Tutorial + claim | various | +300 MC | 800 MC |
+| 0:00-1:30 | Tutorial + claim + first quest | various | +300 MC | 800 MC |
 | 1:30 | Open Mining GUI | V key | 0 | 800 MC |
 | 1:30 | Browse exploration licenses | click Explore tab | 0 | 800 MC |
-| 1:35 | Buy cheapest license | click | -800 MC | **0 MC!** |
-| 1:35 | **Broke!** No money for equipment | — | — | — |
-| 1:35-15:00 | Must collect atoms to earn back | WASD | +54 atoms (~181 MC) | 181 MC |
-| 15:00-30:00 | Continue collecting | WASD | +60 atoms (~200 MC) | 381 MC |
-| 30:00 | **END** | | | **381 MC, ~114 atoms, 1 unexplored plot** |
+| 1:35 | Buy Practice Outcrop license | click | -200 MC | **600 MC** |
+| 1:36 | Hand-survey the surface plot | click Explore | 0 | 300 MC |
+| 1:40-15:00 | Collect samples while learning | WASD | +54 atoms (~181 MC) | 781 MC |
+| 15:00-30:00 | Collect and sell beginner ore | WASD + mining actions | variable | **positive first loop** |
+| 30:00 | **END** | | | **practice mine established; no equipment required** |
 
-**Rating:** TERRIBLE. Mining is a long-term investment, not viable in 30 min.
+**Rating:** MODERATE. The practice outcrop is an affordable onboarding loop; deeper plots remain long-term investments.
 
 ---
 
@@ -318,7 +318,7 @@
 | 7 | **PATH 3** | Water Leacher | **1098 MC** | ~104 | none (too slow) | BAD |
 | 8 | **PATH 2** | Slag Processor | **988 MC** | ~100 | 1 leach done | MODERATE |
 | 9 | **PATH 8** | Bubble Tea Addict | **988 MC** | ~110 | 4 teas wasted | POOR |
-| 10 | **PATH 6** | The Miner | **381 MC** | ~114 | 1 empty plot | TERRIBLE |
+| 10 | **PATH 6** | The Miner | **781 MC** | ~114 | practice plot | MODERATE |
 
 ---
 
@@ -332,15 +332,15 @@
 5. **HSE incidents** are the highest MC/min activity (500-2000 MC per 5-min mission)
 
 ### What Needs Fixing
-1. **Mining is a trap** for new players — 800 MC license depletes starting funds with no short-term return
-2. **H2O leach is useless** in short sessions — 2880 min base time is days, not minutes
+1. **Deep mining is a trap** for new players — premium licenses remain expensive, but the Practice Outcrop now costs 200 MC and can be explored by hand for free
+2. **Leach timing must be communicated clearly** — the current OTAP clock is 10 real minutes per game day, and particle size/process controls materially change completion time
 3. **Factory rent (2000 MC)** is impossible in 30 min — need ~45+ min or prior session wealth
 4. **Ground/Powder crush costs** (200/500 MC) are steep for new players
 5. **Atom spawn rate** limits collection to ~4/min regardless of strategy
 
 ### Recommended Balance Changes
-1. Add a "Practice Mine" that costs 200 MC (vs 800 MC) for tutorial
-2. Reduce H2O leach time further (or make it tutorial-only)
+1. Use the 200 MC Practice Outcrop and free hand survey as the tutorial mine; keep premium deposits gated behind equipment and capital
+2. Keep reagent/particle-size trade-offs visible in the leach estimate and avoid stale “days” messaging
 3. Add "First Molecule" quest: build H2O = 200 MC bonus
 4. Consider factory "trial rental" (500 MC for 1 game month)
 5. Increase atom spawn density at Nexus Hub for first 5 minutes
@@ -358,13 +358,13 @@ TIME    KEY/MOUSE           ACTION                          SCREEN STATE
 0:14    —                   Auto-collect (proximity)        "+1 H (COMMON) +1 MC" popup
 0:15    P key               Open Periodic Table             Tutorial Step 3 clears
 0:16    P key               Close Periodic Table            Back to 3D view
-0:17    D key               Open Dashboard                  Tutorial Step 4
-0:18    D key               Close Dashboard                 
+0:17    U key               Open Dashboard                  Tutorial Step 4
+0:18    U key               Close Dashboard                 
 0:19    W+A keys            Walk toward next atoms          Collecting 3 more
 0:30    W key               Walking, auto-collecting        Tutorial Step 5 completes
 0:31    R key               Open Recipe Book                Tutorial Step 6 "Build a Molecule!"
 0:32    R key               Close Recipe Book               
-0:33    S key               Open Slag Processing            Tutorial Step 7
+0:33    J key               Open Slag Processing            Tutorial Step 7
 0:34    Esc key             Close all overlays              
 0:35    C key               Process Control Panel           Tutorial Step 8
 0:36    Esc key             Close                           
@@ -373,7 +373,7 @@ TIME    KEY/MOUSE           ACTION                          SCREEN STATE
 0:52    —                   "First Atom" quest auto         "+100 MC", total: 813 MC
 0:55    W key (hold)        Walk toward teleport pad        Pad at (30, 14, -20)
 1:00    —                   Step on pad                     Teleported to Slakkenspoor!
-1:03    S key               Open Slag Processing GUI        3-tab interface appears
+1:03    J key               Open Slag Processing GUI        3-tab interface appears
 1:05    click "Buy"         Buy raw slag chunk              -50 MC, slag in inventory
 1:07    click hammer ×1     Hammer the slag                 CLANG sound, progress 1/8
 1:08    click hammer ×2     Continue                        Progress 2/8
@@ -398,7 +398,7 @@ TIME    KEY/MOUSE           ACTION                          SCREEN STATE
 5:10    W+D keys            Walk and collect with bonus     +25% MC on all atoms for 5 min
 10:00   —                   Buff expires                    Cup disappears from hand
 13:10   —                   NOTIFICATION: "Leach complete!" Fanfare sound plays
-13:12   S key               Open Slag Processing            
+13:12   J key               Open Slag Processing            
 13:13   click Monitor tab   Switch to monitor               Leach shows "COMPLETE!"
 13:15   click "EXTRACT"     Extract products                V, Fe, Ca, Mn atoms appear!
 13:17   Esc key             Close Slag GUI                  
@@ -407,7 +407,7 @@ TIME    KEY/MOUSE           ACTION                          SCREEN STATE
 13:22   click Fe2O3 "Sell"  Sell iron oxide                 +50 MC
 13:23   click TiO2 "Sell"   Sell titanium dioxide           +200 MC (if had Ti atoms)
 13:25   Esc key             Close Product Exchange          
-13:26   S key               Start 2nd leach cycle           Repeat: buy→crush→grind→leach
+13:26   J key               Start 2nd leach cycle           Repeat: buy->crush->grind->leach
 13:40   Esc key             Close, continue collecting      2nd leach running (~12 min)
 25:30   —                   2nd leach complete!             
 25:32   S→Extract→X→Sell    Extract and sell again          +620 MC

@@ -42,12 +42,21 @@ def check_moleculia():
     missing = {o["ref"] for o in objs if o["t"] == "asset"} - models
     if missing:
         fail(f"moleculia references GLBs with no file: {sorted(missing)[:5]}")
+    interactables = [o for o in objs if o.get("interact")]
+    required_interactions = {"console", "assay", "safety"}
+    interaction_types = {o["interact"] for o in interactables}
+    missing_interactions = required_interactions - interaction_types
+    if missing_interactions:
+        fail(f"HD plant interaction routes missing: {sorted(missing_interactions)}")
+    invalid_interactions = [o for o in interactables if o["t"] != "asset"]
+    if invalid_interactions:
+        fail("interactive world objects must be streamable assets")
     elements = [o for o in objs if o["t"] == "element"]
     nums = {o["num"] for o in elements}
     if len(elements) != 118 or nums != set(range(1, 119)):
         fail(f"expected 118 elements numbered 1..118, got {len(elements)}")
     print(f"OK  Moleculia: {len(zones)} zones, {len(stations)} stations, {len(elements)} elements, "
-          f"{len(objs)} objects")
+          f"{len(objs)} objects · interactions {sorted(interaction_types)}")
     return meta
 
 
@@ -98,6 +107,30 @@ def check_process_chemistry():
         fail("finer feed did not leach faster")
     print(f"OK  chemistry: V optimum in-window (sel@2.9={sel(2.9):.2f} > sel@5.5={sel(5.5):.2f}), "
           f"Arrhenius + particle-size monotone")
+
+
+def check_lua_parity():
+    """Sync protocol: constants the web sim duplicates from the Roblox game must
+    match their Lua source of truth (SteelSlag / ProductMarket)."""
+    import re
+    sys.path.insert(0, HERE)
+    import importlib
+    sim = importlib.import_module("sim_server")
+    mods = os.path.join(HERE, "..", "..", "game", "src", "ReplicatedStorage", "Modules")
+    slag = open(os.path.join(mods, "SteelSlag.lua"), encoding="utf-8").read()
+    # ParticleSizes leachMultiplier, in SizeOrder chunk/crushed/ground/powder
+    mults = [float(v) for v in re.findall(r"leachMultiplier\s*=\s*([\d.]+)", slag)[:4]]
+    web = [sim.Sim.LEACH_MULT[k] for k in ("chunk", "crushed", "ground", "powder")]
+    if mults != web:
+        fail(f"leachMultiplier drift: Lua {mults} != web {web}")
+    boost = re.search(r"boostFactor\s*=\s*([\d.]+)", slag)
+    if boost and abs(float(boost.group(1)) - sim.Sim.ROAST_BOOST) > 1e-9:
+        fail(f"roast boost drift: Lua {boost.group(1)} != web {sim.Sim.ROAST_BOOST}")
+    market = open(os.path.join(mods, "ProductMarket.lua"), encoding="utf-8").read()
+    m = re.search(r"id\s*=\s*\"V2O5\".*?basePrice\s*=\s*(\d+)", market, re.DOTALL)
+    if m and int(m.group(1)) != sim.Sim.V2O5_PRICE:
+        fail(f"V2O5 price drift: Lua {m.group(1)} != web {sim.Sim.V2O5_PRICE}")
+    print(f"OK  Lua parity: leachMultipliers {web}, roast x{sim.Sim.ROAST_BOOST}, V2O5 {sim.Sim.V2O5_PRICE} MolCoins")
 
 
 def check_sim():
@@ -154,6 +187,7 @@ def main():
     meta = check_moleculia()
     check_fertilizers_crops(meta)
     check_process_chemistry()
+    check_lua_parity()
     check_sim()
     check_world_model()
     check_legacy_city()

@@ -124,7 +124,7 @@
 - Walk near them or press E to collect
 - HUD updates in real-time
 
-### 5. **Open Dashboard (D key)**
+### 5. **Open Dashboard (U key)**
 - See 5 tabs: Build, Trade, Leaderboards, Quests, Inventory
 - Build a facility (costs MolCoins)
 - Watch production cycle (60 seconds)

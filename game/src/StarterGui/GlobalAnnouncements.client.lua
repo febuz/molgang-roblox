@@ -15,6 +15,8 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local AnnouncementRouting = require(ReplicatedStorage.Modules.AnnouncementRouting)
+local ProductionFeedback = require(ReplicatedStorage.Modules.ProductionFeedback)
 
 local COLORS = {
 	background    = Color3.fromRGB(20, 20, 30),
@@ -22,6 +24,7 @@ local COLORS = {
 	legendary     = Color3.fromRGB(255, 215, 0),
 	epic          = Color3.fromRGB(200, 100, 255),
 	rare          = Color3.fromRGB(100, 150, 255),
+	common        = Color3.fromRGB(255, 180, 80),
 	textPrimary   = Color3.fromRGB(240, 240, 250),
 }
 
@@ -31,6 +34,10 @@ screenGui.Name = "GlobalAnnouncements"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Announcements are non-interactive feedback. Keep them in a dedicated top
+-- strip rather than above modal panels: a timed world event must never cover
+-- a menu title bar or steal the player's only visible action button.
+-- 9 sits above the status HUD (8) but below modal menus (10+).
 screenGui.DisplayOrder = 9
 screenGui.Parent = playerGui
 
@@ -47,10 +54,12 @@ local function displayAnnouncement(announcement)
 	-- Create announcement panel
 	local panel = Instance.new("Frame")
 	panel.Name = "AnnouncementPanel"
-	panel.Size = UDim2.new(0, 600, 0, 100)
-	panel.Position = UDim2.new(0.5, -300, 0.5, -200)
+	panel.Size = UDim2.new(0, 620, 0, 64)
+	panel.Position = UDim2.new(0.5, -310, 0, 8)
 	panel.BackgroundColor3 = COLORS.background
 	panel.BackgroundTransparency = 0.1
+	panel.Active = false
+	panel.ZIndex = 30
 	panel.Parent = screenGui
 
 	local corner = Instance.new("UICorner")
@@ -65,25 +74,33 @@ local function displayAnnouncement(announcement)
 	-- Icon
 	local iconLabel = Instance.new("TextLabel")
 	iconLabel.Name = "Icon"
-	iconLabel.Size = UDim2.new(0, 50, 1, 0)
-	iconLabel.Position = UDim2.new(0, 10, 0, 0)
+	iconLabel.Size = UDim2.new(0, 42, 1, 0)
+	iconLabel.Position = UDim2.new(0, 8, 0, 0)
 	iconLabel.BackgroundTransparency = 1
 	iconLabel.Text = announcement.icon or "📢"
 	iconLabel.TextScaled = true
+	iconLabel.Active = false
+	iconLabel.ZIndex = 31
 	iconLabel.Parent = panel
 
 	-- Message
 	local messageLabel = Instance.new("TextLabel")
 	messageLabel.Name = "Message"
-	messageLabel.Size = UDim2.new(1, -70, 1, 0)
-	messageLabel.Position = UDim2.new(0, 60, 0, 0)
+	messageLabel.Size = UDim2.new(1, -62, 1, -8)
+	messageLabel.Position = UDim2.new(0, 54, 0, 4)
 	messageLabel.BackgroundTransparency = 1
 	messageLabel.Text = announcement.message
 	messageLabel.TextColor3 = COLORS.textPrimary
 	messageLabel.TextScaled = true
 	messageLabel.Font = Enum.Font.GothamBold
 	messageLabel.TextWrapped = true
+	messageLabel.Active = false
+	messageLabel.ZIndex = 31
 	messageLabel.Parent = panel
+	local messageConstraint = Instance.new("UITextSizeConstraint")
+	messageConstraint.MinTextSize = 14
+	messageConstraint.MaxTextSize = 22
+	messageConstraint.Parent = messageLabel
 
 	-- Fade in
 	local fadeIn = TweenService:Create(
@@ -167,6 +184,97 @@ Remotes.DayAdvanced.OnClientEvent:Connect(function(data)
 	})
 end)
 
+-- World events must be visible when their server-side modifiers change.
+-- Reuse the existing queue so event headlines cannot create overlapping GUI.
+local function formatWorldModifiers(effects)
+	local modifiers = {}
+	local labels = {
+		productionSpeedMult = "production speed",
+		productionBonusMult = "production rewards",
+		miningYieldMult = "mining yield",
+		leachingEfficiencyMult = "leach efficiency",
+		cropYieldMult = "crop yield",
+		researchSpeedMult = "research speed",
+		fertilizerDemandMult = "fertilizer demand",
+		factoryOpCostMult = "factory costs",
+		processWaterCostMult = "process-water costs",
+		carbonCreditMult = "carbon credits",
+		tradeTaxMult = "trade tax",
+		moleculeBonusMultiplier = "molecule rewards",
+	}
+	for key, label in pairs(labels) do
+		local value = effects and effects[key]
+		if type(value) == "number" and value ~= 1 then
+			table.insert(modifiers, label .. " x" .. string.format("%.2f", value))
+		end
+	end
+	local carbonTax = effects and effects.carbonTaxPerKW
+	if type(carbonTax) == "number" and carbonTax > 0 then
+		table.insert(modifiers, string.format("carbon tax %.2f/kW/min", carbonTax))
+	end
+	table.sort(modifiers)
+	return #modifiers > 0 and (" | " .. table.concat(modifiers, ", ")) or ""
+end
+
+if Remotes.WorldEventStarted then
+	Remotes.WorldEventStarted.OnClientEvent:Connect(function(data)
+		queueAnnouncement({
+			icon = "🌐",
+			message = "WORLD EVENT: " .. tostring(data.name or "Active event")
+				.. (data.hint and (" — " .. data.hint) or ""),
+			color = COLORS.legendary,
+		})
+	end)
+end
+
+if Remotes.WorldEventEnded then
+	Remotes.WorldEventEnded.OnClientEvent:Connect(function(data)
+		queueAnnouncement({
+			icon = "🌐",
+			message = "World event ended: " .. tostring(data.eventId or "event"),
+			color = COLORS.rare,
+		})
+	end)
+end
+
+if Remotes.WorldEffectsUpdate then
+	Remotes.WorldEffectsUpdate.OnClientEvent:Connect(function(data)
+		local modifiers = formatWorldModifiers(data and data.effects)
+		if modifiers ~= "" then
+			queueAnnouncement({
+				icon = "📊",
+				message = "Active world modifiers" .. modifiers,
+				color = COLORS.accent,
+			})
+		end
+	end)
+end
+
+if Remotes.WorldNewsItem then
+	Remotes.WorldNewsItem.OnClientEvent:Connect(function(data)
+		if type(data) == "table" and type(data.message) == "string" then
+			queueAnnouncement({
+				icon = "📰",
+				message = data.message,
+				color = COLORS.rare,
+			})
+		end
+	end)
+end
+
+if Remotes.WorldNewsFeed then
+	Remotes.WorldNewsFeed.OnClientEvent:Connect(function(data)
+		local latest = data and data.feed and data.feed[1]
+		if type(latest) == "table" and type(latest.message) == "string" then
+			queueAnnouncement({
+				icon = "🗞️",
+				message = "Latest world news: " .. latest.message,
+				color = COLORS.rare,
+			})
+		end
+	end)
+end
+
 -- Production complete
 Remotes.ProductionCycleComplete.OnClientEvent:Connect(function(data)
 	local msg = "Production: "
@@ -191,12 +299,21 @@ Remotes.ProductionCycleComplete.OnClientEvent:Connect(function(data)
 			message = msg,
 			color = COLORS.rare,
 		})
+	elseif data.atomCapacityLimited or data.factoryBlocked then
+		local reason = data.blockedReason or ProductionFeedback.GetBlockedReason(
+			data.atomCapacityLimited, data.factoryBlocked)
+		queueAnnouncement({
+			icon = "⚠️",
+			message = "Production blocked: " .. (reason or "check storage and feedstock."),
+			color = COLORS.common,
+		})
 	end
 end)
 
 -- Server announcements (from ServerAnnounce event)
 if Remotes:FindFirstChild("ServerAnnounce") then
 	Remotes.ServerAnnounce.OnClientEvent:Connect(function(announcement)
+		if not AnnouncementRouting.IsVisual(announcement) then return end
 		queueAnnouncement({
 			icon = "📣",
 			message = announcement.message or "Server announcement",

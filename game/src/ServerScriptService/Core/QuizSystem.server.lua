@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local QuizQuestionUtils = require(ReplicatedStorage.Modules.QuizQuestionUtils)
 
 -- BubbleTeaBar.server.lua exposes active drink buffs via _G.GetPlayerBuff
 -- (e.g. Mango Smoothie's "quizHint" buff, +30% by default). Guarded because
@@ -18,7 +19,10 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 -- both scripts have run.
 local function getQuizRewardMultiplier(userId)
 	if _G.GetPlayerBuff then
-		return _G.GetPlayerBuff(userId, "quizHint")
+		local multiplier = _G.GetPlayerBuff(userId, "quizHint")
+		if type(multiplier) == "number" and multiplier > 0 and multiplier < math.huge then
+			return multiplier
+		end
 	end
 	return 1.0
 end
@@ -55,13 +59,7 @@ local function generateQuestions()
 	-- Type 2: "What is the atomic number of [element]?"
 	for z, elem in pairs(Elements.Table) do
 		if z <= 30 then
-			local wrongNums = {}
-			for i = 1, 3 do
-				local wz = z + math.random(-5, 5)
-				if wz == z then wz = z + 1 end
-				if wz < 1 then wz = 1 end
-				table.insert(wrongNums, tostring(wz))
-			end
+			local wrongNums = QuizQuestionUtils.UniqueWrongAtomicNumbers(z, 3)
 			table.insert(questions, {
 				type = "atomic_number",
 				question = "What is the atomic number (Z) of " .. elem.name .. "?",
@@ -164,6 +162,9 @@ end
 
 local questionBank = generateQuestions()
 
+-- Keep the zone selector server-authoritative, while allowing the zones used
+-- by the in-world quiz pillars to reach the matching question subset.
+
 -- ══════════════════════════════════════════════
 -- QUIZ SESSION MANAGEMENT
 -- ══════════════════════════════════════════════
@@ -184,7 +185,13 @@ end
 
 local function startQuiz(player, zone)
 	local userId = player.UserId
-	if activeSessions[userId] then return end -- already in quiz
+	if activeSessions[userId] then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "A quiz is already active. Finish it or press Close first.",
+			rarity = "common",
+		})
+		return
+	end -- already in quiz
 
 	-- Select 3 random questions for this zone
 	local zoneQuestions = {}
@@ -198,11 +205,18 @@ local function startQuiz(player, zone)
 		-- Fallback: use any questions
 		zoneQuestions = questionBank
 	end
+	if #zoneQuestions == 0 then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Quiz unavailable: the chemistry question bank is empty.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Pick 3 random
 	local selected = {}
 	local used = {}
-	for i = 1, 3 do
+	for _ = 1, 3 do
 		local idx
 		repeat
 			idx = math.random(#zoneQuestions)
@@ -258,6 +272,9 @@ Remotes.RequestQuizStart.OnServerEvent:Connect(function(player, zone)
 	if type(zone) ~= "string" then
 		zone = "any"
 	end
+	if not QuizQuestionUtils.IsValidZone(zone) then
+		zone = "any"
+	end
 	startQuiz(player, zone)
 end)
 
@@ -282,26 +299,39 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 		session.currentIndex = session.currentIndex + 1
 	else
 		-- Check answer
-		if answer == current.correct then
-			session.score = session.score + 1
-			-- Award MolCoins, boosted by an active quizHint drink buff
-			local reward = math.floor(10 * getQuizRewardMultiplier(userId))
-			PlayerDataBridge.AddEarnedMolCoins(userId, reward)
-			player:SetAttribute("LastCollectReward", reward)
-			player:SetAttribute("CollectTimestamp", tick())
+		local correct = answer == current.correct
+		-- Advance the authoritative session before reward bookkeeping. A data or
+		-- buff error must not strand the client on "Checking answer...".
+		session.currentIndex = session.currentIndex + 1
+		local rewardOk, rewardError = pcall(function()
+			PlayerDataBridge.RecordQuizAnswer(userId, correct)
+			if correct then
+				session.score = session.score + 1
+				-- Award MolCoins, boosted by an active quizHint drink buff
+				local reward = math.floor(10 * getQuizRewardMultiplier(userId))
+				local _, _, paidReward = PlayerDataBridge.AddRewardMolCoins(userId, reward)
+				reward = paidReward
+				player:SetAttribute("LastCollectReward", reward)
+				player:SetAttribute("CollectTimestamp", tick())
 
+				Remotes.FireClient("ServerAnnounce", player, {
+					message = "Correct! +" .. reward .. " MolCoins",
+					rarity = "common",
+				})
+			else
+				Remotes.FireClient("ServerAnnounce", player, {
+					message = "Incorrect. The answer was: " .. current.correct,
+					rarity = "common",
+				})
+			end
+		end)
+		if not rewardOk then
+			warn("[QuizSystem] Answer reward bookkeeping failed: " .. tostring(rewardError))
 			Remotes.FireClient("ServerAnnounce", player, {
-				message = "Correct! +" .. reward .. " MolCoins",
-				rarity = "common",
-			})
-		else
-			Remotes.FireClient("ServerAnnounce", player, {
-				message = "Incorrect. The answer was: " .. current.correct,
+				message = "Antwoord ontvangen. Beloning wordt later bijgewerkt.",
 				rarity = "common",
 			})
 		end
-
-		session.currentIndex = session.currentIndex + 1
 	end
 
 	-- Next question or end quiz
@@ -312,7 +342,8 @@ Remotes.RequestQuizAnswer.OnServerEvent:Connect(function(player, questionId, ans
 		if totalScore == 3 then
 			-- Perfect score bonus, also boosted by an active quizHint buff
 			local bonus = math.floor(25 * getQuizRewardMultiplier(userId))
-			PlayerDataBridge.AddEarnedMolCoins(userId, bonus)
+			local _, _, paidBonus = PlayerDataBridge.AddRewardMolCoins(userId, bonus)
+			bonus = paidBonus
 			player:SetAttribute("LastCollectReward", bonus)
 			player:SetAttribute("CollectTimestamp", tick())
 

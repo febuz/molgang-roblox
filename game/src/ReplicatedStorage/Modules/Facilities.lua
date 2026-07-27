@@ -63,6 +63,7 @@ end
 -- Player facilities data structure
 function Facilities.CreatePlayerFacilities()
 	return {
+		starterBenches = 0,
 		mines = 0,
 		factories = 0,
 		researchLabs = 0,
@@ -73,7 +74,8 @@ end
 -- Calculate total production per cycle
 function Facilities.CalculateProduction(facilities)
 	local production = {
-		atoms = (facilities.mines or 0) * FACILITY_TYPES.Mine.productionRate,
+		atoms = (facilities.starterBenches or 0) * FACILITY_TYPES["Starter Bench"].productionRate
+			+ (facilities.mines or 0) * FACILITY_TYPES.Mine.productionRate,
 		molecules = (facilities.factories or 0) * FACILITY_TYPES.Factory.productionRate,
 		research = (facilities.researchLabs or 0) * FACILITY_TYPES["Research Lab"].productionRate,
 		storageBonus = (facilities.offices or 0) * 50,  -- 50 extra slots per office
@@ -81,9 +83,26 @@ function Facilities.CalculateProduction(facilities)
 	return production
 end
 
+-- Outdoor facilities are affected by the server-owned weather state.
+function Facilities.CalculateOutdoorAtomRate(facilities, outdoorPenalty, productionSpeedMultiplier)
+	local baseAtoms = Facilities.CalculateProduction(facilities).atoms
+	local multiplier = tonumber(outdoorPenalty) or 1
+	multiplier = math.clamp(multiplier, 0, 1)
+	local speed = tonumber(productionSpeedMultiplier) or 1
+	speed = math.max(0, speed)
+	return baseAtoms * multiplier * speed
+end
+
+function Facilities.ApplyProductionBonus(productionBonus, bonusMultiplier)
+	local baseBonus = math.max(0, tonumber(productionBonus) or 0)
+	local multiplier = math.max(0, tonumber(bonusMultiplier) or 1)
+	return math.floor(baseBonus * multiplier)
+end
+
 -- Calculate total facility cost
 function Facilities.CalculateTotalCost(facilities)
 	local cost = 0
+	cost = cost + (facilities.starterBenches or 0) * FACILITY_TYPES["Starter Bench"].cost
 	cost = cost + (facilities.mines or 0) * FACILITY_TYPES.Mine.cost
 	cost = cost + (facilities.factories or 0) * FACILITY_TYPES.Factory.cost
 	cost = cost + (facilities.researchLabs or 0) * FACILITY_TYPES["Research Lab"].cost
@@ -91,15 +110,32 @@ function Facilities.CalculateTotalCost(facilities)
 	return cost
 end
 
+local FACILITY_KEYS = {
+	["Starter Bench"] = "starterBenches",
+	Mine = "mines",
+	Factory = "factories",
+	["Research Lab"] = "researchLabs",
+	Office = "offices",
+}
+
+local function getFacilityKey(facilityName)
+	return FACILITY_KEYS[facilityName]
+end
+
 -- Check if facility can be built
 function Facilities.CanBuild(facilities, facilityName)
 	local facility = FACILITY_TYPES[facilityName]
 	if not facility then return false, "Unknown facility" end
 
-	local key = string.lower(facilityName):gsub(" ", "")
-	key = key == "researchlab" and "researchLabs" or (key .. "s")
+	local key = getFacilityKey(facilityName)
+	if not key then return false, "Unknown facility key" end
 
+	-- Read the legacy lowercase Research Lab field too, so old saves cannot
+	-- bypass the max-level check during migration.
 	local count = facilities[key] or 0
+	if facilityName == "Research Lab" then
+		count = math.max(count, facilities.researchlabs or 0)
+	end
 	if count >= facility.maxLevel then
 		return false, "Facility at max level"
 	end
@@ -112,10 +148,13 @@ function Facilities.BuildFacility(facilities, facilityName)
 	local facility = FACILITY_TYPES[facilityName]
 	if not facility then return false end
 
-	local key = facilityName:lower():gsub(" ", "")
-	key = key == "researchlab" and "researchlabs" or (key .. "s")
+	local key = getFacilityKey(facilityName)
+	if not key then return false end
 
 	facilities[key] = (facilities[key] or 0) + 1
+	if facilityName == "Research Lab" then
+		facilities.researchlabs = nil
+	end
 	return true
 end
 

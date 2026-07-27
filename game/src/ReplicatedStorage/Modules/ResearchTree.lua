@@ -427,6 +427,14 @@ function ResearchTree.GetProgress(unlockedNodes)
 	return done, total, math.floor(done / total * 100)
 end
 
+-- Snapshot research speed when a project starts so an event expiring later
+-- cannot move an in-flight completion deadline unexpectedly.
+function ResearchTree.CalculateResearchDuration(researchTime, speedMultiplier)
+	local baseSeconds = math.max(0, tonumber(researchTime) or 0)
+	local multiplier = math.max(0.01, tonumber(speedMultiplier) or 1)
+	return math.max(0, math.floor(baseSeconds / multiplier))
+end
+
 -- Get available (researchable now) nodes
 function ResearchTree.GetAvailable(unlockedNodes)
 	local available = {}

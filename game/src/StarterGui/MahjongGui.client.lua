@@ -18,6 +18,13 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 local MahjongGame = require(ReplicatedStorage.Modules.MahjongGame)
 
 -- COLOR PALETTE
@@ -242,7 +249,7 @@ for _, action in ipairs(actions) do
 	actionBtn.Parent = actionButtonArea
 	createCorner(actionBtn, 6)
 
-	actionBtn.MouseButton1Click:Connect(function()
+	actionBtn.Activated:Connect(function()
 		print("[MahjongGui] Action clicked:", action)
 		if action == "Win" then
 			statusLabel.Text = "🎉 Mahjong! You won!\n\nPress Close to return."
@@ -304,7 +311,7 @@ function displayPlayerHand()
 		createStroke(tileBtn, COLORS.tileBorder, 1)
 
 		-- Discard on click
-		tileBtn.MouseButton1Click:Connect(function()
+		tileBtn.Activated:Connect(function()
 			if not gameActive then return end
 			discardTile(i, tile)
 		end)
@@ -467,7 +474,7 @@ function closeGame()
 	gameActive = false
 	gameState = nil
 	-- Re-enable dashboard
-	local dashboardGui = playerGui:FindFirstChild("DashboardGui")
+	local dashboardGui = findScreenGui("DashboardGui")
 	if dashboardGui then
 		dashboardGui.Enabled = true
 	end
@@ -486,7 +493,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
-closeBtn.MouseButton1Click:Connect(closeGame)
+closeBtn.Activated:Connect(closeGame)
 
 -- ═════════════════════════════════════════════════
 -- EXPORT FUNCTIONS (for DashboardGui to call)

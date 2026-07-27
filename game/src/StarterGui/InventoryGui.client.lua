@@ -18,6 +18,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 local Elements = require(ReplicatedStorage.Data.Elements)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
@@ -50,11 +51,28 @@ screenGui.DisplayOrder = 13
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local inventoryCamera = workspace.CurrentCamera
+local function updateInventoryScale()
+	if not inventoryCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(inventoryCamera.ViewportSize.X - 20) / 900,
+		(inventoryCamera.ViewportSize.Y - 20) / 700
+	), 0.65, 1)
+end
+updateInventoryScale()
+if inventoryCamera then
+	inventoryCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateInventoryScale)
+end
+
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 900, 0, 700)
-mainPanel.Position = UDim2.new(0.5, -450, 0.5, -350)
+mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanel.Position = UDim2.fromScale(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui
@@ -126,7 +144,7 @@ for si, sortMode in ipairs({"name", "quantity", "rarity"}) do
 	sb.Font = Enum.Font.GothamBold
 	sb.Parent = sortFrame
 	createCorner(sb, 4)
-	sb.MouseButton1Click:Connect(function()
+	sb.Activated:Connect(function()
 		currentSort = sortMode
 		-- Update button colors
 		for _, child in sortFrame:GetChildren() do
@@ -277,10 +295,7 @@ local function updateInventoryDisplay()
 
 	-- Calculate storage
 	local totalAtoms = 0
-	local maxStorage = 500  -- Base 500, +50 per office
-	if playerData.facilities then
-		maxStorage = maxStorage + (playerData.facilities.offices or 0) * 50
-	end
+	local maxStorage = InventoryLimits.GetAtomCapacity(playerData.facilities)
 
 	-- Display each atom
 	for symbol, count in pairs(playerData.atoms) do
@@ -326,19 +341,13 @@ Remotes.AtomCollected.OnClientEvent:Connect(function(data)
 end)
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 
--- Keyboard shortcut
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.I then
-		screenGui.Enabled = not screenGui.Enabled
-		if screenGui.Enabled then
-			updateInventoryDisplay()
-		end
-	end
+-- GUIManager owns the I shortcut; refresh when any opener enables this GUI.
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if screenGui.Enabled then updateInventoryDisplay() end
 end)
 
 _G.InventoryGuiToggle = function()

@@ -1,4 +1,5 @@
 local TradeRules = require("../game/src/ReplicatedStorage/Modules/TradeRules")
+
 local prices = {Iron = 100}
 
 local ok, quantity, price = TradeRules.Validate("buy", "Iron", 3, 100, prices)
@@ -10,4 +11,19 @@ assert(quantityOk and parsed == 4, "string quantities must be normalized safely"
 local clamped, _, clampedPrice = TradeRules.Validate("buy", "Iron", 1, 10000, prices)
 assert(clamped and clampedPrice == 120, "offered price must be clamped to market bounds")
 
-print("Trade Rules Tests: 5 passed, 0 failed")
+local tax, net = TradeRules.CalculateTradeTax(1000, 1)
+assert(tax == 50 and net == 950, "normal trade tax should be 5%")
+
+tax, net = TradeRules.CalculateTradeTax(1000, 0)
+assert(tax == 0 and net == 1000, "free-trade event should remove tax")
+
+tax, net = TradeRules.CalculateTradeTax(999, 2)
+assert(tax == 100 and net == 899, "event multiplier should stack on the base tax")
+
+tax, net = TradeRules.CalculateTradeTax(-1, 1)
+assert(tax == 0 and net == 0, "invalid gross amount should not mint or charge coins")
+
+assert(TradeRules.CalculateOrderLimit(5, 1) == 5, "normal market must keep the base order limit")
+assert(TradeRules.CalculateOrderLimit(5, 1.5) == 7, "high-volume event must expand order capacity")
+
+print("Trade Rules Tests: 11 passed, 0 failed")

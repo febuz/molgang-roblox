@@ -22,6 +22,22 @@ local playerGui = player:WaitForChild("PlayerGui")
 local playerData = nil
 local currentZone = "hub"
 
+-- Movement keys must never be interpreted as a GUI command.  This is kept
+-- separately from `gameProcessed`: Roblox/Vinegar can report WASD as
+-- unprocessed while the default character controller is also consuming it.
+local movementKeys = {
+	[Enum.KeyCode.W] = true,
+	[Enum.KeyCode.A] = true,
+	[Enum.KeyCode.S] = true,
+	[Enum.KeyCode.D] = true,
+}
+local movementKeysDown = {}
+-- Vinegar/embedded Studio can deliver a delayed keyboard event after the
+-- physical WASD input has already ended. Keep a short movement lock so that
+-- such an event cannot reopen a modal during traversal.
+local MOVEMENT_GUI_LOCK_SECONDS = 1.0
+local movementGuiLockUntil = 0
+
 -- Track which GUI panels are open (for ESC close-all)
 local guiStates = {
 	PeriodicTableGui = false,
@@ -30,7 +46,7 @@ local guiStates = {
 	InventoryGui = false,
 	AchievementsGui = false,
 	LeaderboardGui = false,
-	QuestTrackerGui = false,
+	QuestModal = false,
 	RecipeBookGui = false,
 	SettingsGui = false,
 	SlagProcessingGui = false,
@@ -43,6 +59,16 @@ local guiStates = {
 	ProductMarketGui = false,
 	AtomTradeGui = false,
 	GuildGui = false,
+	QuizGui = false,
+	TutorialGui = false,
+	SuperheroGui = false,
+	QuantumRacingGui = false,
+	MarketBiddingGui = false,
+	FeedbackGui = false,
+	MahjongGui = false,
+	MiniGameGui = false,
+	ConfirmRemove = false,
+	CostWarning = false,
 }
 
 -- ══════════════════════════════════════════════
@@ -58,26 +84,68 @@ end)
 -- GUI TOGGLE HELPER
 -- ══════════════════════════════════════════════
 
+local function findScreenGui(guiName)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == guiName and child:IsA("ScreenGui") then
+			return child
+		end
+	end
+	return nil
+end
+
+local function forEachScreenGui(guiName, callback)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == guiName and child:IsA("ScreenGui") then
+			callback(child)
+		end
+	end
+end
+
+local function closeAchievementGuis(reason)
+	forEachScreenGui("AchievementsGui", function(gui)
+		if gui.Enabled then
+			gui.Enabled = false
+			print("[GUIManager] Closed AchievementsGui (" .. reason .. ")")
+		end
+	end)
+	guiStates.AchievementsGui = false
+end
+
 -- Cost hints for expensive GUIs (#7)
 local GUI_COST_HINTS = {
 	FactoryBuilderGui = {cost = 2000, hint = "Factory rental costs 2000 MC/month"},
-	MiningGui = {cost = 800, hint = "Exploration licenses start at 800 MC"},
+	MiningGui = {cost = 200, hint = "Practice outcrop license: 200 MC; advanced plots cost more"},
 	SlagProcessingGui = {cost = 50, hint = "Raw slag costs 50 MC per batch"},
+	ProcessControlGui = {cost = 25, hint = "Chemical simulator access costs 25 MC per session"},
 }
 
+local closeOtherOverlays
+
 local function toggleGui(guiName)
-	local gui = playerGui:FindFirstChild(guiName)
+	local gui = findScreenGui(guiName)
 	if gui then
-		gui.Enabled = not gui.Enabled
+		local shouldEnable = not gui.Enabled
+		if shouldEnable then
+			closeOtherOverlays(guiName)
+		end
+		gui.Enabled = shouldEnable
 		guiStates[guiName] = gui.Enabled
+		if gui.Enabled then
+			local analyticsRemote = Remotes.RecordAnalyticsEvent
+			if analyticsRemote then analyticsRemote:FireServer("gui_open", guiName) end
+		end
 		playSound(gui.Enabled and "ui_open" or "ui_close")
 		-- Cost warning when opening expensive GUIs (#7)
 		if gui.Enabled and playerData and GUI_COST_HINTS[guiName] then
 			local hint = GUI_COST_HINTS[guiName]
 			if playerData.molCoins < hint.cost then
-				task.defer(function()
-					local warnGui = Instance.new("ScreenGui")
-					warnGui.Name = "CostWarning"; warnGui.Parent = playerGui
+					task.defer(function()
+						local warnGui = Instance.new("ScreenGui")
+						warnGui.Name = "CostWarning"
+						warnGui.IgnoreGuiInset = true
+						warnGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+						warnGui.DisplayOrder = 93
+						warnGui.Parent = playerGui
 					local wl = Instance.new("TextLabel")
 					wl.Size = UDim2.new(0.4, 0, 0, 24)
 					wl.Position = UDim2.new(0.3, 0, 0.12, 0)
@@ -99,7 +167,7 @@ end
 
 local function closeAllOverlays()
 	for guiName, _ in pairs(guiStates) do
-		local gui = playerGui:FindFirstChild(guiName)
+		local gui = findScreenGui(guiName)
 		if gui and gui.Enabled then
 			gui.Enabled = false
 			guiStates[guiName] = false
@@ -108,12 +176,35 @@ local function closeAllOverlays()
 	playSound("ui_close")
 end
 
+closeOtherOverlays = function(exceptName)
+	for guiName, _ in pairs(guiStates) do
+		if guiName ~= exceptName then
+			local gui = findScreenGui(guiName)
+			if gui and gui.Enabled then
+				gui.Enabled = false
+				guiStates[guiName] = false
+			end
+		end
+	end
+end
+
 -- ══════════════════════════════════════════════
 -- KEYBOARD SHORTCUTS
 -- ══════════════════════════════════════════════
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+	if movementKeys[input.KeyCode] then
+		movementKeysDown[input.KeyCode] = true
+		movementGuiLockUntil = os.clock() + MOVEMENT_GUI_LOCK_SECONDS
+		player:SetAttribute("MovementGuiLockUntil", movementGuiLockUntil)
+		-- If a stale shortcut or an external script left this modal open, the
+		-- first movement input is an unambiguous signal to return control to play.
+		closeAchievementGuis("movement input")
+		return
+	end
 	if gameProcessed then return end
+	if UserInputService:GetFocusedTextBox() then return end
 
 	-- P = Toggle Periodic Table
 	if input.KeyCode == Enum.KeyCode.P then
@@ -125,8 +216,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleGui("WalletGui")
 	end
 
-	-- D = Toggle Dashboard
-	if input.KeyCode == Enum.KeyCode.D then
+	-- U = Toggle Dashboard. D is reserved for right movement in WASD.
+	if input.KeyCode == Enum.KeyCode.U then
 		toggleGui("DashboardGui")
 	end
 
@@ -135,8 +226,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleGui("InventoryGui")
 	end
 
-	-- A = Toggle Achievements
-	if input.KeyCode == Enum.KeyCode.A then
+	-- K = Toggle Achievements. A is reserved for left movement (WASD); using
+	-- it as a global shortcut caused the menu to open while walking in Vinegar.
+	if input.KeyCode == Enum.KeyCode.K then
 		toggleGui("AchievementsGui")
 	end
 
@@ -147,27 +239,19 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 	-- Q = Toggle Quest Tracker
 	if input.KeyCode == Enum.KeyCode.Q then
-		toggleGui("QuestTrackerGui")
+		toggleGui("QuestModal")
 	end
 
 	-- R = Toggle Recipe Book
 	if input.KeyCode == Enum.KeyCode.R then
-		toggleGui("RecipeBookGui")
-	end
-
-	-- M = Toggle Minimap (HUD element)
-	if input.KeyCode == Enum.KeyCode.M then
-		local hudGui = playerGui:FindFirstChild("HUDGui")
-		if hudGui then
-			local minimap = hudGui:FindFirstChild("MiniMap")
-			if minimap then
-				minimap.Visible = not minimap.Visible
-			end
+		local factoryGui = findScreenGui("FactoryBuilderGui")
+		if not (factoryGui and factoryGui.Enabled) then
+			toggleGui("RecipeBookGui")
 		end
 	end
 
-	-- S = Toggle Slag Processing
-	if input.KeyCode == Enum.KeyCode.S then
+	-- J = Toggle Slag Processing. S is reserved for backward movement in WASD.
+	if input.KeyCode == Enum.KeyCode.J then
 		toggleGui("SlagProcessingGui")
 	end
 
@@ -203,7 +287,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 
 	-- X = Toggle Product Exchange
 	if input.KeyCode == Enum.KeyCode.X then
-		toggleGui("ProductMarketGui")
+		local factoryGui = findScreenGui("FactoryBuilderGui")
+		if not (factoryGui and factoryGui.Enabled) then
+			toggleGui("ProductMarketGui")
+		end
 	end
 
 	-- / or Slash = Toggle Settings
@@ -221,11 +308,64 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleGui("GuildGui")
 	end
 
+	-- F2 = Toggle Feedback
+	if input.KeyCode == Enum.KeyCode.F2 then
+		toggleGui("FeedbackGui")
+	end
+
 	-- ESC = Close all overlays
 	if input.KeyCode == Enum.KeyCode.Escape then
 		closeAllOverlays()
 	end
 end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Keyboard and movementKeys[input.KeyCode] then
+		movementKeysDown[input.KeyCode] = nil
+	end
+end)
+
+-- Defensive guard for a delayed/legacy opener: even if another client script
+-- enables the achievement modal after the WASD event, it must not steal play
+-- input while a movement key is still held.
+local function guardAchievementsGui(gui)
+	if not gui:IsA("ScreenGui") or gui.Name ~= "AchievementsGui" then return end
+	gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+		if not gui.Enabled then return end
+		local sharedLockUntil = player:GetAttribute("MovementGuiLockUntil") or 0
+		if os.clock() < math.max(movementGuiLockUntil, sharedLockUntil) then
+			gui.Enabled = false
+			guiStates.AchievementsGui = false
+			print("[GUIManager] Rejected delayed AchievementsGui after movement input")
+			return
+		end
+		for key, down in pairs(movementKeysDown) do
+			if down and UserInputService:IsKeyDown(key) then
+				gui.Enabled = false
+				guiStates.AchievementsGui = false
+				print("[GUIManager] Rejected AchievementsGui while movement key was held")
+				return
+			end
+		end
+	end)
+end
+
+local function enforceMovementModalLock()
+	local sharedLockUntil = player:GetAttribute("MovementGuiLockUntil") or 0
+	if os.clock() >= math.max(movementGuiLockUntil, sharedLockUntil) then return end
+	forEachScreenGui("AchievementsGui", function(gui)
+		if gui.Enabled then
+			gui.Enabled = false
+			guiStates.AchievementsGui = false
+			print("[GUIManager] Rejected AchievementsGui during movement lock")
+		end
+	end)
+end
+
+RunService.Heartbeat:Connect(enforceMovementModalLock)
+
+for _, child in ipairs(playerGui:GetChildren()) do guardAchievementsGui(child) end
+playerGui.ChildAdded:Connect(guardAchievementsGui)
 
 -- ══════════════════════════════════════════════
 -- SOUND PLAYBACK
@@ -377,7 +517,7 @@ function showAchievementBanner(data)
 	icon.Size = UDim2.fromOffset(50, 50)
 	icon.Position = UDim2.fromOffset(15, 15)
 	icon.BackgroundTransparency = 1
-	icon.Text = "T"  -- Trophy symbol placeholder
+	icon.Text = "🏆"
 	icon.TextColor3 = Color3.fromRGB(255, 215, 0)
 	icon.TextScaled = true
 	icon.Font = Enum.Font.GothamBold
@@ -429,44 +569,9 @@ end
 
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
 	-- Play quest_complete sound for quest announcements (#35)
-	if data.message and string.find(data.message, "QUEST COMPLETE") then
+	if type(data) == "table" and data.message and string.find(data.message, "QUEST COMPLETE") then
 		playSound("quest_complete")
 	end
-
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "AnnounceTicker"
-	gui.Parent = playerGui
-
-	local rarityColors = {
-		common = Color3.fromRGB(200, 200, 200),
-		uncommon = Color3.fromRGB(100, 200, 100),
-		rare = Color3.fromRGB(68, 136, 255),
-		epic = Color3.fromRGB(180, 68, 255),
-		legendary = Color3.fromRGB(255, 215, 0),
-	}
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 30)
-	label.Position = UDim2.new(0, 0, 0, 0)
-	label.BackgroundColor3 = Color3.fromRGB(5, 10, 8)
-	label.BackgroundTransparency = 0.3
-	label.Text = "  " .. (data.message or "")
-	label.TextColor3 = rarityColors[data.rarity] or Color3.fromRGB(200, 200, 200)
-	label.TextScaled = true
-	label.Font = Enum.Font.GothamBold
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = gui
-
-	-- Fade out after 5 seconds
-	task.delay(5, function()
-		TweenService:Create(label, TweenInfo.new(1), {
-			BackgroundTransparency = 1,
-			TextTransparency = 1,
-		}):Play()
-		task.delay(1.1, function()
-			gui:Destroy()
-		end)
-	end)
 end)
 
 -- Start ambient

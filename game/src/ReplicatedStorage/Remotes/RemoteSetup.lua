@@ -17,6 +17,7 @@ local serverToClientEvents = {
 	"AtomSpawned",         -- nieuw atoom in wereld, update minimap
 	"AtomCollected",       -- {elementZ, newCount} bevestiging collect, update HUD
 	"AtomRemoved",         -- atoom verdwenen (door andere speler of timeout)
+	"AtomTransferResult",  -- {success, message} server-authoritative transfer result
 	"MoleculeBuilt",       -- {molName, points} molecule succes, show fanfare
 	"ChainEntryAdded",     -- {entryData} tower display update
 	"LoanCreated",         -- {loanData} ANK bevestiging
@@ -46,6 +47,7 @@ local serverToClientEvents = {
 	"SlagExtracted",       -- {atoms, molCoins} products added to inventory
 	"SlagInventoryUpdate", -- {slagInventory} updated slag quantities
 	"ProcessControlState", -- {temperature, pressure, pH, flowRate} persisted controls
+	"ChemicalSimulatorAccess", -- {success, cost, balance, message}
 	-- Bubble Tea Bar
 	"DrinkPurchased",      -- {drinkId, name, buffType, duration} drink bought
 	"DrinkListResponse",   -- {drinks, activeBuffs} available drinks and active buffs
@@ -97,6 +99,7 @@ local serverToClientEvents = {
 	"QuestState",            -- {questProgress}
 	"QuestCompleted",        -- {questId, reward}
 	"QuestFailed",            -- {reason}
+	"NetworkStatusResponse", -- {routes, bottlenecks, summary}
 }
 
 -- ══════════════════════════════════════════════
@@ -110,6 +113,9 @@ local clientToServerEvents = {
 	"RequestRepayLoan",      -- {loanId} lening terugbetalen
 	"RequestChainQuery",     -- {query} chain explorer zoekquery
 	"RequestDailyClaim",     -- {} login bonus claimen
+	"RequestSetOnboardingPath", -- {path} persist route choice before onboarding completes
+	"RequestCompleteOnboarding", -- {path} persist first-run route choice
+	"RecordAnalyticsEvent", -- {eventName, value} low-risk behavior telemetry
 	"RequestAtomTransfer",   -- {targetId, elementZ} atoom sturen naar vriend
 	"RequestQuizAnswer",     -- {questionId, answer} quiz antwoord
 	"RequestQuizStart",      -- {zone} start een quiz vanuit dashboard/NPC
@@ -128,6 +134,7 @@ local clientToServerEvents = {
 	"RequestSlagInfo",       -- {} get current slag processing state
 	"RequestSetProcessControl", -- {temperature, pressure, pH, flowRate} update process variables
 	"RequestProcessControlState", -- {} load persisted process controls
+	"RequestChemicalSimulatorAccess", -- {} pay for the chemical simulator session
 	-- Bubble Tea Bar
 	"RequestBuyDrink",       -- {drinkId} purchase a bubble tea
 	"RequestDrinkList",      -- {} get drink menu and active buffs
@@ -154,6 +161,7 @@ local clientToServerEvents = {
 	"RequestListPlotForSale",-- {plotId, askPrice} list mining plot on market
 	"RequestBuyPlotFromMarket", -- {plotId} buy listed mining plot from another player
 	"RequestMiningInfo",     -- {} get all plot data
+	"RequestReturnToNexus",  -- {} safe return from a mining outpost
 	-- Product Market
 	"RequestSellProduct",    -- {productId, quantity} sell refined product
 	"RequestProductPrices",  -- {} get current market prices
@@ -189,8 +197,9 @@ local clientToServerEvents = {
 	"RequestPlaceBid",       -- {productId, bidPrice, quantity} place market bid
 	"RequestPlaceSell",      -- {productId, askPrice, quantity} place sell order
 	"RequestCancelBid",      -- {bidId} cancel own bid
+	"RequestCancelSell",     -- {sellId} cancel own sell order
 	"RequestMarketBids",     -- {} get active bids
-	"MarketBidsResponse",    -- {bids, myBids} bid data
+	"MarketBidsResponse",    -- {bids, myBids, sells, mySells} order-book data
 	-- Plant Commissioning
 	"RequestStartRace",      -- {trackId} start commissioning phase
 	"RaceStarted",           -- {trackId, trackName, timeLimit}

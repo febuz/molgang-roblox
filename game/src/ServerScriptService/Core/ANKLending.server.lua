@@ -2,16 +2,17 @@
 -- ANK Cooperative Lending System for MOLGANG
 -- Players lend MolCoins to other players via the ANK cooperative model
 -- NOW WITH ACTUAL CURRENCY MOVEMENT via PlayerDataBridge
--- Interest: 5% per game-day (1 hour real-time = 1 game-day)
+-- Interest: 5% per game-day (10 real minutes = 1 game-day in OTAP)
 -- Collateral: borrower must stake 120% MolCoin value
 -- ANK fee: 1% of loan goes to non-profit treasury
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -23,7 +24,7 @@ local ANK_FEE = 0.01
 local MIN_LOAN = 100
 local MAX_LOAN = 10000
 local MAX_ACTIVE_LOANS = 3
-local GAME_DAY_SECONDS = 3600
+local GAME_DAY_SECONDS = GameClock.DAY_SECONDS
 
 -- ══════════════════════════════════════════════
 -- STATE
@@ -33,8 +34,59 @@ local activeLoans = {}
 local treasuryBalance = 0
 local loanCounter = 0
 
-local loanStore = DataStoreService:GetDataStore("ANK_Loans_v1")
-local treasuryStore = DataStoreService:GetDataStore("ANK_Treasury_v1")
+local loanStore = DataStoreProvider.GetDataStore("ANK_Loans_v1")
+local treasuryStore = DataStoreProvider.GetDataStore("ANK_Treasury_v1")
+
+local function finite(value)
+	return type(value) == "number" and value == value and value > -math.huge and value < math.huge
+end
+
+local function restoreLoansForPlayer(userId)
+	local data = PlayerDataBridge.GetEconomyData(userId)
+	local savedLoans = data and data.ankLoans
+	if type(savedLoans) ~= "table" then return end
+	for key, saved in pairs(savedLoans) do
+		if type(saved) == "table" then
+			local loanId = type(saved.id) == "string" and saved.id or (type(key) == "string" and key or nil)
+			if loanId and (saved.status == "active" or saved.status == "repaid" or saved.status == "liquidated")
+				and finite(saved.borrowerId) and finite(saved.lenderId)
+				and finite(saved.amount) and saved.amount >= 0
+				and finite(saved.collateral) and saved.collateral >= 0
+				and finite(saved.totalRepay) and saved.totalRepay >= 0
+				and finite(saved.dueAt) and saved.dueAt >= 0 then
+				saved.id = loanId
+				if saved.status == "active" then
+					activeLoans[loanId] = saved
+				end
+			end
+		end
+	end
+end
+
+local function persistLoanForParties(loan)
+	for _, userId in ipairs({loan.borrowerId, loan.lenderId}) do
+		local data = PlayerDataBridge.GetEconomyData(userId)
+		if data then
+			if type(data.ankLoans) ~= "table" then data.ankLoans = {} end
+			data.ankLoans[loan.id] = loan
+		end
+	end
+end
+
+local function restoreWhenLoaded(player)
+	task.spawn(function()
+		for _ = 1, 30 do
+			if PlayerDataBridge.GetEconomyData(player.UserId) then
+				restoreLoansForPlayer(player.UserId)
+				return
+			end
+			task.wait(1)
+		end
+	end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do restoreWhenLoaded(player) end
+Players.PlayerAdded:Connect(restoreWhenLoaded)
 
 -- ══════════════════════════════════════════════
 -- LOAN REQUEST — actually moves MolCoins now
@@ -47,6 +99,7 @@ local function requestLoan(borrower, lenderId, amount, duration)
 
 	amount = math.floor(amount)
 	duration = math.clamp(math.floor(duration), 1, 30)
+	restoreLoansForPlayer(borrower.UserId)
 
 	if amount < MIN_LOAN then return false, "Minimum loan: " .. MIN_LOAN .. " MolCoins" end
 	if amount > MAX_LOAN then return false, "Maximum loan: " .. MAX_LOAN .. " MolCoins" end
@@ -69,6 +122,7 @@ local function requestLoan(borrower, lenderId, amount, duration)
 	end
 	if not lender then return false, "Lender not online" end
 	if lender.UserId == borrower.UserId then return false, "Cannot lend to yourself" end
+	restoreLoansForPlayer(lender.UserId)
 
 	-- Calculate finances
 	local required = math.ceil(amount * COLLATERAL_RATIO)
@@ -130,6 +184,7 @@ local function requestLoan(borrower, lenderId, amount, duration)
 	}
 
 	activeLoans[loanId] = loan
+	persistLoanForParties(loan)
 
 	-- Notify both parties
 	Remotes.FireClient("LoanCreated", borrower, {
@@ -177,6 +232,7 @@ local function repayLoan(player, loanId)
 
 	loan.status = "repaid"
 	loan.repaidAt = os.time()
+	persistLoanForParties(loan)
 
 	-- Notify
 	Remotes.FireClient("LoanRepaid", player, {
@@ -207,6 +263,7 @@ local function checkOverdueLoans()
 		if loan.status == "active" and now > loan.dueAt then
 			loan.status = "liquidated"
 			loan.liquidatedAt = now
+			persistLoanForParties(loan)
 
 			-- Transfer collateral to lender (borrower loses it)
 			PlayerDataBridge.AddMolCoins(loan.lenderId, loan.collateral)

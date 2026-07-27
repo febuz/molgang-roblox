@@ -49,6 +49,35 @@ highlight.Parent = player.PlayerGui
 
 local currentHighlighted = nil
 
+-- Lichte lokale presentatie van atomen. Alleen atomen binnen het zichtbare
+-- speelgebied worden bijgewerkt; de server hoeft hiervoor geen constraints of
+-- Heartbeat-werk per atoom te onderhouden.
+local visualClock = 0
+local visualTimer = 0
+local VISUAL_RANGE = 180
+RunService.RenderStepped:Connect(function(dt)
+	visualClock += dt
+	visualTimer += dt
+	if visualTimer < (1 / 30) then return end
+	visualTimer = 0
+	if not hrp or not hrp.Parent then return end
+
+	local playerPos = hrp.Position
+	for _, atom in ipairs(atomsFolder:GetChildren()) do
+		if atom:IsA("BasePart") then
+			local basePosition = atom:GetAttribute("BasePosition")
+			if typeof(basePosition) == "Vector3" and (playerPos - basePosition).Magnitude <= VISUAL_RANGE then
+				local phase = atom:GetAttribute("FloatPhase") or 0
+				local amplitude = atom:GetAttribute("FloatAmplitude") or 0.45
+				local spinRate = atom:GetAttribute("SpinRate") or 0.3
+				local yOffset = math.sin(visualClock * 1.4 + phase) * amplitude
+				atom.CFrame = CFrame.new(basePosition + Vector3.new(0, yOffset, 0))
+					* CFrame.Angles(0, visualClock * spinRate + phase, 0)
+			end
+		end
+	end
+end)
+
 -- Collect animatie popup
 local function showCollectPopup(elementData)
 	local gui = player.PlayerGui
@@ -169,7 +198,11 @@ end
 -- PROXIMITY DETECTION LOOP
 -- ══════════════════════════════════════════════
 
-RunService.Heartbeat:Connect(function()
+local proximityTimer = 0
+RunService.Heartbeat:Connect(function(dt)
+	proximityTimer = proximityTimer + dt
+	if proximityTimer < 0.1 then return end
+	proximityTimer = 0
 	if not hrp or not hrp.Parent then return end
 
 	local playerPos = hrp.Position

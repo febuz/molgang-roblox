@@ -22,9 +22,42 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
+local Tutorial = require(ReplicatedStorage.Modules.Tutorial)
 
 -- Wait for game to load
 task.wait(5)
+
+-- Returning players should not be forced through onboarding again. Read a
+-- server-owned snapshot and retry while EconomyManager finishes a slow load;
+-- otherwise a temporary nil response could show onboarding unnecessarily.
+local dataOk, playerData = false, nil
+for attempt = 1, 4 do
+	dataOk, playerData = pcall(function()
+		return GetPlayerData:InvokeServer()
+	end)
+	if dataOk and type(playerData) == "table" then break end
+	if attempt < 4 then task.wait(2) end
+end
+if dataOk and type(playerData) == "table"
+	and type(playerData.onboarding) == "table"
+	and playerData.onboarding.completed == true then
+	print("[MOLGANG] Onboarding already completed via " .. tostring(playerData.onboarding.path))
+	return
+end
+
+-- The tutorial can start a few seconds after the world has become interactive.
+-- Seed progress from the authoritative snapshot so atoms collected during the
+-- loading/route-selection window do not leave a player stuck on "find an atom".
+local function countAtomInventory(data)
+	local total = 0
+	if type(data) == "table" and type(data.atoms) == "table" then
+		for _, amount in pairs(data.atoms) do
+			if type(amount) == "number" then total += math.max(0, amount) end
+		end
+	end
+	return total
+end
 
 -- ═══════════════════════════════════════════════
 -- COLORS
@@ -46,76 +79,117 @@ local COLORS = {
 -- TUTORIAL STEPS
 -- ═══════════════════════════════════════════════
 
-local STEPS = {
+local PATHS = {
+	explorer = {
+		{title = "Welkom, ontdekker!", text = "Beweeg met WASD. Zoek één gloeiende bol en raak hem aan.", condition = "collect_atom"},
+		{title = "Je eerste element!", text = "Goed gevonden. Druk P om te zien welk element je hebt ontdekt.", condition = "press_key", key = Enum.KeyCode.P},
+		{title = "Kies je volgende stap", text = "Verken rustig verder. Met U open je later je dashboard.", condition = "auto", delay = 5},
+		{title = "Klaar om te ontdekken", text = "Je kunt nu vrij rondlopen. Vraag hulp bij een NPC als je vastloopt.", condition = "auto", delay = 6, isFinal = true},
+	},
+	scientist = {
+		{title = "Welkom, jonge onderzoeker!", text = "Verzamel drie elementen en gebruik P om de Periodieke Tabel te lezen.", condition = "collect_atoms", target = 3},
+		{title = "Lees je meetresultaat", text = "Open P en vergelijk symbool, atoomnummer en zeldzaamheid.", condition = "press_key", key = Enum.KeyCode.P},
+		{title = "Bouw een molecule", text = "Open R en combineer alleen de elementen die een recept vraagt.", condition = "press_key", key = Enum.KeyCode.R},
+		{title = "Test je kennis", text = "Open U voor je dashboard en start daarna een quiz bij een quizpunt.", condition = "press_key", key = Enum.KeyCode.U},
+		{title = "Klaar voor experimenten", text = "Probeer daarna de farm of het laboratorium. Je kunt altijd terug naar de basis.", condition = "auto", delay = 7, isFinal = true},
+	},
+	engineer = {
 	{
-		title = "Welcome to Moleculia!",
-		text = "You're floating in space on an archipelago of science. Walk around with WASD and explore!",
+		title = "Welkom in Moleculia!",
+		text = "Je zweeft boven een archipel van wetenschap. Beweeg met WASD en verken de omgeving.",
 		condition = "auto",  -- auto-completes after delay
 		delay = 6,
 	},
 	{
-		title = "Find an Atom",
-		text = "Glowing orbs are floating nearby — those are atoms! Walk towards one to collect it.",
+		title = "Vind een atoom",
+		text = "Gloeiende bollen zijn atomen. Loop naar een bol om hem te verzamelen.",
 		condition = "collect_atom",
 	},
 	{
-		title = "Element Discovered!",
-		text = "You collected your first element. Press P to open the Periodic Table and see your progress.",
+		title = "Element ontdekt!",
+		text = "Je hebt je eerste element verzameld. Druk P voor de Periodieke Tabel.",
 		condition = "press_key",
 		key = Enum.KeyCode.P,
 	},
 	{
-		title = "Check Your Dashboard",
-		text = "Press D to open your Dashboard. Here you can build facilities and manage your empire.",
+		title = "Bekijk je dashboard",
+		text = "Druk U om je dashboard te openen. Daar bouw je faciliteiten en beheer je je bedrijf.",
 		condition = "press_key",
-		key = Enum.KeyCode.D,
+		key = Enum.KeyCode.U,
 	},
 	{
-		title = "Collect 3 More Atoms",
-		text = "Keep exploring! Collect 3 more atoms. Rarer elements glow brighter and are worth more MolCoins.",
+		title = "Verzamel nog drie atomen",
+		text = "Blijf verkennen. Zeldzamere elementen gloeien feller en leveren meer MolCoins op.",
 		condition = "collect_atoms",
 		target = 4,  -- total (including first)
 	},
 	{
-		title = "Build a Molecule!",
-		text = "Press R to open the Recipe Book. Combine your atoms into molecules like H2O or NaCl. Each recipe shows the required atoms and their valence!",
+		title = "Bouw een molecule",
+		text = "Druk R voor het Receptenboek. Combineer atomen tot H2O of NaCl; elk recept toont de benodigde atomen.",
 		condition = "press_key",
 		key = Enum.KeyCode.R,
 	},
 	{
-		title = "Process Steel Slag!",
-		text = "Press S to open the Slag Processing lab. Buy raw slag, crush it, and leach metals with acids. This is real chemical engineering!",
+		title = "Verwerk staalslak",
+		text = "Druk J voor het Slakverwerkingslab. Koop slak, vermaal hem en loog metalen uit met zuur.",
 		condition = "press_key",
-		key = Enum.KeyCode.S,
+		key = Enum.KeyCode.J,
 	},
 	{
-		title = "Control Your Process",
-		text = "Press C for the Process Control Panel. Adjust temperature, pressure, pH, and flow rate to optimize your leaching. Arrhenius kinetics!",
+		title = "Bestuur je proces",
+		text = "Druk C voor procesbesturing. Stel temperatuur, druk, pH en flow in voor optimale uitloging.",
 		condition = "press_key",
 		key = Enum.KeyCode.C,
 	},
 	{
-		title = "Become an Entrepreneur!",
-		text = "Press G to open the Factory Builder. Rent a 1000m² indoor factory and place equipment on a grid. Build your chemical empire!",
+		title = "Bouw je fabriek",
+		text = "Druk G voor de Fabriekbouwer. Huur een fabriek van 1000 m² en plaats apparatuur op het raster.",
 		condition = "auto",
 		delay = 8,
 	},
 	{
-		title = "You're Ready!",
-		text = "Explore all 19 features! Mine vanadium (V), sell products (X), research tech (T), farm fertilizer (F), and build your empire. Good luck, chemical engineer!",
+		title = "Je bent klaar",
+		text = "Verken de 19 functies: win vanadium, verkoop producten met X, doe onderzoek met T en beheer je farm met F.",
 		condition = "auto",
 		delay = 10,
 		isFinal = true,
 	},
+	},
 }
+
+local STEPS = PATHS.explorer
 
 -- ═══════════════════════════════════════════════
 -- STATE
 -- ═══════════════════════════════════════════════
 
 local currentStep = 1
-local atomsCollected = 0
+local atomsCollected = math.max(
+	type(playerData) == "table" and tonumber(playerData.totalAtomsCollected) or 0,
+	countAtomInventory(playerData)
+)
 local tutorialComplete = false
+local savedPath = type(playerData) == "table"
+	and type(playerData.onboarding) == "table"
+	and playerData.onboarding.path
+local selectedPath = (savedPath == "explorer" or savedPath == "scientist" or savedPath == "engineer")
+	and savedPath or "explorer"
+
+local function persistOnboardingPath(path)
+	local pathRemote = Remotes:FindFirstChild("RequestSetOnboardingPath")
+	if pathRemote then
+		pathRemote:FireServer(path)
+	end
+end
+
+local function persistOnboardingComplete()
+	if tutorialComplete then return end
+	tutorialComplete = true
+	local completeRemote = Remotes:FindFirstChild("RequestCompleteOnboarding")
+	if completeRemote then
+		completeRemote:FireServer(selectedPath)
+	end
+end
 
 -- ═══════════════════════════════════════════════
 -- GUI SETUP
@@ -126,8 +200,40 @@ screenGui.Name = "TutorialGui"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.DisplayOrder = 50
+-- The route selector is the first-run modal. Keep the underlying HUD and
+-- world-event banners from showing through it or stealing visual focus.
+screenGui.DisplayOrder = 110
 screenGui.Parent = playerGui
+
+-- Keep the route selector and its buttons inside the viewport on narrow
+-- laptops, embedded Studio windows and mobile screens. The layout remains
+-- authored at a readable desktop size and scales as one unit.
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local tutorialCamera = workspace.CurrentCamera
+local function updateTutorialScale()
+	if not tutorialCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(tutorialCamera.ViewportSize.X - 20) / 560,
+		(tutorialCamera.ViewportSize.Y - 20) / 290
+	), 0.55, 1)
+end
+updateTutorialScale()
+if tutorialCamera then
+	tutorialCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateTutorialScale)
+end
+
+local modalScrim = Instance.new("Frame")
+modalScrim.Name = "RouteSelectorScrim"
+modalScrim.Size = UDim2.fromScale(1, 1)
+modalScrim.Position = UDim2.fromScale(0, 0)
+modalScrim.BackgroundColor3 = Color3.fromRGB(3, 7, 14)
+modalScrim.BackgroundTransparency = 0.08
+modalScrim.BorderSizePixel = 0
+modalScrim.Active = true
+modalScrim.ZIndex = 1
+modalScrim.Parent = screenGui
 
 -- Tutorial panel at bottom-center
 local panel = Instance.new("Frame")
@@ -163,7 +269,11 @@ dotsLayout.Padding = UDim.new(0, 8)
 dotsLayout.Parent = dotsFrame
 
 local dots = {}
-for i = 1, #STEPS do
+local maxStepCount = 0
+for _, pathSteps in pairs(PATHS) do
+	maxStepCount = math.max(maxStepCount, #pathSteps)
+end
+for i = 1, maxStepCount do
 	local dot = Instance.new("Frame")
 	dot.Name = "Dot_" .. i
 	dot.Size = UDim2.fromOffset(8, 8)
@@ -232,6 +342,114 @@ local skipCorner = Instance.new("UICorner")
 skipCorner.CornerRadius = UDim.new(0, 6)
 skipCorner.Parent = skipBtn
 
+-- First-run route selector: keep the opening small and age/experience aware.
+-- Exact age is never requested; players choose the amount of guidance they want.
+local pathSelector = Instance.new("Frame")
+pathSelector.Name = "PathSelector"
+pathSelector.Size = UDim2.fromOffset(560, 290)
+pathSelector.AnchorPoint = Vector2.new(0.5, 0.5)
+pathSelector.Position = UDim2.fromScale(0.5, 0.5)
+pathSelector.BackgroundColor3 = COLORS.panel
+pathSelector.ZIndex = 2
+pathSelector.Parent = screenGui
+local selectorCorner = Instance.new("UICorner")
+selectorCorner.CornerRadius = UDim.new(0, 14)
+selectorCorner.Parent = pathSelector
+local selectorStroke = Instance.new("UIStroke")
+selectorStroke.Color = COLORS.panelEdge
+selectorStroke.Thickness = 2
+selectorStroke.Parent = pathSelector
+
+local selectorTitle = Instance.new("TextLabel")
+selectorTitle.Size = UDim2.new(1, -32, 0, 38)
+selectorTitle.Position = UDim2.fromOffset(16, 16)
+selectorTitle.BackgroundTransparency = 1
+selectorTitle.Text = "Hoe wil je Moleculia ontdekken?"
+selectorTitle.TextColor3 = COLORS.accent
+selectorTitle.TextScaled = true
+selectorTitle.Font = Enum.Font.GothamBold
+selectorTitle.Parent = pathSelector
+
+local selectorHint = Instance.new("TextLabel")
+selectorHint.Size = UDim2.new(1, -32, 0, 28)
+selectorHint.Position = UDim2.fromOffset(16, 55)
+selectorHint.BackgroundTransparency = 1
+selectorHint.Text = "Kies een route; je kunt later alles spelen."
+selectorHint.TextColor3 = COLORS.textDim
+selectorHint.TextScaled = true
+selectorHint.Font = Enum.Font.Gotham
+selectorHint.Parent = pathSelector
+
+local pathOptions = {
+	{key = "explorer", title = "Ontdekker", age = "±8–11 jaar", text = "Korte stappen, bewegen en verzamelen."},
+	{key = "scientist", title = "Jonge onderzoeker", age = "±12–15 jaar", text = "Elementen, recepten en eenvoudige quiz."},
+	{key = "engineer", title = "Ingenieur", age = "±16+ jaar", text = "Direct naar chemie, fabriek en processturing."},
+}
+local showStep
+local selectedPathFromInput = false
+local choosePathByIndex = {}
+for index, option in ipairs(pathOptions) do
+	local button = Instance.new("TextButton")
+	button.Name = option.key .. "Path"
+	button.Size = UDim2.new(1, -32, 0, 50)
+	button.Position = UDim2.fromOffset(16, 88 + (index - 1) * 58)
+	button.BackgroundColor3 = index == 1 and COLORS.accent or Color3.fromRGB(35, 48, 65)
+	button.TextColor3 = index == 1 and Color3.fromRGB(8, 20, 24) or COLORS.text
+	button.Text = tostring(index) .. "  " .. option.title .. "  ·  " .. option.age .. "\n" .. option.text
+	button.TextScaled = true
+	button.TextWrapped = true
+	button.Font = Enum.Font.GothamBold
+	button.Parent = pathSelector
+	local optionCorner = Instance.new("UICorner")
+	optionCorner.CornerRadius = UDim.new(0, 8)
+	optionCorner.Parent = button
+	local function choosePath()
+		if selectedPathFromInput or not pathSelector.Visible then return end
+		selectedPathFromInput = true
+		selectedPath = option.key
+		persistOnboardingPath(selectedPath)
+		STEPS = PATHS[selectedPath]
+		currentStep = 1
+		pathSelector.Visible = false
+		modalScrim.Visible = false
+		panel.Visible = true
+		showStep(1)
+		TweenService:Create(panel, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, -250, 1, -120),
+		}):Play()
+	end
+	choosePathByIndex[index] = choosePath
+	-- Keep both button paths: Vinegar's embedded Studio surface can swallow
+	-- Activated while ordinary desktop Roblox still uses it reliably.
+	button.Activated:Connect(choosePath)
+	button.MouseButton1Click:Connect(choosePath)
+end
+
+-- Resume a previously selected but unfinished route without showing the
+-- selector again. This makes disconnects and test-server restarts harmless.
+if savedPath == "explorer" or savedPath == "scientist" or savedPath == "engineer" then
+	for index, option in ipairs(pathOptions) do
+		if option.key == savedPath and choosePathByIndex[index] then
+			choosePathByIndex[index]()
+			break
+		end
+	end
+end
+
+-- Keyboard fallback makes the age route selectable even when the embedded
+-- surface does not deliver mouse activation. It also gives each age route a
+-- stable, discoverable input for automated/manual OTAP testing.
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or selectedPathFromInput or not pathSelector.Visible then return end
+	local indexByKey = {
+		[Enum.KeyCode.One] = 1,
+		[Enum.KeyCode.Two] = 2,
+		[Enum.KeyCode.Three] = 3,
+	}
+	local index = indexByKey[input.KeyCode]
+	if index and choosePathByIndex[index] then choosePathByIndex[index]() end
+end)
+
 -- ═══════════════════════════════════════════════
 -- TUTORIAL LOGIC
 -- ═══════════════════════════════════════════════
@@ -248,10 +466,10 @@ local function updateDots()
 	end
 end
 
-local function showStep(stepIdx)
+showStep = function(stepIdx)
 	if stepIdx > #STEPS then
 		-- Tutorial complete — slide out and destroy
-		tutorialComplete = true
+		persistOnboardingComplete()
 		TweenService:Create(panel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Position = UDim2.new(0.5, -250, 1, 20),
 		}):Play()
@@ -278,6 +496,17 @@ local function showStep(stepIdx)
 
 	updateDots()
 
+	-- Collection milestones are monotonic server data. Re-check them whenever a
+	-- step becomes active so delayed tutorial startup cannot create a dead end.
+	if Tutorial.IsStepSatisfied(step, atomsCollected) then
+		task.defer(function()
+			if currentStep == stepIdx and not tutorialComplete then
+				showStep(stepIdx + 1)
+			end
+		end)
+		return
+	end
+
 	-- Handle auto-complete steps
 	if step.condition == "auto" then
 		task.delay(step.delay or 5, function()
@@ -302,22 +531,18 @@ local atomCollectedEvent = Remotes:FindFirstChild("AtomCollected")
 if atomCollectedEvent then
 	atomCollectedEvent.OnClientEvent:Connect(function(data)
 		atomsCollected = atomsCollected + 1
-
-		-- Step 2: collect first atom
-		if currentStep == 2 and not tutorialComplete then
-			advanceStep()
-		end
-
-		-- Step 5: collect 4 total atoms
-		if currentStep == 5 and atomsCollected >= 4 and not tutorialComplete then
-			advanceStep()
+		local step = STEPS[currentStep]
+		if step and not tutorialComplete then
+			if Tutorial.IsStepSatisfied(step, atomsCollected) then
+				advanceStep()
+			end
 		end
 	end)
 end
 
 -- Listen for key presses (for tutorial steps)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if tutorialComplete then return end
+	if tutorialComplete or gameProcessed then return end
 
 	local step = STEPS[currentStep]
 	if step and step.condition == "press_key" and input.KeyCode == step.key then
@@ -330,8 +555,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- Skip button
-skipBtn.MouseButton1Click:Connect(function()
-	tutorialComplete = true
+skipBtn.Activated:Connect(function()
+	persistOnboardingComplete()
 	TweenService:Create(panel, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 		Position = UDim2.new(0.5, -250, 1, 20),
 		BackgroundTransparency = 1,
@@ -352,12 +577,8 @@ end)
 
 panel.Position = UDim2.new(0.5, -250, 1, 20) -- start off-screen
 
--- Wait for loading screen to close
-task.delay(1, function()
-	showStep(1)
-	TweenService:Create(panel, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, -250, 1, -120),
-	}):Play()
-end)
+-- Wait for the player to choose a route before showing any controls.
+panel.Visible = false
+pathSelector.Visible = true
 
-print("[MOLGANG] Tutorial system initialized — 6 guided steps")
+print("[MOLGANG] Tutorial system initialized — age-aware route selector")

@@ -20,6 +20,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local C = {
 	bg = Color3.fromRGB(18, 12, 20),
@@ -44,10 +45,12 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 16
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 460, 520)
 
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 460, 0, 520)
-main.Position = UDim2.new(0.5, -230, 0.5, -260)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
@@ -86,7 +89,7 @@ closeBtn.Parent = main
 local cCorner = Instance.new("UICorner")
 cCorner.CornerRadius = UDim.new(0, 6)
 cCorner.Parent = closeBtn
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Active buff display
 local buffFrame = Instance.new("Frame")
@@ -223,7 +226,7 @@ local function populateDrinks(drinks, activeBuffs)
 			buyBtn.TextColor3 = Color3.new(0, 0, 0)
 		end
 
-		buyBtn.MouseButton1Click:Connect(function()
+		buyBtn.Activated:Connect(function()
 			local remote = Remotes:FindFirstChild("RequestBuyDrink")
 			if remote then remote:FireServer(drink.id) end
 			buyBtn.BackgroundColor3 = Color3.fromRGB(100, 255, 180)
@@ -298,16 +301,4 @@ screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	end
 end)
 
--- B key toggle (only when near bar)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.B then
-		screenGui.Enabled = not screenGui.Enabled
-		if screenGui.Enabled then
-			local remote = Remotes:FindFirstChild("RequestDrinkList")
-			if remote then remote:FireServer() end
-		end
-	end
-end)
-
-print("[MOLGANG] Bubble Tea GUI loaded — B key to open menu")
+print("[MOLGANG] Bubble Tea GUI loaded — GUIManager owns the B shortcut")

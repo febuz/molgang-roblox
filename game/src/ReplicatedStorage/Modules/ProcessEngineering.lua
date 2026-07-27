@@ -142,6 +142,10 @@ function ProcessEngineering.CreateMassBalance()
 		wasteKg = 0,
 		lossKg = 0,       -- unaccounted loss
 		recovery = 0,      -- % recovery
+		aggregateKg = 0,   -- solid leach residue suitable for aggregate sales
+		dissolvedKg = 0,    -- total dissolved oxide stream before downstream losses
+		targetProductKg = 0, -- saleable target-metal stream after downstream losses
+		byproductKg = 0,    -- dissolved non-target stream after downstream losses
 		steps = {},        -- {stepName, inputKg, outputKg, wasteKg, efficiency}
 	}
 end
@@ -170,32 +174,47 @@ function ProcessEngineering.AddStep(balance, stepName, inputKg, outputKg, wasteK
 end
 
 -- Calculate full slag processing mass balance for 1kg input
-function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, temperature, slagModule)
+function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, temperature, slagModule, phFactor)
 	local balance = ProcessEngineering.CreateMassBalance()
 	local SteelSlag = slagModule or require(script.Parent.SteelSlag)
+	local selectivityFactor = isFiniteNumber(phFactor) and math.clamp(phFactor, 0.25, 1) or 1
 
 	local inputKg = 1.0
 	temperature = temperature or 25
 
 	-- Step 1: Crushing (mechanical, no mass change but energy cost)
-	local crushLoss = 0.01  -- 1% dust loss
+	local crushLoss = tonumber(SteelSlag.CRUSHING_DUST_FRACTION) or 0.01
 	ProcessEngineering.AddStep(balance, "Crushing (" .. particleSize .. ")",
 		inputKg, inputKg - crushLoss, crushLoss)
 
 	-- Step 2: Magnetic Separation (removes ~17% FeO as metallic iron)
-	local feRemoved = inputKg * 0.12  -- 12% iron recovered
-	local afterMagSep = inputKg - crushLoss - feRemoved
+	local oxideMasses, calculatedAfterMagSep, calculatedFeRemoved, unlistedMass =
+		SteelSlag.GetPostMagneticSeparationMasses(inputKg)
+	local feRemoved = calculatedFeRemoved or inputKg * 0.12
+	local afterMagSep = calculatedAfterMagSep or (inputKg - crushLoss - feRemoved)
 	ProcessEngineering.AddStep(balance, "Magnetic Separation",
 		inputKg - crushLoss, afterMagSep, feRemoved)
 
 	-- Step 3: Leaching (dissolved fraction based on reagent + temperature)
 	local reagent = SteelSlag.Reagents[reagentId]
 	if reagent then
+		local sizeData = SteelSlag.ParticleSizes and SteelSlag.ParticleSizes[particleSize]
+		local leachMultiplier = sizeData and sizeData.leachMultiplier or 1
+		-- Smaller particles expose more surface area. Convert the processing
+		-- time multiplier into a kinetic contact factor so particle size changes
+		-- extraction without allowing a single step to create material.
+		local contactFactor = math.clamp(1 / math.max(leachMultiplier, 0.05), 0.05, 4)
 		local dissolved = 0
+		local targetDissolved = 0
 		local residue = 0
 		local representedPct = 0
+		local targetProducts = {}
+		for _, element in ipairs(reagent.products or {}) do
+			targetProducts[element] = true
+		end
 		for oxide, comp in pairs(SteelSlag.Composition) do
-			local oxideMass = afterMagSep * (comp.pct / 100)
+			local oxideMass = (oxideMasses and oxideMasses[oxide])
+				or afterMagSep * (comp.pct / 100)
 			representedPct = representedPct + comp.pct
 			local extraction = reagent.extraction[oxide] or 0
 
@@ -204,18 +223,39 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 				or ProcessEngineering.ActivationEnergies["base_" .. oxide]
 				or 50
 			local tempMult = ProcessEngineering.ArrheniusMultiplier(temperature, Ea)
-			extraction = math.clamp(extraction * tempMult, 0, 0.99)
+			local temperatureExtraction = math.clamp(extraction * tempMult, 0, 0.99)
+			-- First-order contact model: repeated surface exposure approaches
+			-- complete extraction asymptotically, never exceeding 99%.
+			extraction = 1 - ((1 - temperatureExtraction) ^ contactFactor)
+			-- Off-spec pH reduces effective dissolution in the same way as the
+			-- server's recovered atom yield. Keep the displayed balance honest.
+			extraction = math.clamp(extraction * selectivityFactor, 0, 0.99)
 
-			dissolved = dissolved + oxideMass * extraction
+			local extractedMass = oxideMass * extraction
+			dissolved = dissolved + extractedMass
+			local isTargetProduct = next(targetProducts) == nil
+			local elements = SteelSlag.OxideToElements and SteelSlag.OxideToElements[oxide]
+			if elements and next(targetProducts) ~= nil then
+				isTargetProduct = false
+				for element in pairs(elements) do
+					if targetProducts[element] then
+						isTargetProduct = true
+						break
+					end
+				end
+			end
+			if isTargetProduct then targetDissolved = targetDissolved + extractedMass end
 			residue = residue + oxideMass * (1 - extraction)
 		end
 		-- BOF analyses contain a trace/inert fraction that is not listed as an
 		-- extractable oxide. Keep it in the residue instead of silently losing
 		-- mass from the plant balance.
 		local unlistedFraction = math.max(0, 1 - representedPct / 100)
-		residue = residue + afterMagSep * unlistedFraction
+		residue = residue + (unlistedMass or afterMagSep * unlistedFraction)
 		ProcessEngineering.AddStep(balance, "Leaching (" .. (reagent.name or reagentId) .. " @ " .. temperature .. "°C)",
 			afterMagSep, dissolved, residue)
+		balance.aggregateKg = math.floor(residue * 1000 + 0.5) / 1000
+		balance.dissolvedKg = dissolved
 
 		-- Step 4: Filtration (separates solution from residue)
 		local filtLoss = dissolved * 0.02  -- 2% loss in filter cake
@@ -227,6 +267,10 @@ function ProcessEngineering.CalculateSlagMassBalance(particleSize, reagentId, te
 		local finalProduct = dissolved - filtLoss - precipLoss
 		ProcessEngineering.AddStep(balance, "Precipitation & Drying",
 			dissolved - filtLoss, finalProduct, precipLoss)
+		balance.targetProductKg = targetDissolved
+			* ProcessEngineering.FILTRATION_RECOVERY
+			* ProcessEngineering.PRECIPITATION_RECOVERY
+		balance.byproductKg = math.max(0, finalProduct - balance.targetProductKg)
 	end
 
 	return balance
@@ -277,6 +321,25 @@ function ProcessEngineering.CreateProcessState()
 	}
 end
 
+-- Restore persisted controls defensively. DataStore records can outlive code
+-- versions, so never feed strings, NaN, infinities, or unbounded values into
+-- Arrhenius/pressure/residence-time calculations.
+function ProcessEngineering.SanitizeProcessState(state)
+	local defaults = ProcessEngineering.CreateProcessState()
+	if type(state) ~= "table" then state = defaults end
+	local function boundedNumber(value, fallback, minimum, maximum)
+		if not isFiniteNumber(value) then return fallback end
+		return math.clamp(value, minimum, maximum)
+	end
+	state.temperature = boundedNumber(state.temperature, defaults.temperature, 0, 1000)
+	state.pressure = boundedNumber(state.pressure, defaults.pressure, 50, 500)
+	state.flowRate = boundedNumber(state.flowRate, defaults.flowRate, 1, 50)
+	state.pH = boundedNumber(state.pH, defaults.pH, 0, 14)
+	state.agitationRPM = boundedNumber(state.agitationRPM, defaults.agitationRPM, 0, 2000)
+	state.reactorVolume = boundedNumber(state.reactorVolume, defaults.reactorVolume, 1, 1000)
+	return ProcessEngineering.UpdateDerivedValues(state)
+end
+
 function ProcessEngineering.UpdateDerivedValues(state)
 	-- Residence time
 	state.residenceTime = state.flowRate > 0 and (state.reactorVolume / state.flowRate) or 999
@@ -288,6 +351,32 @@ function ProcessEngineering.UpdateDerivedValues(state)
 
 	state.reactionRate = tempEffect * pressureEffect * residenceEffect
 	return state
+end
+
+-- Calculate the leach duration from the same operating conditions used by
+-- the server. Keeping this shared makes the UI estimate an honest prediction
+-- instead of showing only the particle-size/reagent baseline.
+function ProcessEngineering.CalculateEffectiveLeachDuration(baseMinutes, reagentId, state, eventEfficiency)
+	if not isFiniteNumber(baseMinutes) or baseMinutes <= 0 or type(state) ~= "table" then
+		return 0, 0
+	end
+
+	local activationEnergy = 50
+	if reagentId == "H2SO4" or reagentId == "HNO3" then activationEnergy = 40 end
+	if reagentId == "NaOH" then activationEnergy = 55 end
+	if reagentId == "CitricAcid" then activationEnergy = 60 end
+
+	local temperature = tonumber(state.temperature) or 25
+	local pressure = tonumber(state.pressure) or ProcessEngineering.StandardPressure
+	local flowRate = tonumber(state.flowRate) or 10
+	local reactorVolume = tonumber(state.reactorVolume) or 50
+	local combinedRate = ProcessEngineering.ArrheniusMultiplier(temperature, activationEnergy)
+		* ProcessEngineering.PressureMultiplier(pressure)
+		* ProcessEngineering.ResidenceTimeEffect(flowRate, reactorVolume)
+	combinedRate = math.max(combinedRate * math.max(0, tonumber(eventEfficiency) or 1), 0.1)
+
+	local effectiveDuration = math.clamp(baseMinutes / combinedRate, baseMinutes * 0.1, baseMinutes * 5)
+	return math.floor(effectiveDuration), combinedRate
 end
 
 -- Conservative safety envelope for aqueous leaching in the OTAP teststraat.
@@ -335,6 +424,45 @@ function ProcessEngineering.ReagentPHFactor(reagent, pH)
 	local target = reagent.pH or 7
 	local deviation = math.abs(pH - target)
 	return math.clamp(1 - deviation / 6, 0.25, 1)
+end
+
+-- Downstream separation is not lossless: filter cake retains a small amount
+-- of leachate and drying/precipitation loses additional product. Keep this
+-- factor shared with recovery settlement so atom production cannot exceed
+-- the final mass-balance product stream.
+ProcessEngineering.FILTRATION_RECOVERY = 0.98
+ProcessEngineering.PRECIPITATION_RECOVERY = 0.95
+
+function ProcessEngineering.CalculateProductRecoveryFactor(processEfficiency, phFactor, eventMultiplier)
+	local upstream = ProcessEngineering.CalculateRecoveryFactor(processEfficiency, phFactor, eventMultiplier)
+	return upstream * ProcessEngineering.FILTRATION_RECOVERY * ProcessEngineering.PRECIPITATION_RECOVERY
+end
+
+-- Combine process controls with a temporary world-event efficiency modifier.
+-- The bounds preserve a physically plausible recovery window.
+function ProcessEngineering.CalculateRecoveryFactor(processEfficiency, phFactor, eventMultiplier)
+	local process = tonumber(processEfficiency) or 0
+	local ph = tonumber(phFactor) or 0
+	local event = tonumber(eventMultiplier) or 1
+	return math.clamp(process * ph * math.max(0, event), 0.15, 0.95)
+end
+
+-- Water is a real consumable operating cost in the leaching circuit. A
+-- treatment unit recycles half of the make-up water; regional events can
+-- multiply the remaining cost. Keep the calculation pure for server and test
+-- use, with integer MolCoin settlement.
+function ProcessEngineering.CalculateProcessWaterCost(baseCost, eventMultiplier, hasTreatment)
+	local base = tonumber(baseCost) or 0
+	if base ~= base or base == math.huge or base == -math.huge or base < 0 then
+		return 0
+	end
+	local multiplier = tonumber(eventMultiplier)
+	if not multiplier or multiplier ~= multiplier or multiplier == math.huge or multiplier == -math.huge then
+		multiplier = 1
+	end
+	multiplier = math.max(0, multiplier)
+	local treatmentFactor = hasTreatment and 0.5 or 1
+	return math.max(0, math.ceil(base * multiplier * treatmentFactor))
 end
 
 -- Apply recovery without creating a product that the recovered mass cannot

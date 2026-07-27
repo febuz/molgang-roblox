@@ -19,20 +19,37 @@ local Players = game:GetService("Players")
 
 local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
 local ProcessEng = require(ReplicatedStorage.Modules.ProcessEngineering)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local ResearchAccess = require(ReplicatedStorage.Modules.ResearchAccess)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
+local SlagPersistence = require(ReplicatedStorage.Modules.SlagPersistence)
+local StationAccess = require(ReplicatedStorage.Modules.StationAccess)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
 -- ══════════════════════════════════════════════
 
--- Time scale: 1 game minute = TIME_SCALE real seconds
--- At 1:10 ratio, 1 game day (1440 min) = 2.4 real hours
--- For teaser: accelerated so players see results in minutes
-local TIME_SCALE = 0.5            -- 1 game minute = 0.5 real seconds
+-- Use the shared OTAP clock: 1 game day is 1440 game minutes and
+-- GameClock.DAY_SECONDS real seconds. This keeps leaching aligned with
+-- fertilizer growth, market cycles, loans, and factory production.
+local TIME_SCALE = GameClock.DAY_SECONDS / 1440
 local CRUSH_COOLDOWN = 0.3        -- seconds between hammer hits
 local LEACH_UPDATE_INTERVAL = 5   -- seconds between progress updates to client
+local PROCESS_WATER_COST_BY_SIZE = {
+	chunk = 25,
+	crushed = 35,
+	ground = 50,
+	powder = 70,
+}
+
+-- The process-control panel is the playable chemical simulator. Access is a
+-- server-authoritative session purchase, not a client-side UI flag. A player
+-- pays once per Studio/server session and can reopen the simulator freely.
+local CHEMICAL_SIMULATOR_ACCESS_COST = 25
+local chemicalSimulatorAccess = {}
 
 -- ══════════════════════════════════════════════
 -- STATE
@@ -42,7 +59,39 @@ local playerSlagData = {}         -- {userId = slagInventory}
 local playerLeaches = {}          -- {userId = {leachId = leachState}}
 local playerCrushState = {}       -- {userId = {lastHitTime, currentHits, targetSize}}
 local playerProcessState = {}     -- {userId = ProcessEngineering.CreateProcessState()}
+local recentLeachRequests = {}    -- {userId = {key, timestamp}}; duplicate guard
+local lastProcessControlUpdate = {} -- {userId = monotonic timestamp}; request guard
 local leachIdCounter = 0
+
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
+
+local function requireStation(player, stationContract)
+	local stationName = stationContract.partName
+	local radius = stationContract.radius
+	local actionName = stationContract.label
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local station = workspace:FindFirstChild(stationName, true)
+	if not root or not station or not station:IsA("BasePart")
+		or station:GetAttribute("Interactable") ~= true
+		or station:GetAttribute("InteractionType") ~= stationContract.interactionType then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = actionName .. " unavailable: the station is not ready.", rarity = "common",
+		})
+		return false
+	end
+	local playerPosition = {x = root.Position.X, y = root.Position.Y, z = root.Position.Z}
+	local stationPosition = {x = station.Position.X, y = station.Position.Y, z = station.Position.Z}
+	if not StationAccess.WithinRange(playerPosition, stationPosition, radius) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Walk to " .. actionName .. " before operating it.", rarity = "common",
+		})
+		return false
+	end
+	return true
+end
 
 -- Get player's process control settings
 local function getProcessState(userId)
@@ -51,12 +100,12 @@ local function getProcessState(userId)
 		local playerData = PlayerDataBridge.GetPlayerData(userId)
 		local saved = playerData and playerData.processControl
 		if saved then
-			state.temperature = saved.temperature or state.temperature
-			state.pressure = saved.pressure or state.pressure
-			state.flowRate = saved.flowRate or state.flowRate
-			state.pH = saved.pH or state.pH
-			ProcessEng.UpdateDerivedValues(state)
+			state.temperature = saved.temperature
+			state.pressure = saved.pressure
+			state.flowRate = saved.flowRate
+			state.pH = saved.pH
 		end
+		ProcessEng.SanitizeProcessState(state)
 		playerProcessState[userId] = state
 	end
 	return playerProcessState[userId]
@@ -65,6 +114,17 @@ end
 local function getResearchState(userId)
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 	return playerData and playerData.research or {}
+end
+
+local function hasWaterTreatment(userId)
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	local factory = playerData and playerData.factory
+	for _, placement in ipairs(factory and factory.placements or {}) do
+		if placement.itemId == "water_treatment" then
+			return true
+		end
+	end
+	return false
 end
 
 local function persistProcessState(userId, state)
@@ -84,24 +144,9 @@ local function getEffectiveLeachDuration(userId, baseMinutes, reagentId)
 	ProcessEng.UpdateDerivedValues(state)
 	persistProcessState(userId, state)
 
-	-- Apply Arrhenius temperature effect to leaching
-	local Ea = 50  -- default activation energy
-	if reagentId == "H2SO4" or reagentId == "HNO3" then Ea = 40 end
-	if reagentId == "NaOH" then Ea = 55 end
-	if reagentId == "CitricAcid" then Ea = 60 end
-
-	local tempMultiplier = ProcessEng.ArrheniusMultiplier(state.temperature, Ea)
-	local pressureMultiplier = ProcessEng.PressureMultiplier(state.pressure)
-	local residenceEffect = ProcessEng.ResidenceTimeEffect(state.flowRate, state.reactorVolume)
-
-	-- Combined effect: higher rate = shorter duration
-	local combinedRate = math.max(tempMultiplier * pressureMultiplier * residenceEffect, 0.1)
-	local effectiveDuration = baseMinutes / combinedRate
-
-	-- Clamp to reasonable range (min 10% of base, max 500%)
-	effectiveDuration = math.clamp(effectiveDuration, baseMinutes * 0.1, baseMinutes * 5)
-
-	return math.floor(effectiveDuration), combinedRate
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local eventEfficiency = math.max(0, tonumber(eventEffects.leachingEfficiencyMult) or 1)
+	return ProcessEng.CalculateEffectiveLeachDuration(baseMinutes, reagentId, state, eventEfficiency)
 end
 
 -- ══════════════════════════════════════════════
@@ -113,13 +158,15 @@ local function getPlayerSlag(userId)
 		-- Try to load from persistent PlayerDataBridge
 		local persistentData = PlayerDataBridge.GetPlayerData(userId)
 		if persistentData and persistentData.slagInventory then
-			playerSlagData[userId] = persistentData.slagInventory
+			playerSlagData[userId] = SlagPersistence.SanitizeInventory(persistentData.slagInventory)
+			persistentData.slagInventory = playerSlagData[userId]
 		else
 			playerSlagData[userId] = {
 				chunk = 0,
 				crushed = 0,
 				ground = 0,
 				powder = 0,
+				residue = 0,
 			}
 			-- Write back to persistent data so it saves with DataStore
 			if persistentData then
@@ -130,6 +177,47 @@ local function getPlayerSlag(userId)
 	return playerSlagData[userId]
 end
 
+local function restoreLeachState(leachId, saved)
+	if type(leachId) ~= "string" or type(saved) ~= "table" then return nil end
+	local reagentId = saved.reagentId
+	local particleSize = saved.particleSize
+	if type(reagentId) ~= "string" or not SteelSlag.Reagents[reagentId]
+		or type(particleSize) ~= "string" or not SteelSlag.ParticleSizes[particleSize] then
+		return nil
+	end
+	local startTime = tonumber(saved.startTime)
+	local durationSeconds = tonumber(saved.durationSeconds or saved.duration)
+	if not ProcessEng.IsFiniteNumber(startTime) or startTime < 0
+		or not ProcessEng.IsFiniteNumber(durationSeconds) or durationSeconds <= 0 then
+		return nil
+	end
+
+	local yield = {}
+	for _, entry in ipairs(type(saved.yield) == "table" and saved.yield or {}) do
+		if type(entry) == "table" and SteelSlag.OxideToElements[entry.oxide]
+			and ProcessEng.IsFiniteNumber(entry.atomCount) and entry.atomCount >= 1 then
+			local copy = {}
+			for key, value in pairs(entry) do copy[key] = value end
+			copy.atomCount = math.floor(entry.atomCount)
+			copy.gramsExtracted = SlagPersistence.FiniteNonNegative(entry.gramsExtracted)
+			table.insert(yield, copy)
+		end
+	end
+
+	local restored = {}
+	for key, value in pairs(saved) do restored[key] = value end
+	restored.id = leachId
+	restored.reagentId = reagentId
+	restored.particleSize = particleSize
+	restored.startTime = startTime
+	restored.durationSeconds = durationSeconds
+	restored.yield = yield
+	restored.massBalance = SlagPersistence.SanitizeMassBalance(saved.massBalance)
+	restored.extracted = saved.extracted == true
+	restored.complete = saved.complete == true
+	return restored
+end
+
 local function getPlayerLeaches(userId)
 	if not playerLeaches[userId] then
 		-- Try to restore from saved data (#77 crash recovery)
@@ -137,7 +225,10 @@ local function getPlayerLeaches(userId)
 		if pData and pData.activeLeaches then
 			playerLeaches[userId] = {}
 			for leachId, saved in pairs(pData.activeLeaches) do
-				playerLeaches[userId][leachId] = saved
+				local restored = restoreLeachState(leachId, saved)
+				if restored then
+					playerLeaches[userId][leachId] = restored
+				end
 			end
 		else
 			playerLeaches[userId] = {}
@@ -170,11 +261,27 @@ local function generateLeachId()
 	return "leach_" .. tostring(leachIdCounter) .. "_" .. tostring(os.time())
 end
 
+local function getCrushProgress(userId)
+	local crushState = playerCrushState[userId]
+	if not crushState or not tonumber(crushState.currentHits) or crushState.currentHits <= 0 then
+		return nil
+	end
+	local target = SteelSlag.ParticleSizes[crushState.targetSize]
+	local totalHits = target and target.crushHits or 0
+	if totalHits <= 0 then return nil end
+	return {
+		hits = crushState.currentHits,
+		totalHits = totalHits,
+		targetSize = crushState.targetSize,
+	}
+end
+
 local function sendSlagUpdate(player, userId)
 	local slag = getPlayerSlag(userId)
 	Remotes.FireClient("SlagInventoryUpdate", player, {
 		slagInventory = slag,
 		activeLeaches = countActiveLeaches(userId),
+		crushProgress = getCrushProgress(userId),
 	})
 end
 
@@ -228,9 +335,19 @@ Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 	local slag = getPlayerSlag(userId)
 
 	-- Validate target size
-	if type(targetSize) ~= "string" then return end
+	if type(targetSize) ~= "string" then
+		reject(player, "Choose a valid slag particle size to process.")
+		return
+	end
 	local sizeData = SteelSlag.ParticleSizes[targetSize]
-	if not sizeData then return end
+	if not sizeData then
+		reject(player, "Unknown slag particle size.")
+		return
+	end
+	local station = targetSize == "ground" and StationAccess.Stations.cone
+		or targetSize == "powder" and StationAccess.Stations.mill
+		or targetSize == "crushed" and StationAccess.Stations.crush
+	if not station or not requireStation(player, station) then return end
 	local sizeAllowed, sizeRequirement = ResearchAccess.CanUseParticleSize(getResearchState(userId), targetSize)
 	if not sizeAllowed then
 		Remotes.FireClient("ServerAnnounce", player, {
@@ -252,6 +369,7 @@ Remotes.RequestCrushSlag.OnServerEvent:Connect(function(player, targetSize)
 		sourceSize = "ground"
 		sourceKey = "ground"
 	else
+		reject(player, "Raw chunks cannot be processed directly; choose crushed, ground, or powder.")
 		return -- can't crush to "chunk"
 	end
 
@@ -338,12 +456,20 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local userId = player.UserId
 	local slag = getPlayerSlag(userId)
 	local processState = getProcessState(userId)
+	local station = StationAccess.Stations.leach
+	if not requireStation(player, station) then return end
 
 	-- Validate inputs
-	if type(reagentId) ~= "string" or type(particleSize) ~= "string" then return end
+	if type(reagentId) ~= "string" or type(particleSize) ~= "string" then
+		reject(player, "Choose both a reagent and a particle size before starting leaching.")
+		return
+	end
 	local reagent = SteelSlag.Reagents[reagentId]
 	local sizeData = SteelSlag.ParticleSizes[particleSize]
-	if not reagent or not sizeData then return end
+	if not reagent or not sizeData then
+		reject(player, "Unknown reagent or slag particle size.")
+		return
+	end
 
 	local reagentAllowed, reagentRequirement = ResearchAccess.CanUseReagent(getResearchState(userId), reagentId)
 	if not reagentAllowed then
@@ -378,17 +504,32 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		return
 	end
 
-	-- Deduct reagent cost
-	if reagent.cost > 0 then
-		local success = PlayerDataBridge.SpendMolCoins(userId, reagent.cost)
-		if not success then
-			Remotes.FireClient("ServerAnnounce", player, {
-				message = reagent.name .. " costs " .. reagent.cost .. " MolCoins.",
-				rarity = "common",
-			})
-			return
-		end
+	-- Settle reagent and process-water costs together before consuming slag.
+	-- This prevents a partially paid process from being created.
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local waterCost = ProcessEng.CalculateProcessWaterCost(
+		PROCESS_WATER_COST_BY_SIZE[particleSize],
+		eventEffects.processWaterCostMult,
+		hasWaterTreatment(userId)
+	)
+	local totalProcessCost = math.max(0, reagent.cost or 0) + waterCost
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	if not playerData or (playerData.molCoins or 0) < totalProcessCost then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Process needs " .. totalProcessCost .. " MC (reagent " .. (reagent.cost or 0) .. ", water " .. waterCost .. ").",
+			rarity = "common",
+		})
+		return
 	end
+	local requestKey = reagentId .. ":" .. particleSize
+	local recentRequest = recentLeachRequests[userId]
+	if recentRequest and recentRequest.key == requestKey and os.clock() - recentRequest.timestamp < 0.75 then
+		return
+	end
+	if totalProcessCost > 0 and not PlayerDataBridge.SpendMolCoins(userId, totalProcessCost) then
+		return
+	end
+	recentLeachRequests[userId] = {key = requestKey, timestamp = os.clock()}
 
 	-- Consume 1kg of slag
 	slag[particleSize] = slag[particleSize] - 1
@@ -397,13 +538,17 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 	local baseLeachMinutes = SteelSlag.CalculateLeachTime(particleSize, reagentId)
 	local leachMinutes, reactionRate = getEffectiveLeachDuration(userId, baseLeachMinutes, reagentId)
 	local leachRealSeconds = leachMinutes * TIME_SCALE
-	local idealYield = SteelSlag.CalculateYield(particleSize, reagentId, SteelSlag.BATCH_WEIGHT_KG)
-	local massBalance = ProcessEng.CalculateSlagMassBalance(particleSize, reagentId, processState.temperature)
+	local phFactor = ProcessEng.ReagentPHFactor(reagent, processState.pH)
+	local idealYield = SteelSlag.CalculateYield(
+		particleSize, reagentId, SteelSlag.BATCH_WEIGHT_KG, processState.temperature
+	)
+	local massBalance = ProcessEng.CalculateSlagMassBalance(
+		particleSize, reagentId, processState.temperature, nil, phFactor)
 
 	-- Controls affect rate and residence time, not conservation of mass.
 	local processEfficiency = math.clamp(0.75 + reactionRate * 0.125, 0.75, 0.95)
-	local phFactor = ProcessEng.ReagentPHFactor(reagent, processState.pH)
-	local recoveryFactor = math.clamp(processEfficiency * phFactor, 0.15, 0.95)
+	local eventEfficiency = math.max(0, tonumber(eventEffects.leachingEfficiencyMult) or 1)
+	local recoveryFactor = ProcessEng.CalculateProductRecoveryFactor(processEfficiency, phFactor, eventEfficiency)
 	local yield = ProcessEng.ApplyRecovery(idealYield, recoveryFactor)
 
 	-- Create leach record
@@ -421,10 +566,13 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		processEfficiency = processEfficiency,
 		phFactor = phFactor,
 		recoveryFactor = recoveryFactor,
+		waterCost = waterCost,
+		waterTreatment = hasWaterTreatment(userId),
 		massBalance = massBalance,
 		complete = false,
 		extracted = false,
 	}
+	PlayerDataBridge.RecordLeachStarted(userId, leachId)
 
 	-- Notify client
 	local timeStr = SteelSlag.FormatLeachTime(leachMinutes)
@@ -437,11 +585,13 @@ Remotes.RequestStartLeach.OnServerEvent:Connect(function(player, reagentId, part
 		durationDisplay = timeStr,
 		yield = yield,
 		massBalance = massBalance,
+		waterCost = waterCost,
+		waterTreatment = hasWaterTreatment(userId),
 		reagentColor = {reagent.color.R * 255, reagent.color.G * 255, reagent.color.B * 255},
 	})
 
 	Remotes.FireClient("ServerAnnounce", player, {
-		message = "Leaching started: " .. sizeData.name .. " + " .. reagent.name .. " (" .. timeStr .. ")",
+		message = "Leaching started: " .. sizeData.name .. " + " .. reagent.name .. " (" .. timeStr .. ", water " .. waterCost .. " MC)",
 		rarity = "rare",
 	})
 
@@ -456,11 +606,19 @@ end)
 
 Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	local userId = player.UserId
-	if type(leachId) ~= "string" then return end
+	local station = StationAccess.Stations.leach
+	if not requireStation(player, station) then return end
+	if type(leachId) ~= "string" then
+		reject(player, "Select a leach batch before extracting products.")
+		return
+	end
 
 	local leaches = getPlayerLeaches(userId)
 	local leach = leaches[leachId]
-	if not leach then return end
+	if not leach then
+		reject(player, "Leach batch not found; refresh the process list.")
+		return
+	end
 
 	-- Check if leaching is complete
 	local elapsed = tick() - leach.startTime
@@ -487,26 +645,50 @@ Remotes.RequestExtractProducts.OnServerEvent:Connect(function(player, leachId)
 	local atoms = SteelSlag.YieldToAtoms(leach.yield)
 	local totalAtoms = 0
 	local bonusCoins = 0
-
-	for elem, count in pairs(atoms) do
-		-- Add atoms via PlayerDataBridge
-		for i = 1, count do
-			-- Find element Z for this symbol
-			local Elements = require(ReplicatedStorage.Data.Elements)
-			local elementZ = nil
-			for z, data in pairs(Elements.Table) do
-				if data.sym == elem then
-					elementZ = z
-					break
-				end
-			end
-			if elementZ then
-				PlayerDataBridge.RecordAtomCollect(userId, elementZ, elem, 5)
-				bonusCoins = bonusCoins + 5
-			end
-		end
+	for _, count in pairs(atoms) do
 		totalAtoms = totalAtoms + count
 	end
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	local pendingAtomAmount = PlayerDataBridge.GetPendingAtomAmount(userId)
+	if not playerData or not InventoryLimits.CanAddAtoms(
+		playerData.atoms, playerData.facilities, totalAtoms + pendingAtomAmount) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Atom storage is too full for this batch and queued production. Build an Office or clear storage first.",
+			rarity = "common",
+		})
+		return
+	end
+	local Elements = require(ReplicatedStorage.Data.Elements)
+	local batchEntries = {}
+	for elem, count in pairs(atoms) do
+		local elementZ = nil
+		for z, data in pairs(Elements.Table) do
+			if data.sym == elem then
+				elementZ = z
+				break
+			end
+		end
+		if not elementZ then
+			return
+		end
+		table.insert(batchEntries, {
+			elementZ = elementZ,
+			symbol = elem,
+			amount = count,
+			coinReward = 5,
+		})
+	end
+	if #batchEntries < 1 or not PlayerDataBridge.RecordAtomCollectMultiBatch(userId, batchEntries) then
+		return
+	end
+	bonusCoins = totalAtoms * 5
+
+	playerData.slagInventory = playerData.slagInventory or {}
+	-- Keep the aggregate byproduct aligned with the batch mass balance rather
+	-- than inventing a fixed kilogram for every feed size/operating condition.
+	local residueKg = tonumber(leach.massBalance and (leach.massBalance.aggregateKg or leach.massBalance.wasteKg)) or 1
+	residueKg = math.max(0, math.floor(residueKg * 1000 + 0.5) / 1000)
+	playerData.slagInventory.residue = (playerData.slagInventory.residue or 0) + residueKg
 
 	leach.extracted = true
 	leach.complete = true
@@ -574,6 +756,7 @@ Remotes.RequestSlagInfo.OnServerEvent:Connect(function(player)
 		slagInventory = slag,
 		activeLeaches = countActiveLeaches(userId),
 		leachList = leachList,
+		crushProgress = getCrushProgress(userId),
 	})
 end)
 
@@ -614,6 +797,19 @@ end)
 
 Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperature, pressure, pH, flowRate)
 	local userId = player.UserId
+	if not chemicalSimulatorAccess[userId] then
+		Remotes.FireClient("ChemicalSimulatorAccess", player, {
+			success = false,
+			cost = CHEMICAL_SIMULATOR_ACCESS_COST,
+			message = "Purchase chemical simulator access before changing process controls.",
+		})
+		return
+	end
+	local now = os.clock()
+	if lastProcessControlUpdate[userId] and now - lastProcessControlUpdate[userId] < 0.25 then
+		return
+	end
+	lastProcessControlUpdate[userId] = now
 	local state = getProcessState(userId)
 
 	-- Validate and clamp inputs
@@ -632,22 +828,78 @@ Remotes.RequestSetProcessControl.OnServerEvent:Connect(function(player, temperat
 
 	ProcessEng.UpdateDerivedValues(state)
 	persistProcessState(userId, state)
+	local operatingSafe, interlockCode, interlockMessage = ProcessEng.ValidateOperatingEnvelope(state)
 
 	-- Set player attributes for other scripts to read
 	player:SetAttribute("ProcessTemp", state.temperature)
 	player:SetAttribute("ProcessPressure", state.pressure)
 	player:SetAttribute("ProcessPH", state.pH)
+	player:SetAttribute("ProcessFlowRate", state.flowRate)
 	player:SetAttribute("ReactionRate", state.reactionRate)
-end)
-
-Remotes.RequestProcessControlState.OnServerEvent:Connect(function(player)
-	local state = getProcessState(player.UserId)
-	ProcessEng.UpdateDerivedValues(state)
 	Remotes.FireClient("ProcessControlState", player, {
 		temperature = state.temperature,
 		pressure = state.pressure,
 		pH = state.pH,
 		flowRate = state.flowRate,
+		operatingSafe = operatingSafe,
+		interlockCode = interlockCode,
+		interlockMessage = interlockMessage,
+	})
+end)
+
+Remotes.RequestProcessControlState.OnServerEvent:Connect(function(player)
+	if not chemicalSimulatorAccess[player.UserId] then
+		Remotes.FireClient("ChemicalSimulatorAccess", player, {
+			success = false,
+			cost = CHEMICAL_SIMULATOR_ACCESS_COST,
+			message = "Purchase chemical simulator access before loading process controls.",
+		})
+		return
+	end
+	local state = getProcessState(player.UserId)
+	ProcessEng.UpdateDerivedValues(state)
+	local operatingSafe, interlockCode, interlockMessage = ProcessEng.ValidateOperatingEnvelope(state)
+	player:SetAttribute("ProcessTemp", state.temperature)
+	player:SetAttribute("ProcessPressure", state.pressure)
+	player:SetAttribute("ProcessPH", state.pH)
+	player:SetAttribute("ProcessFlowRate", state.flowRate)
+	player:SetAttribute("ReactionRate", state.reactionRate)
+	Remotes.FireClient("ProcessControlState", player, {
+		temperature = state.temperature,
+		pressure = state.pressure,
+		pH = state.pH,
+		flowRate = state.flowRate,
+		operatingSafe = operatingSafe,
+		interlockCode = interlockCode,
+		interlockMessage = interlockMessage,
+	})
+end)
+
+Remotes.RequestChemicalSimulatorAccess.OnServerEvent:Connect(function(player)
+	local userId = player.UserId
+	if chemicalSimulatorAccess[userId] then
+		Remotes.FireClient("ChemicalSimulatorAccess", player, {
+			success = true,
+			cost = 0,
+			message = "Chemical simulator access is active for this session.",
+		})
+		return
+	end
+
+	if not PlayerDataBridge.SpendMolCoins(userId, CHEMICAL_SIMULATOR_ACCESS_COST) then
+		Remotes.FireClient("ChemicalSimulatorAccess", player, {
+			success = false,
+			cost = CHEMICAL_SIMULATOR_ACCESS_COST,
+			message = string.format("Chemical simulator access costs %d MolCoins.", CHEMICAL_SIMULATOR_ACCESS_COST),
+		})
+		return
+	end
+
+	chemicalSimulatorAccess[userId] = true
+	Remotes.FireClient("ChemicalSimulatorAccess", player, {
+		success = true,
+		cost = CHEMICAL_SIMULATOR_ACCESS_COST,
+		message = string.format("Chemical simulator unlocked for this session (-%d MolCoins).", CHEMICAL_SIMULATOR_ACCESS_COST),
 	})
 end)
 
@@ -657,9 +909,17 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	local userId = player.UserId
-	-- Keep leach data alive (persists via DataStore through EconomyManager)
-	-- Only clean up runtime state
+	-- Persist first, then clear all per-player runtime caches. If the same user
+	-- rejoins this server, getPlayerLeaches must restore the current saved
+	-- snapshot instead of reusing a stale Lua table from the prior session.
+	persistLeachState(userId)
+	playerLeaches[userId] = nil
+	playerSlagData[userId] = nil
+	playerProcessState[userId] = nil
 	playerCrushState[userId] = nil
+	recentLeachRequests[userId] = nil
+	lastProcessControlUpdate[userId] = nil
+	chemicalSimulatorAccess[userId] = nil
 end)
 
 print("[MOLGANG] SlagProcessing initialized — BOF steel slag chemistry active at Slakkenspoor")

@@ -11,6 +11,7 @@ local Elements = require(ReplicatedStorage.Data.Elements)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local MiningMilestones = require(ReplicatedStorage.Modules.GameObjects.MiningMilestones)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATIE
@@ -62,6 +63,10 @@ local activeAtoms = {}  -- {atomPart = {elementZ, spawnTime, zone}}
 local atomCount = 0
 local playerCooldowns = {} -- {playerId = lastCollectTime}
 local playerCollectCounts = {} -- {playerId = {count, resetTime}}
+
+local function rejectCollect(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
 
 -- Atoms folder in workspace
 local atomsFolder = Instance.new("Folder")
@@ -139,27 +144,12 @@ local function spawnAtomAt(position, elementZ, zoneName)
 	atom:SetAttribute("Rarity", elem.rarity)
 	atom:SetAttribute("Interactable", true)
 	atom:SetAttribute("InteractionType", "collect")
-
-	-- Floating animatie via AlignPosition
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = atom
-
-	local alignPos = Instance.new("AlignPosition")
-	alignPos.Mode = Enum.PositionAlignmentMode.OneAttachment
-	alignPos.Attachment0 = attachment
-	alignPos.Position = position + Vector3.new(0, math.sin(tick()) * 1.5, 0)
-	alignPos.MaxForce = 10000
-	alignPos.Responsiveness = 10
-	alignPos.Parent = atom
-
-	-- Rotatie
-	local alignOri = Instance.new("AlignOrientation")
-	alignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
-	alignOri.Attachment0 = attachment
-	alignOri.CFrame = CFrame.Angles(0, tick() * 0.8, 0)
-	alignOri.MaxTorque = 10000
-	alignOri.Responsiveness = 5
-	alignOri.Parent = atom
+	-- De server houdt alleen de vaste spawnpositie bij; de lichte zweef-/rotatie-
+	-- animatie gebeurt lokaal zodat veel atomen geen physics-constraints nodig hebben.
+	atom:SetAttribute("BasePosition", position)
+	atom:SetAttribute("FloatPhase", math.random() * math.pi * 2)
+	atom:SetAttribute("FloatAmplitude", 0.35 + math.random() * 0.25)
+	atom:SetAttribute("SpinRate", 0.25 + math.random() * 0.35)
 
 	-- Billboard label boven atoom
 	local bill = Instance.new("BillboardGui")
@@ -335,28 +325,56 @@ local function onRequestCollect(player, atomName)
 	end
 
 	-- Vind het atoom
+	if type(atomName) ~= "string" then
+		rejectCollect(player, "Collectie mislukt: kies een zichtbaar atoom.")
+		return
+	end
 	local atom = atomsFolder:FindFirstChild(atomName)
-	if not atom then return end
+	if not atom then
+		rejectCollect(player, "Dit atoom is al verzameld of verlopen.")
+		return
+	end
 
 	local data = activeAtoms[atom]
-	if not data then return end
+	if not data then
+		rejectCollect(player, "Dit atoom is niet meer beschikbaar.")
+		return
+	end
 
 	-- Positie validatie (anti-teleport)
 	local character = player.Character
-	if not character then return end
+	if not character then
+		rejectCollect(player, "Je personage is nog niet klaar om te verzamelen.")
+		return
+	end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+	if not hrp then
+		rejectCollect(player, "Je positie kan nog niet worden bepaald.")
+		return
+	end
 
 	local distance = (hrp.Position - atom.Position).Magnitude
 	local effectiveRange = COLLECT_RANGE * getCollectRangeMultiplier(player.UserId)
 	if distance > effectiveRange then
 		warn("[AtomSpawner] Collect te ver:", player.Name, distance, "studs")
+		rejectCollect(player, "Loop dichter naar het gloeiende atoom toe.")
 		return
 	end
 
 	-- Collect succesvol!
 	local elementZ = data.elementZ
 	local elem = Elements.Table[elementZ]
+	local economyData = PlayerDataBridge.GetPlayerData(player.UserId)
+	if not economyData then
+		rejectCollect(player, "Je opslag wordt nog geladen. Probeer zo opnieuw.")
+		return
+	end
+	local freeSlots = InventoryLimits.GetFreeAtomSlots(economyData.atoms, economyData.facilities)
+	local queuedAtoms = PlayerDataBridge.GetPendingAtomAmount(player.UserId)
+	if freeSlots - queuedAtoms < 1 then
+		rejectCollect(player, "Je atoomopslag is vol. Gebruik eerst atomen of bouw een Office.")
+		return
+	end
 
 	-- Verwijder atoom uit wereld
 	activeAtoms[atom] = nil
@@ -380,7 +398,7 @@ local function onRequestCollect(player, atomName)
 	local previousCollectedCount = PlayerDataBridge.GetAtomCollectedCount(player.UserId)
 	local newCollectedCount = PlayerDataBridge.RecordAtomCollected(player.UserId)
 	for _, milestone in ipairs(MiningMilestones.CheckNewlyUnlocked(previousCollectedCount, newCollectedCount)) do
-		PlayerDataBridge.AddEarnedMolCoins(player.UserId, milestone.molCoinsReward)
+		PlayerDataBridge.AddRewardMolCoins(player.UserId, milestone.molCoinsReward)
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "Milestone unlocked: " .. milestone.name .. "! +" .. milestone.molCoinsReward .. " MolCoins",
 			rarity = "rare",

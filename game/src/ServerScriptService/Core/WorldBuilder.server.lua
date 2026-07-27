@@ -75,6 +75,8 @@ local function createPart(parent: Instance, config: {
 	Shape: Enum.PartType?,
 	Anchored: boolean?,
 	CanCollide: boolean?,
+	CanTouch: boolean?,
+	CanQuery: boolean?,
 }): Part
 	local part = Instance.new("Part")
 	part.Name = config.Name or "Part"
@@ -86,6 +88,12 @@ local function createPart(parent: Instance, config: {
 	part.Shape = config.Shape or Enum.PartType.Block
 	part.Anchored = if config.Anchored ~= nil then config.Anchored else true
 	part.CanCollide = if config.CanCollide ~= nil then config.CanCollide else true
+	-- Purely visual non-collidable geometry does not need physics touch/query
+	-- participation. Keeping it out of those broadphase checks is important in
+	-- the floating archipelago, while explicit overrides preserve future
+	-- trigger volumes.
+	part.CanTouch = if config.CanTouch ~= nil then config.CanTouch else part.CanCollide
+	part.CanQuery = if config.CanQuery ~= nil then config.CanQuery else part.CanCollide
 	part.Parent = parent
 	return part
 end
@@ -149,6 +157,39 @@ local function createFolder(parent: Instance, name: string): Folder
 	folder.Name = name
 	folder.Parent = parent
 	return folder
+end
+
+-- Shared audio surface for UI, process feedback, weather and ambient layers.
+-- These are Roblox-provided built-in clips, so the OTAP place has audible
+-- feedback even before project-specific audio is imported.
+local function ensureSoundLibrary()
+	local SoundService = game:GetService("SoundService")
+	local sounds = {
+		atom_collect = {"rbxasset://sounds/electronicpingshort.wav", 0.35},
+		molecule_built = {"rbxasset://sounds/uuhhh.mp3", 0.45},
+		ui_click = {"rbxasset://sounds/electronicpingshort.wav", 0.22},
+		ui_open = {"rbxasset://sounds/action_get_up.mp3", 0.18},
+		ui_close = {"rbxasset://sounds/action_get_up.mp3", 0.14},
+		crusher_impact = {"rbxasset://sounds/action_get_up.mp3", 0.5},
+		quest_complete = {"rbxasset://sounds/electronicpingshort.wav", 0.4},
+		achievement = {"rbxasset://sounds/electronicpingshort.wav", 0.4},
+		purchase = {"rbxasset://sounds/electronicpingshort.wav", 0.3},
+		rain_loop = {"rbxasset://sounds/uuhhh.mp3", 0.12, true},
+		thunder = {"rbxasset://sounds/action_get_up.mp3", 0.45},
+		wind_loop = {"rbxasset://sounds/uuhhh.mp3", 0.1, true},
+		ambient_hub = {"rbxasset://sounds/uuhhh.mp3", 0.08, true},
+	}
+	for name, config in pairs(sounds) do
+		if not SoundService:FindFirstChild(name) then
+			local sound = Instance.new("Sound")
+			sound.Name = name
+			sound.SoundId = config[1]
+			sound.Volume = config[2]
+			sound.Looped = config[3] == true
+			sound.Parent = SoundService
+		end
+	end
+	print("[WorldBuilder] Sound library ready: " .. tostring(#SoundService:GetChildren()) .. " sources")
 end
 
 -- Add a PointLight to a part
@@ -332,8 +373,17 @@ local function createPlatform(parent: Instance, config: {
 		Name = (config.Name or "Platform") .. "_UnderGlow",
 		Size = Vector3.new(size.X * 0.9, 0.5, size.Z * 0.9),
 		Position = config.Position - Vector3.new(0, size.Y / 2 + 0.3, 0),
-		Color = config.GlowColor or CONFIG.NEON_GREEN,
-		Material = Enum.Material.Neon,
+		-- Desaturate the emissive cue: the platform itself must still read as
+		-- metal/concrete in D3D11 and in low-light conditions.
+		Color = config.GlowColor and config.GlowColor:Lerp(Color3.fromRGB(18, 45, 42), 0.55)
+			or Color3.fromRGB(18, 85, 65),
+		-- A transparent Neon sheet still clips as a solid cyan plane under
+		-- Vinegar's D3D11 renderer. A dark underside keeps the floating cue
+		-- without overpowering the platform's physical material.
+		Material = Enum.Material.SmoothPlastic,
+		-- Keep the floating-island cue visible without washing the entire
+		-- industrial deck in cyan. Emissive accents should guide navigation,
+		-- not replace the platform's metal/concrete material read.
 		Transparency = 0.3,
 		CanCollide = false,
 	})
@@ -378,17 +428,20 @@ end
 
 local function setupLighting()
 	-- Base lighting — industrial twilight with warm neon accents
-	Lighting.Ambient = Color3.fromRGB(30, 35, 45)        -- cool blue-grey ambient
-	Lighting.OutdoorAmbient = Color3.fromRGB(20, 28, 35)  -- darker outdoors
-	Lighting.Brightness = 0.2                              -- slightly brighter base
-	Lighting.ClockTime = 5.5                               -- dawn twilight (realistic)
+	-- Start the OTAP session in readable morning light. The day/night loop
+	-- still drives realistic dusk/night later, but a new player must be able to
+	-- see the platform beneath the spawn instead of appearing to float in space.
+	Lighting.Ambient = Color3.fromRGB(50, 54, 62)
+	Lighting.OutdoorAmbient = Color3.fromRGB(45, 49, 56)
+	Lighting.Brightness = 0.55
+	Lighting.ClockTime = 8.0
 	Lighting.GlobalShadows = true
 	-- Technology is configured by default.project.json. Studio blocks server
 	-- scripts from changing this property at runtime; attempting to write it
 	-- aborts the entire world build before zones and the spawn are created.
 	Lighting.EnvironmentDiffuseScale = 0.35                -- more environment reflection
 	Lighting.EnvironmentSpecularScale = 0.25               -- specular on wet/metal surfaces
-	Lighting.ExposureCompensation = 0.25                   -- balanced exposure
+	Lighting.ExposureCompensation = 0.05                   -- avoid clipped neon highlights
 	Lighting.GeographicLatitude = 52.37                    -- IJmuiden, Netherlands latitude
 
 	-- Remove existing post-processing to prevent duplicates
@@ -412,16 +465,16 @@ local function setupLighting()
 
 	-- Bloom — refined glow for neon + molten metal
 	local bloom = Instance.new("BloomEffect")
-	bloom.Intensity = 1.4             -- toned down from 1.8 (was too blurry)
-	bloom.Size = 24                   -- tighter bloom
-	bloom.Threshold = 0.8             -- only brightest neons bloom
+	bloom.Intensity = 0.55            -- restrained industrial glow
+	bloom.Size = 18                   -- tighter bloom
+	bloom.Threshold = 1.15            -- only emissive highlights bloom
 	bloom.Parent = Lighting
 
 	-- Color Correction — cinematic industrial color grading
 	local colorCorrection = Instance.new("ColorCorrectionEffect")
-	colorCorrection.Contrast = 0.15   -- slightly lower contrast for detail
-	colorCorrection.Saturation = 0.25 -- reduced from 0.35 (was too vivid/cartoony)
-	colorCorrection.Brightness = 0.02
+	colorCorrection.Contrast = 0.22   -- retain separation in dark materials
+	colorCorrection.Saturation = 0.08 -- grounded industrial palette
+	colorCorrection.Brightness = 0.04
 	colorCorrection.TintColor = Color3.fromRGB(240, 238, 250)  -- neutral warm-white
 	colorCorrection.Parent = Lighting
 
@@ -454,6 +507,17 @@ local function setupLighting()
 	sky.Parent = Lighting
 
 	-- Realistic day/night cycle — industrial twilight atmosphere
+	local function setDayNightBrightness(baseBrightness)
+		local weatherBrightness = Lighting:GetAttribute("WeatherBrightness")
+		local weatherScale = 1
+		if type(weatherBrightness) == "number" then
+			-- Clear weather is the reference (0.15); storms dim the same
+			-- day/night curve instead of fighting it.
+			weatherScale = math.clamp(weatherBrightness / 0.15, 0.25, 1.0)
+		end
+		Lighting.Brightness = baseBrightness * weatherScale
+	end
+
 	task.spawn(function()
 		while true do
 			Lighting.ClockTime = Lighting.ClockTime + 0.003
@@ -464,7 +528,7 @@ local function setupLighting()
 			if hour >= 6 and hour < 8 then
 				-- Sunrise: warm golden hour
 				local t = (hour - 6) / 2
-				Lighting.Brightness = 0.2 + t * 0.5
+				setDayNightBrightness(0.2 + t * 0.5)
 				Lighting.OutdoorAmbient = Color3.fromRGB(
 					20 + math.floor(t * 40),
 					28 + math.floor(t * 30),
@@ -472,12 +536,12 @@ local function setupLighting()
 				)
 			elseif hour >= 8 and hour < 17 then
 				-- Daytime: bright industrial
-				Lighting.Brightness = 0.7
+				setDayNightBrightness(0.7)
 				Lighting.OutdoorAmbient = Color3.fromRGB(60, 58, 50)
 			elseif hour >= 17 and hour < 19 then
 				-- Sunset: orange industrial glow
 				local t = (hour - 17) / 2
-				Lighting.Brightness = 0.7 - t * 0.5
+				setDayNightBrightness(0.7 - t * 0.5)
 				Lighting.OutdoorAmbient = Color3.fromRGB(
 					60 - math.floor(t * 40),
 					58 - math.floor(t * 30),
@@ -485,7 +549,7 @@ local function setupLighting()
 				)
 			else
 				-- Night: factory lights dominate
-				Lighting.Brightness = 0.2
+				setDayNightBrightness(0.2)
 				Lighting.OutdoorAmbient = Color3.fromRGB(20, 28, 35)
 			end
 
@@ -524,6 +588,7 @@ local function buildNexusHub(zonesFolder: Folder)
 		Position = Vector3.new(0, 10, 0),
 		Size = Vector3.new(200, 6, 200),
 		Color = Color3.fromRGB(35, 40, 48),
+		Material = Enum.Material.Concrete,
 		TopGlow = true,
 		GlowColor = CONFIG.NEON_GREEN,
 	})
@@ -538,8 +603,8 @@ local function buildNexusHub(zonesFolder: Folder)
 			Name = "PlatformRim_" .. i,
 			Size = if i % 2 == 0 then Vector3.new(200, 2, 4) else Vector3.new(4, 2, 200),
 			Position = Vector3.new(rimX, 14, rimZ),
-			Color = CONFIG.NEON_GREEN,
-			Material = Enum.Material.Neon,
+			Color = Color3.fromRGB(28, 75, 65),
+			Material = Enum.Material.Metal,
 		})
 		addPointLight(rimPart, {
 			Color = CONFIG.NEON_GREEN,
@@ -553,8 +618,8 @@ local function buildNexusHub(zonesFolder: Folder)
 	spawn.Name = "MolGangSpawn"
 	spawn.Size = Vector3.new(12, 1, 12)
 	spawn.Position = Vector3.new(0, 14, 0)
-	spawn.Color = CONFIG.NEON_GREEN
-	spawn.Material = Enum.Material.Neon
+	spawn.Color = Color3.fromRGB(24, 115, 88)
+	spawn.Material = Enum.Material.Metal
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Duration = 0
@@ -1222,8 +1287,8 @@ local function buildPeriodicTableBiome(zonesFolder: Folder)
 			Size = Vector3.new(8, 1.5, 100),
 			Position = Vector3.new(0, bridgeY, bridgeZ),
 			Color = Color3.fromRGB(40, 45, 55),
-			Material = Enum.Material.SmoothPlastic,
-			Transparency = 0.1,
+			Material = Enum.Material.Metal,
+			Transparency = 0.05,
 		})
 		-- Railing glow
 		if seg % 3 == 0 then
@@ -1972,7 +2037,7 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Size = Vector3.new(30, 2, 25),
 		Position = Vector3.new(-1850, 10, -40),
 		Color = CONFIG.INDUSTRIAL_GREY,
-		Material = Enum.Material.SmoothPlastic,
+		Material = Enum.Material.Metal,
 	})
 	tagInteractable(crushBase, "SlagCrushStation")
 	tagZone(crushBase, "West")
@@ -2054,7 +2119,7 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Size = Vector3.new(50, 2, 30),
 		Position = Vector3.new(-1850, 10, 40),
 		Color = CONFIG.INDUSTRIAL_GREY,
-		Material = Enum.Material.SmoothPlastic,
+		Material = Enum.Material.Metal,
 	})
 	tagInteractable(leachBase, "SlagLeachStation")
 	tagZone(leachBase, "West")
@@ -2482,7 +2547,7 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Size = Vector3.new(16, 3, 16),
 		Position = Vector3.new(-2090, 10, -55),
 		Color = CONFIG.INDUSTRIAL_GREY,
-		Material = Enum.Material.SmoothPlastic,
+		Material = Enum.Material.Metal,
 	})
 	tagInteractable(coneCrusherBase, "SlagConeCrusher")
 
@@ -2524,7 +2589,7 @@ local function buildSlakkenspoorFabriek(zonesFolder: Folder)
 		Size = Vector3.new(30, 3, 14),
 		Position = Vector3.new(-2050, 10, -40),
 		Color = CONFIG.INDUSTRIAL_GREY,
-		Material = Enum.Material.SmoothPlastic,
+		Material = Enum.Material.Metal,
 	})
 	tagInteractable(millBase, "SlagBallMill")
 
@@ -3810,6 +3875,40 @@ local function buildGlobalElements(zonesFolder: Folder)
 			Range = 30,
 		})
 
+		-- Every remote mining outpost needs a visible return route. Previously
+		-- players could teleport north/east/south/west but had no way back to
+		-- Nexus without guessing coordinates or resetting the character.
+		local returnPad = createPart(outpost, {
+			Name = "TeleportPad_ReturnToNexus",
+			Size = Vector3.new(16, 1, 16),
+			-- Keep the exit within sight of the landing point. Players should
+			-- never need to leave the platform or fall to recover from mining.
+			Position = region.center + Vector3.new(0, 7, 28),
+			Color = Color3.fromRGB(0, 210, 150),
+			Material = Enum.Material.Neon,
+		})
+		local returnPrompt = Instance.new("ProximityPrompt")
+		returnPrompt.Name = "ReturnToNexusPrompt"
+		returnPrompt.ActionText = "Return to Nexus"
+		returnPrompt.ObjectText = region.name .. " Exit"
+		returnPrompt.KeyboardKeyCode = Enum.KeyCode.E
+		returnPrompt.HoldDuration = 0.15
+		returnPrompt.MaxActivationDistance = 18
+		returnPrompt.RequiresLineOfSight = false
+		returnPrompt.Parent = returnPad
+		returnPad:SetAttribute("TeleportTarget", Vector3.new(0, 10, 0))
+		returnPad:SetAttribute("TeleportName", "Nexus Hub")
+		addBillboard(returnPad, {
+			Text = "RETURN TO NEXUS\n[E] Exit  •  [H] Anywhere",
+			Size = UDim2.new(10, 0, 3, 0),
+			StudsOffset = Vector3.new(0, 4, 0),
+			TextColor = Color3.fromRGB(0, 255, 180),
+			BackgroundColor = Color3.fromRGB(5, 35, 28),
+			BackgroundTransparency = 0.2,
+			MaxDistance = 100,
+		})
+		addPointLight(returnPad, {Color = Color3.fromRGB(0, 255, 180), Brightness = 2, Range = 16})
+
 		-- Additional detail (#48): Safety fences, equipment, ore piles
 		-- Corner fence posts
 		for fx = -1, 1, 2 do
@@ -3891,11 +3990,30 @@ local function buildMoleculia()
 	print("[WorldBuilder] MOLGANG: The Molecular Chain")
 	print("=============================================================")
 
+	-- A live Studio/Rojo rerun must not expose stale geometry or an old
+	-- readiness marker while the replacement world is being constructed.
+	Workspace:SetAttribute("MoleculiaReady", false)
+	local previousZones = Workspace:FindFirstChild("Zones")
+	if previousZones then
+		previousZones:Destroy()
+	end
+
 	-- Step 1: Remove default environment
 	removeBaseplate()
+	-- Keep the floating archipelago visually spacious while preserving normal
+	-- player physics. Explicit values avoid Studio/place settings from leaving
+	-- characters weightless or destroying parts before the safety system acts.
+	Workspace.Gravity = 196.2
+	local ok, err = pcall(function()
+		Workspace.FallenPartsDestroyHeight = -1000
+	end)
+	if not ok then
+		warn("[WorldBuilder] Studio blocked FallenPartsDestroyHeight; safety recovery remains active: " .. tostring(err))
+	end
 
 	-- Step 2: Configure lighting and atmosphere
 	setupLighting()
+	ensureSoundLibrary()
 
 	-- Step 3: Create zone container
 	local zonesFolder = createFolder(Workspace, "Zones")
@@ -3915,6 +4033,14 @@ local function buildMoleculia()
 	zonesFolder:SetAttribute("WorldName", "Moleculia")
 	zonesFolder:SetAttribute("WorldVersion", "1.0.0")
 	zonesFolder:SetAttribute("ZoneCount", 6)
+	-- Stable readiness markers let server diagnostics verify the generated
+	-- world even when Studio's streaming view has not materialized every Model.
+	zonesFolder:SetAttribute("Zone1Ready", true)
+	zonesFolder:SetAttribute("Zone2Ready", true)
+	zonesFolder:SetAttribute("Zone3Ready", true)
+	zonesFolder:SetAttribute("Zone4Ready", true)
+	zonesFolder:SetAttribute("Zone5Ready", true)
+	zonesFolder:SetAttribute("Zone6Ready", true)
 	zonesFolder:SetAttribute("BuildTimestamp", os.time())
 
 	-- Set individual zone attributes
@@ -3941,6 +4067,10 @@ local function buildMoleculia()
 	zone6:SetAttribute("ZoneId", 6)
 	zone6:SetAttribute("ZoneName", "ANK Kredietunie")
 	zone6:SetAttribute("ZoneType", "Finance")
+
+	-- Publish readiness only after every zone, global element and safe spawn
+	-- exists. The loading gate uses this marker instead of a fixed delay.
+	Workspace:SetAttribute("MoleculiaReady", true)
 
 	local elapsed = os.clock() - startTime
 	print("=============================================================")

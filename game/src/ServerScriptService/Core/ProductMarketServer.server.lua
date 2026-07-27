@@ -16,13 +16,21 @@ local ProfitLoss = require(ReplicatedStorage.Modules.ProfitLoss)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 
 -- ═══════════════════════════════════════════════
 -- STATE
 -- ═══════════════════════════════════════════════
 
-local currentGameDay = 1
+-- Use the shared absolute clock so a server restart does not reset market
+-- prices to day 1 or make two live servers quote different market days.
+local currentGameDay = GameClock.DayAt()
 local playerLedgers = {}  -- {userId = ProfitLoss ledger}
+
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
 
 local function persistLedger(userId, ledger)
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
@@ -80,7 +88,7 @@ end
 
 Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, quantity)
 	local userId = player.UserId
-	if type(productId) ~= "string" then return end
+	if type(productId) ~= "string" then reject(player, "Choose a product to sell."); return end
 	local quantityOk, parsedQuantity = TradeRules.ValidateQuantity(quantity, 1000)
 	if not quantityOk then
 		Remotes.FireClient("ServerAnnounce", player, {message = "Sale rejected: " .. parsedQuantity, rarity = "common"})
@@ -89,13 +97,33 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 	quantity = parsedQuantity
 
 	local product = ProductMarket.GetProduct(productId)
-	if not product then return end
+	if not product then reject(player, "Unknown product; sale rejected."); return end
+	local eventEffects = WorldEvents.GetActiveEffects()
 
 	-- Check player has required atoms (via PlayerDataBridge)
 	-- For each unit sold, consume the required atoms
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
-	if not playerData then return end
+	if not playerData then reject(player, "Player inventory is still loading."); return end
+	if product.requiresResearch then
+		local research = playerData.research or {}
+		local unlocked = research.unlocked or {}
+		if not unlocked[product.requiresResearch] then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Sale rejected: research required (" .. product.requiresResearch .. ").",
+				rarity = "common",
+			})
+			return
+		end
+	end
+	if not ProductMarket.GetCertificationStatus(product, eventEffects, playerData.research) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Sale rejected: EU certification is required during this market event.",
+			rarity = "common",
+		})
+		return
+	end
 	playerData.atoms = playerData.atoms or {}
+	playerData.slagInventory = playerData.slagInventory or {}
 
 	-- Check atoms for all units
 	for atom, countPerUnit in pairs(product.requiredAtoms) do
@@ -108,8 +136,41 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 			return
 		end
 	end
+	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+		local needed = countPerUnit * quantity
+		if (playerData.slagInventory[residue] or 0) < needed then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Not enough slag " .. residue .. "! Need " .. needed .. ", have " .. (playerData.slagInventory[residue] or 0),
+				rarity = "common",
+			})
+			return
+		end
+	end
 
-	-- Consume atoms
+	-- Calculate revenue
+	local unitPrice = ProductMarket.ApplyMarketPriceMultiplier(
+		productId,
+		ProductMarket.GetCurrentPrice(productId, currentGameDay),
+		eventEffects.priceMultipliers
+	)
+	unitPrice = math.floor(ProductMarket.ApplyCertificationPrice(
+		product, unitPrice, eventEffects, playerData.research
+	) + 0.5)
+	local totalRevenue = unitPrice * quantity
+	local tradeTax, netRevenue = TradeRules.CalculateTradeTax(totalRevenue, eventEffects.tradeTaxMult)
+
+	-- Settle the payout before consuming material. A daily income cap or other
+	-- economy rejection must leave the player's atoms and residue untouched.
+	local paid = PlayerDataBridge.AddEarnedMolCoins(userId, netRevenue)
+	if not paid then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Sale rejected: today's MolCoin income limit has been reached; materials were not consumed.",
+			rarity = "common",
+		})
+		return
+	end
+
+	-- Consume atoms only after the payout has been accepted.
 	for atom, countPerUnit in pairs(product.requiredAtoms) do
 		local consumed = countPerUnit * quantity
 		playerData.atoms[atom] = (playerData.atoms[atom] or 0) - consumed
@@ -117,18 +178,20 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 			playerData.atoms[atom] = nil
 		end
 	end
-
-	-- Calculate revenue
-	local unitPrice = ProductMarket.GetCurrentPrice(productId, currentGameDay)
-	local totalRevenue = unitPrice * quantity
-
-	-- Add MolCoins
-	PlayerDataBridge.AddEarnedMolCoins(userId, totalRevenue)
+	for residue, countPerUnit in pairs(product.requiredSlag or {}) do
+		local consumed = countPerUnit * quantity
+		playerData.slagInventory[residue] = playerData.slagInventory[residue] - consumed
+	end
 
 	-- Record in P&L
 	local ledger = getLedger(userId)
-	ProfitLoss.RecordTransaction(ledger, "revenue", "product_sales", totalRevenue,
+	ProfitLoss.RecordTransaction(ledger, "revenue", "product_sales", netRevenue,
 		quantity .. "x " .. product.name .. " @ " .. unitPrice .. " MC")
+	if tradeTax > 0 then
+		ProfitLoss.RecordTransaction(ledger, "opex", "trade_tax", tradeTax,
+			"Market trade tax: " .. tradeTax .. " MC")
+	end
+	PlayerDataBridge.RecordProductSale(userId, productId, quantity)
 	persistLedger(userId, ledger)
 
 	-- Notify
@@ -137,24 +200,26 @@ Remotes.RequestSellProduct.OnServerEvent:Connect(function(player, productId, qua
 		name = product.name,
 		quantity = quantity,
 		unitPrice = unitPrice,
-		totalRevenue = totalRevenue,
+		totalRevenue = netRevenue,
+		grossRevenue = totalRevenue,
+		tradeTax = tradeTax,
 		margin = ProfitLoss.GetMargin(ledger),
 	})
 
 	Remotes.FireClient("ServerAnnounce", player, {
-		message = "SOLD: " .. quantity .. "x " .. product.name .. " for " .. totalRevenue .. " MolCoins!",
+		message = "SOLD: " .. quantity .. "x " .. product.name .. " for " .. netRevenue .. " MC (gross " .. totalRevenue .. ", tax " .. tradeTax .. ")!",
 		rarity = totalRevenue >= 1000 and "epic" or "rare",
 	})
 
 	-- Global announce for big sales
-	if totalRevenue >= 2000 then
+	if netRevenue >= 2000 then
 		Remotes.FireAllClients("ServerAnnounce", {
-			message = player.Name .. " sold " .. quantity .. "x " .. product.name .. " for " .. totalRevenue .. " MC!",
+			message = player.Name .. " sold " .. quantity .. "x " .. product.name .. " for " .. netRevenue .. " MC!",
 			rarity = "epic",
 		})
 	end
 
-	print("[ProductMarket]", player.Name, "sold", quantity, "x", productId, "for", totalRevenue, "MC")
+	print("[ProductMarket]", player.Name, "sold", quantity, "x", productId, "for", netRevenue, "MC (gross", totalRevenue, "tax", tradeTax .. ")")
 end)
 
 -- ═══════════════════════════════════════════════
@@ -162,7 +227,8 @@ end)
 -- ═══════════════════════════════════════════════
 
 Remotes.RequestProductPrices.OnServerEvent:Connect(function(player)
-	local prices = ProductMarket.GetAllPrices(currentGameDay)
+	currentGameDay = GameClock.DayAt()
+	local prices = ProductMarket.GetAllPrices(currentGameDay, WorldEvents.GetActiveEffects().priceMultipliers)
 	local ledger = getLedger(player.UserId)
 
 	Remotes.FireClient("ProductPricesUpdate", player, {
@@ -181,9 +247,15 @@ end)
 -- Periodic price broadcast + day advancement
 task.spawn(function()
 	while true do
-		task.wait(120)  -- every 2 real minutes = 1 game day
-		currentGameDay = currentGameDay + 1
-		local prices = ProductMarket.GetAllPrices(currentGameDay)
+		task.wait(GameClock.DAY_SECONDS)  -- shared clock: 10 real minutes = 1 game day
+		local nextGameDay = GameClock.DayAt()
+		if nextGameDay == currentGameDay then
+			continue
+		end
+		currentGameDay = nextGameDay
+		local prices = ProductMarket.GetAllPrices(
+			currentGameDay, WorldEvents.GetActiveEffects().priceMultipliers
+		)
 
 		for _, player in ipairs(Players:GetPlayers()) do
 			Remotes.FireClient("ProductPricesUpdate", player, {

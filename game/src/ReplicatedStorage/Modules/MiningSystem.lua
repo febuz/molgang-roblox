@@ -26,7 +26,7 @@ local MiningSystem = {}
 
 MiningSystem.PlotTypes = {
 	{
-		id = "magnetite_low",
+		id = "practice_outcrop",
 		name = "Practice Outcrop",
 		description = "Surface-level practice deposit. Hand-collect samples for free. Perfect for learning mining basics.",
 		geology = "Weathered outcrop with exposed magnetite veins",
@@ -273,6 +273,23 @@ MiningSystem.PLOTS_PER_REGION = 6
 MiningSystem.TOTAL_PLOTS = #MiningSystem.PlotLocations * MiningSystem.PLOTS_PER_REGION
 MiningSystem.PLOT_SIZE_STUDS = 100  -- each plot is 100×100 studs
 
+-- Keep the economic rule next to the geological plot data so the UI and
+-- server cannot silently drift apart. Practice outcrops are deliberately
+-- cheap; deeper deposits add a small survey premium.
+function MiningSystem.GetExplorationLicenseCost(plot)
+	if type(plot) ~= "table" then return 0 end
+	local baseCost = math.max(0, tonumber(plot.cost) or 0)
+	local depth = math.max(0, tonumber(plot.depth) or 0)
+	return math.floor(baseCost + depth * 20)
+end
+
+function MiningSystem.GetManualExplorationCost(plot)
+	if type(plot) == "table" and plot.plotType == "practice_outcrop" and (tonumber(plot.depth) or 0) <= 0 then
+		return 0
+	end
+	return 500
+end
+
 -- Generate all mining plots with randomized compositions
 function MiningSystem.GeneratePlots()
 	local plots = {}
@@ -297,13 +314,15 @@ function MiningSystem.GeneratePlots()
 			local roll = math.random()
 			local plotType
 			if roll < 0.40 then
-				plotType = MiningSystem.PlotTypes[1]  -- 40% low grade
-			elseif roll < 0.70 then
-				plotType = MiningSystem.PlotTypes[2]  -- 30% medium
-			elseif roll < 0.90 then
-				plotType = MiningSystem.PlotTypes[3]  -- 20% high grade
+				plotType = MiningSystem.PlotTypes[1]  -- 40% practice outcrop
+			elseif roll < 0.65 then
+				plotType = MiningSystem.PlotTypes[2]  -- 25% low grade
+			elseif roll < 0.85 then
+				plotType = MiningSystem.PlotTypes[3]  -- 20% medium grade
+			elseif roll < 0.95 then
+				plotType = MiningSystem.PlotTypes[4]  -- 10% high grade
 			else
-				plotType = MiningSystem.PlotTypes[4]  -- 10% legendary
+				plotType = MiningSystem.PlotTypes[5]  -- 5% chromite-vanadium
 			end
 
 			-- Randomize composition slightly (±20%)
@@ -326,6 +345,7 @@ function MiningSystem.GeneratePlots()
 				depth = plotType.depth,
 				color = plotType.color,
 				rarity = plotType.rarity,
+				hazard = plotType.hazard,
 				owner = nil,           -- nil = unclaimed
 				mineEquipment = {},    -- equipment placed on this plot
 				totalMined = 0,        -- kg ore mined total
@@ -350,7 +370,10 @@ function MiningSystem.CalculateMiningRate(plot, equipment)
 	for _, equip in ipairs(equipment) do
 		local equipData = nil
 		for _, e in ipairs(MiningSystem.Equipment) do
-			if e.id == equip then equipData = e break end
+			if e.id == equip then
+				equipData = e
+				break
+			end
 		end
 		if equipData and equipData.miningRate then
 			totalRate = totalRate + equipData.miningRate
@@ -361,9 +384,26 @@ function MiningSystem.CalculateMiningRate(plot, equipment)
 	local hardnessFactor = 6.0 / (plot.hardness or 6.0)
 
 	-- Depth penalty (deeper = slower access)
-	local depthFactor = 10.0 / (plot.depth or 10.0)
+	local depth = tonumber(plot.depth) or 10.0
+	-- Surface deposits have no depth penalty; never allow depth=0 to become
+	-- division-by-zero and infinite ore production.
+	local depthFactor = depth <= 0 and 1.0 or math.clamp(10.0 / depth, 0.1, 2.0)
 
 	return totalRate * hardnessFactor * depthFactor
+end
+
+-- Ore must be hauled from the pit to the processing plant. Without a haul
+-- truck, a small manual transfer is still possible for onboarding, but the
+-- stockpile cannot be teleported into inventory at unlimited volume.
+function MiningSystem.CalculateTransportCapacity(equipment)
+	local capacity = 250
+	for _, equipId in ipairs(equipment or {}) do
+		local equipData = MiningSystem.GetEquipment(equipId)
+		if equipData and equipData.transportRate then
+			capacity = math.max(capacity, equipData.transportRate)
+		end
+	end
+	return capacity
 end
 
 -- Calculate ore value based on mineral composition

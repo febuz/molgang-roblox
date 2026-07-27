@@ -22,6 +22,14 @@ local playerEconomy = {}      -- {userId = {molCoins, atoms, molecules, ...}}
 local pendingBalanceAdjustments = {} -- {userId = MolCoins to apply on next load}
 local drinkPurchaseCounts = {} -- {userId = count}
 local atomCollectedCounts = {} -- {userId = count}
+local quizAnswerResults = {} -- {userId = {true|false, ...}}
+local atomCollectedListeners = {}
+local productionListeners = {}
+local questCompletedListeners = {}
+local fallRecoveryListeners = {}
+local leachStartedListeners = {}
+local productSaleListeners = {}
+local MAX_DAILY_REWARD = 2000
 
 -- ══════════════════════════════════════════════
 -- ATOM COLLECTION (AtomSpawner → EconomyManager)
@@ -40,6 +48,59 @@ function PlayerDataBridge.RecordAtomCollect(userId, elementZ, symbol, coinReward
 	})
 end
 
+-- Queue trusted server-side production as one item instead of one queue entry
+-- per atom. The EconomyManager still validates storage and applies rewards.
+function PlayerDataBridge.RecordAtomCollectBatch(userId, elementZ, symbol, amount, coinReward)
+	amount = tonumber(amount)
+	if not amount or amount ~= math.floor(amount) or amount < 1 or amount > 10000 then return false end
+	if not pendingCollections[userId] then
+		pendingCollections[userId] = {}
+	end
+	table.insert(pendingCollections[userId], {
+		elementZ = elementZ,
+		symbol = symbol,
+		amount = amount,
+		coinReward = coinReward,
+		timestamp = tick and tick() or os.clock(),
+	})
+	return true
+end
+
+-- Queue a mixed-element collection as one atomic operation.  The economy
+-- worker checks capacity once for the complete batch, so mining cannot lose
+-- ore when another collection reaches the inventory between two entries.
+function PlayerDataBridge.RecordAtomCollectMultiBatch(userId, entries)
+	if type(entries) ~= "table" or #entries < 1 or #entries > 32 then return false end
+	local normalized = {}
+	local total = 0
+	for _, entry in ipairs(entries) do
+		if type(entry) ~= "table" then return false end
+		local amount = tonumber(entry.amount)
+		local elementZ = tonumber(entry.elementZ)
+		if not elementZ or elementZ ~= math.floor(elementZ) or elementZ < 1
+			or type(entry.symbol) ~= "string" or entry.symbol == ""
+			or not amount or amount ~= math.floor(amount) or amount < 1 or amount > 10000 then
+			return false
+		end
+		total = total + amount
+		if total > 10000 then return false end
+		table.insert(normalized, {
+			elementZ = elementZ,
+			symbol = entry.symbol,
+			amount = amount,
+			coinReward = tonumber(entry.coinReward) or 0,
+		})
+	end
+	if not pendingCollections[userId] then
+		pendingCollections[userId] = {}
+	end
+	table.insert(pendingCollections[userId], {
+		entries = normalized,
+		timestamp = tick and tick() or os.clock(),
+	})
+	return true
+end
+
 function PlayerDataBridge.GetPendingCollect(userId)
 	local queue = pendingCollections[userId]
 	if queue and #queue > 0 then
@@ -50,6 +111,27 @@ function PlayerDataBridge.GetPendingCollect(userId)
 		return data
 	end
 	return nil
+end
+
+-- Pending collections are applied by EconomyManager on a throttled worker.
+-- Callers that reserve inventory now must include this queued amount, or a
+-- later batch can be accepted and then rejected after the producing process
+-- has already been consumed.
+function PlayerDataBridge.GetPendingAtomAmount(userId)
+	local total = 0
+	for _, queued in ipairs(pendingCollections[userId] or {}) do
+		if type(queued.entries) == "table" then
+			for _, entry in ipairs(queued.entries) do
+				total = total + (tonumber(entry.amount) or 0)
+			end
+		elseif queued.amount ~= nil then
+			total = total + (tonumber(queued.amount) or 0)
+		else
+			-- Legacy single-atom entries represent exactly one atom.
+			total = total + 1
+		end
+	end
+	return total
 end
 
 -- ══════════════════════════════════════════════
@@ -136,6 +218,32 @@ function PlayerDataBridge.AddEarnedMolCoins(userId, amount)
 	return success, balance
 end
 
+-- Reward income is capped separately from genuine market revenue. This keeps
+-- quests/minigames/achievements from becoming an infinite coin faucet while
+-- preserving full settlement for player sales and transfers.
+function PlayerDataBridge.AddRewardMolCoins(userId, amount)
+	if not playerEconomy[userId] or type(amount) ~= "number" or amount < 0
+		or amount ~= amount or amount == math.huge then
+		return false, 0, 0
+	end
+	local data = playerEconomy[userId]
+	local multiplier = 1.0
+	if _G.GetPlayerBuff then
+		multiplier = _G.GetPlayerBuff(userId, "coinBonus")
+	end
+	local requested = math.floor(amount * multiplier)
+	local stats = DailyStats.Ensure(data)
+	local remaining = math.max(0, MAX_DAILY_REWARD - (stats.molCoinsRewards or 0))
+	local paid = math.min(requested, remaining)
+	if paid <= 0 then return false, data.molCoins or 0, 0 end
+
+	local success, balance = PlayerDataBridge.AddMolCoins(userId, paid)
+	if not success then return false, balance, 0 end
+	data.totalMolCoinsEarned = (data.totalMolCoinsEarned or 0) + paid
+	DailyStats.Increment(data, "molCoinsRewards", paid)
+	return true, balance, paid
+end
+
 function PlayerDataBridge.SpendMolCoins(userId, amount)
 	local data = playerEconomy[userId]
 	if data and type(amount) == "number" and amount >= 0 and amount == amount and amount < math.huge and (data.molCoins or 0) >= amount then
@@ -172,11 +280,129 @@ end
 function PlayerDataBridge.RecordAtomCollected(userId)
 	local newCount = (atomCollectedCounts[userId] or 0) + 1
 	atomCollectedCounts[userId] = newCount
+	-- Notify server-only consumers after a validated AtomSpawner collection.
+	-- This is deliberately separate from the client remote: rejected requests
+	-- and Quantum Dots must never inflate the player-behaviour counters.
+	for _, listener in ipairs(atomCollectedListeners) do
+		local ok, err = pcall(listener, userId, newCount)
+		if not ok then warn("[PlayerDataBridge] atom listener failed:", err) end
+	end
 	return newCount
+end
+
+function PlayerDataBridge.OnAtomCollected(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(atomCollectedListeners, listener)
+	return true
+end
+
+-- Notify server-only consumers after a completed, server-authoritative
+-- production cycle. Counts are the amounts actually added to inventory, not
+-- requested factory capacity, so blocked or storage-limited cycles are not
+-- reported as successful production.
+function PlayerDataBridge.RecordProduction(userId, atomsProduced, moleculesProduced)
+	atomsProduced = tonumber(atomsProduced) or 0
+	moleculesProduced = tonumber(moleculesProduced) or 0
+	if atomsProduced < 0 or moleculesProduced < 0
+		or atomsProduced ~= math.floor(atomsProduced)
+		or moleculesProduced ~= math.floor(moleculesProduced) then
+		return false
+	end
+	if atomsProduced == 0 and moleculesProduced == 0 then return true end
+	for _, listener in ipairs(productionListeners) do
+		local ok, err = pcall(listener, userId, atomsProduced, moleculesProduced)
+		if not ok then warn("[PlayerDataBridge] production listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnProductionCycle(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(productionListeners, listener)
+	return true
+end
+
+function PlayerDataBridge.RecordQuestCompleted(userId, questId)
+	if type(questId) ~= "string" or questId == "" then return false end
+	for _, listener in ipairs(questCompletedListeners) do
+		local ok, err = pcall(listener, userId, questId)
+		if not ok then warn("[PlayerDataBridge] quest listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnQuestCompleted(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(questCompletedListeners, listener)
+	return true
+end
+
+function PlayerDataBridge.RecordFallRecovery(userId, yPosition)
+	if type(userId) ~= "number" then return false end
+	yPosition = tonumber(yPosition)
+	if not yPosition or yPosition ~= yPosition then return false end
+	for _, listener in ipairs(fallRecoveryListeners) do
+		local ok, err = pcall(listener, userId, yPosition)
+		if not ok then warn("[PlayerDataBridge] fall listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnFallRecovery(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(fallRecoveryListeners, listener)
+	return true
+end
+
+function PlayerDataBridge.RecordLeachStarted(userId, leachId)
+	if type(userId) ~= "number" or type(leachId) ~= "string" or leachId == "" then return false end
+	for _, listener in ipairs(leachStartedListeners) do
+		local ok, err = pcall(listener, userId, leachId)
+		if not ok then warn("[PlayerDataBridge] leach listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnLeachStarted(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(leachStartedListeners, listener)
+	return true
+end
+
+function PlayerDataBridge.RecordProductSale(userId, productId, quantity)
+	if type(userId) ~= "number" or type(productId) ~= "string" or productId == "" then return false end
+	quantity = tonumber(quantity)
+	if not quantity or quantity ~= math.floor(quantity) or quantity < 1 then return false end
+	for _, listener in ipairs(productSaleListeners) do
+		local ok, err = pcall(listener, userId, productId, quantity)
+		if not ok then warn("[PlayerDataBridge] sale listener failed:", err) end
+	end
+	return true
+end
+
+function PlayerDataBridge.OnProductSale(listener)
+	if type(listener) ~= "function" then return false end
+	table.insert(productSaleListeners, listener)
+	return true
 end
 
 function PlayerDataBridge.GetAtomCollectedCount(userId)
 	return atomCollectedCounts[userId] or 0
+end
+
+function PlayerDataBridge.RecordQuizAnswer(userId, correct)
+	if type(correct) ~= "boolean" then return false end
+	if not quizAnswerResults[userId] then quizAnswerResults[userId] = {} end
+	table.insert(quizAnswerResults[userId], correct)
+	return true
+end
+
+function PlayerDataBridge.ConsumeQuizAnswer(userId)
+	local queue = quizAnswerResults[userId]
+	if not queue or #queue == 0 then return nil end
+	local result = table.remove(queue, 1)
+	if #queue == 0 then quizAnswerResults[userId] = nil end
+	return result
 end
 
 function PlayerDataBridge.Cleanup(userId)
@@ -185,6 +411,7 @@ function PlayerDataBridge.Cleanup(userId)
 	playerEconomy[userId] = nil
 	drinkPurchaseCounts[userId] = nil
 	atomCollectedCounts[userId] = nil
+	quizAnswerResults[userId] = nil
 end
 
 return PlayerDataBridge

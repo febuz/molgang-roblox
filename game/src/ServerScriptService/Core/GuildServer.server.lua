@@ -7,14 +7,14 @@
 ]]
 
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local GuildSystem = require(ReplicatedStorage.Modules.GuildSystem)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
-local guildStore = DataStoreService:GetDataStore("MolGang_Guilds_v1")
+local guildStore = DataStoreProvider.GetDataStore("MolGang_Guilds_v1")
 
 -- In-memory guild cache
 local guilds = {}           -- {guildName = guildData}

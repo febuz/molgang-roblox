@@ -48,11 +48,28 @@ screenGui.DisplayOrder = 14
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local achievementsCamera = workspace.CurrentCamera
+local function updateAchievementsScale()
+	if not achievementsCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(achievementsCamera.ViewportSize.X - 20) / 900,
+		(achievementsCamera.ViewportSize.Y - 20) / 750
+	), 0.65, 1)
+end
+updateAchievementsScale()
+if achievementsCamera then
+	achievementsCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateAchievementsScale)
+end
+
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 900, 0, 750)
-mainPanel.Position = UDim2.new(0.5, -450, 0.5, -375)
+mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanel.Position = UDim2.fromScale(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui
@@ -109,7 +126,7 @@ badgeGrid.Parent = mainPanel
 
 local badgeLayout = Instance.new("UIListLayout")
 badgeLayout.FillDirection = Enum.FillDirection.Horizontal
-badgeLayout.CellPadding = UDim2.new(0, 8, 0, 0)
+badgeLayout.Padding = UDim.new(0, 8)
 badgeLayout.SortOrder = Enum.SortOrder.Name
 badgeLayout.Parent = badgeGrid
 
@@ -148,10 +165,31 @@ progressLayout.Parent = progressScroll
 -- ═════════════════════════════════════════════════
 
 local playerData = nil
+local refreshInFlight = false
 
 PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
 end)
+
+-- This GUI can be created after the one-shot PlayerDataLoaded event. Recover
+-- the authoritative snapshot so the panel never opens as an empty shell.
+local function refreshPlayerData()
+	if refreshInFlight then return false end
+	refreshInFlight = true
+	local getData = Remotes:FindFirstChild("GetPlayerData")
+	if not getData or not getData:IsA("RemoteFunction") then
+		refreshInFlight = false
+		return false
+	end
+	local ok, data = pcall(function() return getData:InvokeServer() end)
+	if ok and type(data) == "table" then
+		playerData = data
+		refreshInFlight = false
+		return true
+	end
+	refreshInFlight = false
+	return false
+end
 
 local function displayBadges()
 	-- Clear existing badges
@@ -161,10 +199,50 @@ local function displayBadges()
 		end
 	end
 
-	if not playerData then return end
+	if not playerData then
+		local empty = Instance.new("Frame")
+		empty.Name = "NoBadges"
+		empty.Size = UDim2.new(1, -20, 0, 100)
+		empty.BackgroundColor3 = COLORS.panelLight
+		empty.BackgroundTransparency = 0.35
+		empty.Parent = badgeGrid
+		createCorner(empty, 8)
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Text = "Loading achievement data…"
+		text.TextColor3 = COLORS.textSecondary
+		text.TextScaled = true
+		text.Font = Enum.Font.Gotham
+		text.Parent = empty
+		return
+	end
 
 	-- Get unlocked achievements
 	local unlocked = Achievements.GetAllUnlocked(playerData)
+	if #unlocked == 0 then
+		local empty = Instance.new("Frame")
+		empty.Name = "NoBadgesYet"
+		empty.Size = UDim2.new(1, -20, 0, 100)
+		empty.BackgroundColor3 = COLORS.panelLight
+		empty.BackgroundTransparency = 0.35
+		empty.Parent = badgeGrid
+		createCorner(empty, 8)
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Text = "Nog geen badges — verzamel je eerste atoom om Atom Collector vrij te spelen."
+		text.TextColor3 = COLORS.textSecondary
+		text.TextScaled = true
+		text.TextWrapped = true
+		text.Font = Enum.Font.Gotham
+		text.Parent = empty
+		local textConstraint = Instance.new("UITextSizeConstraint")
+		textConstraint.MinTextSize = 16
+		textConstraint.MaxTextSize = 24
+		textConstraint.Parent = text
+		return
+	end
 
 	-- Display each badge
 	for _, achievement in ipairs(unlocked) do
@@ -210,6 +288,23 @@ local function displayProgress()
 
 	-- Get next 5 achievements
 	local next = Achievements.GetNextAchievements(playerData, 5)
+	if #next == 0 then
+		local complete = Instance.new("Frame")
+		complete.Name = "AllAchievementsComplete"
+		complete.Size = UDim2.new(1, 0, 0, 70)
+		complete.BackgroundColor3 = COLORS.panelLight
+		complete.Parent = progressScroll
+		createCorner(complete, 8)
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.Text = "All achievements unlocked — you are a certified Moleculia master!"
+		text.TextColor3 = COLORS.gold
+		text.TextScaled = true
+		text.Font = Enum.Font.GothamBold
+		text.Parent = complete
+		return
+	end
 
 	for _, entry in ipairs(next) do
 		local ach = entry.achievement
@@ -266,8 +361,8 @@ local function displayProgress()
 
 		-- Progress bar
 		local barFrame = Instance.new("Frame")
-		barFrame.Size = UDim2.new(0.3, -5, 0, 8)
-		barFrame.Position = UDim2.new(1, -200, 0.5, -4)
+		barFrame.Size = UDim2.fromOffset(190, 8)
+		barFrame.Position = UDim2.new(1, -260, 0.5, -4)
 		barFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 		barFrame.Parent = card
 		createCorner(barFrame, 2)
@@ -280,8 +375,8 @@ local function displayProgress()
 
 		-- Percentage text
 		local percentLabel = Instance.new("TextLabel")
-		percentLabel.Size = UDim2.new(0.15, 0, 1, 0)
-		percentLabel.Position = UDim2.new(1, -35, 0.5, -10)
+		percentLabel.Size = UDim2.fromOffset(55, 20)
+		percentLabel.Position = UDim2.new(1, -65, 0.5, -10)
 		percentLabel.BackgroundTransparency = 1
 		percentLabel.Text = prog.percent .. "%"
 		percentLabel.TextColor3 = COLORS.gold
@@ -316,33 +411,27 @@ end
 task.spawn(function()
 	while true do
 		task.wait(5)
-		if screenGui.Enabled and playerData then
-			updateDisplay()
+		if screenGui.Enabled then
+			-- The one-shot PlayerDataLoaded event can precede this script or
+			-- arrive while the profile is still loading. Keep retrying so the
+			-- achievements panel cannot remain an empty/loading shell.
+			if not playerData then refreshPlayerData() end
+			if playerData then updateDisplay() end
 		end
 	end
 end)
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 
--- Keyboard shortcut
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.A then
-		screenGui.Enabled = not screenGui.Enabled
-		if screenGui.Enabled then
-			updateDisplay()
-		end
+-- GUIManager owns the achievement shortcut; refresh when any opener enables this GUI.
+screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if screenGui.Enabled then
+		if not playerData then refreshPlayerData() end
+		updateDisplay()
 	end
 end)
 
-_G.AchievementsGuiToggle = function()
-	screenGui.Enabled = not screenGui.Enabled
-	if screenGui.Enabled then
-		updateDisplay()
-	end
-end
-
-print("[AchievementsGui] Loaded — Press A to toggle achievements")
+print("[AchievementsGui] Loaded — Press K to toggle achievements")

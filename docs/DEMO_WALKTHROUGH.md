@@ -37,13 +37,13 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
                                                     Camera sparkle effect
 0:15    Open Periodic Table     P key               Tutorial step 3 clears
 0:16    Close it                P key               Back to 3D view
-0:17    Open Dashboard          D key               Tutorial step 4 clears
-0:18    Close it                D key               
+0:17    Open Dashboard          U key               Tutorial step 4 clears
+0:18    Close it                U key               
 0:19    Walk + collect 3 atoms  W+A keys            Glowing orbs nearby
 0:30    Tutorial Step 5 done    —                   "Collect 3 More" cleared
 0:31    Open Recipe Book        R key               Tutorial step 6
 0:32    Close Recipe Book       R key               
-0:33    Open Slag Processing    S key               Tutorial step 7
+0:33    Open Slag Processing    J key               Tutorial step 7
 0:34    Close all               Esc key             
 0:35    Open Process Control    C key               Tutorial step 8
 0:36    Close                   Esc key             
@@ -82,7 +82,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 ### Phase 4: Slag Processing (1:05 - 1:30)
 
 ```
-1:05    Open Slag Processing    S key               3-tab interface (Slag/Leach/Monitor)
+1:05    Open Slag Processing    J key               3-tab interface (Slag/Leach/Monitor)
                                                     UI click sound plays
 1:07    Click "Buy Raw Slag"    left click          -50 MC (763 MC)
                                                     Purchase sound
@@ -158,7 +158,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
                                                     Brightness increases subtly
 10:00   Buff expires            auto                Cup disappears from hand
                                                     Continue collecting at normal rate
-12:00   Check leach progress    S key → Monitor     Progress bar ~95%
+12:00   Check leach progress    J key -> Monitor    Progress bar ~95%
 12:30   Close, keep collecting  Esc                 Almost done!
 ```
 
@@ -169,7 +169,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 ```
 13:10   NOTIFICATION!           auto                "Leach complete!" fanfare sound
                                                     Screen flash (molecule synthesis effect)
-13:12   Open Slag Processing    S key               
+13:12   Open Slag Processing    J key               
 13:13   Click Monitor tab       left click          Leach shows "COMPLETE!" in green
                                                     Progress bar 100%
 13:15   Click "EXTRACT"         left click          Products appear in inventory!
@@ -191,7 +191,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 ### Phase 9: Second Leach Cycle (13:25 - 25:30)
 
 ```
-13:26   Open Slag Processing    S key               Start second batch
+13:26   Open Slag Processing    J key               Start second batch
 13:27   Buy Raw Slag            click               -50 MC
 13:28   Hammer ×8               8 clicks            Crush bar fills
 13:30   Ball Mill grind         click               -200 MC
@@ -201,7 +201,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 20:01   Build H2O (2H + 1O)    click Build          +100 MC! Green flash!
 20:03   Build NaCl              click Build          +100 MC!
 25:30   2nd leach complete!     auto notification   Fanfare!
-25:32   Extract + sell all      S → Extract → X     +620 MC total products
+25:32   Extract + sell all      J → Extract → X     +620 MC total products
 ```
 
 **Verify:** ~1917 MC, 2 full production cycles, multiple molecules built
@@ -215,7 +215,7 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 25:40   Sprint-collect atoms    WASD (faster!)      Noticeable speed increase
                                                     Factory ambient sound
                                                     Day/night shifts toward afternoon
-27:00   Check achievements      A key               Progress bars shown
+27:00   Check achievements      K key               Progress bars shown
                                                     Recent achievements list (#66)
 27:10   Check minimap distance  N key               "Zone: Slakkenspoor"
                                                     "To HUB: 2m5s"
@@ -252,10 +252,10 @@ TIME    ACTION                  KEY/MOUSE           EXPECTED RESULT
 ```
 Most pressed keys:
   W ████████████████████████████ (movement, ~40% of time)
-  S ████████ (slag GUI, ~5 opens)
+  J ████████ (slag GUI, ~5 opens)
   Esc ██████ (close panels, ~8×)
   Left Click ████████████████████ (buttons, ~45 clicks)
-  P/D/R/C █ each (tutorial shortcuts)
+  P/U/R/C █ each (tutorial shortcuts)
   X ██ (product exchange, 2 opens)
   B ██ (bubble tea, 2 buys)
   N ██ (minimap, 2 toggles)

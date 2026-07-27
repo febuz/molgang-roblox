@@ -2,7 +2,7 @@
 	SiliconPurification.lua
 	MOLGANG — Si-28 Isotope Purification for Quantum Computing
 
-	THE MAIN GOAL of the teaser game:
+	THE MAIN GOAL of the OTAP teststraat:
 	Purify silicon from steel slag to ultra-pure Si-28 isotope (9N = 99.9999999%)
 	for use in quantum computer FPGA fabrication.
 

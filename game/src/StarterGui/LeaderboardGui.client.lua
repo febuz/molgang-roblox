@@ -55,11 +55,28 @@ screenGui.DisplayOrder = 15
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local leaderboardCamera = workspace.CurrentCamera
+local function updateLeaderboardScale()
+	if not leaderboardCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(leaderboardCamera.ViewportSize.X - 20) / 900,
+		(leaderboardCamera.ViewportSize.Y - 20) / 700
+	), 0.65, 1)
+end
+updateLeaderboardScale()
+if leaderboardCamera then
+	leaderboardCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateLeaderboardScale)
+end
+
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 900, 0, 700)
-mainPanel.Position = UDim2.new(0.5, -450, 0.5, -350)
+mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanel.Position = UDim2.fromScale(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui
@@ -251,7 +268,7 @@ for _, cat in ipairs(categories) do
 	createCorner(btn, 6)
 	tabButtons[cat.key] = btn
 
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		-- Update button colors
 		for key, button in pairs(tabButtons) do
 			if key == cat.key then
@@ -274,16 +291,8 @@ end
 displayLeaderboard("MolCoins")
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
-end)
-
--- Keyboard shortcut
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.L then
-		screenGui.Enabled = not screenGui.Enabled
-	end
 end)
 
 _G.LeaderboardGuiShow = function()

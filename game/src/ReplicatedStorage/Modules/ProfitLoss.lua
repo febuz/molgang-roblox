@@ -27,6 +27,7 @@ ProfitLoss.Categories = {
 		"atom_collection",     -- atom collection bonuses
 		"quest_rewards",       -- quest completion MolCoins
 		"daily_claims",        -- daily login bonuses
+		"carbon_credits",      -- verified sustainability credit income
 		"mahjong_winnings",    -- mahjong game earnings
 	},
 	-- Cost of Goods Sold
@@ -44,6 +45,7 @@ ProfitLoss.Categories = {
 		"mining_taxes",        -- monthly mining plot taxes
 		"exploration_licenses",-- mining exploration costs
 		"soil_tests",          -- farming soil analysis
+		"trade_tax",           -- market tariffs and transaction fees
 	},
 	-- Capital Expenditures
 	capex = {

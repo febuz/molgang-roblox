@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local MiniGameRules = require(ReplicatedStorage.Modules.MiniGameRules)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -540,12 +541,8 @@ finalizeGame = function(session, phBonusCoins)
 	end
 
 	-- Award MolCoins via PlayerDataBridge
-	local coinSuccess, newBalance = PlayerDataBridge.AddEarnedMolCoins(userId, totalCoins)
-	if not coinSuccess then
-		-- Fallback: try recording as pending collect so EconomyManager picks it up
-		-- Use V (Z=23) as symbolic element for slag mini-game reward
-		PlayerDataBridge.RecordAtomCollect(userId, 23, "V", totalCoins)
-	end
+	local _, _, paidCoins = PlayerDataBridge.AddRewardMolCoins(userId, totalCoins)
+	totalCoins = paidCoins
 
 	-- Award rare V atom for Expert tier
 	if giveRareV then
@@ -695,19 +692,40 @@ Remotes.RequestSortOrb.OnServerEvent:Connect(function(player, orbId, binChoice)
 	if not session or not session.active then return end
 
 	-- Validate input types (anti-cheat)
-	if type(orbId) ~= "string" then return end
-	if type(binChoice) ~= "string" then return end
+	if type(orbId) ~= "string" or type(binChoice) ~= "string" then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "HGMS input rejected: choose a visible mineral orb and bin.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Normalize bin choice
 	binChoice = string.upper(binChoice)
-	if binChoice ~= "LEFT" and binChoice ~= "CENTER" and binChoice ~= "RIGHT" then
+	if not MiniGameRules.IsValidBin(binChoice) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Unknown HGMS bin. Use Magnetic, Valuable or Hazardous.",
+			rarity = "common",
+		})
 		return -- invalid bin
 	end
 
 	-- Look up the orb in server state
 	local orbData = session.orbs[orbId]
-	if not orbData then return end           -- unknown orb
-	if orbData.sorted then return end        -- already sorted
+	if not orbData then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "That mineral orb has already left the conveyor.",
+			rarity = "common",
+		})
+		return
+	end
+	if orbData.sorted then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "That mineral orb was already sorted.",
+			rarity = "common",
+		})
+		return
+	end        -- already sorted
 
 	-- Mark as sorted immediately (prevent double-sort)
 	orbData.sorted = true
@@ -755,8 +773,14 @@ Remotes.RequestSetPH.OnServerEvent:Connect(function(player, metalName, phValue)
 	if not session.phRoundActive then return end
 
 	-- Validate input types
-	if type(metalName) ~= "string" then return end
-	if type(phValue) ~= "number" then return end
+	if type(metalName) ~= "string" or type(phValue) ~= "number"
+		or phValue ~= phValue or phValue == math.huge or phValue == -math.huge then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "pH input rejected: choose the active metal and a value from 0 to 14.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Clamp pH to valid range
 	phValue = math.clamp(phValue, 0, 14)
@@ -769,10 +793,22 @@ Remotes.RequestSetPH.OnServerEvent:Connect(function(player, metalName, phValue)
 			break
 		end
 	end
-	if not validMetal then return end
+	if not validMetal then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "That metal is not part of the active pH round.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Prevent re-submission for same metal
-	if session.phResults[metalName] then return end
+	if session.phResults[metalName] then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "pH for " .. metalName .. " was already submitted.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Record the answer (evaluation happens when all 3 are in or timeout)
 	session.phResults[metalName] = {
@@ -813,10 +849,11 @@ task.spawn(function()
 				-- Notify at most once every 15 seconds
 				if not lastNotify or (now - lastNotify) > 15 then
 					proximityNotified[userId] = now
-					Remotes.FireClient("ServerAnnounce", player, {
-						message = "HGMS Separator detected nearby! Press [E] or tap to start the mineral sorting challenge.",
-						rarity = "common",
-					})
+				Remotes.FireClient("ServerAnnounce", player, {
+					message = "HGMS Separator detected nearby! Press [E] or tap to start the mineral sorting challenge.",
+					rarity = "common",
+					miniGamePrompt = true,
+				})
 				end
 			end
 		end

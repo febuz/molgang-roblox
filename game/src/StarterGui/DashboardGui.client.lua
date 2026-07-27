@@ -26,6 +26,7 @@ local PlayerDataLoaded = Remotes:WaitForChild("PlayerDataLoaded")
 local DayAdvanced = Remotes:WaitForChild("DayAdvanced")
 local RequestBuildFacility = Remotes:WaitForChild("RequestBuildFacility")
 local RequestMarketTrade = Remotes:WaitForChild("RequestMarketTrade")
+local RequestLoan = Remotes:WaitForChild("RequestLoan")
 
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local ANKLending = require(ReplicatedStorage.Modules.ANKLending)
@@ -102,11 +103,28 @@ screenGui.DisplayOrder = 10
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local dashboardCamera = workspace.CurrentCamera
+local function updateDashboardScale()
+	if not dashboardCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(dashboardCamera.ViewportSize.X - 20) / 800,
+		(dashboardCamera.ViewportSize.Y - 20) / 600
+	), 0.65, 1)
+end
+updateDashboardScale()
+if dashboardCamera then
+	dashboardCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateDashboardScale)
+end
+
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 800, 0, 600)
-mainPanel.Position = UDim2.new(0.5, -400, 0.5, -300)
+mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanel.Position = UDim2.fromScale(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui
@@ -186,7 +204,7 @@ for i, tab in ipairs(tabs) do
 	tabPanels[tab.key] = tabPanel
 
 	-- TAB BUTTON CLICK
-	tabButton.MouseButton1Click:Connect(function()
+	tabButton.Activated:Connect(function()
 		-- Hide all panels
 		for _, panel in pairs(tabPanels) do
 			panel.Visible = false
@@ -301,17 +319,55 @@ quizBtn.Font = Enum.Font.GothamBold
 quizBtn.Parent = dashboardPanel
 createCorner(quizBtn, 6)
 
-quizBtn.MouseButton1Click:Connect(function()
+local quizStartRequest = 0
+quizBtn.Activated:Connect(function()
+	if not quizBtn.Active then return end
 	local r = Remotes:FindFirstChild("RequestQuizStart")
 	if r then
+		quizStartRequest += 1
+		local requestId = quizStartRequest
+		quizBtn.Active = false
+		quizBtn.Text = "Starting quiz..."
 		r:FireServer("any")
-		screenGui.Enabled = false
+		-- Keep the dashboard visible until the authoritative first-question event
+		-- enables QuizGui. GuiCoordinator then closes this dashboard atomically;
+		-- closing it here made a slow Studio/Wine response look like a vanished
+		-- quiz before the player could answer.
+		task.delay(10, function()
+			if requestId ~= quizStartRequest then return end
+			local quizGui = playerGui:FindFirstChild("QuizGui")
+			if quizGui and quizGui:IsA("ScreenGui") and quizGui.Enabled then return end
+			quizBtn.Text = "Start Chemistry Quiz"
+			quizBtn.Active = true
+		end)
 	else
 		warn("[DashboardGui] RequestQuizStart remote is missing")
+		quizBtn.Text = "Quiz unavailable"
+		task.delay(2, function()
+			quizBtn.Text = "Start Chemistry Quiz"
+		end)
 	end
 end)
 
 PlayerDataLoaded.OnClientEvent:Connect(updateDashboard)
+
+-- PlayerDataLoaded is a one-shot event and may fire before this LocalScript
+-- finishes constructing its UI. Recover the authoritative snapshot through
+-- the read-only RemoteFunction so the dashboard never remains blank.
+task.spawn(function()
+	for _ = 1, 10 do
+		if playerData then return end
+		local ok, data = pcall(function()
+			return GetPlayerData:InvokeServer()
+		end)
+		if ok and type(data) == "table" then
+			playerData = data
+			updateDashboard()
+			return
+		end
+		task.wait(0.5)
+	end
+end)
 
 -- Update every 30 frames (~0.5s) instead of every frame (#92)
 local dashFrameCount = 0
@@ -416,7 +472,7 @@ for facilityName, facilityData in pairs(facilityTypes) do
 	createCorner(buyBtn, 6)
 
 	-- Build button click handler
-	buyBtn.MouseButton1Click:Connect(function()
+	buyBtn.Activated:Connect(function()
 		print("[DashboardGui] Building:", facilityName, "Cost:", facilityData.cost)
 		if playerData and playerData.molCoins < facilityData.cost then
 			print("[DashboardGui] Insufficient funds!")
@@ -470,6 +526,33 @@ tradeLayout.FillDirection = Enum.FillDirection.Vertical
 tradeLayout.Padding = UDim.new(0, 8)
 tradeLayout.Parent = tradeScroll
 
+local dashboardPrices = {}
+local marketPriceLabels = {}
+for _, item in ipairs(marketItems) do
+	-- Use the shared module baseline until the server publishes its live quote.
+	dashboardPrices[item.name] = item.basePrice
+end
+
+local marketPricesEvent = Remotes:FindFirstChild("MarketPricesUpdated")
+if marketPricesEvent then
+	marketPricesEvent.OnClientEvent:Connect(function(prices)
+		if type(prices) ~= "table" then return end
+		for itemName, price in pairs(prices) do
+			if type(price) == "number" and dashboardPrices[itemName] then
+				local previous = dashboardPrices[itemName]
+				dashboardPrices[itemName] = price
+				local priceLabel = marketPriceLabels[itemName]
+				if priceLabel then
+					priceLabel.Text = "$" .. price
+					priceLabel.TextColor3 = price >= previous
+						and Color3.fromRGB(100, 200, 100)
+						or Color3.fromRGB(255, 100, 100)
+				end
+			end
+		end
+	end)
+end
+
 for _, item in ipairs(marketItems) do
 	local itemFrame = Instance.new("Frame")
 	itemFrame.Name = item.name
@@ -478,9 +561,8 @@ for _, item in ipairs(marketItems) do
 	itemFrame.Parent = tradeScroll
 	createCorner(itemFrame, 8)
 
-	-- Market dynamic pricing (simulated)
-	local priceVariation = math.random(-20, 20)
-	local currentPrice = item.basePrice + priceVariation
+	-- The server owns the quote; this is only the initial display value.
+	local currentPrice = dashboardPrices[item.name]
 
 	createTextLabel(itemFrame, {
 		Name = "NameLabel",
@@ -492,15 +574,16 @@ for _, item in ipairs(marketItems) do
 		RichText = true,
 	})
 
-	createTextLabel(itemFrame, {
+	local priceLabel = createTextLabel(itemFrame, {
 		Name = "PriceLabel",
 		Size = UDim2.new(0.2, 0, 1, 0),
 		Position = UDim2.new(0.25, 0, 0, 0),
 		Text = "$" .. currentPrice,
 		TextXAlignment = Enum.TextXAlignment.Center,
-		TextColor3 = (priceVariation >= 0) and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(255, 100, 100),
+		TextColor3 = Color3.fromRGB(255, 215, 0),
 		Font = Enum.Font.GothamBold,
 	})
+	marketPriceLabels[item.name] = priceLabel
 
 	local buyBtn = Instance.new("TextButton")
 	buyBtn.Name = "BuyBtn"
@@ -513,17 +596,26 @@ for _, item in ipairs(marketItems) do
 	buyBtn.TextScaled = true
 	buyBtn.Parent = itemFrame
 	createCorner(buyBtn, 6)
+	local buyBusy = false
 
-	buyBtn.MouseButton1Click:Connect(function()
-		print("[DashboardGui] Buy clicked:", item.name, "Price:", currentPrice)
-		if playerData and playerData.molCoins < currentPrice then
+	buyBtn.Activated:Connect(function()
+		if buyBusy then return end
+		buyBusy = true
+		buyBtn.Active = false
+		task.delay(0.75, function()
+			buyBusy = false
+			if buyBtn.Parent then buyBtn.Active = true end
+		end)
+		local quotedPrice = dashboardPrices[item.name] or item.basePrice
+		print("[DashboardGui] Buy clicked:", item.name, "Price:", quotedPrice)
+		if playerData and playerData.molCoins < quotedPrice then
 			print("[DashboardGui] Insufficient funds!")
 			buyBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
 			task.wait(1)
 			buyBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
 			return
 		end
-		RequestMarketTrade:FireServer("buy", item.name, 1, currentPrice)
+		RequestMarketTrade:FireServer("buy", item.name, 1, quotedPrice)
 	end)
 
 	local sellBtn = Instance.new("TextButton")
@@ -537,10 +629,19 @@ for _, item in ipairs(marketItems) do
 	sellBtn.TextScaled = true
 	sellBtn.Parent = itemFrame
 	createCorner(sellBtn, 6)
+	local sellBusy = false
 
-	sellBtn.MouseButton1Click:Connect(function()
-		print("[DashboardGui] Sell clicked:", item.name, "Price:", currentPrice)
-		RequestMarketTrade:FireServer("sell", item.name, 1, currentPrice)
+	sellBtn.Activated:Connect(function()
+		if sellBusy then return end
+		sellBusy = true
+		sellBtn.Active = false
+		local quotedPrice = dashboardPrices[item.name] or item.basePrice
+		print("[DashboardGui] Sell clicked:", item.name, "Price:", quotedPrice)
+		RequestMarketTrade:FireServer("sell", item.name, 1, quotedPrice)
+		task.delay(0.75, function()
+			sellBusy = false
+			if sellBtn.Parent then sellBtn.Active = true end
+		end)
 	end)
 end
 
@@ -626,14 +727,35 @@ for _, preset in ipairs(loanPresets) do
 	borrowBtn.Parent = loanFrame
 	createCorner(borrowBtn, 6)
 
-	borrowBtn.MouseButton1Click:Connect(function()
+	borrowBtn.Activated:Connect(function()
 		print("[DashboardGui] Borrow clicked:", preset.name, "Amount:", preset.amount)
 		if playerData then
 			local canBorrow, shortfall = ANKLending.CanBorrow(playerData, preset.amount)
 			if canBorrow then
 				print("[DashboardGui] Borrow approved")
 				-- Send to server
-				RequestMarketTrade:FireServer("loan", preset.name, preset.amount, preset.duration)
+				-- Loans are peer-to-peer. The dashboard currently has no lender picker,
+				-- so only submit when another player is actually available to fund it.
+				local lender = nil
+				for _, candidate in ipairs(Players:GetPlayers()) do
+					if candidate ~= player then
+						lender = candidate
+						break
+					end
+				end
+				if lender then
+					RequestLoan:FireServer(lender.UserId, preset.amount, preset.duration)
+				else
+					warn("[DashboardGui] Loan unavailable: no online lender")
+					borrowBtn.Text = "No lender online"
+					borrowBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 80)
+					task.delay(2, function()
+						if borrowBtn.Parent then
+							borrowBtn.Text = "Borrow"
+							borrowBtn.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+						end
+					end)
+				end
 			else
 				print("[DashboardGui] Insufficient collateral (need", shortfall, "more MolCoins)")
 				borrowBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
@@ -671,7 +793,7 @@ playMahjongBtn.TextScaled = true
 playMahjongBtn.Parent = mahjongPanel
 createCorner(playMahjongBtn, 10)
 
-playMahjongBtn.MouseButton1Click:Connect(function()
+playMahjongBtn.Activated:Connect(function()
 	print("[DashboardGui] Play Mahjong clicked")
 	-- Close dashboard and start Mahjong game
 	screenGui.Enabled = false
@@ -679,21 +801,6 @@ playMahjongBtn.MouseButton1Click:Connect(function()
 		_G.MahjongGuiStart()
 	else
 		print("[DashboardGui] MahjongGui not loaded yet")
-	end
-end)
-
--- ════════════════════════════════════════════════
--- KEYBOARD SHORTCUT: TAB TO TOGGLE DASHBOARD
--- ════════════════════════════════════════════════
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-
-	-- D = Toggle Dashboard
-	if input.KeyCode == Enum.KeyCode.D then
-		-- Use the actual ScreenGui state; other buttons and the modal
-		-- coordinator can change it independently of this shortcut.
-		screenGui.Enabled = not screenGui.Enabled
 	end
 end)
 

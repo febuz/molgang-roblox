@@ -27,6 +27,13 @@ local Camera = workspace.CurrentCamera
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 -- ═══════════════════════════════════════════════
 -- DETECT MODE
 -- ═══════════════════════════════════════════════
@@ -324,7 +331,7 @@ function handleVRInteraction(part, interactionType)
 
 	local targetGui = guiMapping[interactionType]
 	if targetGui then
-		local gui = playerGui:FindFirstChild(targetGui)
+		local gui = findScreenGui(targetGui)
 		if gui then
 			gui.Enabled = true
 		end
@@ -389,7 +396,7 @@ if isTouch and not isVR then
 		end)
 
 		if arSupported then
-			-- Show AR hint in teaser overlay
+			-- Show AR hint in the OTAP navigation overlay
 			local arHint = Instance.new("TextLabel")
 			arHint.Size = UDim2.fromOffset(260, 36)
 			arHint.Position = UDim2.new(0.5, -130, 0, 90)
@@ -399,7 +406,7 @@ if isTouch and not isVR then
 			arHint.Text = "AR Mode: Point camera at flat surface!"
 			arHint.TextScaled = true
 			arHint.Font = Enum.Font.GothamBold
-			arHint.Parent = playerGui:FindFirstChild("TeaserOverlay") or playerGui
+			arHint.Parent = findScreenGui("OTAPNavigationOverlay") or playerGui
 
 			local corner = Instance.new("UICorner")
 			corner.CornerRadius = UDim.new(0, 8)
@@ -538,7 +545,7 @@ if isVR then
 		dismiss.Parent = panel
 		local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(0, 8); dc.Parent = dismiss
 
-		dismiss.MouseButton1Click:Connect(function()
+		dismiss.Activated:Connect(function()
 			vrTutGui:Destroy()
 		end)
 

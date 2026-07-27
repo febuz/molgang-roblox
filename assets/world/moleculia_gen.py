@@ -169,29 +169,76 @@ def periodic_cell(num, grp, per):
 
 # Zones as floating platforms in a ring (the archipelago), centre = Nexus Hub.
 ZONES = {
-    "Nexus Hub":            {"x": 0,    "z": 0,    "r": 34, "landmarks": ["welcome_arch", "nexus_fountain", "directory_signpost", "info_kiosk", "holo_map_stand"]},
+    "Nexus Hub":            {"x": 0,    "z": 0,    "r": 34, "landmarks": ["welcome_arch_hd", "nexus_fountain", "directory_signpost_hd", "holo_map_stand"]},
     "Periodic Table Biome": {"x": 0,    "z": -120, "r": 40, "landmarks": ["periodic_table_display", "molecule_model", "beaker_1L", "erlenmeyer_flask", "reagent_shelf"]},
-    "Quantum Lab":          {"x": 120,  "z": 0,    "r": 36, "landmarks": ["quantum_tunnel_ring", "quantum_dot", "hero_shield_generator", "microscope", "fume_hood"]},
+    "Quantum Lab":          {"x": 120,  "z": 0,    "r": 36, "landmarks": ["quantum_tunnel_ring", "quantum_dot", "hero_shield_generator", "microscope_hd", "fume_hood_hd"]},
     "Slakkenspoor Fabriek": {"x": -140, "z": 0,    "r": 60, "landmarks": []},   # the hero zone — the processing line
-    "MolChain Tower":       {"x": 95,   "z": -95,  "r": 30, "landmarks": ["distillation_column", "storage_silo", "diploma_frame"]},
-    "ANK Kredietunie":      {"x": -95,  "z": -95,  "r": 30, "landmarks": ["victory_trophy", "diploma_frame", "plaza_bench", "cafe_counter"]},
+    "MolChain Tower":       {"x": 95,   "z": -95,  "r": 30, "landmarks": ["distillation_column_hd", "storage_silo_hd", "diploma_frame_hd"]},
+    "ANK Kredietunie":      {"x": -95,  "z": -95,  "r": 30, "landmarks": ["victory_trophy", "diploma_frame_hd", "plaza_bench_hd", "cafe_counter_hd"]},
+}
+
+# Photoscanned CC0 prop dressing (Poly Haven, see assets/fbx_library/): AAA
+# scenes read real because of prop density. (glb, dx, dz, rot, footprint).
+ZONE_PROPS = {
+    "Slakkenspoor Fabriek": [
+        ("Barrel_01.glb", -38, 14, 0.4, 1.8), ("Barrel_01.glb", -36.4, 13.2, 2.1, 1.8),
+        ("barrel_03.glb", -37, 16, 1.2, 1.8), ("cement_bag.glb", -30, -14, 0.2, 1.4),
+        ("modular_industrial_pipes_01.glb", -12, 14, 0.0, 7.0),
+        ("modular_industrial_pipes_01.glb", 12, -14, 3.14, 7.0),
+        ("propane_tank.glb", 30, 14, 0.8, 1.6), ("small_lpg_tank.glb", 33, 13, 0.0, 2.2),
+        ("metal_jerrycan.glb", 18, 13, 1.0, 1.0), ("metal_toolbox.glb", 6, -13, 0.5, 1.1),
+        ("korean_fire_extinguisher_01.glb", 24, -12, 0.0, 0.9),
+        ("portable_generator.glb", -22, -15, 1.6, 2.2),
+        ("ladder_sectioned_01.glb", 40, -12, 0.3, 2.6),
+        ("caged_hanging_light.glb", -20, 0, 0.0, 0.9), ("caged_hanging_light.glb", 20, 0, 0.0, 0.9),
+        # HD plant props (generate_hd_props.py) — the utilities a real hydromet
+        # plant has around its line, three of them interactive in world.js:
+        ("cooling_tower_hd.glb", -22, 26, 0.0, 10.0, {"steam": 1}),
+        ("pipe_rack_hd.glb", -24, -19, 1.5708, 8.0),
+        ("pipe_rack_hd.glb", 16, 19, 1.5708, 8.0),
+        ("gas_cylinder_rack_hd.glb", 36, -15, 0.4, 2.8),
+        ("control_console_hd.glb", 0, -22, 0.0, 2.4, {"interact": "console"}),
+        ("safety_station_hd.glb", -30, 19, 3.14, 0.9, {"interact": "safety"}),
+        ("sample_station_hd.glb", 26, 13, 1.2, 2.2, {"interact": "assay"}),
+        # Viscosity-lab portal: step close and world.js walks the player
+        # through to ../viscosity/ (steel-slag slurry stirring room, a
+        # synced copy of molgang-knitweb web/viscosity-*, see SYNC.md).
+        ("sample_station_hd.glb", -14, -22, 0.3, 2.0, {"interact": "viscosity"}),
+    ],
+    "Quantum Lab": [
+        ("chemistry_set.glb", 0, -8, 0.2, 2.6, {"console": "chemsim"}),   # the paid ChemSim console
+        ("bunsen_burner.glb", 3, -7, 0.0, 0.9),
+        ("metal_toolbox.glb", -4, -8, 1.2, 1.0),
+        ("caged_hanging_light.glb", 0, -12, 0.0, 0.9),
+        ("gas_cylinder_rack_hd.glb", 6, -10, 2.6, 1.8),
+        ("safety_station_hd.glb", -8, -9, 0.8, 0.9, {"interact": "safety"}),
+    ],
+    "Periodic Table Biome": [
+        ("Barrel_01.glb", -30, 28, 0.7, 1.8), ("cement_bag.glb", 29, 27, 0.0, 1.4),
+    ],
+    "Nexus Hub": [
+        ("info_kiosk_hd.glb", 7, 9, 2.6, 2.2, {"interact": "directory"}),
+    ],
+    "ANK Kredietunie": [
+        ("ank_counter_hd.glb", 0, -7, 0.0, 3.4, {"interact": "bank"}),
+    ],
 }
 
 # The real 12-station BOF slag processing chain (SteelSlag.ProcessingStations),
 # in order, mapped to the equipment GLBs we have.
 PROCESS_LINE = [
-    ("Slag Cooling Pit", "cooling_pit.glb"),
-    ("Vibrating Feeder", "screw_conveyor.glb"),
-    ("Jaw Crusher", "jaw_crusher.glb"),
-    ("Vibrating Screen", "vibrating_screen.glb"),
-    ("Cone Crusher", "cone_crusher.glb"),
-    ("Ball Mill", "ball_mill.glb"),
-    ("HGMS Magnetic Separator", "magnetic_separator.glb"),
-    ("Roasting Kiln", "roasting_kiln.glb"),
-    ("Leaching Tank", "leaching_tank.glb"),
-    ("Filtration Press", "filtration_press.glb"),
-    ("Precipitation Reactor", "thickener_tank.glb"),
-    ("Drying Oven", "spray_dryer.glb"),
+    ("Slag Cooling Pit", "cooling_pit_hd.glb"),
+    ("Vibrating Feeder", "vibrating_feeder_hd.glb"),
+    ("Jaw Crusher", "jaw_crusher_hd.glb"),
+    ("Vibrating Screen", "vibrating_screen_hd.glb"),
+    ("Cone Crusher", "cone_crusher_hd.glb"),
+    ("Ball Mill", "ball_mill_hd.glb"),
+    ("HGMS Magnetic Separator", "magnetic_separator_hd.glb"),
+    ("Roasting Kiln", "roasting_kiln_hd.glb"),
+    ("Leaching Tank", "leaching_tank_hd.glb"),   # HD pilot (assets/blender/generate_hd_stations.py)
+    ("Filtration Press", "filtration_press_hd.glb"),
+    ("Precipitation Reactor", "precipitation_reactor_hd.glb"),
+    ("Drying Oven", "drying_oven_hd.glb"),
 ]
 
 
@@ -221,10 +268,10 @@ def build():
                 if i < n - 1:
                     nx = cx - span / 2 + span * ((i + 1) / (n - 1))
                     mx, mz = (sx + nx) / 2, cz
-                    add("asset", "conveyor_belt.glb", mx, mz, math.pi / 2, 5)
-            # a couple of silos + a slag ladle for flavour
-            add("asset", "storage_silo.glb", cx + span / 2 + 6, cz + 12, 0, 12)
-            add("asset", "slag_ladle.glb", cx - span / 2 - 6, cz - 10, 0, 6)
+                    add("asset", "conveyor_hd.glb", mx, mz, math.pi / 2, 5)
+            # a couple of silos + a slag ladle for flavour (HD, generate_hd_props.py)
+            add("asset", "storage_silo_hd.glb", cx + span / 2 + 6, cz + 12, 0, 12)
+            add("asset", "slag_ladle_hd.glb", cx - span / 2 - 6, cz - 10, 0, 6)
         elif name == "Periodic Table Biome":
             # Collectible element tiles laid out as a real periodic table. Landmarks
             # ring the edge; the 118 elements fill the centre as a walkable chart.
@@ -251,6 +298,11 @@ def build():
                 big = any(k in lm for k in ("column", "silo", "tower", "arch", "fountain", "tunnel"))
                 add("asset", lm + (".glb" if not lm.endswith(".glb") else ""), lx, lz, ang, 12 if big else 6)
 
+        # photoscanned prop dressing for this zone (CC0 Poly Haven)
+        for p in ZONE_PROPS.get(name, []):
+            glb, pdx, pdz, prot, ps = p[:5]
+            add("asset", glb, cx + pdx, cz + pdz, prot, ps, p[5] if len(p) > 5 else None)
+
     fertilizers = parse_fertilizers()
     crops = parse_crops()
     equipment, floor = parse_equipment()
@@ -268,5 +320,33 @@ def build():
           f"{len(ZONES)} floating zones, {len(PROCESS_LINE)}-station Slakkenspoor line) -> {OUT}")
 
 
+def check_drift():
+    """Sync protocol: regenerate to memory and compare with the committed
+    moleculia.json. Exits non-zero when the Roblox Lua sources changed without
+    a regen — CI/pre-commit guard keeping web in sync with the game's lines."""
+    import io, sys
+    global OUT
+    committed = json.load(open(OUT))
+    real_out = OUT
+    try:
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tf:
+            OUT = tf.name
+        build()
+        fresh = json.load(open(OUT))
+        os.unlink(OUT)
+    finally:
+        OUT = real_out
+    if fresh != committed:
+        print("DRIFT: moleculia.json is stale vs the Roblox Lua sources — run "
+              "`python3 assets/world/moleculia_gen.py` and commit the result.")
+        sys.exit(1)
+    print("[sync] moleculia.json in sync with the Roblox game data")
+
+
 if __name__ == "__main__":
-    build()
+    import sys
+    if "--check" in sys.argv:
+        check_drift()
+    else:
+        build()

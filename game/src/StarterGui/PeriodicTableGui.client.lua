@@ -351,7 +351,7 @@ filterCorner.Parent = filterBtn
 
 local filterMode = "all" -- all, found, missing
 
-filterBtn.MouseButton1Click:Connect(function()
+filterBtn.Activated:Connect(function()
 	if filterMode == "all" then
 		filterMode = "found"
 		filterBtn.Text = "Show: Found"
@@ -438,7 +438,7 @@ closeBtn.ZIndex = 5
 closeBtn.Parent = header
 createCorner(closeBtn, 8)
 
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
 end)
 
@@ -642,7 +642,7 @@ detailCloseBg.ZIndex = 49
 detailCloseBg.Parent = screenGui
 detailCloseBg.Visible = false
 
-detailCloseBg.MouseButton1Click:Connect(function()
+detailCloseBg.Activated:Connect(function()
 	detailPopup.Visible = false
 	detailCloseBg.Visible = false
 end)
@@ -661,7 +661,7 @@ detailCloseBtn.ZIndex = 53
 detailCloseBtn.Parent = detailPopup
 createCorner(detailCloseBtn, 6)
 
-detailCloseBtn.MouseButton1Click:Connect(function()
+detailCloseBtn.Activated:Connect(function()
 	detailPopup.Visible = false
 	detailCloseBg.Visible = false
 end)
@@ -804,7 +804,7 @@ local function createElementCell(elemData)
 	}
 
 	-- Click/tap handler
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		showElementDetail(elemData)
 	end)
 
@@ -1028,17 +1028,6 @@ AtomCollected.OnClientEvent:Connect(function(data)
 				tweenProperty(cell.button, {BackgroundColor3 = cell.groupColor}, 0.5)
 			end)
 		end
-	end
-end)
-
---------------------------------------------------------------------------------
--- KEYBOARD SHORTCUT: P to toggle
---------------------------------------------------------------------------------
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.P then
-		screenGui.Enabled = not screenGui.Enabled
 	end
 end)
 

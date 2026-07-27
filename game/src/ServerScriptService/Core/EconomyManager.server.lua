@@ -4,17 +4,24 @@
 -- GOLDEN RULE: never trust client — all economy calculations on server
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Players = game:GetService("Players")
 
 local DataTemplate = require(ReplicatedStorage.Data.DataTemplate)
+local DataMigration = require(ReplicatedStorage.Modules.DataMigration)
 local Chemistry = require(ReplicatedStorage.Modules.Chemistry)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 local Facilities = require(ReplicatedStorage.Modules.Facilities)
 local NPCDialogues = require(ReplicatedStorage.Modules.NPCDialogues)
 local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
 local DailyStats = require(ReplicatedStorage.Modules.DailyStats)
+local LoginStreak = require(ReplicatedStorage.Modules.LoginStreak)
+local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
+local MarketTransactionLedger = require(ReplicatedStorage.Modules.MarketTransactionLedger)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 
 -- ══════════════════════════════════════════════
 -- CONFIGURATION
@@ -29,19 +36,10 @@ local SAVE_INTERVAL = 60               -- auto-save every 60 seconds
 -- PLAYER DATA STORAGE
 -- ══════════════════════════════════════════════
 
-local playerDataStore = DataStoreService:GetDataStore("MolGang_PlayerData_v1")
+local playerDataStore = DataStoreProvider.GetDataStore("MolGang_PlayerData_v1")
 local playerData = {}       -- {userId = data}
-local playerDailyEarned = {} -- {userId = earned today}
-
--- Deep copy for template
-local function deepCopy(t)
-	if type(t) ~= "table" then return t end
-	local copy = {}
-	for k, v in pairs(t) do
-		copy[k] = deepCopy(v)
-	end
-	return copy
-end
+local lastDayAdvance = {}   -- {userId = os.time() of last active-session advance}
+local recentTradeRequests = {} -- {userId = {key, timestamp}}; duplicate guard
 
 -- ══════════════════════════════════════════════
 -- PLAYER DATA LOAD / SAVE
@@ -56,34 +54,33 @@ local function loadPlayerData(player)
 	end)
 
 	if success and data then
-		-- Merge with template (add any new fields from updates)
-		local template = deepCopy(DataTemplate)
-		for key, value in pairs(template) do
-			if data[key] == nil then
-				data[key] = value
-			end
-		end
+		-- Merge recursively so new fields inside nested systems are migrated too.
+		DataMigration.MergeDefaults(data, DataTemplate)
 		playerData[userId] = data
 	else
 		-- New player: use template
-		playerData[userId] = deepCopy(DataTemplate)
+		playerData[userId] = DataMigration.DeepCopy(DataTemplate)
 		if not success then
 			warn("[EconomyManager] Failed to load data for", player.Name, ":", err)
 		end
 	end
 
-	-- Update login streak
+	-- Update login streak. A missed calendar day resets the streak; simply
+	-- incrementing on every new login let long-absent players retain bonuses.
 	local today = os.date("%Y-%m-%d")
-	local lastLogin = playerData[userId].lastLoginDate
-	if lastLogin == "" then
-		playerData[userId].loginStreak = 1
-	elseif lastLogin ~= today then
-		-- Check if yesterday (simple check)
-		playerData[userId].loginStreak = playerData[userId].loginStreak + 1
-	end
-	playerData[userId].lastLoginDate = today
+	playerData[userId].loginStreak, playerData[userId].lastLoginDate = LoginStreak.Update(
+		playerData[userId].loginStreak,
+		playerData[userId].lastLoginDate,
+		today
+	)
 
-	playerDailyEarned[userId] = 0
+	-- The cap is backed by persistent daily stats, not only this server
+	-- process. This prevents reconnect/server-hop farming.
+	DailyStats.Ensure(playerData[userId])
+	-- Start the active-session clock at load time. Without this, the first
+	-- 30-second tick compared against epoch zero and advanced a fresh player
+	-- immediately instead of after one complete OTAP day.
+	lastDayAdvance[userId] = os.time()
 	-- Publish the same server-owned table to the bridge so other server
 	-- systems (market, factory, slag and minigames) see live player state.
 	PlayerDataBridge.SetEconomyData(userId, playerData[userId])
@@ -128,23 +125,31 @@ end
 -- MOLCOIN TRANSACTIONS
 -- ══════════════════════════════════════════════
 
+local function rejectRequest(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {
+		message = message,
+		rarity = "common",
+	})
+end
+
 local function addMolCoins(player, amount, reason)
 	local userId = player.UserId
 	local data = playerData[userId]
-	if not data then return false end
+	if not data or type(amount) ~= "number" or amount ~= amount
+		or amount == math.huge or amount == -math.huge or amount <= 0 then
+		return false
+	end
+	local dailyStats = DailyStats.Ensure(data)
+	local earnedToday = dailyStats.molCoinsEarned or 0
 
 	-- Daily cap check
-	if playerDailyEarned[userId] and playerDailyEarned[userId] + amount > MAX_MOLCOINS_PER_DAY then
+	if earnedToday + amount > MAX_MOLCOINS_PER_DAY then
 		return false, "Daily MolCoin limit reached"
 	end
 
 	data.molCoins = data.molCoins + amount
 	data.totalMolCoinsEarned = data.totalMolCoinsEarned + amount
 	DailyStats.Increment(data, "molCoinsEarned", amount)
-	if playerDailyEarned[userId] then
-		playerDailyEarned[userId] = playerDailyEarned[userId] + amount
-	end
-
 	return true
 end
 
@@ -171,19 +176,72 @@ end
 local function processAtomCollect(player, collectData)
 	local userId = player.UserId
 	local data = playerData[userId]
-	if not data then return end
+	if not data then
+		rejectRequest(player, "Your economy data is still loading. Try again shortly.")
+		return
+	end
+
+	local entries = collectData.entries
+	if type(entries) == "table" then
+		local totalAmount = 0
+		local totalReward = 0
+		for _, entry in ipairs(entries) do
+			local amount = math.floor(tonumber(entry.amount) or 0)
+			if amount < 1 or type(entry.symbol) ~= "string" or entry.symbol == "" then return end
+			totalAmount = totalAmount + amount
+			totalReward = totalReward + amount * (tonumber(entry.coinReward) or 0)
+		end
+		if totalAmount < 1 or not InventoryLimits.CanAddAtoms(data.atoms, data.facilities, totalAmount) then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Atom storage is full. Build an Office or use existing atoms first.",
+				rarity = "common",
+			})
+			return
+		end
+		for _, entry in ipairs(entries) do
+			data.atoms[entry.symbol] = (data.atoms[entry.symbol] or 0) + math.floor(entry.amount)
+			data.elementsFound[tostring(entry.elementZ)] = true
+		end
+		addMolCoins(player, totalReward, "atom_collect")
+		data.totalAtomsCollected = data.totalAtomsCollected + totalAmount
+		DailyStats.Increment(data, "atomsCollected", totalAmount)
+		local totalElements = 0
+		for _ in pairs(data.elementsFound) do
+			totalElements = totalElements + 1
+		end
+		local badgeMilestones = {
+			{count = 10, id = "Beginner", name = "Beginner", description = "Collect 10 different elements"},
+			{count = 50, id = "Chemist", name = "Chemist", description = "Collect 50 different elements"},
+		}
+		for _, milestone in ipairs(badgeMilestones) do
+			if totalElements >= milestone.count and not data.badges[milestone.id] then
+				data.badges[milestone.id] = true
+				Remotes.FireClient("AchievementUnlocked", player, milestone)
+			end
+		end
+		return
+	end
 
 	local elementZ = collectData.elementZ
 	local symbol = collectData.symbol
 	local coinReward = collectData.coinReward
+	local amount = math.floor(tonumber(collectData.amount) or 1)
 
-	if not elementZ or not symbol then return end
+	if not elementZ or not symbol or amount < 1 then return end
+	local acceptedAmount = math.min(amount, InventoryLimits.GetFreeAtomSlots(data.atoms, data.facilities))
+	if acceptedAmount < 1 then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Atom storage full. Build an Office or use existing atoms first.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Add atom to inventory
 	if not data.atoms[symbol] then
 		data.atoms[symbol] = 0
 	end
-	data.atoms[symbol] = data.atoms[symbol] + 1
+	data.atoms[symbol] = data.atoms[symbol] + acceptedAmount
 
 	-- Track element discovery
 	if not data.elementsFound[tostring(elementZ)] then
@@ -191,11 +249,11 @@ local function processAtomCollect(player, collectData)
 	end
 
 	-- Add MolCoins
-	addMolCoins(player, coinReward, "atom_collect")
+	addMolCoins(player, (coinReward or 0) * acceptedAmount, "atom_collect")
 
 	-- Update statistics
-	data.totalAtomsCollected = data.totalAtomsCollected + 1
-	DailyStats.Increment(data, "atomsCollected", 1)
+	data.totalAtomsCollected = data.totalAtomsCollected + acceptedAmount
+	DailyStats.Increment(data, "atomsCollected", acceptedAmount)
 
 	-- Check for badge milestones
 	local totalElements = 0
@@ -304,13 +362,23 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	-- Confirm the authoritative build so every HUD/client system can update
 	-- from the same server result. Keep both legacy and current field names
 	-- because older widgets still consume the former contract.
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local moleculeBonusMultiplier = math.max(0, tonumber(eventEffects.moleculeBonusMultiplier) or 1)
+	local moleculeReward = Chemistry.ApplyMoleculeBonus(recipe.points, moleculeBonusMultiplier)
+	local rewardPaid = addMolCoins(player, moleculeReward, "molecule_build")
+	if not rewardPaid then
+		moleculeReward = 0
+	end
+
 	Remotes.FireClient("MoleculeBuilt", player, {
 		name = molName,
 		molName = molName,
 		moleculeName = molName,
 		formula = molName,
-		molCoinsEarned = recipe.points,
+		molCoinsEarned = moleculeReward,
 		points = recipe.points,
+		basePoints = recipe.points,
+		moleculeBonusMultiplier = moleculeBonusMultiplier,
 		chainTokensEarned = 0,
 	})
 
@@ -318,9 +386,6 @@ Remotes.RequestBuildMolecule.OnServerEvent:Connect(function(player, atomList)
 	if not data.moleculesBuilt[molName] then
 		data.moleculesBuilt[molName] = true
 	end
-
-	-- Award MolCoins for molecule
-	addMolCoins(player, recipe.points, "molecule_build")
 
 	-- Update statistics
 	data.totalMoleculesBuilt = data.totalMoleculesBuilt + 1
@@ -380,8 +445,16 @@ Remotes.RequestDailyClaim.OnServerEvent:Connect(function(player)
 	local streakBonus = math.min(data.loginStreak * 10, 100)  -- up to 100 bonus
 	local totalClaim = DAILY_CLAIM_AMOUNT + streakBonus
 
+	local paid, reason = addMolCoins(player, totalClaim, "daily_claim")
+	if not paid then
+		Remotes.FireClient("DailyClaimResult", player, {
+			success = false,
+			reason = reason or "Daily MolCoin limit reached",
+			remaining = 0,
+		})
+		return
+	end
 	data.lastDailyClaim = now
-	addMolCoins(player, totalClaim, "daily_claim")
 
 	Remotes.FireClient("DailyClaimResult", player, {
 		success = true,
@@ -397,8 +470,7 @@ end)
 -- ══════════════════════════════════════════════
 
 -- Track day changes per player
-local lastDayAdvance = {} -- {userId = os.time() of last advance}
-local DAY_ADVANCE_INTERVAL = 600  -- 10 minutes = 1 game day
+local DAY_ADVANCE_INTERVAL = GameClock.DAY_SECONDS
 
 task.spawn(function()
 	while true do
@@ -431,17 +503,22 @@ end)
 Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityName)
 	local userId = player.UserId
 	local data = playerData[userId]
-	if not data then return end
+	if not data then
+		rejectRequest(player, "Your economy data is still loading. Try again shortly.")
+		return
+	end
 
 	local facility = Facilities.GetFacility(facilityName)
 	if not facility then
 		print("[EconomyManager] Invalid facility:", facilityName)
+		rejectRequest(player, "Unknown facility. Refresh the dashboard and try again.")
 		return
 	end
 
 	-- Check funds
 	if data.molCoins < facility.cost then
 		print("[EconomyManager] Insufficient funds for", facilityName)
+		rejectRequest(player, "Not enough MolCoins for " .. facilityName .. " (need " .. facility.cost .. ").")
 		return
 	end
 
@@ -449,6 +526,7 @@ Remotes.RequestBuildFacility.OnServerEvent:Connect(function(player, facilityName
 	local canBuild, msg = Facilities.CanBuild(data.facilities, facilityName)
 	if not canBuild then
 		print("[EconomyManager] Cannot build", facilityName, ":", msg)
+		rejectRequest(player, msg or "Facility cannot be built yet.")
 		return
 	end
 
@@ -475,21 +553,15 @@ end)
 -- ══════════════════════════════════════════════
 
 -- Simple commodity prices (can be made dynamic later)
-local COMMODITY_PRICES = {
-	Iron = 100,
-	Copper = 150,
-	Gold = 500,
-	Vanadium = 300,
-	Tungsten = 400,
-	Aluminum = 80,
-	Carbon = 60,
-	Nitrogen = 70,
-}
+local COMMODITY_PRICES = CommodityMarket.GetBasePrices()
 
 Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemName, quantity, offeredPrice)
 	local userId = player.UserId
 	local data = playerData[userId]
-	if not data then return end
+	if not data then
+		rejectRequest(player, "Your economy data is still loading. Try again shortly.")
+		return
+	end
 
 	local valid, parsedQuantity, currentPriceOrError = TradeRules.Validate(
 		action, itemName, quantity, offeredPrice, COMMODITY_PRICES
@@ -502,14 +574,34 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 		return
 	end
 	quantity = parsedQuantity
-	local currentPrice = currentPriceOrError
+	-- offeredPrice is deliberately ignored for settlement. It is a client UI
+	-- hint; the shared server market state is the only authoritative price.
+	local currentPrice = CommodityMarket.GetCurrentPrice(itemName)
+	if not currentPrice then
+		rejectRequest(player, "Market price unavailable. Try again shortly.")
+		return
+	end
+	local requestKey = action .. ":" .. itemName .. ":" .. tostring(quantity)
+	local recentTrade = recentTradeRequests[userId]
+	if recentTrade and recentTrade.key == requestKey and os.clock() - recentTrade.timestamp < 0.75 then
+		return
+	end
 
 	if action == "buy" then
 		local totalCost = currentPrice * quantity
-		if data.molCoins < totalCost then
-			print("[EconomyManager]", player.Name, "insufficient funds for", itemName)
+		if not InventoryLimits.CanAddAtoms(data.atoms, data.facilities, quantity) then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "Atom storage full. Build an Office or sell/process atoms first.",
+				rarity = "common",
+			})
 			return
 		end
+		if data.molCoins < totalCost then
+			print("[EconomyManager]", player.Name, "insufficient funds for", itemName)
+			rejectRequest(player, "Not enough MolCoins to buy " .. itemName .. " (need " .. totalCost .. ").")
+			return
+		end
+		recentTradeRequests[userId] = {key = requestKey, timestamp = os.clock()}
 
 		-- Deduct MolCoins, add to inventory
 		data.molCoins = data.molCoins - totalCost
@@ -523,6 +615,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 			totalCost = totalCost,
 			newBalance = data.molCoins,
 		})
+		MarketTransactionLedger.Record(itemName, "buy", quantity)
 
 		print("[EconomyManager]", player.Name, "bought", quantity, itemName, "for", totalCost)
 
@@ -530,21 +623,24 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 		local itemCount = data.atoms[itemName] or 0
 		if itemCount < quantity then
 			print("[EconomyManager]", player.Name, "doesn't have enough", itemName)
+			rejectRequest(player, "You do not have enough " .. itemName .. " to sell.")
 			return
 		end
 
-		-- Deduct from inventory, add MolCoins
+		-- Settle the coin leg first. If the persistent daily cap rejects the
+		-- sale, the atom inventory must remain untouched.
 		local totalRevenue = currentPrice * quantity
-		if playerDailyEarned[userId] + totalRevenue > MAX_MOLCOINS_PER_DAY then
+		local paid, reason = addMolCoins(player, totalRevenue, "market_sell")
+		if not paid then
 			print("[EconomyManager]", player.Name, "daily earning limit reached for", itemName)
+			rejectRequest(player, reason or "Daily market income limit reached. Try again after the next reset.")
 			return
 		end
+		recentTradeRequests[userId] = {key = requestKey, timestamp = os.clock()}
 		data.atoms[itemName] = itemCount - quantity
 		if data.atoms[itemName] <= 0 then
 			data.atoms[itemName] = nil
 		end
-		addMolCoins(player, totalRevenue, "market_sell")
-
 		Remotes.FireClient("MarketTrade", player, {
 			action = "sell",
 			item = itemName,
@@ -552,6 +648,7 @@ Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemNa
 			totalRevenue = totalRevenue,
 			newBalance = data.molCoins,
 		})
+		MarketTransactionLedger.Record(itemName, "sell", quantity)
 
 		print("[EconomyManager]", player.Name, "sold", quantity, itemName, "for", totalRevenue)
 	end
@@ -635,11 +732,37 @@ end)
 -- REMOTE FUNCTIONS
 -- ══════════════════════════════════════════════
 
+local ALLOWED_ONBOARDING_PATHS = {explorer = true, scientist = true, engineer = true}
+
+local function setOnboardingPath(player, path, complete)
+	local data = playerData[player.UserId]
+	if not data or type(path) ~= "string" or not ALLOWED_ONBOARDING_PATHS[path] then
+		return
+	end
+	if type(data.onboarding) ~= "table" then
+		data.onboarding = {completed = false, path = ""}
+	end
+	-- Route selection is useful progress even when a player leaves before
+	-- finishing the tutorial. Completion remains a separate server decision.
+	data.onboarding.path = path
+	if complete then
+		data.onboarding.completed = true
+	end
+end
+
+Remotes.RequestSetOnboardingPath.OnServerEvent:Connect(function(player, path)
+	setOnboardingPath(player, path, false)
+end)
+
+Remotes.RequestCompleteOnboarding.OnServerEvent:Connect(function(player, path)
+	setOnboardingPath(player, path, true)
+end)
+
 Remotes.GetPlayerData.OnServerInvoke = function(player)
 	local data = playerData[player.UserId]
 	if not data then return nil end
 	-- Return read-only snapshot (deep copy)
-	return deepCopy(data)
+	return DataMigration.DeepCopy(data)
 end
 
 Remotes.GetBuildable.OnServerInvoke = function(player)
@@ -685,7 +808,8 @@ Players.PlayerRemoving:Connect(function(player)
 	savePlayerData(player)
 	PlayerDataBridge.Cleanup(player.UserId)
 	playerData[player.UserId] = nil
-	playerDailyEarned[player.UserId] = nil
+	lastDayAdvance[player.UserId] = nil
+	recentTradeRequests[player.UserId] = nil
 end)
 
 -- Auto-save loop

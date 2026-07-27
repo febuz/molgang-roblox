@@ -7,36 +7,100 @@
 ]]
 
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local PlayerPathAnalytics = require(script.Parent.PlayerPathAnalytics)
+local AnalyticsEventRules = require(ReplicatedStorage.Modules.AnalyticsEventRules)
 
-local analyticsStore = DataStoreService:GetOrderedDataStore("Analytics_v1")
+local analyticsStore = DataStoreProvider.GetOrderedDataStore("Analytics_v1")
+local pathStore = DataStoreProvider.GetDataStore("MolGang_PlayerPaths_v1")
+local pathIndexStore = DataStoreProvider.GetDataStore("MolGang_PlayerPathIndex_v1")
+
+-- A route sample is useful for level design, but recording every physics frame
+-- is noisy, expensive, and unnecessary. Keep one rounded sample per player
+-- every 3 seconds, capped to a 30-minute session.
+local SAVE_RETRIES = 3
 
 -- Session data per player
 local playerSessions = {}
+local guiEventWindows = {}
+local GUI_EVENT_WINDOW_SECONDS = 60
+local GUI_EVENT_LIMIT = 120
 
 local function getSession(userId)
 	if not playerSessions[userId] then
-		playerSessions[userId] = {
-			joinTime = os.time(),
-			events = {
+		local joinTime = os.time()
+		local sessionId = tostring(joinTime) .. "_" .. tostring(math.floor(os.clock() * 1000))
+		playerSessions[userId] = PlayerPathAnalytics.NewSession(joinTime, os.clock(), sessionId, {
 				atomsCollected = 0,
+				atomsProduced = 0,
 				moleculesBuilt = 0,
 				leachesStarted = 0,
+				leachIds = {},
 				productsSold = 0,
+				productIds = {},
 				guisOpened = {},
 				questsCompleted = 0,
+				questIds = {},
 				deaths = 0,
+				voidRecoveries = 0,
+				voidRecoveryY = {},
 				chatMessages = 0,
-			},
-			firstAction = nil,
-			lastAction = os.time(),
-		}
+				zoneVisits = {},
+		})
+		playerSessions[userId].analyticsKey = "session_" .. userId .. "_" .. sessionId
+		playerSessions[userId].pathKey = "path_" .. userId .. "_" .. sessionId
+		playerSessions[userId].pathIndexKey = "player_" .. tostring(userId)
+		playerSessions[userId].firstAction = nil
+		playerSessions[userId].lastAction = joinTime
 	end
 	return playerSessions[userId]
 end
+
+local function nearestZone(position)
+	local zones = workspace:FindFirstChild("Zones")
+	if not zones then return "unknown" end
+	local nearestName, nearestDistance = "unknown", math.huge
+	for _, zone in ipairs(zones:GetChildren()) do
+		if zone:IsA("Model") then
+			local distance = (zone:GetPivot().Position - position).Magnitude
+			if distance < nearestDistance then
+				nearestName, nearestDistance = zone.Name, distance
+			end
+		end
+	end
+	return nearestName
+end
+
+local function samplePlayerPath(player, now)
+	local session = playerSessions[player.UserId]
+	if not session then return end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local position = root.Position
+	local appended = PlayerPathAnalytics.AppendSample(session, now, {
+		x = position.X,
+		y = position.Y,
+		z = position.Z,
+	}, nearestZone(position))
+	if appended then
+		local actionTime = os.time()
+		if not session.firstAction then session.firstAction = actionTime end
+		session.lastAction = actionTime
+	end
+end
+
+RunService.Heartbeat:Connect(function()
+	local now = os.clock()
+	for _, player in ipairs(Players:GetPlayers()) do
+		samplePlayerPath(player, now)
+	end
+end)
 
 local function trackEvent(userId, eventName, value)
 	local session = getSession(userId)
@@ -52,37 +116,155 @@ local function trackEvent(userId, eventName, value)
 	end
 end
 
--- Track atom collection
-Remotes.AtomCollected.Event:Connect(function(player, data)
-	trackEvent(player.UserId, "atomsCollected", 1)
+-- Count only the successful server-side collection path. Listening to the
+-- request remote would count rejected attempts, spoofed names and Quantum
+-- Dots (which share the remote but are not normal atom production).
+PlayerDataBridge.OnAtomCollected(function(userId)
+	trackEvent(userId, "atomsCollected", 1)
 end)
 
--- Track when player leaves — save session summary
-Players.PlayerRemoving:Connect(function(player)
-	local userId = player.UserId
-	local session = playerSessions[userId]
-	if not session then return end
+PlayerDataBridge.OnProductionCycle(function(userId, atomsProduced, moleculesProduced)
+	trackEvent(userId, "atomsProduced", atomsProduced)
+	trackEvent(userId, "moleculesBuilt", moleculesProduced)
+end)
 
-	local duration = os.time() - session.joinTime
-	local summary = {
-		duration = duration,
-		events = session.events,
-		date = os.date("%Y-%m-%d"),
-	}
+PlayerDataBridge.OnQuestCompleted(function(userId, questId)
+	trackEvent(userId, "questsCompleted", 1)
+	trackEvent(userId, "questIds", questId)
+end)
 
-	-- Save compressed session data
-	pcall(function()
-		local key = "session_" .. userId .. "_" .. os.time()
-		analyticsStore:SetAsync(key, duration)
+PlayerDataBridge.OnFallRecovery(function(userId, yPosition)
+	trackEvent(userId, "voidRecoveries", 1)
+	trackEvent(userId, "voidRecoveryY", yPosition)
+end)
+
+PlayerDataBridge.OnLeachStarted(function(userId, leachId)
+	trackEvent(userId, "leachesStarted", 1)
+	trackEvent(userId, "leachIds", leachId)
+end)
+
+PlayerDataBridge.OnProductSale(function(userId, productId, quantity)
+	trackEvent(userId, "productsSold", quantity)
+	trackEvent(userId, "productIds", productId)
+end)
+
+Remotes.RecordAnalyticsEvent.OnServerEvent:Connect(function(player, eventName, value)
+	if eventName ~= "gui_open" or not AnalyticsEventRules.IsAllowedGuiName(value) then return end
+	local now = os.clock()
+	local window = guiEventWindows[player.UserId]
+	if not window or now - window.startedAt >= GUI_EVENT_WINDOW_SECONDS then
+		window = {startedAt = now, count = 0}
+		guiEventWindows[player.UserId] = window
+	end
+	if window.count >= GUI_EVENT_LIMIT then return end
+	window.count = window.count + 1
+	trackEvent(player.UserId, "guisOpened", value)
+end)
+
+local function trackCharacterDeath(player, character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+		or character:WaitForChild("Humanoid", 10)
+	if not humanoid then return end
+	humanoid.Died:Connect(function()
+		trackEvent(player.UserId, "deaths", 1)
 	end)
+end
 
-	playerSessions[userId] = nil
-	print("[Analytics]", player.Name, "session:", duration .. "s,", session.events.atomsCollected, "atoms")
+local function watchPlayer(player)
+	getSession(player.UserId)
+	player.CharacterAdded:Connect(function(character)
+		task.spawn(trackCharacterDeath, player, character)
+	end)
+	if player.Character then
+		task.spawn(trackCharacterDeath, player, player.Character)
+	end
+end
+
+local function persistSession(player, session)
+	if not session or session.saved then return true end
+	if session.saving then
+		local deadline = os.clock() + 8
+		while session.saving and os.clock() < deadline do task.wait() end
+		return session.saved
+	end
+
+	session.saving = true
+	local userId = player.UserId
+	local duration = os.time() - session.joinTime
+	local payload = PlayerPathAnalytics.BuildPayload(session, userId, player.Name, duration)
+	local indexEntry = PlayerPathAnalytics.BuildIndexEntry(session, userId, duration)
+	local analyticsSaved = session.analyticsSaved == true
+	local pathSaved = session.pathSaved == true
+	local pathIndexSaved = session.pathIndexSaved == true
+	for attempt = 1, SAVE_RETRIES do
+		if not analyticsSaved then
+			analyticsSaved = pcall(function()
+				analyticsStore:SetAsync(session.analyticsKey, duration)
+			end)
+		end
+		if not pathSaved then
+			pathSaved = pcall(function()
+				pathStore:SetAsync(session.pathKey, payload)
+			end)
+		end
+		if not pathIndexSaved then
+			pathIndexSaved = pcall(function()
+				pathIndexStore:UpdateAsync(session.pathIndexKey, function(previous)
+					local entries = type(previous) == "table" and previous or {}
+					local nextEntries = {indexEntry}
+					for _, entry in ipairs(entries) do
+						if type(entry) == "table" and entry.sessionId ~= indexEntry.sessionId then
+							table.insert(nextEntries, entry)
+						end
+						if #nextEntries >= 100 then break end
+					end
+					return nextEntries
+				end)
+			end)
+		end
+		if analyticsSaved and pathSaved and pathIndexSaved then break end
+		if attempt < SAVE_RETRIES then task.wait(attempt) end
+	end
+
+	session.saving = false
+	session.analyticsSaved = analyticsSaved
+	session.pathSaved = pathSaved
+	session.pathIndexSaved = pathIndexSaved
+	session.saved = analyticsSaved and pathSaved and pathIndexSaved
+	if not session.saved then
+		warn("[Analytics] Could not persist session after retries for " .. player.Name)
+	end
+	return session.saved
+end
+
+local function finishSession(player)
+	local session = playerSessions[player.UserId]
+	if not session then return end
+	local duration = os.time() - session.joinTime
+	local saved = persistSession(player, session)
+	if saved then playerSessions[player.UserId] = nil end
+	print("[Analytics]", player.Name, "session:", duration .. "s,", session.events.atomsCollected,
+		"atoms,", #session.path, "path samples, saved=" .. tostring(saved))
+end
+
+-- Track when player leaves — save session summary.
+Players.PlayerRemoving:Connect(finishSession)
+
+-- Roblox can close a server before PlayerRemoving has run for every player.
+-- Flush all active sessions so route analytics survives Studio stop and deploys.
+game:BindToClose(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		finishSession(player)
+	end
 end)
 
 -- Track player joins
-Players.PlayerAdded:Connect(function(player)
-	getSession(player.UserId)
-end)
+Players.PlayerAdded:Connect(watchPlayer)
+
+-- Server scripts can be required after players already exist (notably in
+-- Studio/OTAP); do not lose those sessions or their initial path sample.
+for _, player in ipairs(Players:GetPlayers()) do
+	watchPlayer(player)
+end
 
 print("[MOLGANG] Analytics initialized — tracking session events")

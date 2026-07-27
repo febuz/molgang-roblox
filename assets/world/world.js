@@ -8,6 +8,12 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -18,11 +24,20 @@ const WORLDFILE = params.get('world') || './moleculia.json';
 let MOLECULIA = true;   // set from meta.space after the map loads
 
 // ---------- renderer + instant background ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.25));
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;   // filmic response -> realistic highlights
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;     // soft grounded shadows
 $('#stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+// Image-based lighting: a neutral studio environment gives every PBR material
+// real reflections + soft ambient, the single biggest step up in realism.
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 // Sky gradient as an instant background (a canvas texture — no assets to wait on).
 (function sky() {
   const c = document.createElement('canvas'); c.width = 8; c.height = 256;
@@ -36,20 +51,44 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xc4dae8, 55, 200);
 
 const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 400);
-scene.add(new THREE.HemisphereLight(0xdfeeff, 0x384049, 1.5));
-const sun = new THREE.DirectionalLight(0xfff2e0, 2.1);
-sun.position.set(60, 130, 40); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xdfeeff, 0x384049, 0.45));   // env map carries most ambient now
+const sun = new THREE.DirectionalLight(0xfff2e0, 2.6);
+sun.position.set(60, 130, 40);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 300;
+sun.shadow.camera.left = -48; sun.shadow.camera.right = 48;
+sun.shadow.camera.top = 48; sun.shadow.camera.bottom = -48;
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+scene.add(sun); scene.add(sun.target);
+
+// Post-processing: subtle bloom so emissive rims, quantum glow, element tiles and
+// stars actually glow — a big perceptual polish in a dark space scene.
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.5, 0.5, 0.85);   // half-res: ~4x cheaper, visually identical
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
 
 // Ground shows immediately too.
 let WORLD = 240, roadAts = null, ROAD = 14;
+let worldLoaded = false;         // world bounds only clamp once the real size is known
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x3b4a3b, roughness: 1 });
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD), groundMat);
-ground.rotation.x = -Math.PI / 2; scene.add(ground);
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 
 // ---------- Moleculia: floating archipelago in space ----------
 // Switch the instant sky/ground/lighting to a deep-space setting and paint a
 // starfield behind the zones. Called from init() when meta.space is set.
 function setSpace() {
+  // Real HDRI lighting (CC0 Poly Haven "industrial workshop foundry"): warm,
+  // directional industrial reflections on every PBR surface — replaces the
+  // neutral RoomEnvironment once loaded (which stays as the instant fallback).
+  new RGBELoader().load('./env/industrial_workshop_foundry_1k.hdr', (t) => {
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    scene.environment = pmrem.fromEquirectangular(t).texture;
+    t.dispose();
+  }, undefined, () => { /* keep RoomEnvironment */ });
   const c = document.createElement('canvas'); c.width = c.height = 1024;
   const g = c.getContext('2d');
   const grd = g.createLinearGradient(0, 0, 0, 1024);
@@ -80,16 +119,98 @@ function setSpace() {
 
 // Each zone is a floating disc platform (a low cylinder) with a glowing rim so
 // the archipelago reads as separate islands in space.
+// A procedural industrial deck texture (radial, so it suits the circular
+// platforms): dark metal with concentric panel seams, radial segments, a
+// hazard-stripe border and grunge. Shared across platforms.
+let _deckTex = null;
+function deckTexture() {
+  if (_deckTex) return _deckTex;
+  const S = 1024, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d'); const cx = S / 2, cy = S / 2, R = S / 2;
+  g.fillStyle = '#232b37'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 26000; i++) {                 // grunge
+    const a = Math.random() * 7, r = Math.random() * R, x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    g.fillStyle = `rgba(${Math.random() < 0.5 ? '10,14,20' : '60,70,86'},${Math.random() * 0.14})`;
+    g.fillRect(x, y, 2, 2);
+  }
+  g.strokeStyle = 'rgba(10,14,20,0.7)'; g.lineWidth = 3;    // concentric panel seams
+  for (let k = 1; k <= 8; k++) { g.beginPath(); g.arc(cx, cy, R * k / 9, 0, 7); g.stroke(); }
+  g.lineWidth = 2;                                          // radial segments
+  for (let a = 0; a < 16; a++) { g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a * Math.PI / 8) * R, cy + Math.sin(a * Math.PI / 8) * R); g.stroke(); }
+  for (let a = 0; a < 360; a += 12) {                       // hazard-stripe border
+    g.save(); g.translate(cx, cy); g.rotate(a * Math.PI / 180);
+    g.fillStyle = (a / 12) % 2 ? '#c9a227' : '#1a1d24';
+    g.fillRect(R * 0.9, -R * 0.11, R * 0.1 * 1.1, R * 0.11 * 2); g.restore();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  _deckTex = t; return t;
+}
+// Scanned PBR plate maps (CC0 ambientCG MetalPlates006) tiled under the
+// procedural deck markings — per-texture UV transforms (r152+) let the colour
+// stay full-circle while normal/roughness/metalness tile 6x for real relief.
+let _pbrDeck = null;
+function pbrDeckMaps() {
+  if (_pbrDeck) return _pbrDeck;
+  const mk = (file, srgb) => {
+    const t = texLoader.load(`./env/${file}`);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 6); t.anisotropy = 4;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  _pbrDeck = { normalMap: mk('deck_normal.jpg'), roughnessMap: mk('deck_rough.jpg'),
+               metalnessMap: mk('deck_metal.jpg'), normalScale: new THREE.Vector2(0.9, 0.9) };
+  return _pbrDeck;
+}
+
+const platformMeshes = [];       // hidden in AR so the real floor takes over
 function buildPlatform(o) {
   const rad = o.s;
   const disc = new THREE.Mesh(
-    new THREE.CylinderGeometry(rad, rad * 0.92, 2.4, 48),
-    new THREE.MeshStandardMaterial({ color: 0x1b2436, roughness: 0.85, metalness: 0.1 }));
-  disc.position.set(o.x, -1.2, o.z); scene.add(disc);
+    new THREE.CylinderGeometry(rad, rad * 0.92, 2.4, 64),
+    new THREE.MeshStandardMaterial({ color: 0x28313f, roughness: 0.55, metalness: 0.65 }));
+  disc.position.set(o.x, -1.2, o.z); disc.receiveShadow = true; disc.castShadow = true; scene.add(disc);
+  const deck = new THREE.Mesh(
+    new THREE.CircleGeometry(rad * 0.985, 64),
+    Object.assign(new THREE.MeshStandardMaterial({ map: deckTexture(), roughness: 0.9, metalness: 0.6 }),
+      pbrDeckMaps()));   // real scanned plate relief under the procedural markings
+  deck.rotation.x = -Math.PI / 2; deck.position.set(o.x, 0.06, o.z); deck.receiveShadow = true; scene.add(deck);
   const rim = new THREE.Mesh(
-    new THREE.TorusGeometry(rad, 0.35, 8, 64),
-    new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0x2f6bd0, emissiveIntensity: 0.8 }));
+    new THREE.TorusGeometry(rad, 0.35, 12, 96),
+    new THREE.MeshStandardMaterial({ color: 0x2a3550, emissive: 0x3f8bff, emissiveIntensity: 1.6, roughness: 0.3, metalness: 0.4 }));
   rim.rotation.x = Math.PI / 2; rim.position.set(o.x, 0.05, o.z); scene.add(rim);
+  platformMeshes.push(disc, deck, rim);
+}
+
+// Factory atmosphere: warm work lighting + rising vapour so the Slakkenspoor
+// reads as a live, lit plant rather than models on a dark disc.
+const steam = [];
+let _steamTex = null;
+function steamTexture() {
+  if (_steamTex) return _steamTex;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); const rg = g.createRadialGradient(64, 64, 2, 64, 64, 62);
+  rg.addColorStop(0, 'rgba(230,238,250,0.9)'); rg.addColorStop(0.5, 'rgba(210,222,240,0.4)'); rg.addColorStop(1, 'rgba(210,222,240,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; _steamTex = t; return t;
+}
+function buildFactoryAtmosphere(cx, cz) {
+  for (const [dx, dz] of [[-24, 0], [0, 6], [22, -6]]) {           // warm work lamps (cheap, no shadows)
+    const pl = new THREE.PointLight(0xffcf96, 60, 70, 2); pl.position.set(cx + dx, 12, cz + dz); scene.add(pl);
+  }
+  const tex = steamTexture();
+  for (let i = 0; i < 30; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false }));
+    sp.userData = { bx: cx - 42 + Math.random() * 84, bz: cz - 9 + Math.random() * 18, t: Math.random() };
+    scene.add(sp); steam.push(sp);
+  }
+}
+function updateSteam(dt) {
+  for (const sp of steam) {
+    const u = sp.userData; u.t += dt * 0.12; if (u.t > 1) u.t -= 1;
+    const s = 5 + u.t * 9;
+    sp.position.set(u.bx, (u.lift || 0) + 2 + u.t * 13, u.bz); sp.scale.set(s, s, 1);
+    sp.material.opacity = Math.sin(u.t * Math.PI) * 0.2;
+  }
 }
 
 // A floating name label above each zone (canvas sprite), so the player can see
@@ -114,6 +235,7 @@ function roundRect(g, x, y, w, h, r) {
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false);
+  composer.setSize(w, h); bloom.setSize(w / 2, h / 2);   // keep bloom half-res
   camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
@@ -126,12 +248,22 @@ const CAMS = {
   factory: { pos: [-90, 62, 44], yaw: -2.09, pitch: -0.64 },          // the Slakkenspoor processing line
   biome: { pos: [0, 26, -95], yaw: Math.PI, pitch: -0.8 },            // the periodic table (element collection)
   pt: { pos: [16.6, 1.8, -128], yaw: Math.PI, pitch: 0.02 },          // standing in the table (by Oxygen)
+  tank: { pos: [-110, 4.0, 17], yaw: -2.42, pitch: 0.04 },            // close-up: the HD leaching reactor
   plaza: { pos: [6, 1.8, 10], yaw: -0.6, pitch: 0.0 },
   plaza2: { pos: [6, 1.8, 30], yaw: Math.PI, pitch: -0.03 },  // looks toward plaza (for MP demo)
 };
 const preset = CAMS[params.get('cam')];
 if (preset) { player.pos.set(...preset.pos); player.yaw = preset.yaw; player.pitch = preset.pitch; }
+// ?tp=x,z[,yaw] — spawn at an exact spot (deep-links + headless e2e verification)
+const tp = (params.get('tp') || '').split(',').map(Number);
+if (tp.length >= 2 && tp.slice(0, 2).every(Number.isFinite)) {
+  player.pos.x = tp[0]; player.pos.z = tp[1];
+  if (Number.isFinite(tp[2])) player.yaw = tp[2];
+}
 const keys = {};
+// Analog input from Quest Touch controllers / gamepads (fed by pollGamepads):
+// mx/mz = left-stick move, lx/ly = right-stick look, sprint = stick click.
+const pad = { mx: 0, mz: 0, lx: 0, ly: 0, sprint: false };
 addEventListener('keydown', (e) => { keys[e.code] = true; });
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 const canvas = renderer.domElement;
@@ -156,15 +288,28 @@ function step(dt) {
   const fwd = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw)); // look dir (horizontal)
   const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
   const mv = new THREE.Vector3();
-  const sp = player.speed * (keys['ShiftLeft'] ? 2.2 : 1);
+  const sp = player.speed * ((keys['ShiftLeft'] || pad.sprint) ? 2.2 : 1);
   if (keys['KeyW'] || keys['ArrowUp']) mv.add(fwd);      // W = forward
   if (keys['KeyS'] || keys['ArrowDown']) mv.sub(fwd);    // S = backward
   if (keys['KeyD'] || keys['ArrowRight']) mv.add(right);
   if (keys['KeyA'] || keys['ArrowLeft']) mv.sub(right);
-  if (mv.lengthSq() > 0) player.pos.add(mv.normalize().multiplyScalar(sp * dt));
-  const half = WORLD / 2 - 2;
-  player.pos.x = Math.max(-half, Math.min(half, player.pos.x));
-  player.pos.z = Math.max(-half, Math.min(half, player.pos.z));
+  if (pad.mx || pad.mz) {                                 // gamepad left stick (analog)
+    mv.add(fwd.clone().multiplyScalar(-pad.mz)).add(right.clone().multiplyScalar(pad.mx));
+  }
+  if (pad.lx || pad.ly) {                                 // gamepad right stick = look
+    player.yaw -= pad.lx * dt * 2.6;
+    player.pitch = Math.max(-1.3, Math.min(1.0, player.pitch - pad.ly * dt * 2.0));
+  }
+  if (mv.lengthSq() > 0) {
+    mv.normalize();
+    player.pos.add(mv.clone().multiplyScalar(sp * dt));
+    player.vel = mv.multiplyScalar(sp);          // units/s — feeds predictive prefetch
+  } else if (player.vel) player.vel.multiplyScalar(0.9);
+  if (worldLoaded) {             // pre-load WORLD is the legacy default (240) and
+    const half = WORLD / 2 - 2;  // would wrongly clip deep-link spawns in Moleculia
+    player.pos.x = Math.max(-half, Math.min(half, player.pos.x));
+    player.pos.z = Math.max(-half, Math.min(half, player.pos.z));
+  }
   camera.position.copy(player.pos);
   const d = new THREE.Vector3(Math.sin(player.yaw) * Math.cos(player.pitch),
     Math.sin(player.pitch), Math.cos(player.yaw) * Math.cos(player.pitch));
@@ -243,7 +388,8 @@ function impostorTex(type) {
   }
   return _texCache.get(type);
 }
-const glbProto = new Map();      // file -> loaded scene (prototype) or 'loading'
+const glbProto = new Map();      // file -> loaded scene (prototype)
+const glbLoads = new Map();      // file -> shared in-flight load promise
 let objects = [];                // all placements from world.json
 let assetIdx = [];               // indices of GLB-asset placements (streamed)
 let impPlacements = [];          // impostor placements (instanced; kept for AR)
@@ -265,15 +411,26 @@ function shadowMaterial() {
   }
   return shadowMat;
 }
-async function spawnAsset(o) {
-  let proto = glbProto.get(o.ref);
-  if (proto === 'loading') return null;
-  if (!proto) {
-    glbProto.set(o.ref, 'loading');
-    proto = (await gltfLoader.loadAsync(`${ASSET_BASE.model}${o.ref}`)).scene;
-    glbProto.set(o.ref, proto);
+function loadPrototype(ref) {
+  const cached = glbProto.get(ref);
+  if (cached) return Promise.resolve(cached);
+  let load = glbLoads.get(ref);
+  if (!load) {
+    load = gltfLoader.loadAsync(`${ASSET_BASE.model}${ref}`)
+      .then((g) => {
+        const scene = g.scene;
+        glbProto.set(ref, scene);
+        return scene;
+      })
+      .finally(() => glbLoads.delete(ref));
+    glbLoads.set(ref, load);
   }
+  return load;
+}
+async function spawnAsset(o) {
+  const proto = await loadPrototype(o.ref);
   const obj = proto.clone(true);
+  obj.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; if (n.material) n.material.envMapIntensity = 1.1; } });
   const box = new THREE.Box3().setFromObject(obj);
   const size = box.getSize(new THREE.Vector3());
   const s = o.s / Math.max(size.x, size.z, 0.01);
@@ -438,6 +595,82 @@ const SIM_BASE = params.get('sim') || 'http://127.0.0.1:8077';
 const SIM_URL = SIM_BASE + '/state';
 const agentMeshes = new Map();   // id -> { sprite, from, to, t }
 let simOk = false, simPollMs = 150;
+
+// ---------- client-side reactor: the same chemistry, no server needed ----------
+// Ports process_sim.py so the process loop (operate -> V2O5 -> sell) works on a
+// static host where the Python sim isn't running (the normal case for a published
+// site). Activates whenever the sim is unreachable.
+const CR = {
+  temperature: 70, pressure: 180, flowRate: 4, pH: 2.5, reactorVolume: 50,
+  particleSize: 'ground', deironized: false, roasted: false,
+  conversion: 0, v2o5_kg: 0, batches: 0, manual: false, _tempTarget: 70, _t: 0,
+};
+let crClientActive = false;                       // true once we know there's no server
+const LEACH_MULT = { chunk: 7, crushed: 3, ground: 1, powder: 0.3 };
+const PRECIP = { Fe: [3.0, 4.5], Al: [4.0, 5.5], V: [1.8, 3.0] };
+const clampf = (x, a, b) => Math.max(a, Math.min(b, x));
+const arrheniusM = (tc, ea = 50) => Math.exp(-(ea * 1000) / 8.314 * (1 / (tc + 273.15) - 1 / 298.15));
+const pressureM = (kPa) => clampf(kPa / 101.325, 0.3, 4);
+const residenceM = (flow, vol) => (flow <= 0 ? 1 : clampf((1 - Math.exp(-((vol / flow) / 30))) / 0.632, 0.1, 1.5));
+function precipF(metal, pH) { const w = PRECIP[metal]; if (!w) return 0; if (pH <= w[0]) return 0; if (pH >= w[1]) return 1; return (pH - w[0]) / (w[1] - w[0]); }
+const crRate = () => arrheniusM(CR.temperature) * pressureM(CR.pressure) * residenceM(CR.flowRate, CR.reactorVolume);
+const crRecovery = () => CR.conversion * precipF('V', CR.pH) * (CR.deironized ? 1 : (1 - precipF('Fe', CR.pH))) * (1 - precipF('Al', CR.pH));
+function crTick(dt) {
+  CR._t += dt;
+  if (CR.manual) CR.temperature += (CR._tempTarget - CR.temperature) * Math.min(1, dt * 0.6);
+  else CR.temperature = 70 + 18 * Math.sin(CR._t * 0.15);
+  let k = 0.05 / (LEACH_MULT[CR.particleSize] || 1); if (CR.roasted) k *= 1.25;
+  CR.conversion = clampf(CR.conversion + k * crRate() * (1 - CR.conversion) * dt, 0, 1);
+  if (CR.conversion >= 0.995) { CR.v2o5_kg += 100 * 0.015 * crRecovery(); CR.batches++; CR.conversion = 0; }
+}
+const crStateObj = () => ({
+  temperature: Math.round(CR.temperature * 10) / 10, pressure: Math.round(CR.pressure * 10) / 10,
+  flowRate: CR.flowRate, pH: CR.pH, conversion: Math.round(CR.conversion * 1000) / 1000,
+  rate: Math.round(crRate() * 100) / 100, yield: Math.round(crRecovery() * 1000) / 1000,
+  particleSize: CR.particleSize, leachSpeed: Math.round(100 / (LEACH_MULT[CR.particleSize] || 1)) / 100,
+  deironized: CR.deironized, roasted: CR.roasted, v2o5: Math.round(CR.v2o5_kg * 100) / 100,
+  batches: CR.batches, manual: CR.manual,
+});
+function crSet(d) {
+  CR.manual = true;
+  const R = { temperature: [25, 95], pressure: [100, 300], flowRate: [1, 10], pH: [1, 6] };
+  for (const k in R) if (k in d) { const v = clampf(+d[k], R[k][0], R[k][1]); if (k === 'temperature') CR._tempTarget = v; else CR[k] = v; }
+  if (d.particleSize in LEACH_MULT) CR.particleSize = d.particleSize;
+  for (const f of ['deironized', 'roasted']) if (f in d) CR[f] = !!d[f];
+}
+const crSell = () => { const kg = CR.v2o5_kg; CR.v2o5_kg = 0; return { kg: Math.round(kg * 100) / 100, coins: Math.round(kg * 500) }; };
+// Push control changes to the client reactor (works offline) AND the server (if any).
+function pushControls(d) {
+  crSet(d);
+  fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).catch(() => {});
+}
+// Render one reactor state object (server- or client-sourced) into the HUD/panel.
+function applyReactorState(rx) {
+  if (rx) lastRx = rx;                 // kept for the XRF sample-station readout
+  const rel = document.getElementById('reactor');
+  if (rx && rel) rel.innerHTML = `⚗️ leach reactor · ${(rx.conversion * 100) | 0}% converted `
+    + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)`
+    + `${rx.manual ? '' : ' · idling'}</span>`;
+  if (!rx || rx.yield == null) return;
+  const yv = document.getElementById('y-val'); if (yv) yv.textContent = `${(rx.yield * 100) | 0}%`;
+  const yp = document.getElementById('y-parts'); if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
+  if (rx.particleSize) reflectParticleSize(rx.particleSize, rx.leachSpeed);
+  reflectPrep(rx);
+  if (rx.v2o5 != null) {
+    const pv = document.getElementById('p-val'); if (pv) pv.textContent = `${rx.v2o5.toFixed(2)} kg`;
+    const pb = document.getElementById('p-batches'); if (pb) pb.textContent = rx.batches ? `· ${rx.batches} batch${rx.batches === 1 ? '' : 'es'}` : '';
+    if (lastBatches >= 0 && rx.batches > lastBatches && pv) { pv.classList.add('flash'); setTimeout(() => pv.classList.remove('flash'), 500); }
+    lastBatches = rx.batches;
+  }
+  if (!controlsSynced && MOLECULIA) {
+    controlsSynced = true;
+    const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`, flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
+    for (const key of ['temperature', 'pressure', 'flowRate', 'pH']) {
+      const el = document.getElementById('c-' + key), lab = document.getElementById('v-' + key);
+      if (el && rx[key] != null) { el.value = rx[key]; if (lab) lab.textContent = fmt[key](rx[key]); }
+    }
+  }
+}
 let controlsSynced = false;   // sync the slider panel to the reactor once, on first poll
 let lastBatches = -1;          // detect batch completion to flash the product tally
 
@@ -514,42 +747,14 @@ async function pollSim() {
     if (el) el.textContent = MOLECULIA
       ? `🐍 Python process sim live (Arrhenius/Henry/pH kinetics)`
       : `🐍 Python sim: ${st.n} live agents driving/walking`;
-    const rx = st.reactor, rel = document.getElementById('reactor');
-    if (rx && rel) rel.innerHTML = `⚗️ leach reactor · ${(rx.conversion * 100) | 0}% converted `
-      + `<span style="opacity:.7">· ${rx.temperature}°C · ${rx.pressure}kPa · pH ${rx.pH} · rate ${rx.rate}× (Arrhenius)`
-      + `${rx.manual ? '' : ' · idling'}</span>`;
-    if (rx && rx.yield != null) {
-      const yv = document.getElementById('y-val');
-      if (yv) yv.textContent = `${(rx.yield * 100) | 0}%`;
-      const yp = document.getElementById('y-parts');
-      if (yp) yp.textContent = `= ${(rx.conversion * 100) | 0}% leached × selective pH-precip`;
-      if (rx.particleSize) reflectParticleSize(rx.particleSize, rx.leachSpeed);
-      reflectPrep(rx);
-      if (rx.v2o5 != null) {                          // tangible end product
-        const pv = document.getElementById('p-val');
-        if (pv) pv.textContent = `${rx.v2o5.toFixed(2)} kg`;
-        const pb = document.getElementById('p-batches');
-        if (pb) pb.textContent = rx.batches ? `· ${rx.batches} batch${rx.batches === 1 ? '' : 'es'}` : '';
-        if (lastBatches >= 0 && rx.batches > lastBatches && pv) {
-          pv.classList.add('flash'); setTimeout(() => pv.classList.remove('flash'), 500);
-        }
-        lastBatches = rx.batches;
-      }
-      if (!controlsSynced && MOLECULIA) {   // reflect the actual reactor in the sliders once
-        controlsSynced = true;
-        const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
-                      flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
-        for (const key of ['temperature', 'pressure', 'flowRate', 'pH']) {
-          const el = document.getElementById('c-' + key), lab = document.getElementById('v-' + key);
-          if (el && rx[key] != null) { el.value = rx[key]; if (lab) lab.textContent = fmt[key](rx[key]); }
-        }
-      }
-    }
+    applyReactorState(st.reactor);
   } catch (e) {
-    simOk = false;
-    const el = document.getElementById('sim'); if (el) el.textContent = '🐍 Python sim offline (static world) — run sim_server.py';
+    simOk = false;                          // no server -> the client reactor drives the process
+    const el = document.getElementById('sim');
+    if (el) el.textContent = MOLECULIA ? '⚗️ process chemistry running in-browser (no server needed)'
+                                       : '🐍 Python sim offline (static world) — run sim_server.py';
   }
-  setTimeout(pollSim, simPollMs);
+  setTimeout(pollSim, simOk ? simPollMs : 3000);   // back off when there's no server
 }
 function updateAgents(dt) {
   if (!simOk) return;
@@ -581,12 +786,39 @@ function stream() {
       const dx = o.x - px, dz = o.z - pz;
       if (dx * dx + dz * dz > STREAM_IN * STREAM_IN) continue;
       live.set(i, 'pending');
-      spawnAsset(o).then((obj) => {
+        spawnAsset(o).then((obj) => {
         if (obj && live.get(i) === 'pending') { scene.add(obj); live.set(i, obj); }
         else if (!obj) live.delete(i);
-      });
+      }).catch(() => live.delete(i));
       if (live.size >= MAX_LIVE) break;
     }
+  }
+  // C&C-style predictive map pre-fill: project the player 4 s along their
+  // velocity and warm the GLB prototypes there, so the next sector's models are
+  // already parsed when you arrive (no pop-in hitch).
+  if (player.vel && player.vel.lengthSq() > 4) {
+    const fx = px + player.vel.x * 4, fz = pz + player.vel.z * 4;
+    for (const i of assetIdx) {
+      const o = objects[i];
+      if (glbProto.has(o.ref) || glbLoads.has(o.ref)) continue;
+      const dx = o.x - fx, dz = o.z - fz;
+      if (dx * dx + dz * dz > STREAM_IN * STREAM_IN) continue;
+      // Warm the same shared promise used by visible placements; this avoids
+      // duplicate network/parse work when the player reaches the next sector.
+      loadPrototype(o.ref).catch(() => {});
+    }
+  }
+  // Doom-style sector culling for the cheap sprite layers: element tiles and
+  // steam only draw when their sector is near the player.
+  if (elementSprites.size) {
+    for (const rec of elementSprites.values()) {
+      const dx = rec.o.x - px, dz = rec.o.z - pz;
+      rec.sprite.visible = dx * dx + dz * dz < 150 * 150;
+    }
+  }
+  for (const sp of steam) {
+    const u = sp.userData, dx = u.bx - px, dz = u.bz - pz;
+    sp.visible = dx * dx + dz * dz < 170 * 170;
   }
   $('#live').textContent = `streaming ${[...live.values()].filter((v) => v !== 'pending').length} models + ${impCount} instanced impostors`;
 }
@@ -611,6 +843,41 @@ async function detectXR() {
   if (xrStat) xrStat.textContent = `🕶️ ${ar ? 'AR/VR' : 'VR'} headset detected — Quest-ready`;
   if (xrBtn) { xrBtn.style.display = 'block'; xrBtn.textContent = ar ? '🥽 Enter AR' : '🥽 Enter VR'; }
 }
+// XR settings (persisted; the ⚙ options menu edits these live)
+const XRS_KEY = 'molgang.xr';
+const xrSettings = { hideFloorAR: true, floorOffset: 0, speed: 6 };
+try { Object.assign(xrSettings, JSON.parse(localStorage.getItem(XRS_KEY) || '{}')); } catch (e) { /* fresh */ }
+function saveXrSettings() { try { localStorage.setItem(XRS_KEY, JSON.stringify(xrSettings)); } catch (e) { /* quota */ } }
+function setFloorHidden(h) { for (const m of platformMeshes) m.visible = !h; }
+
+// In-headset toast: DOM overlays are invisible inside an immersive session, so
+// interaction feedback renders as a canvas sprite floating in front of the eyes.
+let xrToastSpr = null, xrToastUntil = 0;
+function xrToastShow(msg) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 112;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(10,14,20,0.85)'; roundRect(g, 4, 4, 1016, 104, 26); g.fill();
+  g.strokeStyle = '#2c704a'; g.lineWidth = 3; roundRect(g, 4, 4, 1016, 104, 26); g.stroke();
+  g.fillStyle = '#eef4fb'; g.font = '38px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(msg.length > 58 ? msg.slice(0, 57) + '…' : msg, 512, 58);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  if (!xrToastSpr) {
+    xrToastSpr = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false }));
+    xrToastSpr.scale.set(1.5, 0.165, 1); xrToastSpr.renderOrder = 999; scene.add(xrToastSpr);
+  }
+  if (xrToastSpr.material.map) xrToastSpr.material.map.dispose();
+  xrToastSpr.material.map = tex; xrToastSpr.material.needsUpdate = true;
+  xrToastSpr.visible = true; xrToastUntil = performance.now() + 3800;
+}
+const _xrFwd = new THREE.Vector3(), _camPos = new THREE.Vector3();
+function tickXrToast(now) {
+  if (!xrToastSpr || !xrToastSpr.visible) return;
+  if (now > xrToastUntil) { xrToastSpr.visible = false; return; }
+  camera.getWorldPosition(_camPos); camera.getWorldDirection(_xrFwd);
+  xrToastSpr.position.set(_camPos.x + _xrFwd.x * 1.5, _camPos.y - 0.18 + _xrFwd.y * 1.5,
+    _camPos.z + _xrFwd.z * 1.5);
+}
+
 async function enterXR() {
   if (!xrMode) return;
   const opts = xrMode === 'immersive-ar'
@@ -621,24 +888,172 @@ async function enterXR() {
   await renderer.xr.setSession(session);
   xrAR = (xrMode === 'immersive-ar');
   scene.background = xrAR ? null : skyBg;      // AR on = passthrough shows through
-  // Controller buttons toggle AR on/off (A/X or trigger).
-  const toggleAR = () => { xrAR = !xrAR; scene.background = xrAR ? null : skyBg; };
+  // In AR the virtual platform floor hides by default so the REAL floor takes
+  // over (it used to float too high and run on forever); ⚙ can re-show it.
+  setFloorHidden(xrAR && xrSettings.hideFloorAR);
+  const toggleAR = () => {
+    xrAR = !xrAR; scene.background = xrAR ? null : skyBg;
+    setFloorHidden(xrAR && xrSettings.hideFloorAR);
+    xrToastShow(xrAR ? 'AR passthrough ON' : 'Full VR — A toggles AR');
+  };
   for (const src of session.inputSources) if (src.gamepad) src._prev = [];
-  session.addEventListener('selectstart', toggleAR);           // trigger toggles too
-  session.__pollButtons = () => {
+  // The reference-space offset is the walkable position: the thumbstick and
+  // zone-teleport move it, physical walking moves the camera inside it, and
+  // the loop syncs player.pos to the camera's WORLD position every frame — so
+  // streaming, interactions, element collection and the sun all follow the
+  // headset (they used to stay parked at the spawn point: barely any objects).
+  const xrOff = { x: 0, z: 0, base: null };
+  xrActiveSession = session;
+  session.__recenter = () => { xrOff.x = 0; xrOff.z = 0; session.__syncSpace(); xrToastShow('🧭 world recentered'); };
+  session.__syncSpace = () => {
+    xrOff.base = xrOff.base || renderer.xr.getReferenceSpace();
+    if (xrOff.base && window.XRRigidTransform) renderer.xr.setReferenceSpace(
+      xrOff.base.getOffsetReferenceSpace(new XRRigidTransform(
+        { x: -xrOff.x, y: -xrSettings.floorOffset, z: -xrOff.z })));
+  };
+  // B/Y teleports through the zones (the "reposition" ask): the next zone's
+  // centre lands ~6 m in front of where you physically stand.
+  let zoneCycle = 0;
+  const teleportNextZone = () => {
+    const zones = (window.__molgangZones || []);
+    if (!zones.length) return;
+    const z = zones[zoneCycle++ % zones.length];
+    camera.getWorldPosition(_camPos); camera.getWorldDirection(_xrFwd);
+    _xrFwd.y = 0; _xrFwd.normalize();
+    const tx = z.x - _xrFwd.x * (z.r ? Math.min(z.r * 0.55, 14) : 6);
+    const tz = z.z - _xrFwd.z * (z.r ? Math.min(z.r * 0.55, 14) : 6);
+    xrOff.x += tx - _camPos.x; xrOff.z += tz - _camPos.z;
+    session.__syncSpace();
+    xrToastShow(`→ ${z.name}`);
+  };
+  session.__pollButtons = (dt) => {
     for (const src of session.inputSources) {
       const gp = src.gamepad; if (!gp) continue;
       src._prev = src._prev || [];
       gp.buttons.forEach((b, i) => {
-        if (i >= 4 && b.pressed && !src._prev[i]) toggleAR();     // face buttons (A/B/X/Y)
+        if (b.pressed && !src._prev[i]) {
+          if (i === 4) toggleAR();               // A / X — AR passthrough
+          if (i === 5) teleportNextZone();       // B / Y — reposition to next zone
+        }
         src._prev[i] = b.pressed;
       });
+      const ax = Math.abs(gp.axes[2] || 0) > 0.16 ? gp.axes[2] : 0;   // xr-standard thumbstick
+      const ay = Math.abs(gp.axes[3] || 0) > 0.16 ? gp.axes[3] : 0;
+      if ((ax || ay) && dt) {
+        camera.getWorldDirection(_xrFwd); _xrFwd.y = 0; _xrFwd.normalize();
+        const right = { x: -_xrFwd.z, z: _xrFwd.x };
+        const sp = (xrSettings.speed || 6) * dt;
+        xrOff.x += (_xrFwd.x * -ay + right.x * ax) * sp;
+        xrOff.z += (_xrFwd.z * -ay + right.z * ax) * sp;
+        session.__syncSpace();
+      }
     }
   };
-  session.addEventListener('end', () => { scene.background = skyBg; if (xrBtn) xrBtn.disabled = false; });
+  session.__syncSpace();                          // apply the saved floor offset
+  xrToastShow('🥽 stick = walk · A = AR · B = next zone');
+  session.addEventListener('end', () => {
+    scene.background = skyBg; setFloorHidden(false); xrActiveSession = null;
+    if (xrBtn) xrBtn.disabled = false;
+  });
 }
+let xrActiveSession = null;
 if (xrBtn) xrBtn.addEventListener('click', () => { xrBtn.disabled = true; enterXR().catch((e) => { xrBtn.disabled = false; if (xrStat) xrStat.textContent = '🕶️ XR start failed: ' + e.message; }); });
 detectXR();
+
+// ---------- Quest Touch / gamepad in the flat browser + 🎬 cinema mode ----------
+// The Meta Quest Browser exposes the Touch controllers through the Gamepad API
+// but maps nothing to the page, so the game was unplayable on a Quest 3S without
+// a paired mouse. Two modes, switched automatically:
+//  · world mode — left stick walks (analog), right stick looks, stick-click
+//    sprints; plays exactly like WASD + pointer lock.
+//  · cursor mode — whenever a DOM panel is open (intro/fertlab/farm/factory/
+//    chemsim): the sticks drive a virtual cursor and the trigger clicks, i.e.
+//    the controller behaves as a mouse. B/squeeze closes the panel (Escape).
+// Cinema: fullscreen is what makes the Quest Browser expand the page onto its
+// big curved theater screen; on desktop it is a plain fullscreen toggle.
+const OVERLAY_IDS = ['intro', 'fertlab', 'farm', 'factory', 'chemsim', 'options'];
+const overlayOpen = () => OVERLAY_IDS.some((id) => {
+  const el = document.getElementById(id);
+  return el && getComputedStyle(el).display !== 'none';
+});
+let gpCursor = null, gpX = innerWidth / 2, gpY = innerHeight / 2, gpSeen = 0;
+const gpPrev = {};                       // per-pad button state for edge detection
+function gpEnsureCursor() {
+  if (gpCursor) return gpCursor;
+  gpCursor = document.createElement('div');
+  gpCursor.style.cssText = 'position:fixed;left:0;top:0;width:20px;height:20px;'
+    + 'margin:-10px 0 0 -10px;border:2px solid #6ffcda;border-radius:50%;'
+    + 'background:rgba(111,252,218,.22);box-shadow:0 0 10px rgba(111,252,218,.6);'
+    + 'pointer-events:none;z-index:99;transition:opacity .3s;opacity:0';
+  document.body.appendChild(gpCursor);
+  return gpCursor;
+}
+function gpClick() {
+  const el = document.elementFromPoint(gpX, gpY);
+  if (!el) return;
+  const init = { bubbles: true, cancelable: true, clientX: gpX, clientY: gpY, view: window, button: 0 };
+  el.dispatchEvent(new PointerEvent('pointerdown', init));
+  el.dispatchEvent(new MouseEvent('mousedown', init));
+  el.dispatchEvent(new PointerEvent('pointerup', init));
+  el.dispatchEvent(new MouseEvent('mouseup', init));
+  el.dispatchEvent(new MouseEvent('click', init));
+}
+const gpDead = (v) => (Math.abs(v) > 0.16 ? v : 0);
+function pollGamepads(dt, now) {
+  pad.mx = pad.mz = pad.lx = pad.ly = 0;
+  if (renderer.xr.isPresenting || !navigator.getGamepads) return;
+  const inPanel = overlayOpen();
+  let active = false;
+  for (const gp of navigator.getGamepads()) {
+    if (!gp || !gp.connected) continue;
+    const ax0 = gpDead(gp.axes[0] || 0), ay0 = gpDead(gp.axes[1] || 0);
+    const ax1 = gpDead(gp.axes[2] || 0), ay1 = gpDead(gp.axes[3] || 0);
+    if (ax0 || ay0 || ax1 || ay1) active = true;
+    if (inPanel) {                       // cursor mode: either stick moves the cursor
+      gpX = Math.max(0, Math.min(innerWidth, gpX + (ax0 + ax1) * 1000 * dt));
+      gpY = Math.max(0, Math.min(innerHeight, gpY + (ay0 + ay1) * 1000 * dt));
+    } else {                             // world mode: move + look
+      pad.mx += ax0; pad.mz += ay0; pad.lx += ax1; pad.ly += ay1;
+    }
+    const prev = gpPrev[gp.index] || (gpPrev[gp.index] = {});
+    gp.buttons.forEach((b, i) => {
+      const was = prev[i] || false; prev[i] = b.pressed;
+      if (b.pressed === was) return;
+      active = true;
+      if (i === 0 && b.pressed && inPanel) gpClick();               // trigger/A = click
+      if (i === 0 && b.pressed && !inPanel) gpX = innerWidth / 2, gpY = innerHeight / 2;
+      if (i === 1 && b.pressed) {                                   // squeeze/B = close panel
+        for (const id of OVERLAY_IDS) {
+          const el = document.getElementById(id);
+          if (el && id !== 'intro' && getComputedStyle(el).display !== 'none') el.style.display = 'none';
+        }
+      }
+      if ((i === 10 || i === 11) && !inPanel) pad.sprint = b.pressed; // stick click = sprint
+    });
+  }
+  if (active && inPanel) {
+    gpSeen = now;
+    gpEnsureCursor().style.opacity = '1';
+    gpCursor.style.left = gpX + 'px'; gpCursor.style.top = gpY + 'px';
+    const el = document.elementFromPoint(gpX, gpY);
+    if (el) el.dispatchEvent(new PointerEvent('pointermove',
+      { bubbles: true, clientX: gpX, clientY: gpY, pointerType: 'mouse' }));
+  } else if (gpCursor && (!inPanel || now - gpSeen > 4000)) {
+    gpCursor.style.opacity = '0';
+  }
+}
+
+// 🎬 cinema-mode button (bottom of the right-hand button stack)
+const cinemaBtn = document.getElementById('cinema-btn');
+if (cinemaBtn) {
+  cinemaBtn.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+  });
+  document.addEventListener('fullscreenchange', () => {
+    cinemaBtn.textContent = document.fullscreenElement ? '🎬 Exit cinema' : '🎬 Cinema';
+  });
+}
 
 // ---------- Slakkenspoor process controls (player = plant operator) ----------
 // The player drives the real chemistry: the sliders POST setpoints to the Python
@@ -651,12 +1066,7 @@ function initControls() {
   const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
                 flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
   let timer = null, pending = {};
-  const flush = () => {
-    timer = null;
-    fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(pending) }).catch(() => {});
-    pending = {};
-  };
+  const flush = () => { timer = null; pushControls(pending); pending = {}; };
   for (const key of ['temperature', 'pressure', 'flowRate', 'pH']) {
     const el = document.getElementById('c-' + key), lab = document.getElementById('v-' + key);
     if (!el) continue;
@@ -668,18 +1078,11 @@ function initControls() {
   }
   // Feed particle size from the crushing chain — sets the leach speed.
   for (const b of document.querySelectorAll('#grind button')) {
-    b.addEventListener('click', () => {
-      fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ particleSize: b.dataset.size }) }).catch(() => {});
-    });
+    b.addEventListener('click', () => pushControls({ particleSize: b.dataset.size }));
   }
   // Pre-leach stations: magnetic separation + roasting (toggles).
   for (const b of document.querySelectorAll('#prep button')) {
-    b.addEventListener('click', () => {
-      const on = !b.classList.contains('on');
-      fetch(SIM_BASE + '/reactor/set', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [b.dataset.flag]: on }) }).catch(() => {});
-    });
+    b.addEventListener('click', () => pushControls({ [b.dataset.flag]: !b.classList.contains('on') }));
   }
 }
 function reflectPrep(rx) {
@@ -731,6 +1134,7 @@ function updateElementHUD() {
 }
 let _popTimer = null;
 function showElementPopup(o) {
+  if (renderer.xr.isPresenting) xrToastShow(`🧪 ${o.ref} · ${o.name} collected!`);
   const pop = document.getElementById('elpop'); if (!pop) return;
   const [r, g, b] = o.rgb || [180, 190, 210];
   const sym = document.getElementById('ep-sym');
@@ -928,10 +1332,10 @@ let hasSold = false;
 try { hasSold = JSON.parse(localStorage.getItem('molgang.sold') || 'false'); } catch (e) { /* fresh */ }
 (function wireSell() {
   const b = document.getElementById('sell-btn');
+  const bank = (d) => { if (d && d.coins > 0) { earn(d.coins); hasSold = true; try { localStorage.setItem('molgang.sold', 'true'); } catch (e) { /* quota */ } } };
   if (b) b.addEventListener('click', () => {
-    fetch(SIM_BASE + '/reactor/sell', { method: 'POST' }).then((r) => r.json()).then((d) => {
-      if (d && d.coins > 0) { earn(d.coins); hasSold = true; try { localStorage.setItem('molgang.sold', 'true'); } catch (e) { /* quota */ } }
-    }).catch(() => {});
+    if (simOk) fetch(SIM_BASE + '/reactor/sell', { method: 'POST' }).then((r) => r.json()).then(bank).catch(() => bank(crSell()));
+    else bank(crSell());                          // no server -> sell from the client reactor
   });
 })();
 
@@ -1055,21 +1459,331 @@ function openFactory() {
   if (c) c.addEventListener('click', () => { document.getElementById('factory').style.display = 'none'; });
 })();
 
+// ---------- proximity interactions on the HD plant props ----------
+// Objects carrying an `interact` tag in moleculia.json come alive when the
+// player walks up to them (same 2.5–3.5 m feel as element collection):
+//  · safety  — safety shower / eyewash: one PPE check per visit, small reward
+//  · assay   — XRF sample bench: reads the LIVE reactor state as an assay
+//  · console — operator console: points the player at the reactor panel
+let lastRx = null;
+let interactables = [];
+const safetyChecked = new Set();       // one reward per station per session
+let lastInteractAt = 0;
+let _toastEl = null, _toastTimer = null;
+function worldToast(msg) {
+  if (!_toastEl) {
+    _toastEl = document.createElement('div');
+    _toastEl.style.cssText = 'position:fixed;left:50%;top:64px;transform:translateX(-50%);'
+      + 'z-index:30;background:rgba(14,18,26,.92);color:#eef4fb;border:1px solid #2c704a;'
+      + 'border-radius:10px;padding:10px 16px;font:13px system-ui;max-width:70vw;'
+      + 'box-shadow:0 6px 24px rgba(0,0,0,.5);transition:opacity .3s;pointer-events:none';
+    document.body.appendChild(_toastEl);
+  }
+  _toastEl.textContent = msg; _toastEl.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { _toastEl.style.opacity = '0'; }, 3600);
+  if (renderer.xr.isPresenting) xrToastShow(msg);   // DOM is invisible in-headset
+}
+function checkInteract(now) {
+  if (!interactables.length || now - lastInteractAt < 4000) return;
+  const px = player.pos.x, pz = player.pos.z;
+  for (const o of interactables) {
+    const dx = o.x - px, dz = o.z - pz;
+    if (dx * dx + dz * dz > 12.25) continue;             // within 3.5 m
+    lastInteractAt = now;
+    if (o.interact === 'safety') {
+      const key = `${o.x},${o.z}`;
+      if (!safetyChecked.has(key)) {
+        safetyChecked.add(key); earn(25);
+        worldToast('🚿 Safety shower & eyewash checked — PPE bonus +25 MolCoins');
+      } else worldToast('🚿 Safety station — shower and eyewash operational');
+    } else if (o.interact === 'assay') {
+      worldToast(lastRx
+        ? `🔬 XRF assay: ${(lastRx.conversion * 100) | 0}% leached · pH ${lastRx.pH} · `
+          + `${lastRx.temperature}°C · V-recovery ${((lastRx.yield || 0) * 100) | 0}%`
+        : '🔬 XRF assay: no leach batch running yet — start the reactor first');
+    } else if (o.interact === 'console') {
+      worldToast('🎛 Operator console — drive the plant with the reactor panel (left): '
+        + 'grind, de-iron, roast, then set T/P/flow/pH');
+    } else if (o.interact === 'directory') {
+      worldToast('🗺 Moleculia — ⛏ Slakkenspoor: run the plant · 🧪 Periodic Biome: '
+        + 'collect 118 elements · ⚛️ Quantum Lab: ChemSim · 🌱 Lab & Farm: fertilize '
+        + '& harvest · 🏦 ANK: your MolCoins');
+    } else if (o.interact === 'bank') {
+      worldToast(`🏦 ANK Kredietunie — balance ${molcoins.toLocaleString('en-US')} MolCoins. `
+        + 'Earn: sell V₂O₅ from the plant, harvest crops, pass PPE checks');
+    } else if (o.interact === 'viscosity') {
+      if (dx * dx + dz * dz < 2.25) {                    // within 1.5 m: enter
+        worldToast('🌀 Naar het viscositeitslab…');
+        setTimeout(() => { location.href = '../viscosity/'; }, 600);
+      } else {
+        worldToast('🌀 Viscositeitslab — roer staalslak-slib (1–100%), voel de '
+          + 'rheologie en zie het kW-verbruik. Stap dichterbij om binnen te gaan');
+        lastInteractAt = now - 3000;   // re-arm fast so stepping in triggers
+      }
+    }
+    return;
+  }
+}
+
+// ---------- ⚙ options menu: AR calibration, comfort, tutorial restart ----------
+// DOM panel (2D/cinema; set things up before entering the headset). The floor
+// offset and recenter apply LIVE to a running XR session via xrActiveSession.
+function initOptions() {
+  const panel = document.getElementById('options'); if (!panel) return;
+  const btn = document.getElementById('opt-btn');
+  const hf = document.getElementById('o-hidefloor');
+  const fo = document.getElementById('o-floor'), fov = document.getElementById('o-floor-v');
+  const sp = document.getElementById('o-speed'), spv = document.getElementById('o-speed-v');
+  hf.checked = xrSettings.hideFloorAR;
+  fo.value = xrSettings.floorOffset; fov.textContent = (+xrSettings.floorOffset).toFixed(2) + ' m';
+  sp.value = xrSettings.speed; spv.textContent = xrSettings.speed + ' m/s';
+  if (btn) btn.addEventListener('click', () => { panel.style.display = 'flex'; });
+  document.getElementById('opt-close').addEventListener('click', () => { panel.style.display = 'none'; });
+  hf.addEventListener('change', () => {
+    xrSettings.hideFloorAR = hf.checked; saveXrSettings();
+    if (renderer.xr.isPresenting) setFloorHidden(xrAR && xrSettings.hideFloorAR);
+  });
+  fo.addEventListener('input', () => {
+    xrSettings.floorOffset = +fo.value; fov.textContent = (+fo.value).toFixed(2) + ' m';
+    saveXrSettings();
+    if (xrActiveSession && xrActiveSession.__syncSpace) xrActiveSession.__syncSpace();
+  });
+  sp.addEventListener('input', () => {
+    xrSettings.speed = +sp.value; spv.textContent = sp.value + ' m/s'; saveXrSettings();
+  });
+  document.getElementById('o-recenter').addEventListener('click', () => {
+    if (xrActiveSession && xrActiveSession.__recenter) xrActiveSession.__recenter();
+    else worldToast('🧭 Recenter works inside the headset (enter AR/VR first)');
+  });
+  document.getElementById('o-tutorial').addEventListener('click', () => {
+    panel.style.display = 'none'; tutorStart(true);
+  });
+}
+
+// ---------- 🎓 tutorial — the web mirror of the Roblox onboarding ----------
+// Same shape as game/src/ReplicatedStorage/Modules/Tutorial.lua: titled steps
+// with a reward, and steps that watch REAL game state auto-complete (collect an
+// element, synthesize a fertilizer) instead of trusting a "Next" click.
+const TUTOR_KEY = 'molgang.tutorial';
+const TUTOR_STEPS = [
+  { title: 'Welcome to Moleculia!', reward: 50,
+    desc: 'The Roblox teaser continues here: a chemical-engineering world in space. This tour pays MolCoins per step.' },
+  { title: 'Collect your first element', reward: 100, goto: [0, -104, 0],
+    desc: 'Walk onto a glowing tile in the Periodic Table Biome to collect it. 118 to find!',
+    done: () => collected.size >= 1 },
+  { title: 'Run the Slakkenspoor plant', reward: 100, goto: [-118, 12, 2.2],
+    desc: 'The 12-station line refines steel slag. Use the reactor panel (left): grind fine, de-iron, roast, and set pH ≈ 2.9 for peak vanadium recovery.' },
+  { title: 'Bank your V₂O₅', reward: 50, goto: [-118, 12, 2.2],
+    desc: 'A finished batch banks V₂O₅ — press Sell to turn it into MolCoins (500 per kg).' },
+  { title: 'Synthesize a fertilizer', reward: 100, goto: [0, -104, 0],
+    desc: 'Open the 🌱 Fertilizer Lab (F): collected elements become real NPK fertilizers for the Farm.',
+    done: () => fertMade() >= 1 },
+  { title: 'Explore the archipelago', reward: 100,
+    desc: 'Six zones float in the ring — the signpost & kiosk at Nexus Hub point the way. In the headset, B/Y teleports zone to zone. Have fun!' },
+];
+let tutorState = { step: 0, done: false, paid: 0 };
+try { Object.assign(tutorState, JSON.parse(localStorage.getItem(TUTOR_KEY) || '{}')); } catch (e) { /* fresh */ }
+const saveTutor = () => { try { localStorage.setItem(TUTOR_KEY, JSON.stringify(tutorState)); } catch (e) { /* quota */ } };
+function tutorRender() {
+  const el = document.getElementById('tutor'); if (!el) return;
+  if (tutorState.done || tutorState.step >= TUTOR_STEPS.length) { el.style.display = 'none'; return; }
+  const s = TUTOR_STEPS[tutorState.step];
+  el.style.display = 'block';
+  document.getElementById('t-step').textContent = `Step ${tutorState.step + 1} / ${TUTOR_STEPS.length}`;
+  document.getElementById('t-title').textContent = s.title;
+  document.getElementById('t-desc').textContent = s.desc;
+  document.getElementById('t-reward').textContent = s.reward ? `Reward: +${s.reward} MolCoins` : '';
+  document.getElementById('t-go').style.display = s.goto ? 'inline-block' : 'none';
+  document.getElementById('t-next').textContent = s.done ? 'Waiting… (auto)' : (tutorState.step === TUTOR_STEPS.length - 1 ? 'Finish 🎉' : 'Next →');
+}
+function tutorAdvance() {
+  const s = TUTOR_STEPS[tutorState.step];
+  if (s && s.reward && tutorState.paid <= tutorState.step) {
+    earn(s.reward); tutorState.paid = tutorState.step + 1;
+    worldToast(`🎓 ${s.title} — +${s.reward} MolCoins`);
+  }
+  tutorState.step += 1;
+  if (tutorState.step >= TUTOR_STEPS.length) tutorState.done = true;
+  saveTutor(); tutorRender();
+}
+function tutorTick() {
+  if (tutorState.done) return;
+  const s = TUTOR_STEPS[tutorState.step];
+  if (s && s.done && s.done()) tutorAdvance();     // state-watching steps auto-complete
+}
+function tutorStart(force) {
+  if (force) { tutorState = { step: 0, done: false, paid: tutorState.paid }; saveTutor(); }
+  tutorRender();
+}
+function initTutorial() {
+  const el = document.getElementById('tutor'); if (!el) return;
+  document.getElementById('t-next').addEventListener('click', () => {
+    const s = TUTOR_STEPS[tutorState.step];
+    if (s && s.done && !s.done()) { worldToast('🎓 This step completes by itself — go do it!'); return; }
+    tutorAdvance();
+  });
+  document.getElementById('t-skip').addEventListener('click', () => {
+    tutorState.done = true; saveTutor(); tutorRender();
+  });
+  document.getElementById('t-go').addEventListener('click', () => {
+    const s = TUTOR_STEPS[tutorState.step];
+    if (!s || !s.goto) return;
+    player.pos.x = s.goto[0]; player.pos.z = s.goto[1];
+    if (s.goto[2] != null) player.yaw = s.goto[2];
+  });
+  tutorRender();                                   // resumes where you left off
+}
+
+// ---------- ChemSim: the paid in-game chemical simulator ----------
+// The chemistry-set console in the Quantum Lab. For MolCoins the player runs
+// the process model FORWARD: predicted rate, batch time and V2O5/hour for any
+// hypothetical settings (250), or a full pH sweep that plots the selectivity
+// optimum (400) — pay for foresight instead of wasting slow real batches.
+let chemsimPos = null;
+const CS_RUN = 250, CS_SWEEP = 400;
+function csParams() {
+  return { temperature: +document.getElementById('cs-temperature').value,
+    pressure: +document.getElementById('cs-pressure').value,
+    flowRate: +document.getElementById('cs-flowRate').value,
+    pH: +document.getElementById('cs-pH').value,
+    size: document.getElementById('cs-size').value,
+    deiron: document.getElementById('cs-deiron').checked,
+    roast: document.getElementById('cs-roast').checked };
+}
+function csPredict(p) {
+  const rate = arrheniusM(p.temperature) * pressureM(p.pressure) * residenceM(p.flowRate, 50);
+  let k = 0.05 / (LEACH_MULT[p.size] || 1); if (p.roast) k *= 1.25;
+  const batchMin = 5.3 / (k * rate);                     // ln(200): time to 99.5% conversion
+  const rec = precipF('V', p.pH) * (p.deiron ? 1 : 1 - precipF('Fe', p.pH)) * (1 - precipF('Al', p.pH));
+  const kgBatch = 1.5 * rec, kgHr = batchMin > 0 ? kgBatch * 60 / batchMin : 0;
+  return { rate, batchMin, rec, kgBatch, kgHr, coinsHr: kgHr * 500 };
+}
+function csNearConsole() {
+  if (params.get('chemsim')) return true;                // sandbox bypass
+  if (!chemsimPos) return false;
+  const dx = chemsimPos.x - player.pos.x, dz = chemsimPos.z - player.pos.z;
+  return dx * dx + dz * dz < 22 * 22;
+}
+function openChemSim() {
+  const near = csNearConsole();
+  document.getElementById('cs-far').style.display = near ? 'none' : 'block';
+  document.getElementById('cs-body').style.display = near ? 'block' : 'none';
+  document.getElementById('chemsim').style.display = 'flex';
+  if (document.exitPointerLock) document.exitPointerLock();
+}
+(function wireChemSim() {
+  const btn = document.getElementById('chemsim-btn'), close = document.getElementById('cs-close');
+  if (btn) btn.addEventListener('click', openChemSim);
+  if (close) close.addEventListener('click', () => { document.getElementById('chemsim').style.display = 'none'; });
+  const fmt = { temperature: (v) => `${v | 0}°C`, pressure: (v) => `${v | 0} kPa`,
+                flowRate: (v) => (+v).toFixed(1), pH: (v) => (+v).toFixed(1) };
+  for (const key of Object.keys(fmt)) {
+    const el = document.getElementById('cs-' + key), lab = document.getElementById('csv-' + key);
+    if (el) el.addEventListener('input', () => { lab.textContent = fmt[key](el.value); });
+  }
+  const out = () => document.getElementById('cs-result');
+  document.getElementById('cs-run').addEventListener('click', () => {
+    if (!spend(CS_RUN)) { flashCantAfford(); out().textContent = 'Not enough MolCoins.'; return; }
+    const p = csParams(), r = csPredict(p);
+    document.getElementById('cs-curve').style.display = 'none';
+    out().innerHTML = `Reaction rate <b>${r.rate.toFixed(2)}×</b> · batch to 99.5% in <b>${r.batchMin.toFixed(1)} min</b><br>`
+      + `Selective V recovery <b>${(r.rec * 100) | 0}%</b> → <b>${r.kgBatch.toFixed(2)} kg</b> V₂O₅/batch · `
+      + `<b>${r.kgHr.toFixed(1)} kg/h</b> ≈ <b>${r.coinsHr | 0} 💰/h</b>`;
+  });
+  document.getElementById('cs-sweep').addEventListener('click', () => {
+    if (!spend(CS_SWEEP)) { flashCantAfford(); out().textContent = 'Not enough MolCoins.'; return; }
+    const p = csParams();
+    const cv = document.getElementById('cs-curve'), g = cv.getContext('2d');
+    cv.style.display = 'block'; g.clearRect(0, 0, cv.width, cv.height);
+    let best = { pH: 0, rec: -1 };
+    g.beginPath();
+    for (let pH = 1; pH <= 6.001; pH += 0.05) {
+      const rec = precipF('V', pH) * (p.deiron ? 1 : 1 - precipF('Fe', pH)) * (1 - precipF('Al', pH));
+      if (rec > best.rec) best = { pH, rec };
+      const x = 20 + (pH - 1) / 5 * (cv.width - 35), y = cv.height - 18 - rec * (cv.height - 34);
+      pH === 1 ? g.moveTo(x, y) : g.lineTo(x, y);
+    }
+    g.strokeStyle = '#d0a0ff'; g.lineWidth = 2; g.stroke();
+    const bx = 20 + (best.pH - 1) / 5 * (cv.width - 35), by = cv.height - 18 - best.rec * (cv.height - 34);
+    g.fillStyle = '#6ffcda'; g.beginPath(); g.arc(bx, by, 4, 0, 7); g.fill();
+    g.fillStyle = '#9fb0c6'; g.font = '10px system-ui';
+    g.fillText('pH 1', 16, cv.height - 5); g.fillText('pH 6', cv.width - 30, cv.height - 5);
+    g.fillStyle = '#6ffcda'; g.fillText(`optimum pH ${best.pH.toFixed(1)} → ${(best.rec * 100) | 0}%`, bx - 50, by - 8);
+    out().innerHTML = `pH sweep${p.deiron ? ' (de-ironed feed)' : ''}: selectivity optimum at <b>pH ${best.pH.toFixed(1)}</b> `
+      + `(${(best.rec * 100) | 0}% V recovery)${p.deiron ? '' : ' — above pH 3 iron co-precipitates and ruins the product'}`;
+  });
+})();
+
 // ---------- render loop (49% budget outside XR; every frame in XR) ----------
 const BUDGET = 0.49;
 let refresh = 1000 / 60, lastTick = performance.now(), lastRender = 0, lastStream = 0;
+
+// Perf instrumentation (?bench=1): time every improvement. Reports CPU render
+// ms (avg/p95/max), draw calls, triangles and the adaptive pixel ratio into a
+// <pre id="bench"> that headless --dump-dom can read.
+const BENCH = params.get('bench') === '1';
+if (BENCH) renderer.info.autoReset = false;   // accumulate across composer passes
+const benchSamples = [];
+let benchDone = false, benchT0 = performance.now();
+function benchReport() {
+  const s = [...benchSamples].sort((a, b) => a - b);
+  const avg = s.reduce((a, b) => a + b, 0) / s.length;
+  const out = { renderMsAvg: +avg.toFixed(2), p95: +s[(s.length * 0.95) | 0].toFixed(2),
+    max: +s[s.length - 1].toFixed(2), calls: renderer.info.render.calls,
+    tris: renderer.info.render.triangles, pixelRatio: renderer.getPixelRatio(),
+    live: live.size, protosWarm: [...glbProto.values()].filter((v) => v !== 'loading').length };
+  const pre = document.createElement('pre'); pre.id = 'bench';
+  pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+  console.log('[bench]', pre.textContent);
+}
+// Adaptive resolution (classic console technique): track an EMA of render cost
+// and step the pixel ratio down/up so frame time stays inside the budget.
+let perfEma = 14, perfN = 0;
+function adaptiveRes(renderMs) {
+  perfEma = perfEma * 0.95 + renderMs * 0.05;
+  if (++perfN % 90 !== 0) return;
+  const pr = renderer.getPixelRatio();
+  if (perfEma > 24 && pr > 0.75) { renderer.setPixelRatio(pr - 0.25); resize(); }
+  else if (perfEma < 10 && pr < Math.min(devicePixelRatio, 1.5)) { renderer.setPixelRatio(pr + 0.25); resize(); }
+}
 function loop(now) {
   now = now || performance.now();
   const dt = Math.min(0.05, (now - lastTick) / 1000); lastTick = now;
+  pollGamepads(dt, now);
   step(dt);
   updateAgents(dt);
-  if (now - lastStream > 180) { lastStream = now; stream(); checkCollect(); updateGoals(); }
+  if (steam.length) updateSteam(dt);
+  if (!simOk && MOLECULIA) crClientActive = true;   // no server reached -> run chemistry in-browser
+  if (crClientActive && !simOk) crTick(dt);
+  if (now - lastStream > 180) {
+    lastStream = now; stream(); checkCollect(); checkInteract(now); tutorTick(); updateGoals();
+    if (crClientActive && !simOk) applyReactorState(crStateObj());
+  }
+  // Keep the sun (and its shadow frustum) centred on the player for crisp shadows.
+  sun.position.set(player.pos.x + 50, 120, player.pos.z + 35);
+  sun.target.position.set(player.pos.x, 0, player.pos.z);
   const xr = renderer.xr.isPresenting;
   if (xr) {
-    const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons();
-    renderer.render(scene, camera);                    // headset drives cadence
+    const s = renderer.xr.getSession(); if (s && s.__pollButtons) s.__pollButtons(dt);
+    // player.pos follows the headset's WORLD position (stick + physical walk),
+    // so streaming/interactions/collection/sun track the viewer in XR.
+    camera.getWorldPosition(_camPos);
+    player.pos.x = _camPos.x; player.pos.z = _camPos.z;
+    tickXrToast(now);
+    renderer.render(scene, camera);                    // headset drives cadence (no post-fx in XR)
   } else if (now - lastRender >= refresh / BUDGET) {
-    lastRender = now; renderer.render(scene, camera); if (arOn) drawAR();
+    lastRender = now;
+    if (BENCH) renderer.info.reset();
+    const t0 = performance.now();
+    composer.render();                                          // bloom + tone-mapped
+    const rMs = performance.now() - t0;
+    adaptiveRes(rMs);
+    if (BENCH && !benchDone && now - benchT0 > 1500) {
+      benchSamples.push(rMs);
+      if (benchSamples.length >= 90 || now - benchT0 > 9000) { benchDone = true; benchReport(); }
+    }
+    if (arOn) drawAR();
   }
 }
 renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
@@ -1081,6 +1795,7 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
   setAR(arOn);
   const w = await (await fetch(WORLDFILE, { cache: 'no-cache' })).json();
   WORLD = w.meta.world; roadAts = w.meta.roadAts || null; ROAD = w.meta.road || 14;
+  worldLoaded = true;
   MOLECULIA = !!w.meta.space;
   objects = w.objects;
   assetIdx = objects.map((o, i) => (o.t === 'asset' ? i : -1)).filter((i) => i >= 0);
@@ -1092,7 +1807,10 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
   if (MOLECULIA) {
     setSpace();
     for (const o of objects) if (o.t === 'platform') buildPlatform(o);
-    for (const z of (w.meta.zones || [])) buildZoneLabel(z);
+    for (const z of (w.meta.zones || [])) {
+      buildZoneLabel(z);
+      if (/Slakkenspoor/.test(z.name)) buildFactoryAtmosphere(z.x, z.z);
+    }
     const line = (w.meta.processLine || []);
     elements = objects.filter((o) => o.t === 'element');
     buildElements();
@@ -1107,6 +1825,20 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     { const mb = document.getElementById('farm-btn'); if (mb) mb.style.display = 'block'; }
     { const bb = document.getElementById('build-btn'); if (bb) bb.style.display = 'block'; }
     { const mc = document.getElementById('molcoins'); if (mc) mc.style.display = 'block'; updateMcHUD(false); }
+    chemsimPos = objects.find((o) => o.console === 'chemsim') || null;
+    interactables = objects.filter((o) => o.interact);
+    // steam-flagged props (the cooling tower) get their own vapour plume
+    for (const o of objects.filter((x) => x.steam)) {
+      const tex = steamTexture();
+      for (let i = 0; i < 10; i++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false }));
+        sp.userData = { bx: o.x - 2 + Math.random() * 4, bz: o.z - 2 + Math.random() * 4,
+          t: Math.random(), lift: 9 };            // plume rises from the tower rim
+        scene.add(sp); steam.push(sp);
+      }
+    }
+    { const cb = document.getElementById('chemsim-btn'); if (cb) cb.style.display = 'block'; }
+    if (params.get('chemsim')) setTimeout(openChemSim, 400);
     { const g = document.getElementById('goals'); if (g) g.style.display = 'block'; updateGoals(); }
     if (params.get('collectall')) {          // sandbox: skip the grind (demo/verify)
       for (const o of elements) collected.add(o.num);
@@ -1130,12 +1862,17 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
     }
     if (params.get('build')) setTimeout(openFactory, 400);
     initControls();
+    initOptions();
+    initTutorial();
     $('#status').innerHTML = `<b>Moleculia</b> · ${(w.meta.zones || []).length} floating zones · `
       + `the web continuation of the Roblox teaser`;
     $('#resolve').innerHTML = `<div style="color:#7fe0a0;margin-bottom:3px">⚗️ Slakkenspoor — BOF slag processing line</div>`
       + line.map((s, i) => `<div><span class="a">${String(i + 1).padStart(2, '0')}</span> ${s}</div>`).join('');
+    window.__molgangZones = w.meta.zones || [];      // XR zone-teleport targets
     window.__molgangWorld = { world: 'moleculia', zones: (w.meta.zones || []).length,
-      stations: line.length, assets: assetIdx.length };
+      stations: line.length, assets: assetIdx.length, interactables: interactables.length };
+    window.__molgangDebug = () => ({ px: player.pos.x, pz: player.pos.z,
+      near: interactables.map((o) => Math.hypot(o.x - player.pos.x, o.z - player.pos.z) | 0) });
   } else {
     // legacy city (roads + diffusion) — kept behind ?world=./world.json
     const roadMat = new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.9 });

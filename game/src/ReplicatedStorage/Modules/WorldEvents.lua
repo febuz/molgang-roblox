@@ -422,6 +422,12 @@ WorldEvents._active    = {}   -- { eventId = { event, startTime, endTime } }
 WorldEvents._cooldowns = {}   -- { eventId = lastFiredTime }
 WorldEvents._history   = {}   -- last 20 events for news feed
 
+function WorldEvents.IsExtremeWeather(weather)
+	if type(weather) ~= "table" then return false end
+	return weather.id == "storm" or weather.id == "hail"
+		or (tonumber(weather.windSpeed) or 0) >= 40
+end
+
 -- ════════════════════════════════════════════════
 -- EVENT SELECTION & FIRING
 -- ════════════════════════════════════════════════

@@ -85,6 +85,13 @@ main.BackgroundTransparency = 0.02
 main.Parent = screenGui
 corner(main, 12)
 local ms = Instance.new("UIStroke"); ms.Color = C.accent; ms.Thickness = 2; ms.Parent = main
+local factoryStatusLabel
+local function setFactoryStatus(text, color)
+	if factoryStatusLabel then
+		factoryStatusLabel.Text = text
+		factoryStatusLabel.TextColor3 = color or C.textDim
+	end
+end
 
 -- Title bar
 local titleBar = Instance.new("Frame")
@@ -125,7 +132,7 @@ closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- LAYOUT: Left = Equipment Catalog, Center = Grid, Right = Info
@@ -161,17 +168,22 @@ rentBtn.Name = "RentBtn"
 rentBtn.Size = UDim2.new(0.9, 0, 0, 32)
 rentBtn.Position = UDim2.new(0.05, 0, 0, 28)
 rentBtn.BackgroundColor3 = C.accent
-rentBtn.Text = "RENT FACTORY (2000 MC/mo)"
+rentBtn.Text = "RENT FACTORY (500 MC trial / 2000 MC/mo)"
 rentBtn.TextColor3 = Color3.new(0, 0, 0)
 rentBtn.Font = Enum.Font.GothamBold
 rentBtn.TextScaled = true
 rentBtn.Parent = catalogPanel
 corner(rentBtn, 6)
 
-rentBtn.MouseButton1Click:Connect(function()
+rentBtn.Activated:Connect(function()
 	playUIClick()
 	local r = Remotes:FindFirstChild("RequestRentFactory")
-	if r then r:FireServer() end
+	if r then
+		setFactoryStatus("Rent request sent — checking balance…", C.gold)
+		r:FireServer()
+	else
+		setFactoryStatus("Factory service is still loading.", C.invalidPlace)
+	end
 end)
 
 -- Catalog scroll
@@ -273,13 +285,18 @@ for _, item in ipairs(FactoryEquipment.Items) do
 	buyBtn.Parent = card
 	corner(buyBtn, 4)
 
-	buyBtn.MouseButton1Click:Connect(function()
+	buyBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestBuyEquipment")
-		if r then r:FireServer(item.id) end
+		if r then
+			setFactoryStatus("Buying " .. item.name .. "…", C.gold)
+			r:FireServer(item.id)
+		else
+			setFactoryStatus("Factory service is still loading.", C.invalidPlace)
+		end
 	end)
 
 	-- Select for placement on click
-	card.MouseButton1Click:Connect(function()
+	card.Activated:Connect(function()
 		selectedEquipment = item.id
 		currentRotation = 0
 		-- Highlight selected
@@ -310,13 +327,25 @@ corner(gridPanel, 8)
 
 -- Grid header
 local gridHeader = Instance.new("TextLabel")
-gridHeader.Size = UDim2.new(1, 0, 0, 18)
+gridHeader.Size = UDim2.new(0.55, 0, 0, 18)
 gridHeader.BackgroundTransparency = 1
 gridHeader.Text = "Click grid to place selected equipment | R=Rotate | X=Remove | Scroll=Zoom"
 gridHeader.TextColor3 = C.textDim
 gridHeader.TextScaled = true
 gridHeader.Font = Enum.Font.Gotham
 gridHeader.Parent = gridPanel
+
+factoryStatusLabel = Instance.new("TextLabel")
+factoryStatusLabel.Name = "ActionStatus"
+factoryStatusLabel.Size = UDim2.new(0.45, -8, 0, 18)
+factoryStatusLabel.Position = UDim2.new(0.55, 4, 0, 0)
+factoryStatusLabel.BackgroundTransparency = 1
+factoryStatusLabel.Text = "Select equipment, then click a grid cell."
+factoryStatusLabel.TextColor3 = C.textDim
+factoryStatusLabel.TextScaled = true
+factoryStatusLabel.Font = Enum.Font.Gotham
+factoryStatusLabel.TextXAlignment = Enum.TextXAlignment.Right
+factoryStatusLabel.Parent = gridPanel
 
 -- Grid canvas (scrollable/zoomable)
 local gridCanvas = Instance.new("Frame")
@@ -341,10 +370,15 @@ for x = 1, GRID_W do
 		cell.Parent = gridCanvas
 
 		-- Click to place/interact
-		cell.MouseButton1Click:Connect(function()
+		cell.Activated:Connect(function()
 			if selectedEquipment then
 				local r = Remotes:FindFirstChild("RequestPlaceEquipment")
-				if r then r:FireServer(selectedEquipment, x, y, currentRotation) end
+				if r then
+					setFactoryStatus("Placing " .. selectedEquipment .. " at (" .. x .. "," .. y .. ")…", C.gold)
+					r:FireServer(selectedEquipment, x, y, currentRotation)
+				else
+					setFactoryStatus("Factory service is still loading.", C.invalidPlace)
+				end
 			end
 		end)
 
@@ -355,7 +389,12 @@ for x = 1, GRID_W do
 			local isExpensive = cell:GetAttribute("Occupied") and cell:GetAttribute("Cost") and cell:GetAttribute("Cost") > 1000
 			if isExpensive then
 				-- Show confirm dialog
-				local cg = Instance.new("ScreenGui"); cg.Name = "ConfirmRemove"; cg.Parent = playerGui
+				local cg = Instance.new("ScreenGui")
+				cg.Name = "ConfirmRemove"
+				cg.IgnoreGuiInset = true
+				cg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+				cg.DisplayOrder = 94
+				cg.Parent = playerGui
 				local cf = Instance.new("Frame"); cf.Size = UDim2.new(0.3,0,0,60); cf.Position = UDim2.new(0.35,0,0.4,0)
 				cf.BackgroundColor3 = Color3.fromRGB(40,15,15); cf.Parent = cg
 				local cl = Instance.new("TextLabel"); cl.Size = UDim2.new(1,0,0.5,0); cl.BackgroundTransparency = 1
@@ -367,16 +406,21 @@ for x = 1, GRID_W do
 				local nb = Instance.new("TextButton"); nb.Size = UDim2.new(0.4,0,0.4,0); nb.Position = UDim2.new(0.55,0,0.55,0)
 				nb.Text = "No"; nb.BackgroundColor3 = Color3.fromRGB(60,60,80); nb.TextColor3 = Color3.new(1,1,1)
 				nb.TextScaled = true; nb.Font = Enum.Font.GothamBold; nb.Parent = cf
-				yb.MouseButton1Click:Connect(function()
+			yb.Activated:Connect(function()
 					local r = Remotes:FindFirstChild("RequestRemoveEquipment")
 					if r then r:FireServer(x, y) end
 					cg:Destroy()
 				end)
-				nb.MouseButton1Click:Connect(function() cg:Destroy() end)
+			nb.Activated:Connect(function() cg:Destroy() end)
 				task.delay(5, function() if cg.Parent then cg:Destroy() end end)
 			else
 				local r = Remotes:FindFirstChild("RequestRemoveEquipment")
-				if r then r:FireServer(x, y) end
+				if r then
+					setFactoryStatus("Removing equipment at (" .. x .. "," .. y .. ")…", C.gold)
+					r:FireServer(x, y)
+				else
+					setFactoryStatus("Factory service is still loading.", C.invalidPlace)
+				end
 			end
 		end)
 
@@ -523,6 +567,20 @@ end)
 -- SERVER EVENT HANDLERS
 -- ═══════════════════════════════════════════════
 
+local serverAnnounce = Remotes:FindFirstChild("ServerAnnounce")
+if serverAnnounce then
+	serverAnnounce.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" or type(data.message) ~= "string" then return end
+		local message = string.lower(data.message)
+		if string.find(message, "factory", 1, true)
+			or string.find(message, "equipment", 1, true)
+			or string.find(message, "grid", 1, true)
+			or string.find(message, "power", 1, true) then
+			setFactoryStatus(data.message, C.invalidPlace)
+		end
+	end)
+end
+
 local factoryEvent = Remotes:FindFirstChild("FactoryUpdate")
 if factoryEvent then
 	factoryEvent.OnClientEvent:Connect(function(data)
@@ -530,11 +588,22 @@ if factoryEvent then
 		rentBtn.Visible = not data.rented
 
 		-- Update stats
+		local carbonTaxText = data.carbonTaxExempt
+			and " | Carbon tax: EXEMPT"
+			or (data.carbonTax or 0) > 0
+			and string.format(" | Carbon tax: %d", data.carbonTax)
+			or ""
+		local carbonScoreText = data.carbonRating
+		and string.format(" | Carbon: %s (%d)", data.carbonRating, data.carbonScore or 0)
+			or ""
+		local creditText = string.format(" | Credits: %d (+%d/mo)", data.carbonCredits or 0, data.carbonCreditReward or 0)
 		statsLabel.Text = string.format(
-			"Power: %d/%dkW | Cost: %d MC/mo | Items: %d/%d",
+			"Power: %d/%dkW | Cost: %d MC/mo%s%s | Items: %d/%d",
 			data.powerDraw or 0,
 			data.powerAvailable or 100,
 			data.monthlyCost or 0,
+			carbonTaxText,
+			carbonScoreText .. creditText,
 			data.placementCount or 0,
 			data.maxPlacements or 30
 		)
@@ -600,6 +669,20 @@ if factoryEvent then
 				end
 			end
 		end
+	end)
+end
+
+local equipmentPlacedEvent = Remotes:FindFirstChild("EquipmentPlaced")
+if equipmentPlacedEvent then
+	equipmentPlacedEvent.OnClientEvent:Connect(function(data)
+		setFactoryStatus("Placed " .. (data.name or data.itemId or "equipment") .. " ✓", C.validPlace)
+	end)
+end
+
+local equipmentRemovedEvent = Remotes:FindFirstChild("EquipmentRemoved")
+if equipmentRemovedEvent then
+	equipmentRemovedEvent.OnClientEvent:Connect(function(data)
+		setFactoryStatus("Equipment removed and returned to inventory ✓", C.validPlace)
 	end)
 end
 

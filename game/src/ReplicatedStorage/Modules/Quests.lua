@@ -100,7 +100,7 @@ Quests.AllQuests = {
 		description = "Craft 5 different molecules",
 		category = "intermediate",
 		reward = {molCoins = 750},
-		condition = {type = "moleculesBuilt", target = 5},
+		condition = {type = "distinctMoleculesBuilt", target = 5},
 		order = 6,
 		requires = "craft_molecule",
 	},
@@ -123,7 +123,7 @@ Quests.AllQuests = {
 		description = "Build 3 different facilities",
 		category = "advanced",
 		reward = {molCoins = 800},
-		condition = {type = "facilitiesBuilt", target = 3},
+		condition = {type = "distinctFacilitiesBuilt", target = 3},
 		order = 8,
 		requires = "build_factory",
 	},
@@ -176,6 +176,17 @@ function Quests.CreateQuestProgress()
 	}
 end
 
+-- Give a new player one concrete first objective without requiring them to
+-- discover the quest modal first. Existing progress is never overwritten.
+function Quests.EnsureStarterQuest(progress)
+	if type(progress) ~= "table" then return false end
+	progress.active = progress.active or {}
+	progress.completed = progress.completed or {}
+	progress.inProgress = progress.inProgress or {}
+	if next(progress.active) ~= nil or next(progress.completed) ~= nil then return false end
+	return Quests.AcceptQuest(progress, "first_atom")
+end
+
 function Quests.GetQuest(questId)
 	return Quests.AllQuests[questId]
 end
@@ -187,7 +198,10 @@ function Quests.GetQuestsByCategory(category)
 			table.insert(quests, quest)
 		end
 	end
-	table.sort(quests, function(a, b) return a.order < b.order end)
+	table.sort(quests, function(a, b)
+		if a.order == b.order then return a.id < b.id end
+		return a.order < b.order
+	end)
 	return quests
 end
 
@@ -218,8 +232,29 @@ function Quests.GetAvailableQuests(progress)
 			table.insert(available, quest)
 		end
 	end
-	table.sort(available, function(a, b) return a.order < b.order end)
+	table.sort(available, function(a, b)
+		if a.order == b.order then return a.id < b.id end
+		return a.order < b.order
+	end)
 	return available
+end
+
+-- Continue the guided path when the player has no active quest. Daily quests
+-- remain opt-in; only permanent progression is auto-activated.
+function Quests.EnsureGuidedQuest(progress)
+	if type(progress) ~= "table" then return false end
+	progress.active = progress.active or {}
+	progress.completed = progress.completed or {}
+	if next(progress.active) ~= nil then return false end
+	if next(progress.completed) == nil then
+		return Quests.EnsureStarterQuest(progress)
+	end
+	for _, quest in ipairs(Quests.GetAvailableQuests(progress)) do
+		if not quest.repeatable then
+			return Quests.AcceptQuest(progress, quest.id)
+		end
+	end
+	return false
 end
 
 function Quests.CanAccept(progress, questId)
@@ -275,10 +310,14 @@ function Quests.CheckProgress(playerData, quest)
 		if quest.condition.daily then
 			return math.min(dailyStats.atomsCollected or 0, target)
 		end
-		local count = 0
+		local inventoryCount = 0
 		if playerData.atoms then
-			for _, c in pairs(playerData.atoms) do count = count + c end
+			for _, c in pairs(playerData.atoms) do inventoryCount = inventoryCount + c end
 		end
+		-- Lifetime quests must remain complete after atoms are consumed. Use
+		-- inventory only as a fallback for legacy data without the lifetime
+		-- counter.
+		local count = math.max(tonumber(playerData.totalAtomsCollected) or 0, inventoryCount)
 		return math.min(count, target)
 
 	elseif condType == "facilitiesBuilt" then
@@ -291,11 +330,27 @@ function Quests.CheckProgress(playerData, quest)
 		end
 		return math.min(count, target)
 
+	elseif condType == "distinctFacilitiesBuilt" then
+		local count = 0
+		if playerData.facilities then
+			for _, key in ipairs({"starterBenches", "mines", "factories", "researchLabs", "offices"}) do
+				if (tonumber(playerData.facilities[key]) or 0) > 0 then count = count + 1 end
+			end
+		end
+		return math.min(count, target)
+
 	elseif condType == "moleculesBuilt" then
 		if quest.condition.daily then
 			return math.min(dailyStats.moleculesBuilt or 0, target)
 		end
 		return math.min(playerData.totalMoleculesBuilt or 0, target)
+
+	elseif condType == "distinctMoleculesBuilt" then
+		local count = 0
+		if playerData.moleculesBuilt then
+			for _ in pairs(playerData.moleculesBuilt) do count = count + 1 end
+		end
+		return math.min(count, target)
 
 	elseif condType == "molCoinsEarned" then
 		if quest.condition.daily then

@@ -12,6 +12,8 @@ local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ShortcutOverlay"
@@ -19,6 +21,7 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 95
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 700, 520)
 
 local overlay = Instance.new("Frame")
 overlay.Size = UDim2.new(1, 0, 1, 0)
@@ -28,7 +31,8 @@ overlay.Parent = screenGui
 
 local panel = Instance.new("Frame")
 panel.Size = UDim2.new(0, 700, 0, 520)
-panel.Position = UDim2.new(0.5, -350, 0.5, -260)
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = UDim2.fromScale(0.5, 0.5)
 panel.BackgroundColor3 = Color3.fromRGB(12, 14, 24)
 panel.BackgroundTransparency = 0.05
 panel.Parent = overlay
@@ -63,14 +67,14 @@ local shortcuts = {
 	{col = 1, key = "Shift", desc = "Sprint (if unlocked)"},
 	{col = 1, key = "Mouse", desc = "Look around"},
 	{col = 1, key = "Scroll", desc = "Zoom in/out"},
-	{col = 1, key = "N", desc = "Toggle Minimap"},
+	{col = 1, key = "M / N", desc = "Toggle Minimap"},
 	{col = 1, key = "Esc", desc = "Close all panels"},
 
 	-- Column 2: Production & Chemistry
 	{col = 2, header = "CHEMISTRY & PRODUCTION"},
 	{col = 2, key = "P", desc = "Periodic Table"},
 	{col = 2, key = "R", desc = "Recipe Book (molecules)"},
-	{col = 2, key = "S", desc = "Slag Processing"},
+	{col = 2, key = "J", desc = "Slag Processing"},
 	{col = 2, key = "C", desc = "Process Control"},
 	{col = 2, key = "T", desc = "Research Tree"},
 	{col = 2, key = "F", desc = "Fertilizer Lab"},
@@ -79,17 +83,18 @@ local shortcuts = {
 
 	-- Column 3: Economy & Social
 	{col = 3, header = "ECONOMY & SOCIAL"},
-	{col = 3, key = "D", desc = "Dashboard"},
+	{col = 3, key = "U", desc = "Dashboard"},
 	{col = 3, key = "I", desc = "Inventory"},
 	{col = 3, key = "Tab", desc = "Wallet"},
 	{col = 3, key = "V", desc = "Mining"},
 	{col = 3, key = "B", desc = "Bubble Tea Bar"},
 	{col = 3, key = "Q", desc = "Quest Log"},
-	{col = 3, key = "A", desc = "Achievements"},
+	{col = 3, key = "K", desc = "Achievements"},
 	{col = 3, key = "L", desc = "Leaderboards"},
 	{col = 3, key = ";", desc = "Guilds"},
 	{col = 3, key = ".", desc = "Atom Trading"},
-	{col = 3, key = "M", desc = "Mahjong"},
+	{col = 3, key = "F2", desc = "Feedback"},
+	{col = 3, key = "Dashboard", desc = "Mahjong openen"},
 	{col = 3, key = "/", desc = "Settings"},
 }
 

@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
+local MiniGameRules = require(ReplicatedStorage.Modules.MiniGameRules)
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -38,6 +39,11 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "MiniGameGui"
 gui.Enabled = false
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- HGMS is an interactive modal. Keep its bins above the HUD and status
+-- widgets so a visible bin always owns the click/touch target.
+gui.DisplayOrder = 60
 gui.Parent = playerGui
 
 -- Score + Timer header
@@ -108,7 +114,7 @@ local function createBin(name, label, color, callback)
 	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, 10); c.Parent = btn
 	local s = Instance.new("UIStroke"); s.Color = color; s.Thickness = 2; s.Parent = btn
 
-	btn.MouseButton1Click:Connect(callback)
+	btn.Activated:Connect(callback)
 	return btn
 end
 
@@ -117,21 +123,21 @@ local currentOrbId = nil
 
 createBin("magnetic", "MAGNETIC\n(Fe3O4)", BIN_COLORS.magnetic, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "magnetic")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, MiniGameRules.Bins.magnetic)
 		currentOrbId = nil
 	end
 end)
 
 createBin("valuable", "VALUABLE\n(V2O5/TiO2)", BIN_COLORS.valuable, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "valuable")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, MiniGameRules.Bins.valuable)
 		currentOrbId = nil
 	end
 end)
 
 createBin("hazard", "HAZARD\n(Cr VI)", BIN_COLORS.hazard, function()
 	if currentOrbId then
-		Remotes.FireServer("RequestSortOrb", currentOrbId, "hazard")
+		Remotes.FireServer("RequestSortOrb", currentOrbId, MiniGameRules.Bins.hazard)
 		currentOrbId = nil
 	end
 end)
@@ -243,10 +249,66 @@ phSubmit.Font = Enum.Font.GothamBold
 phSubmit.Parent = phFrame
 local phSubCorner = Instance.new("UICorner"); phSubCorner.CornerRadius = UDim.new(0, 6); phSubCorner.Parent = phSubmit
 
+-- Proximity start prompt. The server used to announce an [E] action without
+-- providing a client input path, leaving the HGMS game apparently inert.
+local startPrompt = Instance.new("Frame")
+startPrompt.Name = "StartPrompt"
+startPrompt.Size = UDim2.new(0.62, 0, 0, 118)
+startPrompt.Position = UDim2.new(0.19, 0, 0.5, -59)
+startPrompt.BackgroundColor3 = Color3.fromRGB(18, 27, 42)
+startPrompt.BackgroundTransparency = 0.05
+startPrompt.Visible = false
+startPrompt.Parent = gui
+local promptCorner = Instance.new("UICorner")
+promptCorner.CornerRadius = UDim.new(0, 12)
+promptCorner.Parent = startPrompt
+local promptStroke = Instance.new("UIStroke")
+promptStroke.Color = Color3.fromRGB(0, 220, 140)
+promptStroke.Thickness = 2
+promptStroke.Parent = startPrompt
+
+local promptLabel = Instance.new("TextLabel")
+promptLabel.Size = UDim2.new(1, -20, 0, 48)
+promptLabel.Position = UDim2.fromOffset(10, 8)
+promptLabel.BackgroundTransparency = 1
+promptLabel.Text = "HGMS SEPARATOR\nSort BOF-mineralen op de lopende band"
+promptLabel.TextColor3 = Color3.fromRGB(235, 240, 250)
+promptLabel.TextScaled = true
+promptLabel.TextWrapped = true
+promptLabel.Font = Enum.Font.GothamBold
+promptLabel.Parent = startPrompt
+
+local startButton = Instance.new("TextButton")
+startButton.Name = "StartButton"
+startButton.Size = UDim2.new(0.62, 0, 0, 42)
+startButton.Position = UDim2.new(0.19, 0, 1, -50)
+startButton.BackgroundColor3 = Color3.fromRGB(0, 210, 130)
+startButton.Text = "START HGMS  [E]"
+startButton.TextColor3 = Color3.fromRGB(5, 15, 20)
+startButton.TextScaled = true
+startButton.Font = Enum.Font.GothamBold
+startButton.Parent = startPrompt
+local startCorner = Instance.new("UICorner")
+startCorner.CornerRadius = UDim.new(0, 8)
+startCorner.Parent = startButton
+
 -- Slider drag logic
 local dragging = false
 local currentPH = 7.0
 local currentMetal = "V2O5"
+local phTargets = {}
+local phIndex = 0
+local startRequestPending = false
+
+local function requestStartMiniGame()
+	if startRequestPending then return end
+	startRequestPending = true
+	startPrompt.Visible = false
+	Remotes.FireServer("RequestStartMiniGame")
+	task.delay(2, function()
+		startRequestPending = false
+	end)
+end
 
 sliderTrack.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1
@@ -274,8 +336,35 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-phSubmit.MouseButton1Click:Connect(function()
+phSubmit.Activated:Connect(function()
+	if not phFrame.Visible or currentMetal == "" then return end
+	phSubmit.Active = false
 	Remotes.FireServer("RequestSetPH", currentMetal, currentPH)
+	phIndex = phIndex + 1
+	task.defer(function()
+		if phIndex <= #phTargets then
+			local target = phTargets[phIndex]
+			currentMetal = target.metalName or target.metal or ""
+			phTitle.Text = string.format("SET pH FOR: %s  (%d/%d)",
+				currentMetal, phIndex, #phTargets)
+			currentPH = 7.0
+			sliderKnob.Position = UDim2.new(0.5, -8, 0.5, -12)
+			phValue.Text = "7.0"
+			phSubmit.Active = true
+		else
+			phSubmit.Active = false
+			phTitle.Text = "pH SETTINGS SUBMITTED — EVALUATING"
+		end
+	end)
+end)
+
+startButton.Activated:Connect(requestStartMiniGame)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or not startPrompt.Visible then return end
+	if input.KeyCode == Enum.KeyCode.E or input.KeyCode == Enum.KeyCode.Return then
+		requestStartMiniGame()
+	end
 end)
 
 -- ══════════════════════════════════════════════
@@ -334,20 +423,35 @@ end)
 
 -- pH round
 Remotes.MiniGamePHRound.OnClientEvent:Connect(function(data)
-	if data and data.metal then
-		currentMetal = data.metal
-		phTitle.Text = "SET pH FOR: " .. data.metal
+	if data and type(data.metals) == "table" and #data.metals > 0 then
+		phTargets = data.metals
+		phIndex = 1
+		local target = phTargets[phIndex]
+		currentMetal = target.metalName or target.metal or ""
+		phTitle.Text = string.format("SET pH FOR: %s  (1/%d)", currentMetal, #phTargets)
 		phFrame.Visible = true
-		-- Reset slider
 		currentPH = 7.0
 		sliderKnob.Position = UDim2.new(0.5, -8, 0.5, -12)
 		phValue.Text = "7.0"
+		phSubmit.Active = true
+	elseif data and data.metal then
+		-- Backward-compatible single-target payload for older servers.
+		phTargets = {{metalName = data.metal}}
+		phIndex = 1
+		currentMetal = data.metal
+		phTitle.Text = "SET pH FOR: " .. data.metal
+		phFrame.Visible = true
+		currentPH = 7.0
+		sliderKnob.Position = UDim2.new(0.5, -8, 0.5, -12)
+		phValue.Text = "7.0"
+		phSubmit.Active = true
 	end
 end)
 
 -- Game result
 Remotes.MiniGameResult.OnClientEvent:Connect(function(data)
 	-- Hide game UI
+	startPrompt.Visible = false
 	orbDisplay.Visible = false
 	phFrame.Visible = false
 
@@ -422,6 +526,27 @@ end
 
 -- Listen for score updates via ServerAnnounce with special miniGame flag
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
+	if data and data.miniGamePrompt then
+		gui.Enabled = true
+		startPrompt.Visible = true
+		return
+	end
+	if data and type(data.message) == "string" then
+		local message = string.lower(data.message)
+		local startFailure = string.find(message, "move closer", 1, true)
+			or string.find(message, "cooldown", 1, true)
+			or string.find(message, "machine is busy", 1, true)
+			or string.find(message, "max ", 1, true)
+			or string.find(message, "already in an hgms", 1, true)
+		if startFailure then
+			gui.Enabled = true
+			startPrompt.Visible = true
+			promptLabel.Text = data.message .. "\n\nPress E or click START HGMS to retry."
+			startButton.Active = true
+			startRequestPending = false
+			return
+		end
+	end
 	if data and data.miniGameScore then
 		updateHUD(data.miniGameScore, data.miniGameTimer or 0)
 	end

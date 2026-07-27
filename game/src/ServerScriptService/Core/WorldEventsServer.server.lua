@@ -23,7 +23,8 @@ local _worldStateCache = {
 
 local function refreshWorldState()
 	_worldStateCache.playerCount = #Players:GetPlayers()
-	-- (extremeWeather would be set by WeatherSystem — defaults to false)
+	local weather = _G.GetCurrentWeather and _G.GetCurrentWeather()
+	_worldStateCache.extremeWeather = WorldEvents.IsExtremeWeather(weather)
 end
 
 -- ──────────────────────────────────────────────
@@ -38,13 +39,22 @@ local function broadcastActiveEffects()
 	-- Send to all clients for UI display
 	Remotes.FireAllClients("WorldEffectsUpdate", {
 		activeEvents = WorldEvents.GetActiveEventsSummary(),
-		effects      = {
+		 effects      = {
 			-- Only expose what the client needs for display
 			priceMultipliers    = effects.priceMultipliers,
 			miningYieldMult     = effects.miningYieldMult,
 			cropYieldMult       = effects.cropYieldMult,
 			researchSpeedMult   = effects.researchSpeedMult,
+			leachingEfficiencyMult = effects.leachingEfficiencyMult,
 			productionSpeedMult = effects.productionSpeedMult,
+			productionBonusMult = effects.productionBonusMult,
+			moleculeBonusMultiplier = effects.moleculeBonusMultiplier,
+			fertilizerDemandMult = effects.fertilizerDemandMult,
+			factoryOpCostMult   = effects.factoryOpCostMult,
+			processWaterCostMult = effects.processWaterCostMult,
+			carbonCreditMult    = effects.carbonCreditMult,
+			tradeTaxMult        = effects.tradeTaxMult,
+			carbonTaxPerKW      = effects.carbonTaxPerKW,
 			tournamentActive    = effects.tournamentActive,
 		},
 	})

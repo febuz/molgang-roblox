@@ -19,8 +19,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local MiningSystem = require(ReplicatedStorage.Modules.MiningSystem)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local InventoryLimits = require(ReplicatedStorage.Modules.InventoryLimits)
+local MiningPersistence = require(ReplicatedStorage.Modules.MiningPersistence)
 
 -- ═══════════════════════════════════════════════
 -- STATE
@@ -29,7 +32,6 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 -- Generate world plots (consistent across all players)
 local worldPlots = MiningSystem.GeneratePlots()
 local MINING_TICK_INTERVAL = 30  -- seconds between mining production ticks
-local EXPLORATION_COST = 1000    -- base cost for exploration license (composition unknown)
 
 local function isValidPlotId(plotId)
 	return type(plotId) == "number"
@@ -81,17 +83,18 @@ local function hydratePlotStates(userId, miningData)
 	for plotIdString, saved in pairs(miningData.plotStates or {}) do
 		local plotId = tonumber(plotIdString)
 		local plot = plotId and worldPlots[plotId]
-		if plot and (not plot.owner or plot.owner == userId) then
+		local safeState = MiningPersistence.SanitizePlotState(saved)
+		if plot and safeState and (not plot.owner or plot.owner == userId) then
 			plot.owner = userId
-			plot.explored = saved.explored == true
-			plot.composition = saved.composition or plot.composition
-			plot.vanadiumPct = saved.vanadiumPct or plot.vanadiumPct
-			plot.rarity = saved.rarity or plot.rarity
-			plot.mineEquipment = saved.mineEquipment or {}
-			plot.oreStockpile = saved.oreStockpile or 0
-			plot.totalMined = saved.totalMined or 0
-			plot.forSale = saved.forSale == true
-			plot.askPrice = saved.askPrice
+			plot.explored = safeState.explored
+			plot.composition = safeState.composition or plot.composition
+			plot.vanadiumPct = safeState.vanadiumPct or plot.vanadiumPct
+			plot.rarity = safeState.rarity or plot.rarity
+			plot.mineEquipment = safeState.mineEquipment
+			plot.oreStockpile = safeState.oreStockpile
+			plot.totalMined = safeState.totalMined
+			plot.forSale = safeState.forSale
+			plot.askPrice = safeState.askPrice
 			miningData.ownedPlots[plotId] = true
 		end
 	end
@@ -100,12 +103,35 @@ end
 -- Player mining state
 local playerMining = {}  -- {userId = {ownedPlots = {}, miningEquipment = {}}}
 local hydratedMining = {}
+local ownerNameCache = {}
+
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {message = message, rarity = "common"})
+end
+
+local function getOwnerName(userId)
+	local onlinePlayer = Players:GetPlayerByUserId(userId)
+	if onlinePlayer then
+		ownerNameCache[userId] = onlinePlayer.Name
+		return onlinePlayer.Name
+	end
+	if ownerNameCache[userId] then return ownerNameCache[userId] end
+
+	local success, name = pcall(function()
+		return Players:GetNameFromUserIdAsync(userId)
+	end)
+	if success and type(name) == "string" and name ~= "" then
+		ownerNameCache[userId] = name
+		return name
+	end
+	return "Miner #" .. tostring(userId)
+end
 
 local function getPlayerMining(userId)
 	if not playerMining[userId] then
 		playerMining[userId] = {
 			ownedPlots = {},       -- {plotId = true}
-			equipment = {},        -- {equipId = count}
+			equipment = {hand_pick = 1}, -- free starter tool for onboarding
 			totalOreMined = 0,
 			totalOreValue = 0,
 		}
@@ -114,11 +140,19 @@ local function getPlayerMining(userId)
 		local playerData = PlayerDataBridge.GetPlayerData(userId)
 		if playerData then
 			playerData.mining = playerData.mining or {}
-			playerData.mining.ownedPlots = playerData.mining.ownedPlots or {}
-			playerData.mining.equipment = playerData.mining.equipment or {}
-			playerData.mining.plotStates = playerData.mining.plotStates or {}
-			playerData.mining.totalOreMined = playerData.mining.totalOreMined or 0
-			playerData.mining.totalOreValue = playerData.mining.totalOreValue or 0
+			if type(playerData.mining.ownedPlots) ~= "table" then playerData.mining.ownedPlots = {} end
+			if type(playerData.mining.equipment) ~= "table" then
+				playerData.mining.equipment = {}
+			end
+			if type(playerData.mining.plotStates) ~= "table" then
+				playerData.mining.plotStates = {}
+			end
+			if not (type(playerData.mining.totalOreMined) == "number" and playerData.mining.totalOreMined >= 0 and playerData.mining.totalOreMined < math.huge) then
+				playerData.mining.totalOreMined = 0
+			end
+			if not (type(playerData.mining.totalOreValue) == "number" and playerData.mining.totalOreValue >= 0 and playerData.mining.totalOreValue < math.huge) then
+				playerData.mining.totalOreValue = 0
+			end
 			playerMining[userId] = playerData.mining
 			hydratePlotStates(userId, playerData.mining)
 			hydratedMining[userId] = true
@@ -133,10 +167,10 @@ end
 
 Remotes.RequestBuyExplorationLicense.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Choose a valid mining plot."); return end
 
 	local plot = worldPlots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Mining plot not found."); return end
 
 	-- Already owned?
 	if plot.owner then
@@ -148,7 +182,7 @@ Remotes.RequestBuyExplorationLicense.OnServerEvent:Connect(function(player, plot
 	end
 
 	-- Exploration license cost (you DON'T know the composition yet!)
-	local licenseCost = EXPLORATION_COST + (plot.depth * 20)  -- deeper = more expensive license
+	local licenseCost = MiningSystem.GetExplorationLicenseCost(plot)
 	local success = PlayerDataBridge.SpendMolCoins(userId, licenseCost)
 	if not success then
 		Remotes.FireClient("ServerAnnounce", player, {
@@ -184,10 +218,10 @@ end)
 
 Remotes.RequestExplorePlot.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Choose a valid mining plot to explore."); return end
 
 	local plot = worldPlots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Mining plot not found."); return end
 
 	-- Must own it
 	if plot.owner ~= userId then
@@ -211,11 +245,11 @@ Remotes.RequestExplorePlot.OnServerEvent:Connect(function(player, plotId)
 	local pm = getPlayerMining(userId)
 	if not pm.equipment.drill_rig or pm.equipment.drill_rig <= 0 then
 		-- Allow basic exploration with hand tools (slower, costs more)
-		local exploreCost = 500
-		local success = PlayerDataBridge.SpendMolCoins(userId, exploreCost)
+		local exploreCost = MiningSystem.GetManualExplorationCost(plot)
+		local success = exploreCost == 0 or PlayerDataBridge.SpendMolCoins(userId, exploreCost)
 		if not success then
 			Remotes.FireClient("ServerAnnounce", player, {
-				message = "Manual exploration costs 500 MC, or buy a Drill Rig for faster surveys.",
+				message = "Manual exploration costs " .. exploreCost .. " MC, or buy a Drill Rig for faster surveys.",
 				rarity = "common",
 			})
 			return
@@ -245,6 +279,7 @@ Remotes.RequestExplorePlot.OnServerEvent:Connect(function(player, plotId)
 		composition = plot.composition,
 		vanadiumPct = plot.vanadiumPct,
 		plotType = plot.plotType,
+		hazard = plot.hazard,
 		rarity = plot.rarity,
 		region = plot.region,
 	})
@@ -278,10 +313,10 @@ end)
 
 Remotes.RequestBuyMiningEquip.OnServerEvent:Connect(function(player, equipId)
 	local userId = player.UserId
-	if type(equipId) ~= "string" then return end
+	if type(equipId) ~= "string" then reject(player, "Choose valid mining equipment."); return end
 
 	local equip = MiningSystem.GetEquipment(equipId)
-	if not equip then return end
+	if not equip then reject(player, "Unknown mining equipment."); return end
 
 	if equip.cost > 0 then
 		local success = PlayerDataBridge.SpendMolCoins(userId, equip.cost)
@@ -311,10 +346,15 @@ end)
 
 Remotes.RequestDeployEquipment.OnServerEvent:Connect(function(player, plotId, equipId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) or type(equipId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(equipId) ~= "string" then
+		reject(player, "Choose a valid plot and equipment item.")
+		return
+	end
 
 	local plot = worldPlots[plotId]
-	if not plot or plot.owner ~= userId then return end
+	if not plot then reject(player, "Mining plot not found."); return end
+	if plot.owner ~= userId then reject(player, "You must own this plot before deploying equipment."); return end
+	if not MiningSystem.GetEquipment(equipId) then reject(player, "Unknown mining equipment."); return end
 
 	local pm = getPlayerMining(userId)
 	if (pm.equipment[equipId] or 0) <= 0 then
@@ -345,10 +385,13 @@ end)
 
 Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Choose a valid mining plot."); return end
+	local playerData = PlayerDataBridge.GetPlayerData(userId)
+	if not playerData then reject(player, "Player inventory is still loading."); return end
 
 	local plot = worldPlots[plotId]
-	if not plot or plot.owner ~= userId then return end
+	if not plot then reject(player, "Mining plot not found."); return end
+	if plot.owner ~= userId then reject(player, "You must own this plot before collecting ore."); return end
 
 	if plot.oreStockpile <= 0 then
 		Remotes.FireClient("ServerAnnounce", player, {
@@ -359,13 +402,14 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	end
 
 	-- Convert ore to atoms based on composition
-	local oreKg = plot.oreStockpile
+	local transportCapacity = MiningSystem.CalculateTransportCapacity(plot.mineEquipment)
+	local oreKg = math.min(plot.oreStockpile, transportCapacity)
 	local value = MiningSystem.CalculateOreValue(plot.composition, oreKg)
 
 	-- Add atoms based on composition
 	local atomsGained = {}
-	local Elements = require(ReplicatedStorage.Data.Elements)
-
+	local pendingAtoms = {}
+	local pendingAtomTotal = 0
 	-- Map oxide compositions to element atoms
 	local oxideToElem = {
 		V2O5 = {sym = "V", z = 23, factor = 2},
@@ -382,12 +426,46 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 		if mapping and pct > 0.1 then
 			local atomCount = math.floor(oreKg * pct / 100 * mapping.factor)
 			if atomCount > 0 then
-				for i = 1, math.min(atomCount, 20) do -- cap per collection
-					PlayerDataBridge.RecordAtomCollect(userId, mapping.z, mapping.sym, 2)
-				end
-				atomsGained[mapping.sym] = math.min(atomCount, 20)
+				local cappedCount = math.min(atomCount, 20) -- cap per collection
+				table.insert(pendingAtoms, {z = mapping.z, sym = mapping.sym, count = cappedCount})
+				pendingAtomTotal = pendingAtomTotal + cappedCount
+				atomsGained[mapping.sym] = cappedCount
 			end
 		end
+	end
+
+	if pendingAtomTotal < 1 then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "This ore has no recoverable element yield yet. Keep mining for a richer seam.",
+			rarity = "common",
+		})
+		return
+	end
+
+	if not InventoryLimits.CanAddAtoms(
+		playerData.atoms,
+		playerData.facilities,
+		pendingAtomTotal
+	) then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Atom storage is full. Clear storage or build an Office before collecting ore.",
+			rarity = "common",
+		})
+		return
+	end
+
+	local batchEntries = {}
+	for _, pending in ipairs(pendingAtoms) do
+		table.insert(batchEntries, {
+			elementZ = pending.z,
+			symbol = pending.sym,
+			amount = pending.count,
+			coinReward = 2,
+		})
+	end
+	if pendingAtomTotal > 0 and not PlayerDataBridge.RecordAtomCollectMultiBatch(userId, batchEntries) then
+		reject(player, "Ore collection could not be recorded; your stockpile was kept safe.")
+		return
 	end
 
 	-- Award MolCoins for ore value
@@ -397,8 +475,8 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	pm.totalOreMined = pm.totalOreMined + oreKg
 	pm.totalOreValue = pm.totalOreValue + value
 
-	-- Clear stockpile
-	plot.oreStockpile = 0
+	-- Clear only the hauled amount; the remainder stays physically stockpiled.
+	plot.oreStockpile = math.max(0, plot.oreStockpile - oreKg)
 	persistPlotState(userId, plot)
 
 	-- Build result string
@@ -408,7 +486,8 @@ Remotes.RequestCollectOre.OnServerEvent:Connect(function(player, plotId)
 	end
 
 	Remotes.FireClient("ServerAnnounce", player, {
-		message = "Collected " .. math.floor(oreKg) .. "kg ore from Plot #" .. plotId .. "!\nAtoms: " .. atomStr .. "\n+" .. math.floor(value / 10) .. " MolCoins",
+		message = "Hauled " .. math.floor(oreKg) .. "kg ore from Plot #" .. plotId .. "!\nAtoms: " .. atomStr .. "\n+" .. math.floor(value / 10) .. " MolCoins"
+			.. (plot.oreStockpile > 0 and ("\nRemaining stockpile: " .. math.floor(plot.oreStockpile) .. "kg — add a haul truck for larger loads.") or ""),
 		rarity = "rare",
 	})
 
@@ -421,10 +500,15 @@ end)
 
 Remotes.RequestListPlotForSale.OnServerEvent:Connect(function(player, plotId, askPrice)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) or not isFiniteNumber(askPrice) then return end
+	if not isValidPlotId(plotId) or not isFiniteNumber(askPrice) then
+		reject(player, "Choose a valid plot and asking price.")
+		return
+	end
 
 	local plot = worldPlots[plotId]
-	if not plot or plot.owner ~= userId then return end
+	if not plot then reject(player, "Mining plot not found."); return end
+	if plot.owner ~= userId then reject(player, "You can only sell plots you own."); return end
+	if plot.forSale then reject(player, "This plot is already listed for sale."); return end
 
 	plot.forSale = true
 	plot.askPrice = math.max(askPrice, 100)
@@ -445,11 +529,12 @@ end)
 
 Remotes.RequestBuyPlotFromMarket.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Choose a valid market plot."); return end
 
 	local plot = worldPlots[plotId]
-	if not plot or not plot.forSale then return end
-	if plot.owner == userId then return end -- can't buy own plot
+	if not plot then reject(player, "Mining plot not found."); return end
+	if not plot.forSale then reject(player, "This mining plot is not currently for sale."); return end
+	if plot.owner == userId then reject(player, "You cannot buy your own mining plot."); return end
 
 	local success = PlayerDataBridge.SpendMolCoins(userId, plot.askPrice)
 	if not success then
@@ -518,7 +603,9 @@ function sendMiningUpdate(player, userId)
 				composition = plot.explored and plot.composition or nil,
 				vanadiumPct = plot.explored and plot.vanadiumPct or nil,
 				rarity = plot.explored and plot.rarity or "unknown",
+				hazard = plot.explored and plot.hazard or nil,
 				equipment = plot.mineEquipment,
+				transportCapacity = MiningSystem.CalculateTransportCapacity(plot.mineEquipment),
 				oreStockpile = plot.oreStockpile,
 				totalMined = plot.totalMined,
 				forSale = plot.forSale,
@@ -532,7 +619,7 @@ function sendMiningUpdate(player, userId)
 				vanadiumPct = plot.explored and plot.vanadiumPct or nil,
 				rarity = plot.explored and plot.rarity or "unknown",
 				askPrice = plot.askPrice,
-				ownerName = "Another Miner",
+				ownerName = getOwnerName(plot.owner),
 			})
 		end
 	end
@@ -545,7 +632,7 @@ function sendMiningUpdate(player, userId)
 				id = plot.id,
 				region = plot.region,
 				depth = plot.depth,
-				licenseCost = EXPLORATION_COST + (plot.depth * 20),
+				licenseCost = MiningSystem.GetExplorationLicenseCost(plot),
 			})
 		end
 	end
@@ -577,11 +664,13 @@ end)
 
 task.spawn(function()
 	while true do
+		local activeEffects = WorldEvents.GetActiveEffects()
+		local miningYieldMultiplier = math.max(0, tonumber(activeEffects.miningYieldMult) or 1)
 		for _, plot in ipairs(worldPlots) do
 			if plot.owner and #plot.mineEquipment > 0 then
 				local rate = MiningSystem.CalculateMiningRate(plot, plot.mineEquipment)
 				if rate > 0 then
-					local produced = rate * (MINING_TICK_INTERVAL / 60)  -- kg per tick
+					local produced = rate * miningYieldMultiplier * (MINING_TICK_INTERVAL / 60)  -- kg per tick
 					plot.oreStockpile = plot.oreStockpile + produced
 					plot.totalMined = plot.totalMined + produced
 					persistPlotState(plot.owner, plot)

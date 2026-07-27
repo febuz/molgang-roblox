@@ -1,0 +1,51 @@
+Color3 = {
+	fromRGB = function(r, g, b)
+		return {R = r / 255, G = g / 255, B = b / 255}
+	end,
+}
+Vector3 = {
+	new = function(x, y, z)
+		return {X = x, Y = y, Z = z}
+	end,
+}
+
+local MiningSystem = require("../game/src/ReplicatedStorage/Modules/MiningSystem")
+
+local practice = MiningSystem.PlotTypes[1]
+assert(MiningSystem.GetExplorationLicenseCost(practice) == 200,
+	"practice outcrop should use its defined affordable license cost")
+assert(MiningSystem.GetManualExplorationCost({plotType = "practice_outcrop", depth = 0}) == 0,
+	"surface practice outcrop should be free to explore by hand")
+assert(MiningSystem.GetManualExplorationCost({plotType = "magnetite_low", depth = 5}) == 500,
+	"non-practice deposits should retain the manual survey cost")
+
+local ids = {}
+for _, plotType in ipairs(MiningSystem.PlotTypes) do
+	assert(not ids[plotType.id], "mining plot type IDs must be unique: " .. plotType.id)
+	ids[plotType.id] = true
+end
+local locations = {}
+for _, location in ipairs(MiningSystem.PlotLocations) do
+	local key = string.format("%s:%s:%s:%s", location.region, location.center.X, location.center.Y, location.center.Z)
+	assert(not locations[key], "mining regions must not overlap at the same center: " .. key)
+	locations[key] = true
+end
+assert(MiningSystem.PlotTypes[5].rarity == "legendary",
+	"the fifth plot type must retain the legendary geology tier")
+assert(MiningSystem.PlotTypes[5].hazard == "Cr(VI)",
+	"the chromite-vanadium deposit must retain its Cr(VI) hazard")
+
+local surfaceRate = MiningSystem.CalculateMiningRate(MiningSystem.PlotTypes[1], {"hand_pick"})
+assert(surfaceRate == surfaceRate and surfaceRate < math.huge and surfaceRate > 0,
+	"surface mining rate must be finite and positive")
+local deepRate = MiningSystem.CalculateMiningRate(MiningSystem.PlotTypes[4], {"hand_pick"})
+assert(deepRate > 0 and deepRate < surfaceRate,
+	"deep mining must be slower than a surface outcrop")
+
+local manualCapacity = MiningSystem.CalculateTransportCapacity({"hand_pick"})
+local truckCapacity = MiningSystem.CalculateTransportCapacity({"hand_pick", "haul_truck"})
+assert(manualCapacity == 250, "manual mining must retain a small onboarding transport capacity")
+assert(truckCapacity == 30000 and truckCapacity > manualCapacity,
+	"haul truck must materially increase ore transport capacity")
+
+print("Mining System Tests: 7 passed, 0 failed")

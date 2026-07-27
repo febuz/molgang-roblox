@@ -15,6 +15,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local GuildSystem = require(ReplicatedStorage.Modules.GuildSystem)
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local C = {
 	bg = Color3.fromRGB(12, 8, 20),
@@ -42,10 +43,12 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 19
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 550, 450)
 
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 550, 0, 450)
-main.Position = UDim2.new(0.5, -275, 0.5, -225)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
@@ -72,7 +75,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = title
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playClick(); screenGui.Enabled = false end)
 
 -- Tabs: My Guild | Browse | Create
 local tabFrame = Instance.new("Frame")
@@ -108,7 +111,7 @@ for i, t in ipairs(tabs) do
 	panel.Parent = main
 	tabPanels[t] = panel
 
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		playClick()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do b.BackgroundColor3 = C.tabInactive end
@@ -188,7 +191,7 @@ leaveBtn.Visible = false
 leaveBtn.Parent = myGuildPanel
 corner(leaveBtn, 6)
 
-leaveBtn.MouseButton1Click:Connect(function()
+leaveBtn.Activated:Connect(function()
 	playClick()
 	local r = Remotes:FindFirstChild("RequestLeaveGuild")
 	if r then r:FireServer() end
@@ -256,7 +259,7 @@ createBtn.Font = Enum.Font.GothamBold
 createBtn.Parent = createPanel
 corner(createBtn, 6)
 
-createBtn.MouseButton1Click:Connect(function()
+createBtn.Activated:Connect(function()
 	playClick()
 	if #nameBox.Text >= 3 then
 		local r = Remotes:FindFirstChild("RequestCreateGuild")
@@ -363,7 +366,7 @@ if guildInfoEvent then
 				jb.TextColor3 = Color3.new(1,1,1); jb.TextScaled = true
 				jb.Font = Enum.Font.GothamBold; jb.Parent = gf
 				corner(jb, 4)
-				jb.MouseButton1Click:Connect(function()
+				jb.Activated:Connect(function()
 					playClick()
 					local r = Remotes:FindFirstChild("RequestJoinGuild")
 					if r then r:FireServer(g.name) end

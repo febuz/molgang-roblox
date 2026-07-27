@@ -1,15 +1,56 @@
 local Quests = require("../game/src/ReplicatedStorage/Modules/Quests")
+local Achievements = require("../game/src/ReplicatedStorage/Modules/Achievements")
 
 local progress = Quests.CreateQuestProgress()
+assert(Quests.EnsureStarterQuest(progress), "new players should receive a first objective")
+assert(Quests.GetActiveQuests(progress)[1].id == "first_atom",
+	"the first objective should be the atom collection quest")
 local allowed, reason = Quests.CanAccept(progress, "first_atom")
-assert(allowed and reason == "OK", "first quest must be acceptible for a new player")
-assert(Quests.AcceptQuest(progress, "first_atom"), "server quest acceptance should activate the quest")
-assert(not Quests.CanAccept(progress, "first_atom"), "an active quest must not be accepted twice")
+assert(not allowed and reason == "Quest already active", "the starter quest must not be duplicated")
+assert(not Quests.EnsureStarterQuest(progress), "existing progress must not be overwritten")
 assert(not Quests.CanAccept(progress, "collect_atoms"), "prerequisites must be enforced")
 assert(Quests.CompleteQuest(progress, "first_atom"), "completed quest must move to completed state")
+assert(not Quests.EnsureStarterQuest(progress), "completed progress must not restart the starter quest")
 assert(Quests.CanAccept(progress, "collect_atoms"), "completed prerequisites must unlock the next quest")
+assert(Quests.EnsureGuidedQuest(progress), "completed starter quest should advance the guided path")
+assert(Quests.GetActiveQuests(progress)[1].id == "collect_atoms",
+	"guided path should activate the next collection objective")
+assert(not Quests.EnsureGuidedQuest(progress), "guided path must not duplicate an active quest")
+
+local facilitiesQuest = Quests.GetQuest("build_three_facilities")
+local sameFacilityData = {facilities = {mines = 3}}
+assert(Quests.CheckProgress(sameFacilityData, facilitiesQuest) == 1,
+	"different-facilities quest must not count duplicate facility types")
+sameFacilityData.facilities.factories = 1
+sameFacilityData.facilities.offices = 1
+assert(Quests.CheckProgress(sameFacilityData, facilitiesQuest) == 3,
+	"different-facilities quest should count distinct facility types")
+
+local moleculesQuest = Quests.GetQuest("craft_five_molecules")
+local repeatedMoleculeData = {totalMoleculesBuilt = 5, moleculesBuilt = {H2O = true}}
+assert(Quests.CheckProgress(repeatedMoleculeData, moleculesQuest) == 1,
+	"different-molecules quest must not count repeated recipes")
+repeatedMoleculeData.moleculesBuilt = {H2O = true, CO2 = true, NH3 = true, NaCl = true, CH4 = true}
+assert(Quests.CheckProgress(repeatedMoleculeData, moleculesQuest) == 5,
+	"different-molecules quest should count unique recipes")
+
+local sameOrderProgress = Quests.CreateQuestProgress()
+sameOrderProgress.completed.first_atom = true
+sameOrderProgress.completed.collect_atoms = true
+sameOrderProgress.completed.first_molecule = true
+local sameOrderAvailable = Quests.GetAvailableQuests(sameOrderProgress)
+assert(sameOrderAvailable[1].id == "build_first_mine",
+	"same-order guided quests must have deterministic id ordering")
 
 progress.lastDaily.daily_collect = os.date("%Y-%m-%d")
 assert(not Quests.CanAccept(progress, "daily_collect"), "daily quests must not repeat on the same day")
 
-print("Quest Flow Tests: 7 passed, 0 failed")
+local consumedAtoms = {totalAtomsCollected = 10, atoms = {H = 1}}
+local atomQuest = Quests.GetQuest("collect_atoms")
+assert(Quests.CheckProgress(consumedAtoms, atomQuest) == 10,
+	"lifetime quest progress must survive consumed atoms")
+local atomAchievement = Achievements.List.TenAtoms
+assert(Achievements.CheckProgress(consumedAtoms, atomAchievement) == 10,
+	"lifetime achievement progress must survive consumed atoms")
+
+print("Quest Flow Tests: 19 passed, 0 failed")

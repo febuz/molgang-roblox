@@ -28,14 +28,21 @@ local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 -- Remotes
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local AtomCollected = Remotes:WaitForChild("AtomCollected")
 local MoleculeBuilt = Remotes:WaitForChild("MoleculeBuilt")
 local ChainEntryAdded = Remotes:WaitForChild("ChainEntryAdded")
 local AchievementUnlocked = Remotes:WaitForChild("AchievementUnlocked")
-local ServerAnnounce = Remotes:WaitForChild("ServerAnnounce")
 local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
+local RequestReturnToNexus = Remotes:WaitForChild("RequestReturnToNexus")
 
 --------------------------------------------------------------------------------
 -- COLOR PALETTE
@@ -423,6 +430,45 @@ walletBtn.Font = Enum.Font.GothamBold
 walletBtn.Parent = walletFrame
 createCorner(walletBtn, 6)
 
+-- Always-visible safety route. Players should never need to walk off a
+-- floating island (or open the mining panel) just to get back to the Nexus.
+local returnNexusBtn = Instance.new("TextButton")
+returnNexusBtn.Name = "ReturnToNexus"
+returnNexusBtn.Size = UDim2.fromOffset(180, 34)
+returnNexusBtn.Position = UDim2.new(1, -192, 0, 112)
+returnNexusBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 125)
+returnNexusBtn.BackgroundTransparency = 0.08
+returnNexusBtn.Text = "← NEXUS  [H]"
+returnNexusBtn.TextColor3 = Color3.fromRGB(235, 255, 248)
+returnNexusBtn.TextScaled = true
+returnNexusBtn.Font = Enum.Font.GothamBold
+returnNexusBtn.Parent = screenGui
+createCorner(returnNexusBtn, 8)
+createStroke(returnNexusBtn, Color3.fromRGB(0, 255, 190), 1.5)
+
+local returnBusy = false
+local function returnToNexus()
+
+	if returnBusy then return end
+	returnBusy = true
+	returnNexusBtn.Text = "Returning…"
+	RequestReturnToNexus:FireServer()
+	task.delay(1.2, function()
+		returnBusy = false
+		if returnNexusBtn.Parent then returnNexusBtn.Text = "← NEXUS  [H]" end
+	end)
+end
+
+returnNexusBtn.Activated:Connect(returnToNexus)
+-- Vinegar/desktop Studio can occasionally swallow Activated while the game
+-- view has focus. Keep the visible safety route clickable in that case too.
+returnNexusBtn.MouseButton1Click:Connect(returnToNexus)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed or UserInputService:GetFocusedTextBox() then return end
+	if input.KeyCode == Enum.KeyCode.H then returnToNexus() end
+end)
+
 --------------------------------------------------------------------------------
 -- 4. CHAIN TOKENS COUNTER (RIGHT-CENTER)
 --------------------------------------------------------------------------------
@@ -631,7 +677,9 @@ end)
 local tickerFrame = Instance.new("Frame")
 tickerFrame.Name = "ServerTicker"
 tickerFrame.Size = UDim2.new(0, 500, 0, 30)
-tickerFrame.Position = UDim2.new(0.5, 0, 0, 50)
+-- Keep the ticker in the dedicated top strip. The molecule builder starts at
+-- y=50, so a ticker there would cover its drop zone and atom labels.
+tickerFrame.Position = UDim2.new(0.5, 0, 0, 8)
 tickerFrame.AnchorPoint = Vector2.new(0.5, 0)
 tickerFrame.BackgroundColor3 = COLORS.panel
 tickerFrame.BackgroundTransparency = 0.3
@@ -949,8 +997,8 @@ ptButton.Parent = screenGui
 createCorner(ptButton, 10)
 createStroke(ptButton, COLORS.accent, 1.5)
 
-ptButton.MouseButton1Click:Connect(function()
-	local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
+ptButton.Activated:Connect(function()
+	local ptGui = findScreenGui("PeriodicTableGui")
 	if ptGui then
 		ptGui.Enabled = not ptGui.Enabled
 	end
@@ -1102,13 +1150,6 @@ AchievementUnlocked.OnClientEvent:Connect(function(data)
 	addTickerMessage(player.Name .. " unlocked achievement '" .. (data.title or "") .. "'!")
 end)
 
-ServerAnnounce.OnClientEvent:Connect(function(data)
-	-- data = {message}
-	if data and data.message then
-		addTickerMessage(data.message)
-	end
-end)
-
 --------------------------------------------------------------------------------
 -- ELEMENT PROXIMITY DETECTION
 --------------------------------------------------------------------------------
@@ -1178,8 +1219,12 @@ end)
 
 local MAP_WORLD_SIZE = 2000 -- world studs that map covers
 local MAP_CENTER = Vector3.new(0, 0, 0) -- center of the map world
+local minimapTimer = 0
 
-RunService.Heartbeat:Connect(function()
+RunService.Heartbeat:Connect(function(dt)
+	minimapTimer = minimapTimer + dt
+	if minimapTimer < 0.1 then return end
+	minimapTimer = 0
 	local character = player.Character
 	if not character then return end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -1199,8 +1244,8 @@ end)
 -- WALLET BUTTON HANDLER
 --------------------------------------------------------------------------------
 
-walletBtn.MouseButton1Click:Connect(function()
-	local wGui = playerGui:FindFirstChild("WalletGui")
+walletBtn.Activated:Connect(function()
+	local wGui = findScreenGui("WalletGui")
 	if wGui then
 		wGui.Enabled = not wGui.Enabled
 	end
@@ -1290,19 +1335,19 @@ if UserInputService.TouchEnabled then
 		corner.CornerRadius = UDim.new(0, 10)
 		corner.Parent = btn
 
-		btn.MouseButton1Click:Connect(callback)
+		btn.Activated:Connect(callback)
 		return btn
 	end
 
 	-- Periodic Table button
 	createMobileBtn("PT", Color3.fromRGB(34, 197, 94), function()
-		local ptGui = playerGui:FindFirstChild("PeriodicTableGui")
+		local ptGui = findScreenGui("PeriodicTableGui")
 		if ptGui then ptGui.Enabled = not ptGui.Enabled end
 	end)
 
 	-- Wallet button
 	createMobileBtn("MC", Color3.fromRGB(255, 215, 0), function()
-		local wGui = playerGui:FindFirstChild("WalletGui")
+		local wGui = findScreenGui("WalletGui")
 		if wGui then wGui.Enabled = not wGui.Enabled end
 	end)
 
@@ -1339,13 +1384,13 @@ if UserInputService.TouchEnabled then
 		local c2 = Instance.new("UICorner")
 		c2.CornerRadius = UDim.new(0, 8)
 		c2.Parent = btn2
-		btn2.MouseButton1Click:Connect(function()
-			local gui = playerGui:FindFirstChild(guiName)
+		btn2.Activated:Connect(function()
+			local gui = findScreenGui(guiName)
 			if gui then gui.Enabled = not gui.Enabled end
 		end)
 	end
 
-	createMobileBtn2("S", Color3.fromRGB(220, 140, 40), "SlagProcessingGui")
+	createMobileBtn2("J", Color3.fromRGB(220, 140, 40), "SlagProcessingGui")
 	createMobileBtn2("F", Color3.fromRGB(80, 200, 60), "FertilizerGui")
 	createMobileBtn2("G", Color3.fromRGB(0, 200, 130), "FactoryBuilderGui")
 	createMobileBtn2("V", Color3.fromRGB(255, 200, 0), "MiningGui")

@@ -1,7 +1,13 @@
 {
   "generated_by": "assets/viewer/build_manifest.py",
-  "count": 80,
+  "count": 106,
   "models": [
+    {
+      "file": "Barrel_01.glb",
+      "stem": "Barrel_01",
+      "label": "Barrel 01",
+      "set": "Industrial & Game"
+    },
     {
       "file": "anvil_hammer.glb",
       "stem": "anvil_hammer",
@@ -15,10 +21,22 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "ball_mill_hd.glb",
+      "stem": "ball_mill_hd",
+      "label": "Ball Mill Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "banner_pole.glb",
       "stem": "banner_pole",
       "label": "Banner Pole",
       "set": "Nexus Hub"
+    },
+    {
+      "file": "barrel_03.glb",
+      "stem": "barrel_03",
+      "label": "Barrel 03",
+      "set": "Industrial & Game"
     },
     {
       "file": "beaker_1L.glb",
@@ -81,6 +99,18 @@
       "set": "Bubble Tea Caf\u00e9"
     },
     {
+      "file": "caged_hanging_light.glb",
+      "stem": "caged_hanging_light",
+      "label": "Caged Hanging Light",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "cement_bag.glb",
+      "stem": "cement_bag",
+      "label": "Cement Bag",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "centrifugal_pump.glb",
       "stem": "centrifugal_pump",
       "label": "Centrifugal Pump",
@@ -90,6 +120,12 @@
       "file": "centrifuge.glb",
       "stem": "centrifuge",
       "label": "Centrifuge",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "chemistry_set.glb",
+      "stem": "chemistry_set",
+      "label": "Chemistry Set",
       "set": "Industrial & Game"
     },
     {
@@ -105,15 +141,33 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "cone_crusher_hd.glb",
+      "stem": "cone_crusher_hd",
+      "label": "Cone Crusher Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "conveyor_belt.glb",
       "stem": "conveyor_belt",
       "label": "Conveyor Belt",
       "set": "Industrial & Game"
     },
     {
+      "file": "conveyor_hd.glb",
+      "stem": "conveyor_hd",
+      "label": "Conveyor Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "cooling_pit.glb",
       "stem": "cooling_pit",
       "label": "Cooling Pit",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "cooling_pit_hd.glb",
+      "stem": "cooling_pit_hd",
+      "label": "Cooling Pit Hd",
       "set": "Industrial & Game"
     },
     {
@@ -159,6 +213,12 @@
       "set": "Bubble Tea Caf\u00e9"
     },
     {
+      "file": "drying_oven_hd.glb",
+      "stem": "drying_oven_hd",
+      "label": "Drying Oven Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "erlenmeyer_flask.glb",
       "stem": "erlenmeyer_flask",
       "label": "Erlenmeyer Flask",
@@ -174,6 +234,12 @@
       "file": "filtration_press.glb",
       "stem": "filtration_press",
       "label": "Filtration Press",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "filtration_press_hd.glb",
+      "stem": "filtration_press_hd",
+      "label": "Filtration Press Hd",
       "set": "Industrial & Game"
     },
     {
@@ -231,9 +297,27 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "jaw_crusher_hd.glb",
+      "stem": "jaw_crusher_hd",
+      "label": "Jaw Crusher Hd",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "korean_fire_extinguisher_01.glb",
+      "stem": "korean_fire_extinguisher_01",
+      "label": "Korean Fire Extinguisher 01",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "lab_bench.glb",
       "stem": "lab_bench",
       "label": "Lab Bench",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "ladder_sectioned_01.glb",
+      "stem": "ladder_sectioned_01",
+      "label": "Ladder Sectioned 01",
       "set": "Industrial & Game"
     },
     {
@@ -255,9 +339,33 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "leaching_tank_hd.glb",
+      "stem": "leaching_tank_hd",
+      "label": "Leaching Tank Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "magnetic_separator.glb",
       "stem": "magnetic_separator",
       "label": "Magnetic Separator",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "magnetic_separator_hd.glb",
+      "stem": "magnetic_separator_hd",
+      "label": "Magnetic Separator Hd",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "metal_jerrycan.glb",
+      "stem": "metal_jerrycan",
+      "label": "Metal Jerrycan",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "metal_toolbox.glb",
+      "stem": "metal_toolbox",
+      "label": "Metal Toolbox",
       "set": "Industrial & Game"
     },
     {
@@ -283,6 +391,12 @@
       "stem": "mine_support_frame",
       "label": "Mine Support Frame",
       "set": "Mining Site"
+    },
+    {
+      "file": "modular_industrial_pipes_01.glb",
+      "stem": "modular_industrial_pipes_01",
+      "label": "Modular Industrial Pipes 01",
+      "set": "Industrial & Game"
     },
     {
       "file": "molecule_model.glb",
@@ -339,9 +453,27 @@
       "set": "Nexus Hub"
     },
     {
+      "file": "portable_generator.glb",
+      "stem": "portable_generator",
+      "label": "Portable Generator",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "precipitation_reactor_hd.glb",
+      "stem": "precipitation_reactor_hd",
+      "label": "Precipitation Reactor Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "pressure_vessel.glb",
       "stem": "pressure_vessel",
       "label": "Pressure Vessel",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "propane_tank.glb",
+      "stem": "propane_tank",
+      "label": "Propane Tank",
       "set": "Industrial & Game"
     },
     {
@@ -381,6 +513,12 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "roasting_kiln_hd.glb",
+      "stem": "roasting_kiln_hd",
+      "label": "Roasting Kiln Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "safety_fence_post.glb",
       "stem": "safety_fence_post",
       "label": "Safety Fence Post",
@@ -402,6 +540,12 @@
       "file": "slag_ladle.glb",
       "stem": "slag_ladle",
       "label": "Slag Ladle",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "small_lpg_tank.glb",
+      "stem": "small_lpg_tank",
+      "label": "Small Lpg Tank",
       "set": "Industrial & Game"
     },
     {
@@ -453,9 +597,21 @@
       "set": "Industrial & Game"
     },
     {
+      "file": "vibrating_feeder_hd.glb",
+      "stem": "vibrating_feeder_hd",
+      "label": "Vibrating Feeder Hd",
+      "set": "Industrial & Game"
+    },
+    {
       "file": "vibrating_screen.glb",
       "stem": "vibrating_screen",
       "label": "Vibrating Screen",
+      "set": "Industrial & Game"
+    },
+    {
+      "file": "vibrating_screen_hd.glb",
+      "stem": "vibrating_screen_hd",
+      "label": "Vibrating Screen Hd",
       "set": "Industrial & Game"
     },
     {

@@ -60,6 +60,26 @@ function CarbonScore.GetRating(score)
 	end
 end
 
+-- Carbon credits are earned only by an operating factory, not by an empty
+-- rental. Lower emissions produce more credits; world events can multiply
+-- the verified credit yield. The result is deliberately small so credits
+-- reward sustainable layout choices without replacing production income.
+function CarbonScore.CalculateCreditReward(score, multiplier, operating)
+	if not operating then return 0 end
+	local value = tonumber(score) or 0
+	if value ~= value or value == math.huge or value == -math.huge then return 0 end
+	local eventMultiplier = tonumber(multiplier) or 1
+	if eventMultiplier ~= eventMultiplier or eventMultiplier == math.huge or eventMultiplier == -math.huge then
+		eventMultiplier = 1
+	end
+	local baseCredits
+	if value <= 50 then baseCredits = 50
+	elseif value <= 150 then baseCredits = 25
+	elseif value <= 300 then baseCredits = 10
+	else baseCredits = 0 end
+	return math.floor(baseCredits * math.max(0, eventMultiplier))
+end
+
 -- Format CO2 for display
 function CarbonScore.FormatCO2(kg)
 	if kg >= 1000 then

@@ -15,6 +15,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StationAccess = require(ReplicatedStorage.Modules.StationAccess)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -67,7 +69,12 @@ screenGui.DisplayOrder = 5
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
--- Map container (top-left)
+-- The compact HUD already contains a persistent map at bottom-right. Keep
+-- this detailed, clickable station map available on demand so it does not
+-- cover the atom inventory and molecule builder during normal play.
+screenGui.Enabled = false
+
+-- Map container (top-left when opened with M/N)
 local mapFrame = Instance.new("Frame")
 mapFrame.Name = "Minimap"
 mapFrame.Size = UDim2.fromOffset(MAP_SIZE, MAP_SIZE)
@@ -144,6 +151,51 @@ for _, tp in ipairs(TELEPORTS) do
 	table.insert(zoneDots, {dot = tpDot, zone = {pos = tp.pos}})
 end
 
+-- Production stations are explicit navigation targets, not anonymous points
+-- inside the factory zone. Their positions come from the shared station
+-- contract used by server access validation.
+local setWaypoint
+for _, stationKey in ipairs({"crush", "cone", "mill", "leach"}) do
+	local station = StationAccess.Stations[stationKey]
+	local map = station.mapPosition
+	local stationDot = Instance.new("Frame")
+	stationDot.Name = "Station_" .. stationKey
+	stationDot.Size = UDim2.fromOffset(9, 9)
+	local stationColor = {
+		crush = Color3.fromRGB(255, 150, 50),
+		cone = Color3.fromRGB(255, 190, 80),
+		mill = Color3.fromRGB(190, 120, 255),
+		leach = Color3.fromRGB(80, 210, 255),
+	}
+	stationDot.BackgroundColor3 = stationColor[stationKey]
+	stationDot.Parent = mapFrame
+	corner(stationDot, 4)
+	local stationLabel = Instance.new("TextLabel")
+	stationLabel.Size = UDim2.fromOffset(72, 12)
+	stationLabel.Position = UDim2.new(0.5, -36, 1, 1)
+	stationLabel.BackgroundTransparency = 1
+	stationLabel.Text = stationKey == "crush" and "CRUSH"
+		or stationKey == "cone" and "CONE"
+		or stationKey == "mill" and "MILL"
+		or "LEACH"
+	stationLabel.TextColor3 = stationDot.BackgroundColor3
+	stationLabel.TextScaled = true
+	stationLabel.Font = Enum.Font.GothamBold
+	stationLabel.Parent = stationDot
+	local stationPos = Vector3.new(map.x, map.y, map.z)
+	local clickBtn = Instance.new("TextButton")
+	clickBtn.Name = "SetWaypoint"
+	clickBtn.Size = UDim2.new(1, 8, 1, 8)
+	clickBtn.Position = UDim2.new(0, -4, 0, -4)
+	clickBtn.BackgroundTransparency = 1
+	clickBtn.Text = ""
+	clickBtn.Parent = stationDot
+	clickBtn.Activated:Connect(function()
+		setWaypoint(station.label, stationPos)
+	end)
+	table.insert(zoneDots, {dot = stationDot, zone = {name = station.label, pos = stationPos}})
+end
+
 -- ═══════════════════════════════════════════════
 -- WAYPOINT SYSTEM
 -- ═══════════════════════════════════════════════
@@ -181,7 +233,7 @@ wpText.Font = Enum.Font.GothamBold
 wpText.TextXAlignment = Enum.TextXAlignment.Left
 wpText.Parent = waypointGui
 
-local function setWaypoint(zoneName, targetPos)
+function setWaypoint(zoneName, targetPos)
 	activeWaypoint = {name = zoneName, pos = targetPos}
 	waypointGui.Visible = true
 end
@@ -201,7 +253,7 @@ for _, zd in ipairs(zoneDots) do
 		clickBtn.Text = ""
 		clickBtn.Parent = zd.dot
 
-		clickBtn.MouseButton1Click:Connect(function()
+		clickBtn.Activated:Connect(function()
 			setWaypoint(zd.zone.name, zd.zone.pos)
 		end)
 	end
@@ -349,12 +401,12 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
--- Toggle minimap with N key
+-- Toggle minimap with M (documented primary shortcut) or N (legacy shortcut).
 UserInputService.InputBegan:Connect(function(input, gp)
 	if gp then return end
-	if input.KeyCode == Enum.KeyCode.N then
+	if input.KeyCode == Enum.KeyCode.M or input.KeyCode == Enum.KeyCode.N then
 		screenGui.Enabled = not screenGui.Enabled
 	end
 end)
 
-print("[MOLGANG] MinimapGui loaded — player-centered map with zone navigation + travel times (N key)")
+print("[MOLGANG] MinimapGui loaded — player-centered map with zone navigation + travel times (M/N key)")

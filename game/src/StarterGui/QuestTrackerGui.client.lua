@@ -17,10 +17,12 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local Quests = require(ReplicatedStorage.Modules.Quests)
 local PlayerDataLoaded = Remotes:WaitForChild("PlayerDataLoaded")
 local RequestQuestInfo = Remotes:WaitForChild("RequestQuestInfo")
+local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
 
 -- COLOR PALETTE
 local COLORS = {
@@ -50,34 +52,40 @@ screenGui.DisplayOrder = 7
 screenGui.Enabled = true
 screenGui.Parent = playerGui
 
--- COMPACT TRACKER WIDGET (always visible top-left)
+-- COMPACT TRACKER WIDGET (collapsed by default so it never covers the world)
 local compactTracker = Instance.new("Frame")
 compactTracker.Name = "CompactTracker"
-compactTracker.Size = UDim2.new(0, 320, 0, 200)
-compactTracker.Position = UDim2.new(0, 10, 0, 60)
+compactTracker.Size = UDim2.fromOffset(260, 38)
+-- The atom inventory occupies the first 200px on the left. Keep the compact
+-- quest affordance beneath it so status widgets never cover atom controls.
+compactTracker.Position = UDim2.new(0, 10, 0, 340)
 compactTracker.BackgroundColor3 = COLORS.panel
 compactTracker.BackgroundTransparency = 0.2
 compactTracker.Parent = screenGui
 createCorner(compactTracker, 10)
 
 -- Tracker header
-local trackerTitle = Instance.new("TextLabel")
-trackerTitle.Size = UDim2.new(1, 0, 0, 30)
+local trackerTitle = Instance.new("TextButton")
+trackerTitle.Name = "ToggleCompactTracker"
+trackerTitle.Size = UDim2.new(1, 0, 0, 38)
 trackerTitle.BackgroundTransparency = 0.3
-trackerTitle.Text = "📋 Active Quests"
+trackerTitle.Text = "📋 Quests  ▼"
 trackerTitle.TextColor3 = COLORS.accent
 trackerTitle.TextScaled = true
 trackerTitle.Font = Enum.Font.GothamBold
+trackerTitle.AutoButtonColor = true
+trackerTitle.Active = true
 trackerTitle.Parent = compactTracker
 createCorner(trackerTitle, 8)
 
 -- Active quests list
 local questsList = Instance.new("ScrollingFrame")
 questsList.Name = "QuestsList"
-questsList.Size = UDim2.new(1, -10, 1, -40)
-questsList.Position = UDim2.new(0, 5, 0, 35)
+questsList.Size = UDim2.new(1, -10, 1, -48)
+questsList.Position = UDim2.new(0, 5, 0, 43)
 questsList.BackgroundTransparency = 1
 questsList.ScrollBarThickness = 4
+questsList.Visible = false
 questsList.Parent = compactTracker
 
 local questsLayout = Instance.new("UIListLayout")
@@ -97,6 +105,7 @@ modalGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 modalGui.DisplayOrder = 16
 modalGui.Enabled = false
 modalGui.Parent = playerGui
+ResponsiveGui.Attach(modalGui, 700, 600)
 
 -- Modal background
 local modalBg = Instance.new("Frame")
@@ -109,7 +118,8 @@ modalBg.Parent = modalGui
 local modalPanel = Instance.new("Frame")
 modalPanel.Name = "ModalPanel"
 modalPanel.Size = UDim2.new(0, 700, 0, 600)
-modalPanel.Position = UDim2.new(0.5, -350, 0.5, -300)
+modalPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+modalPanel.Position = UDim2.fromScale(0.5, 0.5)
 modalPanel.BackgroundColor3 = COLORS.panel
 modalPanel.BackgroundTransparency = 0.1
 modalPanel.Parent = modalGui
@@ -159,6 +169,25 @@ modalLayout.Parent = modalScroll
 
 local playerData = nil
 local questProgress = {}
+local compactExpanded = false
+local lastCompactToggle = 0
+
+local function setCompactExpanded(expanded)
+	compactExpanded = expanded
+	questsList.Visible = expanded
+	compactTracker.Size = expanded and UDim2.fromOffset(260, 150) or UDim2.fromOffset(260, 38)
+	trackerTitle.Text = expanded and "📋 Active Quests  ▲" or "📋 Quests  ▼"
+end
+
+local function toggleCompactTracker()
+	local now = os.clock()
+	if now - lastCompactToggle < 0.1 then return end
+	lastCompactToggle = now
+	setCompactExpanded(not compactExpanded)
+end
+
+trackerTitle.Activated:Connect(toggleCompactTracker)
+trackerTitle.MouseButton1Click:Connect(toggleCompactTracker)
 
 PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
@@ -168,6 +197,10 @@ PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	else
 		questProgress = playerData.questProgress
 	end
+	-- Request the server-authoritative quest state immediately. This starts
+	-- the first objective for new players, so the compact tracker is useful
+	-- before they know that Q opens the full quest modal.
+	RequestQuestInfo:FireServer()
 end)
 
 local function displayQuestInTracker(quest)
@@ -232,6 +265,11 @@ local function updateCompactTracker()
 
 	-- Get active quests
 	local activeQuests = Quests.GetActiveQuests(questProgress)
+	if not compactExpanded then
+		trackerTitle.Text = #activeQuests > 0
+			and ("📋 " .. activeQuests[1].name .. "  ▼")
+			or "📋 Quests  ▼"
+	end
 
 	if #activeQuests == 0 then
 		local noQuestLabel = Instance.new("TextLabel")
@@ -382,7 +420,7 @@ local function displayModalQuests()
 		acceptBtn.Parent = card
 		createCorner(acceptBtn, 4)
 
-		acceptBtn.MouseButton1Click:Connect(function()
+		acceptBtn.Activated:Connect(function()
 			acceptBtn.Text = "REQUESTING..."
 			acceptBtn.Active = false
 			Remotes.RequestAcceptQuest:FireServer(quest.id)
@@ -424,18 +462,7 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
--- Keyboard shortcuts
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.Q then
-		modalGui.Enabled = not modalGui.Enabled
-		if modalGui.Enabled then
-			displayModalQuests()
-		end
-	end
-end)
-
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	modalGui.Enabled = false
 end)
 
@@ -447,3 +474,24 @@ _G.QuestTrackerToggle = function()
 end
 
 print("[QuestTrackerGui] Loaded — Press Q to toggle quest list")
+
+-- PlayerDataLoaded is a one-shot event and this script can start after it in
+-- embedded Studio/Wine. Retry both the data snapshot and quest state so a
+-- new player cannot be left with an empty tracker until they press Q.
+task.spawn(function()
+	for _ = 1, 20 do
+		if not playerData then
+			local ok, data = pcall(function() return GetPlayerData:InvokeServer() end)
+			if ok and type(data) == "table" then
+				playerData = data
+				questProgress = data.questProgress or Quests.CreateQuestProgress()
+			end
+		end
+		RequestQuestInfo:FireServer()
+		if playerData and next(questProgress.active or {}) ~= nil then
+			updateCompactTracker()
+			return
+		end
+		task.wait(0.5)
+	end
+end)

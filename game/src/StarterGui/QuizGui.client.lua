@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -18,6 +19,31 @@ gui.DisplayOrder = 80
 gui.Enabled = false
 gui.Parent = playerGui
 
+-- Keep the quiz card usable in the narrow embedded Studio/Wine viewport.
+-- Scale the complete modal so its buttons remain inside the backdrop while
+-- preserving the desktop layout at normal resolutions.
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = gui
+
+local function updateQuizScale()
+	local camera = workspace.CurrentCamera
+	if not camera then return end
+	local viewport = camera.ViewportSize
+	local scale = math.min(viewport.X / 720, viewport.Y / 520)
+	responsiveScale.Scale = math.clamp(scale, 0.65, 1)
+end
+
+updateQuizScale()
+local cameraConnection
+cameraConnection = RunService.RenderStepped:Connect(function()
+	if not gui.Parent then
+		cameraConnection:Disconnect()
+		return
+	end
+	updateQuizScale()
+end)
+
 local backdrop = Instance.new("TextButton")
 backdrop.Name = "Backdrop"
 backdrop.Size = UDim2.fromScale(1, 1)
@@ -31,7 +57,8 @@ backdrop.Parent = gui
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.Size = UDim2.new(0, 620, 0, 430)
-panel.Position = UDim2.new(0.5, -310, 0.5, -215)
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.Position = UDim2.fromScale(0.5, 0.5)
 panel.BackgroundColor3 = Color3.fromRGB(24, 28, 42)
 panel.Parent = gui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
@@ -59,6 +86,7 @@ question.TextWrapped = true
 question.Parent = panel
 
 local optionsFrame = Instance.new("Frame")
+optionsFrame.Name = "Options"
 optionsFrame.Size = UDim2.new(1, -50, 0, 210)
 optionsFrame.Position = UDim2.new(0, 25, 0, 175)
 optionsFrame.BackgroundTransparency = 1
@@ -83,10 +111,23 @@ local function clearOptions()
 	end
 end
 
+local answerLocked = false
+local pendingQuestionNum = nil
+
+local function showQuizExpired()
+	answerLocked = true
+	clearOptions()
+	title.Text = "CHEMISTRY QUIZ  •  SESSION EXPIRED"
+	question.Text = "De quiz is verlopen voordat alle antwoorden zijn ingestuurd.\nDruk op Close om opnieuw te beginnen."
+	gui.Enabled = true
+end
+
 local function showQuiz(data)
 	if type(data) ~= "table" or type(data.quizData) ~= "table" then return end
 	local quiz = data.quizData
 	gui.Enabled = true
+	answerLocked = false
+	pendingQuestionNum = nil
 	title.Text = string.format("CHEMISTRY QUIZ  •  %d / %d", quiz.questionNum or 1, quiz.totalQuestions or 3)
 	question.Text = quiz.question or "Question unavailable"
 	clearOptions()
@@ -102,27 +143,56 @@ local function showQuiz(data)
 		option.Parent = optionsFrame
 		Instance.new("UICorner", option).CornerRadius = UDim.new(0, 7)
 		option.Activated:Connect(function()
-			option.Active = false
+			if answerLocked then return end
+			answerLocked = true
+			pendingQuestionNum = quiz.questionNum
+			question.Text = "Checking answer..."
+			for _, otherOption in ipairs(optionsFrame:GetChildren()) do
+				if otherOption:IsA("TextButton") then
+					otherOption.Active = false
+					otherOption.AutoButtonColor = false
+					otherOption.BackgroundColor3 = Color3.fromRGB(65, 70, 88)
+				end
+			end
 			Remotes.RequestQuizAnswer:FireServer(quiz.questionNum, answer)
+			-- Never leave the player in a dead-end loading state if Studio/Wine or
+			-- a transient server error drops the response. The answer may already
+			-- have been accepted server-side, so require an explicit Close/restart
+			-- instead of risking a duplicate or out-of-order submission.
+			task.delay(6, function()
+				if not gui.Parent or not gui.Enabled then return end
+				if pendingQuestionNum ~= quiz.questionNum or not answerLocked then return end
+				question.Text = "Antwoord ontvangen, maar de vervolgvraag kwam niet door.\nDruk op Close en start de quiz opnieuw."
+				for _, otherOption in ipairs(optionsFrame:GetChildren()) do
+					if otherOption:IsA("TextButton") then
+						otherOption.Active = false
+						otherOption.AutoButtonColor = false
+						otherOption.BackgroundColor3 = Color3.fromRGB(65, 70, 88)
+					end
+				end
+			end)
 		end)
 	end
 end
 
 close.Activated:Connect(function()
 	Remotes.RequestQuizCancel:FireServer()
+	answerLocked = false
+	pendingQuestionNum = nil
 	gui.Enabled = false
 	clearOptions()
 end)
 backdrop.Activated:Connect(function()
 	Remotes.RequestQuizCancel:FireServer()
+	answerLocked = false
+	pendingQuestionNum = nil
 	gui.Enabled = false
 	clearOptions()
 end)
 
 Remotes.ServerAnnounce.OnClientEvent:Connect(function(data)
 	if type(data) == "table" and data.quizExpired then
-		gui.Enabled = false
-		clearOptions()
+		showQuizExpired()
 		return
 	end
 	-- A world quiz pillar first announces its zone, then the server creates

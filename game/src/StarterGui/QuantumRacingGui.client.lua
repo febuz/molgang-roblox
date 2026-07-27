@@ -15,6 +15,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local Commissioning = require(ReplicatedStorage.Modules.QuantumRacing) -- module renamed internally
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local C = {
 	bg = Color3.fromRGB(8, 10, 16),
@@ -39,10 +40,12 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 21
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 620, 520)
 
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 620, 0, 520)
-main.Position = UDim2.new(0.5, -310, 0.5, -260)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
@@ -79,7 +82,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = title
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Phase cards
 local trackScroll = Instance.new("ScrollingFrame")
@@ -205,7 +208,7 @@ for _, track in ipairs(Commissioning.Tracks) do
 	startBtn.Parent = card
 	corner(startBtn, 6)
 
-	startBtn.MouseButton1Click:Connect(function()
+	startBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestStartRace")
 		if r then r:FireServer(track.id) end
 		screenGui.Enabled = false

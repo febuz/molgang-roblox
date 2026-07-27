@@ -77,9 +77,26 @@ screenGui.DisplayOrder = 21
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local miningCamera = workspace.CurrentCamera
+local function updateMiningScale()
+	if not miningCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(miningCamera.ViewportSize.X - 20) / 820,
+		(miningCamera.ViewportSize.Y - 20) / 560
+	), 0.65, 1)
+end
+updateMiningScale()
+if miningCamera then
+	miningCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateMiningScale)
+end
+
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 820, 0, 560)
-main.Position = UDim2.new(0.5, -410, 0.5, -280)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.02
 main.Parent = screenGui
@@ -92,8 +109,15 @@ titleBar.Size = UDim2.new(1, 0, 0, 42)
 titleBar.BackgroundColor3 = C.panel
 titleBar.Parent = main
 corner(titleBar, 14)
-lbl(titleBar, {N="Title", S=UDim2.new(0.6,0,1,0), P=UDim2.new(0,14,0,0),
+lbl(titleBar, {N="Title", S=UDim2.new(0.6,0,0,22), P=UDim2.new(0,14,0,0),
 	T="VANADIUM MINING — Exploration & Extraction", C=C.accent, F=Enum.Font.GothamBold})
+
+local actionStatusLabel = lbl(titleBar, {N="ActionStatus", S=UDim2.new(0.6,0,0,16), P=UDim2.new(0,14,0,23),
+	T="Ready — choose a mining action", C=C.textDim, F=Enum.Font.Gotham})
+local function setActionStatus(text, color)
+	actionStatusLabel.Text = tostring(text or "")
+	actionStatusLabel.TextColor3 = color or C.textDim
+end
 
 local statsL = lbl(titleBar, {N="Stats", S=UDim2.new(0.35,0,1,0), P=UDim2.new(0.6,0,0,0),
 	T="Ore: 0 kg | Value: 0 MC", C=C.textDim, A=Enum.TextXAlignment.Right})
@@ -103,7 +127,41 @@ closeBtn.Size = UDim2.fromOffset(28, 28); closeBtn.Position = UDim2.new(1, -36, 
 closeBtn.BackgroundColor3 = C.red; closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
+
+local returnBtn = Instance.new("TextButton")
+returnBtn.Name = "ReturnToNexusBtn"
+returnBtn.Size = UDim2.fromOffset(118, 28)
+returnBtn.Position = UDim2.new(1, -162, 0, 7)
+returnBtn.BackgroundColor3 = C.green
+returnBtn.Text = "← NEXUS"
+returnBtn.TextColor3 = Color3.fromRGB(5, 20, 18)
+returnBtn.Font = Enum.Font.GothamBold
+returnBtn.TextScaled = true
+returnBtn.Parent = titleBar
+corner(returnBtn, 6)
+local returnRequested = false
+local function requestReturnToNexus()
+	if returnRequested then return end
+	returnRequested = true
+	playUIClick()
+	setActionStatus("Returning to Nexus Hub…", C.green)
+	local r = Remotes:FindFirstChild("RequestReturnToNexus")
+	if r then
+		-- Close the mining overlay immediately. The server owns the teleport;
+		-- leaving the overlay open made a successful return look like a freeze.
+		r:FireServer()
+		screenGui.Enabled = false
+	else
+		setActionStatus("Return service unavailable.", C.red)
+		returnRequested = false
+	end
+end
+-- Activated is the normal cross-platform path. MouseButton1Click is retained
+-- for desktop Studio/Vinegar, where Activated can be swallowed by the MDI
+-- input layer even though the button is visibly on top.
+returnBtn.Activated:Connect(requestReturnToNexus)
+returnBtn.MouseButton1Click:Connect(requestReturnToNexus)
 
 -- Tabs
 local tabFrame = Instance.new("Frame")
@@ -138,7 +196,7 @@ for _, tab in ipairs(tabs) do
 	panel.Size = UDim2.new(1,0,1,0); panel.BackgroundTransparency = 1
 	panel.Visible = (tab.key == "explore"); panel.Parent = contentFrame
 	tabPanels[tab.key] = panel
-	btn.MouseButton1Click:Connect(function()
+	btn.Activated:Connect(function()
 		playUIClick()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do b.BackgroundColor3 = C.tabInactive; b.TextColor3 = C.textDim end
@@ -153,7 +211,7 @@ tabButtons["explore"].BackgroundColor3 = C.tabActive; tabButtons["explore"].Text
 
 local explorePanel = tabPanels["explore"]
 lbl(explorePanel, {N="Info", S=UDim2.new(1,-16,0,36), P=UDim2.new(0,8,0,4),
-	T="Buy an EXPLORATION LICENSE to claim a mining plot. You WON'T know the mineral composition until you drill! Use a Drill Rig to explore, or pay 500 MC for manual survey.",
+	T="MINING LOOP: buy a license → explore the plot → deploy equipment → wait for ore → collect and sell it for MolCoins. Composition stays hidden until you explore. Start with the free hand-pick, then upgrade to a Drill Rig or Haul Truck.",
 	C=C.textDim})
 
 local exploreScroll = Instance.new("ScrollingFrame")
@@ -174,7 +232,7 @@ exploreLayout.Parent = exploreScroll
 
 local minesPanel = tabPanels["mines"]
 lbl(minesPanel, {N="Header", S=UDim2.new(1,-16,0,22), P=UDim2.new(0,8,0,4),
-	T="Your Mining Plots — Deploy equipment, explore, collect ore", C=C.accent, F=Enum.Font.GothamBold})
+	T="YOUR MINING LOOP — Explore → deploy → produce ore → collect → sell", C=C.accent, F=Enum.Font.GothamBold})
 
 local minesScroll = Instance.new("ScrollingFrame")
 minesScroll.Size = UDim2.new(1, -16, 1, -30)
@@ -212,9 +270,10 @@ for _, equip in ipairs(MiningSystem.Equipment) do
 		eb.TextColor3 = C.text; eb.Font = Enum.Font.Gotham; eb.TextScaled = true
 		eb.Parent = equipFrame; corner(eb, 4)
 		equipX = equipX + 0.14
-		eb.MouseButton1Click:Connect(function()
+		eb.Activated:Connect(function()
+			setActionStatus("Buying " .. equip.name .. "…", C.accent)
 			local r = Remotes:FindFirstChild("RequestBuyMiningEquip")
-			if r then r:FireServer(equip.id) end
+			if r then r:FireServer(equip.id) else setActionStatus("Equipment service unavailable.", C.red) end
 		end)
 	end
 end
@@ -225,7 +284,7 @@ end
 
 local marketPanel = tabPanels["market"]
 lbl(marketPanel, {N="Header", S=UDim2.new(1,-16,0,22), P=UDim2.new(0,8,0,4),
-	T="Mining Plot Marketplace — Buy and sell explored/unexplored plots", C=C.accent, F=Enum.Font.GothamBold})
+	T="PLOT MARKET — Trade plots when you want to expand or exit a region", C=C.accent, F=Enum.Font.GothamBold})
 
 local marketScroll = Instance.new("ScrollingFrame")
 marketScroll.Size = UDim2.new(1, -16, 1, -30)
@@ -277,9 +336,10 @@ if miningEvent then
 				buyBtn.TextColor3 = Color3.new(0,0,0); buyBtn.Font = Enum.Font.GothamBold
 				buyBtn.TextScaled = true; buyBtn.Parent = card; corner(buyBtn, 4)
 				local pid = plot.id
-				buyBtn.MouseButton1Click:Connect(function()
+				buyBtn.Activated:Connect(function()
+					setActionStatus("Buying exploration license for Plot #" .. pid .. "…", C.accent)
 					local r = Remotes:FindFirstChild("RequestBuyExplorationLicense")
-					if r then r:FireServer(pid) end
+					if r then r:FireServer(pid) else setActionStatus("Mining service unavailable.", C.red) end
 				end)
 			end
 			exploreScroll.CanvasSize = UDim2.new(0, 0, 0, #data.availablePlots * 54)
@@ -322,8 +382,11 @@ if miningEvent then
 							end
 						end
 					end
+					if plot.hazard then
+						compStr = "⚠ Hazard: " .. plot.hazard .. "  " .. compStr
+					end
 					lbl(card, {N="Comp", S=UDim2.new(0.6,0,0,12), P=UDim2.new(0,14,0,44),
-						T=compStr, C=C.textDim})
+						T=compStr, C=plot.hazard and C.red or C.textDim})
 				else
 					lbl(card, {N="Unknown", S=UDim2.new(0.4,0,0,18), P=UDim2.new(0,14,0,24),
 						T="UNEXPLORED — Click Explore!", C=C.unknown})
@@ -336,9 +399,10 @@ if miningEvent then
 					explBtn.Font = Enum.Font.GothamBold; explBtn.TextScaled = true
 					explBtn.Parent = card; corner(explBtn, 4)
 					local pid = plot.id
-					explBtn.MouseButton1Click:Connect(function()
+					explBtn.Activated:Connect(function()
+						setActionStatus("Exploring Plot #" .. pid .. "…", C.rare)
 						local r = Remotes:FindFirstChild("RequestExplorePlot")
-						if r then r:FireServer(pid) end
+						if r then r:FireServer(pid) else setActionStatus("Exploration service unavailable.", C.red) end
 					end)
 				end
 
@@ -349,24 +413,40 @@ if miningEvent then
 
 				-- Ore stockpile
 				lbl(card, {N="Ore", S=UDim2.new(0.2,0,0,14), P=UDim2.new(0,14,0,78),
-					T="Ore: " .. math.floor(plot.oreStockpile or 0) .. " kg", C=C.gold})
+					T="Ore: " .. math.floor(plot.oreStockpile or 0) .. " kg | Rit: " .. math.floor(plot.transportCapacity or 250) .. " kg",
+					C=C.gold})
 
 				-- Action buttons (right side)
 				local actX = 0.55
 
 				-- Deploy equipment
+				local deployChoices = {}
+				for equipId, amount in pairs(data.equipment or {}) do
+					if amount > 0 and MiningSystem.GetEquipment(equipId) then
+						table.insert(deployChoices, equipId)
+					end
+				end
+				table.sort(deployChoices)
+				local deployIndex = 1
 				local deployBtn = Instance.new("TextButton")
 				deployBtn.Size = UDim2.new(0, 70, 0, 24)
 				deployBtn.Position = UDim2.new(actX, 0, 0, 8)
 				deployBtn.BackgroundColor3 = C.accent
-				deployBtn.Text = "Deploy"; deployBtn.TextColor3 = Color3.new(0,0,0)
+				local firstDeploy = deployChoices[deployIndex]
+				deployBtn.Text = firstDeploy and ("Deploy\n" .. (MiningSystem.GetEquipment(firstDeploy).name or firstDeploy)) or "Buy equipment"
+				deployBtn.TextColor3 = Color3.new(0,0,0)
 				deployBtn.Font = Enum.Font.GothamBold; deployBtn.TextScaled = true
 				deployBtn.Parent = card; corner(deployBtn, 4)
 				local pid2 = plot.id
-				deployBtn.MouseButton1Click:Connect(function()
-					-- Deploy first available equipment
+				deployBtn.Activated:Connect(function()
+					if #deployChoices == 0 then setActionStatus("Buy equipment before deploying it.", C.red); return end
+					local equipId = deployChoices[deployIndex]
+					setActionStatus("Deploying " .. equipId .. " on Plot #" .. pid2 .. "…", C.accent)
 					local r = Remotes:FindFirstChild("RequestDeployEquipment")
-					if r then r:FireServer(pid2, "pneumatic_drill") end
+					if r then r:FireServer(pid2, equipId) else setActionStatus("Mining service unavailable.", C.red) end
+					deployIndex = (deployIndex % #deployChoices) + 1
+					local nextEquip = deployChoices[deployIndex]
+					deployBtn.Text = "Deploy\n" .. (MiningSystem.GetEquipment(nextEquip).name or nextEquip)
 				end)
 
 				-- Collect ore
@@ -377,9 +457,10 @@ if miningEvent then
 				collectBtn.Text = "Collect"; collectBtn.TextColor3 = Color3.new(0,0,0)
 				collectBtn.Font = Enum.Font.GothamBold; collectBtn.TextScaled = true
 				collectBtn.Parent = card; corner(collectBtn, 4)
-				collectBtn.MouseButton1Click:Connect(function()
+				collectBtn.Activated:Connect(function()
+					setActionStatus("Hauling ore from Plot #" .. pid2 .. "…", C.gold)
 					local r = Remotes:FindFirstChild("RequestCollectOre")
-					if r then r:FireServer(pid2) end
+					if r then r:FireServer(pid2) else setActionStatus("Ore service unavailable.", C.red) end
 				end)
 
 				-- Sell button
@@ -391,12 +472,19 @@ if miningEvent then
 				sellBtn.TextColor3 = Color3.new(1,1,1)
 				sellBtn.Font = Enum.Font.GothamBold; sellBtn.TextScaled = true
 				sellBtn.Parent = card; corner(sellBtn, 4)
-				sellBtn.MouseButton1Click:Connect(function()
+				sellBtn.Activated:Connect(function()
+					setActionStatus("Listing Plot #" .. pid2 .. " for sale…", C.gold)
 					local r = Remotes:FindFirstChild("RequestListPlotForSale")
-					if r then r:FireServer(pid2, (plot.vanadiumPct or 0.5) * 20000) end
+					if r then r:FireServer(pid2, (plot.vanadiumPct or 0.5) * 20000) else setActionStatus("Market service unavailable.", C.red) end
 				end)
 			end
 			minesScroll.CanvasSize = UDim2.new(0, 0, 0, #data.ownedPlots * 106)
+			if #data.ownedPlots == 0 then
+				lbl(minesScroll, {N="NoPlots", S=UDim2.new(1, -16, 0, 92), P=UDim2.new(0, 8, 0, 8),
+					T="Nog geen eigen mijn.\n1) Ga naar Explore & License\n2) Koop een licentie\n3) Explore je plot en plaats equipment om erts te produceren.",
+					C=C.textDim, F=Enum.Font.GothamBold})
+				minesScroll.CanvasSize = UDim2.new(0, 0, 0, 108)
+			end
 		end
 
 		-- TAB 3: Populate market
@@ -434,12 +522,30 @@ if miningEvent then
 				buyBtn.Font = Enum.Font.GothamBold; buyBtn.TextScaled = true
 				buyBtn.Parent = card; corner(buyBtn, 4)
 				local pid = listing.id
-				buyBtn.MouseButton1Click:Connect(function()
+				buyBtn.Activated:Connect(function()
+					setActionStatus("Buying mining Plot #" .. pid .. "…", C.gold)
 					local r = Remotes:FindFirstChild("RequestBuyPlotFromMarket")
-					if r then r:FireServer(pid) end
+					if r then r:FireServer(pid) else setActionStatus("Market service unavailable.", C.red) end
 				end)
 			end
 			marketScroll.CanvasSize = UDim2.new(0, 0, 0, #data.marketListings * 54)
+		end
+	end)
+end
+
+local announceEvent = Remotes:FindFirstChild("ServerAnnounce")
+if announceEvent then
+	announceEvent.OnClientEvent:Connect(function(data)
+		local message = type(data) == "table" and data.message or data
+		if type(message) ~= "string" then return end
+		local lower = string.lower(message)
+		if lower:find("plot", 1, true) or lower:find("mining", 1, true)
+			or lower:find("ore", 1, true) or lower:find("haul", 1, true)
+			or lower:find("equipment", 1, true) or lower:find("explor", 1, true)
+			or lower:find("drill", 1, true) then
+			local isFailure = lower:find("not", 1, true) or lower:find("reject", 1, true)
+				or lower:find("cannot", 1, true) or lower:find("unavailable", 1, true)
+			setActionStatus(message, isFailure and C.red or C.green)
 		end
 	end)
 end

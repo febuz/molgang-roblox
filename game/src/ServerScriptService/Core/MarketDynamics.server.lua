@@ -11,51 +11,24 @@
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
-local TradeRules = require(ReplicatedStorage.Modules.TradeRules)
-local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local CommodityMarket = require(ReplicatedStorage.Modules.CommodityMarket)
+local MarketTransactionLedger = require(ReplicatedStorage.Modules.MarketTransactionLedger)
 
 -- ═══════════════════════════════════════════════
 -- MARKET STATE
 -- ═══════════════════════════════════════════════
 
-local marketStore = DataStoreService:GetDataStore("MOLGANG_Market_v1")
+local marketStore = DataStoreProvider.GetDataStore("MOLGANG_Market_v1")
 
 -- Base prices for commodities
-local BASE_PRICES = {
-	Iron = 100,
-	Copper = 150,
-	Gold = 500,
-	Vanadium = 300,
-	Tungsten = 400,
-	Aluminum = 80,
-	Carbon = 60,
-	Nitrogen = 70,
-}
-
-local function isAcceptedTransaction(player, action, itemName, quantity, offeredPrice)
-	local valid, parsedQuantity, currentPrice = TradeRules.Validate(
-		action, itemName, quantity, offeredPrice, BASE_PRICES
-	)
-	if not valid then return false end
-	local data = PlayerDataBridge.GetPlayerData(player.UserId)
-	if not data then return false end
-	if action == "buy" then
-		return (data.molCoins or 0) >= currentPrice * parsedQuantity
-	end
-	if action == "sell" then
-		return (data.atoms and data.atoms[itemName] or 0) >= parsedQuantity
-	end
-	return false
-end
+local BASE_PRICES = CommodityMarket.GetBasePrices()
 
 -- Market state tracking
 local marketState = {
 	-- Price history: {commodity = {prices}}
 	priceHistory = {},
-	-- Supply/demand: {commodity = {bought=N, sold=N}}
-	transactions = {},
 	-- Last update timestamp
 	lastUpdate = os.time(),
 }
@@ -63,7 +36,6 @@ local marketState = {
 -- Initialize market state
 for commodity, basePrice in pairs(BASE_PRICES) do
 	marketState.priceHistory[commodity] = {basePrice}
-	marketState.transactions[commodity] = {bought = 0, sold = 0}
 end
 
 -- ═══════════════════════════════════════════════
@@ -78,7 +50,7 @@ local function calculatePrice(commodity, time)
 	local currentPrice = priceHistory[#priceHistory] or basePrice
 
 	-- Get transaction data
-	local txn = marketState.transactions[commodity] or {bought = 0, sold = 0}
+	local txn = MarketTransactionLedger.Get(commodity)
 
 	-- Demand factor: if more people buying, price goes up
 	local demandFactor = 1 + (txn.bought - txn.sold) / 100
@@ -110,7 +82,8 @@ task.spawn(function()
 
 		-- Update all commodity prices
 		for commodity, basePrice in pairs(BASE_PRICES) do
-			local newPrice = calculatePrice(commodity, now)
+		local newPrice = calculatePrice(commodity, now)
+		CommodityMarket.SetCurrentPrice(commodity, newPrice)
 
 			-- Record in history
 			table.insert(marketState.priceHistory[commodity], newPrice)
@@ -120,11 +93,11 @@ task.spawn(function()
 				table.remove(marketState.priceHistory[commodity], 1)
 			end
 
-			-- Reset daily transaction counts every hour
-			if (now - (marketState.lastUpdate or now)) >= 3600 then
-				marketState.transactions[commodity].bought = 0
-				marketState.transactions[commodity].sold = 0
-			end
+		end
+
+		-- Reset demand/supply counters once per market hour.
+		if (now - (marketState.lastUpdate or now)) >= 3600 then
+			MarketTransactionLedger.Reset()
 		end
 
 		marketState.lastUpdate = now
@@ -144,8 +117,7 @@ end)
 -- ═══════════════════════════════════════════════
 
 local function getCurrentPrice(commodity)
-	local now = os.time()
-	return calculatePrice(commodity, now)
+	return CommodityMarket.GetCurrentPrice(commodity)
 end
 
 local function getPriceHistory(commodity)
@@ -156,29 +128,6 @@ end
 -- TRANSACTION RECORDING
 -- ═══════════════════════════════════════════════
 
-local function recordTransaction(commodity, action, quantity)
-	if not marketState.transactions[commodity] then return end
-
-	if action == "buy" then
-		marketState.transactions[commodity].bought = marketState.transactions[commodity].bought + quantity
-	elseif action == "sell" then
-		marketState.transactions[commodity].sold = marketState.transactions[commodity].sold + quantity
-	end
-end
-
--- Register immediately during server startup. Waiting on the signal here
--- would block this module until the first trade and lose initial history.
-Remotes.RequestMarketTrade.OnServerEvent:Connect(function(player, action, itemName, quantity, offeredPrice)
-	if not isAcceptedTransaction(player, action, itemName, quantity, offeredPrice) then
-		return
-	end
-	if action == "buy" then
-		recordTransaction(itemName, "buy", quantity)
-	elseif action == "sell" then
-		recordTransaction(itemName, "sell", quantity)
-	end
-end)
-
 -- ═════════════════════════════════════════════════
 -- PUBLIC API
 -- ═════════════════════════════════════════════════
@@ -187,5 +136,5 @@ return {
 	GetCurrentPrice = getCurrentPrice,
 	GetPriceHistory = getPriceHistory,
 	GetMarketState = function() return marketState end,
-	RecordTransaction = recordTransaction,
+	RecordTransaction = MarketTransactionLedger.Record,
 }

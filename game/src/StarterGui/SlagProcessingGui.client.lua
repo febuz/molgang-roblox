@@ -22,6 +22,8 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local SteelSlag = require(ReplicatedStorage.Modules.SteelSlag)
+local ProcessEngineering = require(ReplicatedStorage.Modules.ProcessEngineering)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 
 -- UI click sound helper (#55)
 local function playUIClick()
@@ -95,6 +97,9 @@ local function btn(parent, props)
 	b.Text = props.Text or "Button"
 	b.Font = Enum.Font.GothamBold
 	b.TextScaled = true
+	b.Active = true
+	b.Selectable = true
+	b.ZIndex = 30
 	b.Parent = parent
 	corner(b, 6)
 	return b
@@ -113,11 +118,28 @@ screenGui.DisplayOrder = 15
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local slagCamera = workspace.CurrentCamera
+local function updateSlagScale()
+	if not slagCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(slagCamera.ViewportSize.X - 20) / 820,
+		(slagCamera.ViewportSize.Y - 20) / 560
+	), 0.65, 1)
+end
+updateSlagScale()
+if slagCamera then
+	slagCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateSlagScale)
+end
+
 -- Main panel
 local main = Instance.new("Frame")
 main.Name = "MainPanel"
 main.Size = UDim2.new(0, 820, 0, 560)
-main.Position = UDim2.new(0.5, -410, 0.5, -280)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
@@ -145,7 +167,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = titleBar
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() playUIClick(); screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() playUIClick(); screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- TAB SYSTEM (3 tabs)
@@ -204,7 +226,7 @@ for _, tab in ipairs(tabs) do
 	tpanel.Parent = contentFrame
 	tabPanels[tab.key] = tpanel
 
-	tbtn.MouseButton1Click:Connect(function()
+	tbtn.Activated:Connect(function()
 		playUIClick()
 		for k, p in pairs(tabPanels) do p.Visible = false end
 		for k, b in pairs(tabButtons) do
@@ -233,6 +255,10 @@ label(slagPanel, {Name="WhatIsSlag", Size=UDim2.new(1,-20,0,28), Position=UDim2.
 
 label(slagPanel, {Name="InvTitle", Size=UDim2.new(1,-20,0,24), Position=UDim2.new(0,10,0,34),
 	Text="Slag Inventory", Color=C.accent, Font=Enum.Font.GothamBold})
+
+local residueAmount = label(slagPanel, {Name="ResidueAmount", Size=UDim2.new(0.45,0,0,20),
+	Position=UDim2.new(0.52,0,0,36), Text="Aggregate residue: 0 kg", Color=C.gold,
+	Align=Enum.TextXAlignment.Right})
 
 local slagCards = {}
 local slagAmounts = {}
@@ -288,7 +314,7 @@ local crushLabel
 local buyBtn = btn(slagPanel, {Name="BuyBtn", Size=UDim2.new(0.45,-10,0,36),
 	Position=UDim2.new(0,10,0,actionY), Text="Buy Raw Slag (50 MC)", BgColor=C.green})
 
-buyBtn.MouseButton1Click:Connect(function()
+buyBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestBuySlag")
 	if remote then
@@ -304,7 +330,7 @@ label(slagPanel, {Name="CrushTitle", Size=UDim2.new(1,-20,0,22), Position=UDim2.
 	Text="Crushing Station", Color=C.accent, Font=Enum.Font.GothamBold})
 
 label(slagPanel, {Name="CrushDesc", Size=UDim2.new(1,-20,0,16), Position=UDim2.new(0,10,0,actionY+68),
-	Text="Hammer raw chunks by hand, or use machines for finer grinding.", Color=C.textDim})
+	Text="Use the minimap markers: CRUSH, CONE and MILL are separate stations.", Color=C.textDim})
 
 -- Crush progress bar
 local crushBarBg = Instance.new("Frame")
@@ -327,6 +353,36 @@ crushLabel = label(slagPanel, {Name="CrushLabel", Size=UDim2.new(0.9,0,0,16),
 
 -- Crush buttons row
 local crushBtnY = actionY + 126
+local crushRequestBusy = false
+local crushRequestId = 0
+
+local function beginCrushRequest(remote, target, button, pendingText)
+	if crushRequestBusy then
+		crushLabel.Text = "Processing the previous station request…"
+		return false
+	end
+	if not remote then
+		crushLabel.Text = "Slag service is still loading; try again."
+		return false
+	end
+	crushRequestBusy = true
+	crushRequestId += 1
+	local requestId = crushRequestId
+	button.Active = false
+	crushLabel.Text = pendingText
+	remote:FireServer(target)
+	-- A rejected request has no progress event. Release the local lock and
+	-- leave an actionable hint instead of making the button appear dead.
+	task.delay(0.8, function()
+		if requestId ~= crushRequestId then return end
+		crushRequestBusy = false
+		if button.Parent then
+			button.Active = true
+		end
+		crushLabel.Text = "No station response — stand near the marked Crush, Cone or Mill station."
+	end)
+	return true
+end
 
 local hammerBtn = btn(slagPanel, {Name="HammerBtn", Size=UDim2.new(0.28,-4,0,40),
 	Position=UDim2.new(0.02,0,0,crushBtnY), Text="HAMMER\n(Free)", BgColor=C.accent})
@@ -339,15 +395,10 @@ local millBtn = btn(slagPanel, {Name="MillBtn", Size=UDim2.new(0.28,-4,0,40),
 	Position=UDim2.new(0.68,0,0,crushBtnY), Text="BALL MILL\n(500 MC)", BgColor=Color3.fromRGB(160,100,255)})
 millBtn.TextColor3 = Color3.new(1,1,1)
 
-hammerBtn.MouseButton1Click:Connect(function()
+hammerBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then
-		crushLabel.Text = "Hammer hit sent — raw chunks are required."
-		remote:FireServer("crushed")
-	else
-		crushLabel.Text = "Slag service is still loading; try again."
-	end
+	beginCrushRequest(remote, "crushed", hammerBtn, "Hammer request sent — checking the Crush Station…")
 	-- Hammer sound (#51)
 	local SoundService = game:GetService("SoundService")
 	local hammerSound = SoundService:FindFirstChild("crusher_impact")
@@ -365,26 +416,16 @@ hammerBtn.MouseButton1Click:Connect(function()
 	end)
 end)
 
-grindBtn.MouseButton1Click:Connect(function()
+grindBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then
-		crushLabel.Text = "Grinding request sent — first hammer raw chunks."
-		remote:FireServer("ground")
-	else
-		crushLabel.Text = "Slag service is still loading; try again."
-	end
+	beginCrushRequest(remote, "ground", grindBtn, "Grinding request sent — checking the Cone Crusher…")
 end)
 
-millBtn.MouseButton1Click:Connect(function()
+millBtn.Activated:Connect(function()
 	playUIClick()
 	local remote = Remotes:FindFirstChild("RequestCrushSlag")
-	if remote then
-		crushLabel.Text = "Ball mill request sent — ground slag is required."
-		remote:FireServer("powder")
-	else
-		crushLabel.Text = "Slag service is still loading; try again."
-	end
+	beginCrushRequest(remote, "powder", millBtn, "Ball mill request sent — checking the Ball Mill…")
 end)
 
 -- ═══════════════════════════════════════════════
@@ -417,6 +458,63 @@ local selectedSize = nil
 local selectedReagentLabel
 local leachTimeLabel
 local yieldLabel
+local processTemperature = tonumber(player:GetAttribute("ProcessTemp")) or 25
+local processPressure = 101.325
+local processFlowRate = 10
+local processReactorVolume = 50
+
+local function formatOtapDuration(gameMinutes)
+	local realSeconds = math.max(0, (tonumber(gameMinutes) or 0) * GameClock.DAY_SECONDS / 1440)
+	if realSeconds < 60 then
+		return string.format("OTAP ~%ds", math.floor(realSeconds + 0.5))
+	end
+	return string.format("OTAP ~%dm", math.floor(realSeconds / 60 + 0.5))
+end
+
+local function formatLeachEstimate(minutes, rate)
+	return string.format("Est. time: %s | %s (rate %.2fx)",
+		SteelSlag.FormatLeachTime(minutes), formatOtapDuration(minutes), rate)
+end
+
+local function getLeachEstimate(particleSize, reagentId)
+	local baseMinutes = SteelSlag.CalculateLeachTime(particleSize, reagentId)
+	local duration, rate = ProcessEngineering.CalculateEffectiveLeachDuration(baseMinutes, reagentId, {
+		temperature = processTemperature,
+		pressure = processPressure,
+		flowRate = processFlowRate,
+		reactorVolume = processReactorVolume,
+	}, 1)
+	return duration, rate
+end
+
+local function updateYieldPreview()
+	if not yieldLabel or not selectedReagent or not selectedSize then return end
+	local yield = SteelSlag.CalculateYield(selectedSize, selectedReagent, 1.0, processTemperature)
+	local yieldStr = ""
+	for j, item in ipairs(yield) do
+		if j <= 5 then
+			yieldStr = yieldStr .. item.oxide .. ":" .. item.atomCount .. " "
+		end
+	end
+	yieldLabel.Text = string.format("Yield @ %d°C: %s", math.floor(processTemperature + 0.5), yieldStr)
+end
+
+Remotes.ProcessControlState.OnClientEvent:Connect(function(data)
+	if type(data) ~= "table" or type(data.temperature) ~= "number" then return end
+	processTemperature = data.temperature
+	processPressure = tonumber(data.pressure) or processPressure
+	processFlowRate = tonumber(data.flowRate) or processFlowRate
+	updateYieldPreview()
+	if selectedReagent and selectedSize then
+		local mins, rate = getLeachEstimate(selectedSize, selectedReagent)
+		leachTimeLabel.Text = formatLeachEstimate(mins, rate)
+		leachTimeLabel.TextColor3 = C.text
+	end
+end)
+local processStateRemote = Remotes:FindFirstChild("RequestProcessControlState")
+if processStateRemote then
+	processStateRemote:FireServer()
+end
 local reagentCards = {}
 
 local reagentOrder = {"H2SO4", "HCl", "NaOH", "HNO3", "CitricAcid", "H2O"}
@@ -483,7 +581,7 @@ for _, rId in ipairs(reagentOrder) do
 	cardStroke.Thickness = 2
 	cardStroke.Parent = rCard
 
-	selBtn.MouseButton1Click:Connect(function()
+	selBtn.Activated:Connect(function()
 		selectedReagent = rId
 		-- Highlight selected
 		for _, rc in pairs(reagentCards) do
@@ -494,16 +592,10 @@ for _, rId in ipairs(reagentOrder) do
 		selectedReagentLabel.TextColor3 = r.color
 		-- Update time estimate if size also selected
 		if selectedSize then
-			local mins = SteelSlag.CalculateLeachTime(selectedSize, rId)
-			leachTimeLabel.Text = "Est. time: " .. SteelSlag.FormatLeachTime(mins)
+			local mins, rate = getLeachEstimate(selectedSize, rId)
+			leachTimeLabel.Text = formatLeachEstimate(mins, rate)
 			leachTimeLabel.TextColor3 = C.text
-			-- Show yield preview
-			local yield = SteelSlag.CalculateYield(selectedSize, rId, 1.0)
-			local yieldStr = ""
-			for j, y in ipairs(yield) do
-				if j <= 5 then yieldStr = yieldStr .. y.oxide .. ":" .. y.atomCount .. " " end
-			end
-			yieldLabel.Text = "Yield: " .. yieldStr
+			updateYieldPreview()
 		end
 	end)
 
@@ -537,16 +629,17 @@ for i, sizeKey in ipairs(SteelSlag.SizeOrder) do
 		Text=data.name .. "\n" .. data.sizeLabel, BgColor=C.tabInactive})
 	sBtn.TextColor3 = C.text
 
-	sBtn.MouseButton1Click:Connect(function()
+	sBtn.Activated:Connect(function()
 		selectedSize = sizeKey
 		for _, sb in pairs(sizeBtns) do sb.BackgroundColor3 = C.tabInactive end
 		sBtn.BackgroundColor3 = C.accent
 		sBtn.TextColor3 = Color3.new(0,0,0)
 		-- Update time estimate
 		if selectedReagent then
-			local mins = SteelSlag.CalculateLeachTime(sizeKey, selectedReagent)
-			leachTimeLabel.Text = "Est. time: " .. SteelSlag.FormatLeachTime(mins)
+			local mins, rate = getLeachEstimate(sizeKey, selectedReagent)
+			leachTimeLabel.Text = formatLeachEstimate(mins, rate)
 		end
+		updateYieldPreview()
 	end)
 	sizeBtns[sizeKey] = sBtn
 end
@@ -562,7 +655,12 @@ yieldLabel = label(leachPanel, {Name="Yield", Size=UDim2.new(0.5,-10,0,40),
 local startLeachBtn = btn(leachPanel, {Name="StartLeach", Size=UDim2.new(0.94,0,0,40),
 	Position=UDim2.new(0.03,0,0,420), Text="START LEACHING", BgColor=C.green})
 
-startLeachBtn.MouseButton1Click:Connect(function()
+-- Prevent accidental double-clicks from creating duplicate batches/costs.
+-- The server remains authoritative; this only closes the client-side race
+-- while the first request is travelling to the server.
+local startLeachBusy = false
+
+startLeachBtn.Activated:Connect(function()
 	playUIClick()
 	if not selectedReagent then
 		leachTimeLabel.Text = "Select a reagent first!"
@@ -574,9 +672,22 @@ startLeachBtn.MouseButton1Click:Connect(function()
 		leachTimeLabel.TextColor3 = C.red
 		return
 	end
+	if startLeachBusy then
+		leachTimeLabel.Text = "Leach request is processing — please wait."
+		leachTimeLabel.TextColor3 = C.textDim
+		return
+	end
 	local remote = Remotes:FindFirstChild("RequestStartLeach")
 	if remote then
+		startLeachBusy = true
+		startLeachBtn.Active = false
 		remote:FireServer(selectedReagent, selectedSize)
+		task.delay(0.75, function()
+			startLeachBusy = false
+			if startLeachBtn.Parent then
+				startLeachBtn.Active = true
+			end
+		end)
 	end
 	-- Flash button
 	startLeachBtn.BackgroundColor3 = Color3.fromRGB(100, 255, 180)
@@ -622,7 +733,7 @@ function refreshMonitor()
 	if remote then remote:FireServer() end
 end
 
-refreshBtn.MouseButton1Click:Connect(refreshMonitor)
+refreshBtn.Activated:Connect(refreshMonitor)
 
 -- ═══════════════════════════════════════════════
 -- SERVER EVENT HANDLERS
@@ -638,6 +749,7 @@ if slagInvEvent then
 					slagAmounts[sizeKey].Text = amount .. " kg"
 				end
 			end
+			residueAmount.Text = "Aggregate residue: " .. tostring(data.slagInventory.residue or 0) .. " kg"
 		end
 
 		-- Update leach monitor if we have leach list
@@ -655,7 +767,7 @@ if slagInvEvent then
 				for _, leach in ipairs(data.leachList) do
 					local card = Instance.new("Frame")
 					card.Name = leach.id
-					card.Size = UDim2.new(1, 0, 0, 90)
+					card.Size = UDim2.new(1, 0, 0, 112)
 					card.BackgroundColor3 = C.panelLight
 					card.Parent = monitorScroll
 					corner(card, 8)
@@ -702,7 +814,7 @@ if slagInvEvent then
 					if leach.complete then
 						local extBtn = btn(card, {Name="ExtractBtn", Size=UDim2.new(0.3,0,0,24),
 							Position=UDim2.new(0.65,0,0,64), Text="EXTRACT", BgColor=C.green})
-						extBtn.MouseButton1Click:Connect(function()
+						extBtn.Activated:Connect(function()
 							local remote = Remotes:FindFirstChild("RequestExtractProducts")
 							if remote then remote:FireServer(leach.id) end
 							task.delay(0.5, refreshMonitor)
@@ -719,11 +831,33 @@ if slagInvEvent then
 							Position=UDim2.new(0.05,0,0,68), Text="Yields: " .. yStr, Color=C.textDim})
 					end
 
+					-- Show the physical mass outcome for this one-kilogram batch.
+					-- This keeps residue and recovery visible instead of presenting
+					-- extraction as if all input became saleable atoms.
+					local balance = leach.massBalance
+					if type(balance) == "table" and type(balance.inputKg) == "number" then
+						local outputKg = tonumber(balance.outputKg) or 0
+						local wasteKg = tonumber(balance.wasteKg) or 0
+						local aggregateKg = tonumber(balance.aggregateKg) or wasteKg
+						local targetProductKg = tonumber(balance.targetProductKg) or outputKg
+						local byproductKg = tonumber(balance.byproductKg) or 0
+						local recovery = tonumber(balance.recovery) or 0
+						label(card, {Name="MassBalance", Size=UDim2.new(0.58,0,0,14),
+							Position=UDim2.new(0.05,0,0,86),
+							Text=string.format("Mass: %.2f → %.2f kg | aggregate %.2f kg | %.1f%% recovery",
+								balance.inputKg, outputKg, aggregateKg, recovery),
+							Color=C.gold})
+						label(card, {Name="TargetMass", Size=UDim2.new(0.9,0,0,14),
+							Position=UDim2.new(0.05,0,0,102),
+							Text=string.format("Saleable %.3f kg | byproduct %.3f kg", targetProductKg, byproductKg),
+							Color=C.textDim})
+					end
+
 					leachCards[leach.id] = card
 				end
 			end
 
-			monitorScroll.CanvasSize = UDim2.new(0, 0, 0, #data.leachList * 98)
+			monitorScroll.CanvasSize = UDim2.new(0, 0, 0, #data.leachList * 120)
 		end
 	end)
 end
@@ -733,9 +867,40 @@ local lastCrushProgress = 0
 local lastCrushHits = 0
 local lastCrushTotal = 8
 
+-- Surface authoritative server rejections inside the modal. The global
+-- announcement ticker can be hidden behind this panel, which previously made
+-- an out-of-range station request look like a dead hammer button.
+local serverAnnounce = Remotes:FindFirstChild("ServerAnnounce")
+if serverAnnounce then
+	serverAnnounce.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" or type(data.message) ~= "string" then return end
+		local message = string.lower(data.message)
+		local slagMessage = string.find(message, "slag", 1, true)
+			or string.find(message, "crush", 1, true)
+			or string.find(message, "cone", 1, true)
+			or string.find(message, "mill", 1, true)
+			or string.find(message, "station", 1, true)
+		if not slagMessage then return end
+		crushRequestId += 1
+		crushRequestBusy = false
+		hammerBtn.Active = true
+		grindBtn.Active = true
+		millBtn.Active = true
+		crushLabel.Text = data.message
+		crushLabel.TextColor3 = (string.find(message, "reject", 1, true)
+			or string.find(message, "not enough", 1, true)
+			or string.find(message, "required", 1, true)) and C.red or C.textDim
+	end)
+end
+
 local crushEvent = Remotes:FindFirstChild("SlagCrushProgress")
 if crushEvent then
 	crushEvent.OnClientEvent:Connect(function(data)
+		crushRequestId += 1
+		crushRequestBusy = false
+		hammerBtn.Active = true
+		grindBtn.Active = true
+		millBtn.Active = true
 		local progress = data.hits / data.totalHits
 		lastCrushProgress = progress
 		lastCrushHits = data.hits
@@ -755,6 +920,23 @@ if crushEvent then
 				TweenService:Create(crushBarFill, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 1, 0)}):Play()
 			end)
 		end
+	end)
+end
+
+-- Rehydrate hammer progress when the processing window is closed and opened
+-- again. The server owns the hit count; this only restores the visual state.
+if slagInvEvent then
+	slagInvEvent.OnClientEvent:Connect(function(data)
+		local progress = data and data.crushProgress
+		if type(progress) ~= "table" then return end
+		local hits = tonumber(progress.hits) or 0
+		local totalHits = tonumber(progress.totalHits) or 0
+		if totalHits <= 0 then return end
+		lastCrushHits = hits
+		lastCrushTotal = totalHits
+		lastCrushProgress = math.clamp(hits / totalHits, 0, 1)
+		crushBarFill.Size = UDim2.new(lastCrushProgress, 0, 1, 0)
+		crushLabel.Text = "Hammering... " .. hits .. "/" .. totalHits .. " hits"
 	end)
 end
 
@@ -827,9 +1009,6 @@ screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 			crushBarFill.Size = UDim2.new(lastCrushProgress, 0, 1, 0)
 			crushLabel.Text = "Hammering... " .. lastCrushHits .. "/" .. lastCrushTotal .. " hits"
 		end
-		-- Also request slag inventory
-		local remote = Remotes:FindFirstChild("RequestSlagInfo")
-		if remote then remote:FireServer() end
 	end
 end)
 

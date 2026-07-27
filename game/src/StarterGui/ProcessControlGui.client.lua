@@ -53,6 +53,7 @@ local function corner(p, r) local c = Instance.new("UICorner"); c.CornerRadius =
 
 local processState = ProcessEng.CreateProcessState()
 local controlsReady = false
+local simulatorAccessGranted = false
 
 -- ═══════════════════════════════════════════════
 -- SCREEN GUI
@@ -66,9 +67,26 @@ screenGui.DisplayOrder = 18
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local controlCamera = workspace.CurrentCamera
+local function updateControlScale()
+	if not controlCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(controlCamera.ViewportSize.X - 20) / 860,
+		(controlCamera.ViewportSize.Y - 20) / 520
+	), 0.65, 1)
+end
+updateControlScale()
+if controlCamera then
+	controlCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateControlScale)
+end
+
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 860, 0, 520)
-main.Position = UDim2.new(0.5, -430, 0.5, -260)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.02
 main.Parent = screenGui
@@ -113,7 +131,7 @@ closeBtn.BackgroundColor3 = C.danger
 closeBtn.Text = "X"; closeBtn.TextColor3 = Color3.new(1,1,1)
 closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true
 closeBtn.Parent = titleBar; corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- ═══════════════════════════════════════════════
 -- GAUGE HELPER: Creates a vertical gauge with slider
@@ -258,10 +276,10 @@ local function createGauge(parent, config)
 		end
 	end
 
-	upBtn.MouseButton1Click:Connect(function()
+	upBtn.Activated:Connect(function()
 		updateGauge(currentValue + config.step)
 	end)
-	downBtn.MouseButton1Click:Connect(function()
+	downBtn.Activated:Connect(function()
 		updateGauge(currentValue - config.step)
 	end)
 
@@ -422,15 +440,55 @@ if processStateEvent then
 		if data.pressure then pressGauge.setValue(data.pressure) end
 		if data.pH then phGauge.setValue(data.pH) end
 		if data.flowRate then flowGauge.setValue(data.flowRate) end
+		if data.operatingSafe == false and type(data.interlockMessage) == "string" then
+			helpBar.Text = "INTERLOCK  |  " .. data.interlockMessage .. "  |  Adjust the gauges before starting a batch."
+			helpBar.TextColor3 = C.danger
+		elseif data.operatingSafe == true then
+			helpBar.Text = "SYSTEM SAFE  |  Server operating envelope accepted."
+			helpBar.TextColor3 = C.accent
+		end
 		controlsReady = true
+	end)
+end
+
+local accessEvent = Remotes:FindFirstChild("ChemicalSimulatorAccess")
+if accessEvent then
+	accessEvent.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then return end
+		if data.success then
+			simulatorAccessGranted = true
+			helpBar.Text = "CHEMICAL SIMULATOR ACTIVE  |  " .. tostring(data.message or "Access granted.")
+			helpBar.TextColor3 = C.accent
+			local request = Remotes:FindFirstChild("RequestProcessControlState")
+			if request then request:FireServer() end
+		else
+			simulatorAccessGranted = false
+			helpBar.Text = "ACCESS DENIED  |  " .. tostring(data.message or "Insufficient MolCoins.")
+			helpBar.TextColor3 = C.danger
+			task.delay(1.5, function()
+				if screenGui.Parent then screenGui.Enabled = false end
+			end)
+		end
 	end)
 end
 
 screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	if not screenGui.Enabled then return end
 	controlsReady = false
-	local request = Remotes:FindFirstChild("RequestProcessControlState")
-	if request then request:FireServer() end
+	if not simulatorAccessGranted then
+		local accessRequest = Remotes:FindFirstChild("RequestChemicalSimulatorAccess")
+		if accessRequest then
+			helpBar.Text = "CHEMICAL SIMULATOR  |  Access costs 25 MolCoins per session..."
+			helpBar.TextColor3 = C.gold
+			accessRequest:FireServer()
+		else
+			helpBar.Text = "CHEMICAL SIMULATOR ACCESS UNAVAILABLE"
+			helpBar.TextColor3 = C.danger
+		end
+	else
+		local request = Remotes:FindFirstChild("RequestProcessControlState")
+		if request then request:FireServer() end
+	end
 end)
 
 -- ═══════════════════════════════════════════════
@@ -473,24 +531,36 @@ summaryText.Parent = summaryPanel
 -- ═══════════════════════════════════════════════
 
 local frameCount = 0
+local lastSentControls = nil
 RunService.Heartbeat:Connect(function()
 	if not screenGui.Enabled then return end
 	if not controlsReady then return end
 	frameCount = frameCount + 1
-	if frameCount % 15 ~= 0 then return end  -- update every ~0.25s
+	if frameCount % 60 ~= 0 then return end -- at most once per second
 
 	-- Update derived values
 	ProcessEng.UpdateDerivedValues(processState)
 
 	-- Send process variables to server
 	local setControlRemote = Remotes:FindFirstChild("RequestSetProcessControl")
-	if setControlRemote then
+	local controlsChanged = not lastSentControls
+		or lastSentControls.temperature ~= processState.temperature
+		or lastSentControls.pressure ~= processState.pressure
+		or lastSentControls.pH ~= processState.pH
+		or lastSentControls.flowRate ~= processState.flowRate
+	if setControlRemote and controlsChanged then
 		setControlRemote:FireServer(
 			processState.temperature,
 			processState.pressure,
 			processState.pH,
 			processState.flowRate
 		)
+		lastSentControls = {
+			temperature = processState.temperature,
+			pressure = processState.pressure,
+			pH = processState.pH,
+			flowRate = processState.flowRate,
+		}
 	end
 
 	-- Update reaction rate display
@@ -531,6 +601,8 @@ RunService.Heartbeat:Connect(function()
 	end
 	table.insert(summaryLines, string.format("RECOVERY: %.1f%%", balance.recovery))
 	table.insert(summaryLines, string.format("Waste: %.3f kg", balance.wasteKg))
+	table.insert(summaryLines, string.format("Saleable: %.3f kg", balance.targetProductKg or balance.outputKg))
+	table.insert(summaryLines, string.format("Byproduct: %.3f kg", balance.byproductKg or 0))
 
 	-- Energy cost
 	local energyKWh, energyMC = ProcessEng.CalculateEnergyCost({

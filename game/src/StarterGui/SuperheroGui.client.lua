@@ -14,6 +14,7 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local SafetyTrack = require(ReplicatedStorage.Modules.SuperheroTrack) -- module renamed internally
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local C = {
 	bg = Color3.fromRGB(10, 10, 15),
@@ -34,10 +35,12 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 22
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 620, 500)
 
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 620, 0, 500)
-main.Position = UDim2.new(0.5, -310, 0.5, -250)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
@@ -64,7 +67,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = title
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Roles section
 local roleLabel = Instance.new("TextLabel")
@@ -146,7 +149,7 @@ for i, hero in ipairs(SafetyTrack.Heroes) do
 	selBtn.Parent = card
 	corner(selBtn, 4)
 
-	selBtn.MouseButton1Click:Connect(function()
+	selBtn.Activated:Connect(function()
 		local s = SoundService:FindFirstChild("ui_click")
 		if s then local c = s:Clone(); c.Parent = SoundService; c:Play(); c.Ended:Connect(function() c:Destroy() end) end
 		local r = Remotes:FindFirstChild("RequestSelectHero")
@@ -244,7 +247,7 @@ for _, mission in ipairs(SafetyTrack.Missions) do
 	sBtn.Parent = mCard
 	corner(sBtn, 6)
 
-	sBtn.MouseButton1Click:Connect(function()
+	sBtn.Activated:Connect(function()
 		local r = Remotes:FindFirstChild("RequestStartMission")
 		if r then r:FireServer(mission.id) end
 		screenGui.Enabled = false

@@ -1,6 +1,6 @@
 --[[
 	LoadingScreen.client.lua
-	MOLGANG Teaser — Animated Loading & Welcome Screen
+	MOLGANG OTAP Teststraat — Animated Loading & Welcome Screen
 
 	Features:
 	- Animated molecule logo with orbiting electrons
@@ -13,16 +13,44 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local WorldReadiness = require(ReplicatedStorage.Modules.WorldReadiness)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
+
 -- StarterGui can recreate LocalScripts after a character reset. The intro is
 -- a session gate, not a respawn screen, so never show it a second time.
-if player:GetAttribute("MOLGANGIntroShown") then
+local introGate = ReplicatedStorage:FindFirstChild("MOLGANGIntroGate")
+if introGate or playerGui:FindFirstChild("MOLGANGIntroGate")
+	 or playerGui:GetAttribute("MOLGANGIntroShown")
+	 or _G.MOLGANGIntroShown or player:GetAttribute("MOLGANGIntroShown")
+	 or findScreenGui("LoadingScreen") then
 	return
 end
+-- Player attributes, script globals and PlayerGui can be reset/recreated with
+-- the character under Studio playtest. A client-local ReplicatedStorage marker
+-- survives those clones and is the authoritative session gate.
+introGate = Instance.new("BoolValue")
+introGate.Name = "MOLGANGIntroGate"
+introGate.Value = true
+introGate.Parent = ReplicatedStorage
+_G.MOLGANGIntroShown = true
 player:SetAttribute("MOLGANGIntroShown", true)
+playerGui:SetAttribute("MOLGANGIntroShown", true)
+local playerGuiGate = Instance.new("BoolValue")
+playerGuiGate.Name = "MOLGANGIntroGate"
+playerGuiGate.Value = true
+playerGuiGate.Archivable = false
+playerGuiGate.Parent = playerGui
 
 -- COLOR PALETTE
 local COLORS = {
@@ -33,7 +61,7 @@ local COLORS = {
 	textPrimary   = Color3.fromRGB(240, 240, 250),
 	textSecondary = Color3.fromRGB(160, 165, 185),
 	gold          = Color3.fromRGB(255, 215, 0),
-	teaserBadge   = Color3.fromRGB(255, 80, 60),
+	otapBadge     = Color3.fromRGB(255, 80, 60),
 	molBlue       = Color3.fromRGB(80, 180, 255),
 	molPurple     = Color3.fromRGB(160, 100, 255),
 }
@@ -181,25 +209,25 @@ tagline.TextTransparency = 1
 tagline.Parent = bg
 
 -- OTAP test badge
-local teaserBadge = Instance.new("TextLabel")
-teaserBadge.Name = "TeaserBadge"
-teaserBadge.Size = UDim2.fromOffset(110, 26)
-teaserBadge.Position = UDim2.new(0.5, 50, 0, 205)
-teaserBadge.BackgroundColor3 = COLORS.teaserBadge
-teaserBadge.BackgroundTransparency = 0.1
-teaserBadge.Text = "OTAP TEST"
-teaserBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
-teaserBadge.TextScaled = true
-teaserBadge.Font = Enum.Font.GothamBold
-teaserBadge.TextTransparency = 1
-teaserBadge.Parent = bg
+local otapBadge = Instance.new("TextLabel")
+otapBadge.Name = "OTAPBadge"
+otapBadge.Size = UDim2.fromOffset(110, 26)
+otapBadge.Position = UDim2.new(0.5, 50, 0, 205)
+otapBadge.BackgroundColor3 = COLORS.otapBadge
+otapBadge.BackgroundTransparency = 0.1
+otapBadge.Text = "OTAP TEST"
+otapBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+otapBadge.TextScaled = true
+otapBadge.Font = Enum.Font.GothamBold
+otapBadge.TextTransparency = 1
+otapBadge.Parent = bg
 local badgeCorner = Instance.new("UICorner")
 badgeCorner.CornerRadius = UDim.new(0, 6)
-badgeCorner.Parent = teaserBadge
+badgeCorner.Parent = otapBadge
 local badgePad = Instance.new("UIPadding")
 badgePad.PaddingLeft = UDim.new(0, 6)
 badgePad.PaddingRight = UDim.new(0, 6)
-badgePad.Parent = teaserBadge
+badgePad.Parent = otapBadge
 
 -- ═══════════════════════════════════════════════
 -- DESCRIPTION & TIPS PANEL
@@ -207,8 +235,12 @@ badgePad.Parent = teaserBadge
 
 local contentPanel = Instance.new("Frame")
 contentPanel.Name = "ContentPanel"
-contentPanel.Size = UDim2.new(0, 600, 0, 280)
-contentPanel.Position = UDim2.new(0.5, -300, 0, 310)
+-- Keep the intro panel inside the viewport on narrow Studio/Wine windows.
+-- The four-column shortcut grid below uses relative positions, so it can
+-- shrink with the panel instead of extending beyond the rounded outline.
+contentPanel.Size = UDim2.new(0.88, 0, 0, 220)
+contentPanel.Position = UDim2.new(0.06, 0, 0, 310)
+contentPanel.ClipsDescendants = true
 contentPanel.BackgroundColor3 = COLORS.panel
 contentPanel.BackgroundTransparency = 1
 contentPanel.Parent = bg
@@ -222,11 +254,11 @@ cpStroke.Transparency = 1
 cpStroke.Parent = contentPanel
 
 -- Description text
-local descText = [[OTAP teststraat for a Chemical Engineering Simulator in space. Process BOF steel slag through realistic crushing, leaching, and extraction. Synthesize fertilizers with real NPK chemistry. Manage an industrial factory, trade on global markets, and master the periodic table — all in immersive VR/AR.]]
+local descText = [[Verken Moleculia stap voor stap. Na het laden kies je een passende route: Ontdekker (8–11), Onderzoeker (12–15) of Ingenieur (16+).]]
 
 local description = Instance.new("TextLabel")
 description.Name = "Description"
-description.Size = UDim2.new(1, -30, 0, 70)
+description.Size = UDim2.new(1, -30, 0, 48)
 description.Position = UDim2.new(0, 15, 0, 15)
 description.BackgroundTransparency = 1
 description.Text = descText
@@ -241,7 +273,7 @@ description.Parent = contentPanel
 -- Divider line
 local divider = Instance.new("Frame")
 divider.Size = UDim2.new(0.9, 0, 0, 1)
-divider.Position = UDim2.new(0.05, 0, 0, 90)
+divider.Position = UDim2.new(0.05, 0, 0, 68)
 divider.BackgroundColor3 = COLORS.accentDim
 divider.BackgroundTransparency = 1
 divider.BorderSizePixel = 0
@@ -250,7 +282,7 @@ divider.Parent = contentPanel
 -- Quick controls section
 local controlsTitle = Instance.new("TextLabel")
 controlsTitle.Size = UDim2.new(1, -30, 0, 22)
-controlsTitle.Position = UDim2.new(0, 15, 0, 100)
+controlsTitle.Position = UDim2.new(0, 15, 0, 78)
 controlsTitle.BackgroundTransparency = 1
 controlsTitle.Text = "CONTROLS"
 controlsTitle.TextColor3 = COLORS.accent
@@ -262,44 +294,28 @@ controlsTitle.Parent = contentPanel
 
 -- Controls grid (2 columns)
 local controlsData = {
-	{"WASD", "Move around"},
-	{"Space", "Jump"},
-	{"P", "Periodic Table"},
-	{"D", "Dashboard"},
-	{"I", "Inventory"},
-	{"R", "Recipe Book"},
-	{"Q", "Quest Log"},
-	{"S", "Slag Processing"},
-	{"F", "Fertilizer Lab"},
-	{"G", "Factory Builder"},
-	{"C", "Process Control"},
-	{"T", "Research Tree"},
-	{"V", "Mining"},
-	{"X", "Product Exchange"},
-	{"B", "Bubble Tea Bar"},
-	{"L", "Leaderboards"},
-	{"A", "Achievements"},
-	{"Tab", "Wallet"},
-	{"M", "Map / Mahjong"},
-	{"Esc", "Close All"},
+	{"WASD", "Bewegen"},
+	{"Space", "Springen"},
+	{"P", "Elementen bekijken"},
+	{"U", "Dashboard openen"},
 }
 
 local controlsFrame = Instance.new("Frame")
 -- Four compact columns keep all shortcuts inside the outlined panel.
-controlsFrame.Size = UDim2.new(1, -30, 0, 150)
-controlsFrame.Position = UDim2.new(0, 15, 0, 125)
+controlsFrame.Size = UDim2.new(1, -30, 0, 72)
+controlsFrame.Position = UDim2.new(0, 15, 0, 103)
 controlsFrame.BackgroundTransparency = 1
 controlsFrame.Parent = contentPanel
 
 local controlLabels = {}
 for i, ctrl in ipairs(controlsData) do
-	local col = (i - 1) % 4
-	local row = math.floor((i - 1) / 4)
+	local col = (i - 1) % 2
+	local row = math.floor((i - 1) / 2)
 
 	-- Key badge
 	local keyBadge = Instance.new("TextLabel")
 	keyBadge.Size = UDim2.fromOffset(42, 22)
-	keyBadge.Position = UDim2.new(col * 0.25, 0, 0, row * 28)
+	keyBadge.Position = UDim2.new(col * 0.5, 0, 0, row * 28)
 	keyBadge.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
 	keyBadge.BackgroundTransparency = 0.3
 	keyBadge.Text = ctrl[1]
@@ -315,8 +331,8 @@ for i, ctrl in ipairs(controlsData) do
 
 	-- Action label
 	local actionLabel = Instance.new("TextLabel")
-	actionLabel.Size = UDim2.new(0.25, -48, 0, 22)
-	actionLabel.Position = UDim2.new(col * 0.25, 47, 0, row * 28)
+	actionLabel.Size = UDim2.new(0.5, -48, 0, 22)
+	actionLabel.Position = UDim2.new(col * 0.5, 47, 0, row * 28)
 	actionLabel.BackgroundTransparency = 1
 	actionLabel.Text = ctrl[2]
 	actionLabel.TextColor3 = COLORS.textSecondary
@@ -394,10 +410,11 @@ playStroke.Parent = playBtn
 
 -- Footer
 local footer = Instance.new("TextLabel")
+footer.Name = "Footer"
 footer.Size = UDim2.new(0.6, 0, 0, 18)
 footer.Position = UDim2.new(0.2, 0, 1, -30)
 footer.BackgroundTransparency = 1
-footer.Text = "MOLGANG OTAP teststraat | Chemical Engineering Simulator v0.2"
+footer.Text = "MOLGANG OTAP teststraat | Chemical Engineering Simulator 1.0"
 footer.TextColor3 = Color3.fromRGB(80, 85, 100)
 footer.TextScaled = true
 footer.Font = Enum.Font.Gotham
@@ -414,7 +431,7 @@ local tweenSlow = TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection
 -- Phase 1: Title fade in (0.3s delay)
 task.delay(0.3, function()
 	TweenService:Create(title, tweenMedium, {TextTransparency = 0}):Play()
-	TweenService:Create(teaserBadge, tweenMedium, {TextTransparency = 0, BackgroundTransparency = 0.1}):Play()
+	TweenService:Create(otapBadge, tweenMedium, {TextTransparency = 0, BackgroundTransparency = 0.1}):Play()
 end)
 
 -- Phase 2: Tagline (0.6s delay)
@@ -447,8 +464,10 @@ task.delay(1.5, function()
 	}):Play()
 end)
 
--- Phase 6: Show play button (3.5s — after progress bar fills)
-task.delay(3.5, function()
+-- Phase 6: Show play button after the progress animation and actual world
+-- readiness. A fixed timer allowed players to enter while WorldBuilder was
+-- still constructing the floating zones.
+local function showPlayButton()
 	loadingText.Text = "Ready!"
 	TweenService:Create(loadingText, tweenFast, {TextTransparency = 1}):Play()
 	TweenService:Create(progressContainer, tweenFast, {BackgroundTransparency = 1}):Play()
@@ -461,16 +480,35 @@ task.delay(3.5, function()
 		Size = UDim2.fromOffset(220, 50),
 		BackgroundTransparency = 0,
 	}):Play()
+end
+
+task.spawn(function()
+	task.wait(3.5)
+	while not WorldReadiness.CanEnter(
+		workspace:GetAttribute("MoleculiaReady"),
+		workspace:FindFirstChild("MolGangSpawn", true) ~= nil
+	) do
+		loadingText.Text = "Building Moleculia..."
+		task.wait(0.25)
+	end
+	showPlayButton()
 end)
 
 -- ═══════════════════════════════════════════════
 -- FADE OUT (button click or auto after 20s)
 -- ═══════════════════════════════════════════════
 
+local didFadeOut = false
+local rawInputConnection
 local function fadeOutAndDestroy()
+	if didFadeOut then return end
+	didFadeOut = true
 	-- Disconnect electron animation
 	if animConnection then
 		animConnection:Disconnect()
+	end
+	if rawInputConnection then
+		rawInputConnection:Disconnect()
 	end
 
 	-- Fade all visible elements
@@ -479,7 +517,7 @@ local function fadeOutAndDestroy()
 	TweenService:Create(bg, fadeTime, {BackgroundTransparency = 1}):Play()
 	TweenService:Create(title, fadeTime, {TextTransparency = 1}):Play()
 	TweenService:Create(tagline, fadeTime, {TextTransparency = 1}):Play()
-	TweenService:Create(teaserBadge, fadeTime, {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+	TweenService:Create(otapBadge, fadeTime, {TextTransparency = 1, BackgroundTransparency = 1}):Play()
 	TweenService:Create(contentPanel, fadeTime, {BackgroundTransparency = 1}):Play()
 	TweenService:Create(cpStroke, fadeTime, {Transparency = 1}):Play()
 	TweenService:Create(description, fadeTime, {TextTransparency = 1}):Play()
@@ -502,7 +540,55 @@ local function fadeOutAndDestroy()
 	end)
 end
 
+-- Studio-only test seam. GuiButton:Activate() is not a Roblox API, and
+-- synthetic mouse input is unreliable in embedded Wine surfaces. The normal
+-- player paths remain Activated, MouseButton1Click, keyboard and raw mouse;
+-- AutoTestClient uses this BindableEvent only while running in Studio.
+if RunService:IsStudio() then
+	local autoTestEnter = Instance.new("BindableEvent")
+	autoTestEnter.Name = "AutoTestEnter"
+	autoTestEnter.Parent = screenGui
+	autoTestEnter.Event:Connect(fadeOutAndDestroy)
+end
+
+-- Some Wine/Studio embedded-surface builds do not route a click through
+-- GuiButton.Activated or MouseButton1Click. Keep the normal button events,
+-- but also handle raw input at the screen level so the intro cannot strand
+-- the player behind a non-responsive welcome surface.
+rawInputConnection = UserInputService.InputBegan:Connect(function(input)
+	if didFadeOut or not playBtn.Visible then return end
+
+	if input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.Space then
+		fadeOutAndDestroy()
+		return
+	end
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		local point = input.Position
+		local topLeft = playBtn.AbsolutePosition
+		local bottomRight = topLeft + playBtn.AbsoluteSize
+		if point.X >= topLeft.X and point.X <= bottomRight.X
+			and point.Y >= topLeft.Y and point.Y <= bottomRight.Y then
+			fadeOutAndDestroy()
+		end
+	end
+end)
+
 -- Activated works consistently for mouse, touch and gamepad in Studio.
 playBtn.Activated:Connect(fadeOutAndDestroy)
+-- MouseButton1Click is retained as a desktop fallback for Wine/Studio input
+-- paths where Activated can be swallowed by the embedded game surface.
+playBtn.MouseButton1Click:Connect(fadeOutAndDestroy)
+
+-- Never auto-release before the world gate has opened. If input focus is lost
+-- after the world is ready, the visible button may still release the intro.
+task.delay(20, function()
+	if playBtn.Visible and WorldReadiness.CanEnter(
+		workspace:GetAttribute("MoleculiaReady"),
+		workspace:FindFirstChild("MolGangSpawn", true) ~= nil
+	) then
+		fadeOutAndDestroy()
+	end
+end)
 
 print("[MOLGANG] OTAP test loading screen displayed")

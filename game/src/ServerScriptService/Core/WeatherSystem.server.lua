@@ -17,6 +17,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 
@@ -115,7 +117,8 @@ local WEATHER_TYPES = {
 -- ═══════════════════════════════════════════════
 
 local currentWeather = WEATHER_TYPES[1]  -- start clear
-local weatherChangeTime = tick() + 300   -- first change after 5 min
+local initialWeatherDuration = RunService:IsStudio() and 30 or 300
+local weatherChangeTime = tick() + initialWeatherDuration
 local totalWeatherWeight = 0
 
 for _, w in ipairs(WEATHER_TYPES) do
@@ -145,17 +148,28 @@ end
 local function applyWeatherLighting(weather)
 	-- Smoothly transition lighting
 	local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+	Lighting:SetAttribute("WeatherId", weather.id)
+	Lighting:SetAttribute("WeatherTransitionId", (Lighting:GetAttribute("WeatherTransitionId") or 0) + 1)
+	Lighting:SetAttribute("WeatherTransitionStartedAt", os.clock())
+	Lighting:SetAttribute("WeatherTransitionDuration", tweenInfo.Time)
+	Lighting:SetAttribute("WeatherTargetHaze", weather.atmosphereHaze)
+	Lighting:SetAttribute("WeatherTargetFogDensity", weather.fogDensity)
 
 	-- Update atmosphere
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 	if atmosphere then
-		atmosphere.Haze = weather.atmosphereHaze
-		atmosphere.Density = weather.fogDensity
+		TweenService:Create(atmosphere, tweenInfo, {
+			Haze = weather.atmosphereHaze,
+			Density = weather.fogDensity,
+		}):Play()
 	end
+	Lighting:SetAttribute("WeatherBrightness", weather.lightingBrightness)
 
-	-- Update ambient
-	Lighting.Ambient = weather.ambientColor
-	Lighting.Brightness = weather.lightingBrightness
+	-- Update ambient without a hard visual cut when weather changes.
+	TweenService:Create(Lighting, tweenInfo, {
+		Ambient = weather.ambientColor,
+		OutdoorAmbient = weather.ambientColor,
+	}):Play()
 end
 
 -- ═══════════════════════════════════════════════
@@ -255,7 +269,10 @@ end
 -- Weather change loop
 task.spawn(function()
 	-- Start with clear weather
-	broadcastWeather(currentWeather, 300)
+	applyWeatherLighting(currentWeather)
+	Lighting:SetAttribute("WeatherTestMode", RunService:IsStudio())
+	Lighting:SetAttribute("WeatherNextChangeAt", weatherChangeTime)
+	broadcastWeather(currentWeather, initialWeatherDuration)
 
 	while true do
 		task.wait(10)  -- check every 10 seconds
@@ -267,6 +284,7 @@ task.spawn(function()
 
 			currentWeather = newWeather
 			weatherChangeTime = tick() + duration
+			Lighting:SetAttribute("WeatherNextChangeAt", weatherChangeTime)
 
 			-- Apply lighting changes
 			applyWeatherLighting(newWeather)

@@ -43,11 +43,28 @@ screenGui.DisplayOrder = 12
 screenGui.Enabled = false
 screenGui.Parent = playerGui
 
+local responsiveScale = Instance.new("UIScale")
+responsiveScale.Name = "ResponsiveScale"
+responsiveScale.Parent = screenGui
+local settingsCamera = workspace.CurrentCamera
+local function updateSettingsScale()
+	if not settingsCamera then return end
+	responsiveScale.Scale = math.clamp(math.min(
+		(settingsCamera.ViewportSize.X - 20) / 700,
+		(settingsCamera.ViewportSize.Y - 20) / 650
+	), 0.65, 1)
+end
+updateSettingsScale()
+if settingsCamera then
+	settingsCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateSettingsScale)
+end
+
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
 mainPanel.Size = UDim2.new(0, 700, 0, 650)
-mainPanel.Position = UDim2.new(0.5, -350, 0.5, -325)
+mainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+mainPanel.Position = UDim2.fromScale(0.5, 0.5)
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui
@@ -108,13 +125,13 @@ shortcutsHeader.Parent = scroll
 
 local shortcuts = {
 	{key = "P", action = "Periodic Table (118 elements)"},
-	{key = "D", action = "Dashboard (build/trade/research)"},
+	{key = "U", action = "Dashboard (build/trade/research)"},
 	{key = "I", action = "Inventory (atoms & molecules)"},
-	{key = "A", action = "Achievements & Badges"},
+	{key = "K", action = "Achievements & Badges"},
 	{key = "L", action = "Leaderboards (top 100)"},
 	{key = "Q", action = "Quest Tracker"},
 	{key = "R", action = "Recipe Book (molecule crafting)"},
-	{key = "S", action = "Slag Processing (ChemEng)"},
+	{key = "J", action = "Slag Processing (ChemEng)"},
 	{key = "F", action = "Fertilizer Lab (NPK farming)"},
 	{key = "G", action = "Factory Builder (entrepreneur)"},
 	{key = "C", action = "Process Control Panel (gauges)"},
@@ -122,7 +139,8 @@ local shortcuts = {
 	{key = "T", action = "Research & Technology Tree"},
 	{key = "V", action = "Vanadium Mining (explore/mine/trade)"},
 	{key = "X", action = "Product Exchange (sell metals)"},
-	{key = ".", action = "Submit Feedback / Bug Report"},
+	{key = ".", action = "Atom Trading (nearby players)"},
+	{key = "F2", action = "Feedback / Bug Report"},
 	{key = "Tab", action = "Wallet & MolChain Explorer"},
 	{key = "M", action = "Toggle Minimap"},
 	{key = "/", action = "This Settings Panel"},
@@ -205,16 +223,8 @@ for _, infoText in ipairs(gameInfoTexts) do
 end
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
-end)
-
--- Keyboard shortcut
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.Slash then
-		screenGui.Enabled = not screenGui.Enabled
-	end
 end)
 
 _G.SettingsGuiToggle = function()

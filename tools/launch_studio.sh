@@ -1,7 +1,7 @@
 #!/bin/bash
 # MOLGANG — Launch Roblox Studio with the latest build
 #
-# Usage: ./launch_studio.sh
+# Usage: ./launch_studio.sh [--software-render] [--playtest]
 #
 # 1. Builds the .rbxl from Rojo
 # 2. Copies to Wine Documents folder
@@ -13,6 +13,33 @@ ROJO="${ROJO:-/home/knight2/.local/bin/rojo}"
 PROJECT="/home/knight2/molgang-roblox/game"
 OUTPUT="/home/knight2/molgang-roblox/MOLGANG_OTAP_Test.rbxl"
 WINE_DOCS="/home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/prefixes/studio/drive_c/users/knight2/Documents"
+WINE_PLACE="Z:/home/knight2/Documents/MOLGANG_OTAP_Test.rbxl"
+PARENT_SESSION_GUID=$(cat /proc/sys/kernel/random/uuid)
+KEEP_STUDIO=0
+RUN_PLAYTEST=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --software-render)
+      MOLGANG_SOFTWARE_RENDER=1
+      ;;
+    --playtest)
+      RUN_PLAYTEST=1
+      ;;
+    --help|-h)
+      echo "Usage: $0 [--software-render] [--playtest]"
+      echo "  --software-render  use llvmpipe fallback for EGL/DRI3 hosts"
+      echo "  --playtest         attempt Play Solo automatically after OpenPlaceSuccess"
+      echo "  Set KEEP_STUDIO=1 to keep Studio open when the launcher exits"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1 (use --help)" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 
 echo "=== MOLGANG Studio Launcher ==="
 echo ""
@@ -20,7 +47,8 @@ echo ""
 # Avoid multiple Wine/Studio trees. A stale Studio instance can keep the
 # WebView2/Toolbox process alive and make the next Vinegar window appear hung.
 echo "[0/4] Closing stale Vinegar/Studio session..."
-flatpak kill org.vinegarhq.Vinegar >/dev/null 2>&1 || true
+# A hung Wine child must never prevent the build phase from running.
+timeout 8 flatpak kill org.vinegarhq.Vinegar >/dev/null 2>&1 || true
 sleep 2
 
 # Step 1: Build
@@ -42,19 +70,166 @@ echo "      Copied to: $WINE_DOCS/MOLGANG_OTAP_Test.rbxl"
 
 # Step 3: Start Rojo serve
 echo "[3/4] Starting Rojo serve (live sync)..."
+# A timed-out launcher can leave the project-specific Rojo child alive. Clean
+# only that exact project server so port 34872 cannot produce a false-positive
+# "live sync" status on the next launch.
+while read -r stale_pid; do
+  [ -z "$stale_pid" ] && continue
+  kill "$stale_pid" 2>/dev/null || true
+done < <(pgrep -f "[r]ojo serve $PROJECT" || true)
+sleep 1
 "$ROJO" serve "$PROJECT" &
 ROJO_PID=$!
+cleanup() {
+  if [ "${KEEP_STUDIO:-0}" -ne 1 ] && [ -n "${STUDIO_PID:-}" ]; then
+    kill "$STUDIO_PID" 2>/dev/null || true
+  fi
+  if [ -n "${ROJO_PID:-}" ]; then
+    kill "$ROJO_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+trap 'cleanup; exit 143' INT TERM
 sleep 2
+if ! curl -fsS http://127.0.0.1:34872/ >/dev/null 2>&1; then
+  echo "      WARNING: Rojo did not bind localhost:34872"
+  exit 1
+fi
 echo "      Rojo serve running on localhost:34872 (PID: $ROJO_PID)"
 
 # Step 4: Launch Studio
 echo "[4/4] Launching Roblox Studio via Vinegar..."
-# Pin Wine/Vulkan to the visible NVIDIA device. Without this, the host can
-# select the headless ASPEED/Mesa device and Studio dies in vkQueuePresentKHR.
-flatpak run --env=VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json \
-  org.vinegarhq.Vinegar "$OUTPUT" &
+# Let Vinegar select the active graphics device. Forcing a host Vulkan ICD
+# made Studio choose an incompatible D3D11 path and exit before opening the
+# local place on some OTAP hosts.
+# Explicit EditFile intent is required by current Studio builds. Passing only
+# the Linux path starts the shell/start page with Studio Launch Intent=None;
+# the Wine Documents path plus EditFile opens the place data model directly.
+# Some OTAP hosts expose the NVIDIA device to Flatpak but fail EGL/DRI3
+# initialization in Wine. Keep the normal path untouched, while allowing a
+# one-shot software-render fallback for diagnosis or low-GPU environments.
+VINEGAR_RENDER_ARGS=()
+if [ "${MOLGANG_SOFTWARE_RENDER:-0}" = "1" ]; then
+  VINEGAR_RENDER_ARGS+=(
+    --env=LIBGL_ALWAYS_SOFTWARE=1
+    --env=MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+    --env=GALLIUM_DRIVER=llvmpipe
+  )
+  echo "      Software-render fallback enabled (one-shot)"
+fi
+flatpak run "${VINEGAR_RENDER_ARGS[@]}" org.vinegarhq.Vinegar \
+  -task EditFile \
+  -localPlaceFile "$WINE_PLACE" \
+  -userid 9400855976 \
+  -parentPid "$$" \
+  -parentSessionGuid "$PARENT_SESSION_GUID" \
+  -baseUrl https://www.roblox.com \
+  -channel zbuck2release-730-control &
 STUDIO_PID=$!
 echo "      Studio launching (PID: $STUDIO_PID)"
+
+# Vinegar can return successfully while Wine's Studio process exits during
+# graphics/WebView startup. Do not call that a healthy playtest launch.
+STUDIO_DETECTED=0
+for _ in $(seq 1 20); do
+  # Vinegar and wineserver can remain alive after Studio itself has crashed.
+  # Only the actual Studio executable proves that a window/playtest can work.
+  if ps -eo pid=,args= | awk '$2 ~ /RobloxStudioBeta[.]exe/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+    STUDIO_DETECTED=1
+  else
+    # Do not turn a short-lived process into a false-positive launch.
+    STUDIO_DETECTED=0
+  fi
+  sleep 1
+done
+if [ "$STUDIO_DETECTED" -eq 1 ]; then
+  echo "      Studio process detected; waiting for local place load"
+else
+  echo "      WARNING: Studio process was not detected after 20s"
+  echo "      Check Vinegar logs for Wine/D3D/WebView startup failures"
+  exit 1
+fi
+
+# A Wine Studio process can exist while the start page is still hung. Require
+# the local-place state machine to report a successful open before claiming
+# that OTAP is ready; this prevents a false-positive "READY" on Vinegar 0.731.
+PLACE_READY=0
+AUTH_FAILURE=0
+for _ in $(seq 1 20); do
+  LATEST_STUDIO_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/appdata/Roblox/logs/*Studio*_last.log 2>/dev/null | head -1)
+  LATEST_VINEGAR_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/cache/vinegar/logs/*.log 2>/dev/null | head -1)
+  if [ -n "$LATEST_STUDIO_LOG" ] && rg -q "State: OpenPlaceSuccess|OpenPlaceSuccess" "$LATEST_STUDIO_LOG"; then
+    PLACE_READY=1
+    break
+  fi
+  if { [ -n "$LATEST_STUDIO_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_STUDIO_LOG"; } \
+    || { [ -n "$LATEST_VINEGAR_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_VINEGAR_LOG"; }; then
+    AUTH_FAILURE=1
+    break
+  fi
+  sleep 1
+done
+if [ "$PLACE_READY" -ne 1 ]; then
+  echo "      WARNING: Studio did not report OpenPlaceSuccess for $WINE_PLACE"
+  if [ "$AUTH_FAILURE" -eq 1 ] || { [ -n "$LATEST_STUDIO_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_STUDIO_LOG"; } \
+    || { [ -n "$LATEST_VINEGAR_LOG" ] && rg -q "ROBLOSECURITY cookie not found|UserIdAndCookieMismatch|Invalid CookieManager" "$LATEST_VINEGAR_LOG"; }; then
+    echo "      Studio authentication is unavailable; sign in to Roblox Studio/Vinegar and retry"
+    echo "      Browser flow: open Vinegar Settings → Log in via browser → Continue → Open Vinegar"
+    echo "      If WebView is blank, disable Web Pages in Vinegar Settings and use browser login"
+    echo "      CLI settings: flatpak run org.vinegarhq.Vinegar manage"
+    if [ "${KEEP_STUDIO:-0}" -eq 1 ]; then
+      echo "      KEEP_STUDIO=1: Studio is left open for browser login"
+      wait "$STUDIO_PID" 2>/dev/null || true
+    else
+      echo "      Studio will be closed; use KEEP_STUDIO=1 to keep it open"
+    fi
+  else
+    echo "      The process is alive, but the place is not loaded; inspect the latest Studio log"
+  fi
+  exit 1
+fi
+
+focus_studio_and_play() {
+  if xdotool search --onlyvisible --class "robloxstudiobeta.exe" windowactivate --sync -- key F5 2>/dev/null; then
+    return 0
+  fi
+
+  local studio_windows
+  studio_windows=$(xdotool search --onlyvisible --class "robloxstudiobeta.exe" 2>/dev/null || true)
+  [ -n "$studio_windows" ] || studio_windows=$(xdotool search --name "MOLGANG_OTAP_Test.rbxl" 2>/dev/null || true)
+  [ -n "$studio_windows" ] || return 1
+
+  while read -r studio_window; do
+    [ -n "$studio_window" ] || continue
+    xdotool windowraise "$studio_window" 2>/dev/null || true
+    xdotool windowactivate "$studio_window" 2>/dev/null || true
+    xdotool key --window "$studio_window" F5 2>/dev/null || true
+    xdotool mousemove --window "$studio_window" 112 75 click 1 2>/dev/null || true
+  done <<EOF
+$studio_windows
+EOF
+  return 0
+}
+
+if [ "$RUN_PLAYTEST" -eq 1 ]; then
+  echo "      Attempting Play Solo automation..."
+  PLAYTEST_STARTED=0
+  for _ in $(seq 1 6); do
+    focus_studio_and_play
+    sleep 3
+    LATEST_STUDIO_LOG=$(ls -1t /home/knight2/.var/app/org.vinegarhq.Vinegar/data/vinegar/appdata/Roblox/logs/*Studio*_last.log 2>/dev/null | head -1)
+    if [ -n "$LATEST_STUDIO_LOG" ] && rg -q "State: PlaySoloSuccess|PlaySoloSuccess" "$LATEST_STUDIO_LOG"; then
+      PLAYTEST_STARTED=1
+      break
+    fi
+  done
+
+  if [ "$PLAYTEST_STARTED" -eq 1 ]; then
+    echo "      Play Solo reported PlaySoloSuccess"
+  else
+    echo "      WARNING: automatic Play Solo start was not confirmed"
+  fi
+fi
 
 echo ""
 echo "═══════════════════════════════════════════════"
@@ -65,7 +240,11 @@ echo "  In Roblox Studio:"
 echo "  1. File → Open from File"
 echo "  2. Navigate to: Documents"
 echo "  3. Open: MOLGANG_OTAP_Test.rbxl"
-echo "  4. Press F5 to playtest"
+if [ "$RUN_PLAYTEST" -eq 1 ]; then
+  echo "  4. Play Solo auto-start attempted for this session"
+else
+  echo "  4. Press F5 to playtest"
+fi
 echo "  5. AutoTestRunner prints results to Output"
 echo ""
 echo "  Rojo live sync: localhost:34872"
@@ -76,4 +255,3 @@ echo "════════════════════════�
 
 # Wait for user to stop
 wait $STUDIO_PID
-kill $ROJO_PID 2>/dev/null

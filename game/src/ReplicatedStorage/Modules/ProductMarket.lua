@@ -124,6 +124,7 @@ ProductMarket.Products = {
 		description = "Leftover slag after metal extraction. Used as road base, concrete aggregate.",
 		realWorldPrice = "€5-15/ton",
 		requiredAtoms = {},  -- byproduct, no specific atoms needed
+		requiredSlag = {residue = 1},
 	},
 }
 
@@ -133,35 +134,80 @@ ProductMarket.Products = {
 
 -- Dynamic pricing (fluctuates each game day)
 function ProductMarket.GetCurrentPrice(productId, gameDay)
+	gameDay = tonumber(gameDay) or 1
 	for _, product in ipairs(ProductMarket.Products) do
 		if product.id == productId then
-			-- Sine wave price fluctuation
-			local dayFactor = math.sin(gameDay * 0.3 + #productId) * product.volatility
-			local price = product.basePrice * (1 + dayFactor)
-			-- Add small random noise
-			price = price * (0.95 + math.random() * 0.1)
-			return math.floor(price)
+			-- Deterministic market movement: the same product/day must produce
+			-- the same quote in the UI, sale validation, and bidding systems.
+			local productSeed = 0
+			for index = 1, #product.id do
+				productSeed = productSeed + string.byte(product.id, index) * index
+			end
+			local dayFactor = math.sin(gameDay * 0.3 + productSeed) * product.volatility
+			local marketNoise = math.sin(gameDay * 1.7 + productSeed * 0.13) * 0.025
+			local price = product.basePrice * (1 + dayFactor + marketNoise)
+			return math.floor(math.max(0, price))
 		end
 	end
 	return 0
 end
 
+function ProductMarket.ApplyMarketPriceMultiplier(productId, price, multipliers)
+	local basePrice = math.max(0, tonumber(price) or 0)
+	local multiplier = multipliers and tonumber(multipliers[productId]) or 1
+	if not multiplier or multiplier ~= multiplier or multiplier == math.huge or multiplier == -math.huge then
+		multiplier = 1
+	end
+	return math.max(0, basePrice * math.max(0, multiplier))
+end
+
+-- EU certification events affect only agricultural products. Keep the rule
+-- pure so the server can validate before consuming inventory and tests can
+-- prove that premium/penalty paths are symmetric.
+function ProductMarket.GetCertificationStatus(product, effects, research)
+	if not product or product.category ~= "Agricultural Product"
+		or not effects or not effects.requiresCertification then
+		return true
+	end
+	local unlocked = research and research.unlocked or {}
+	return unlocked.slag_biostimulant == true or unlocked.icp_oes == true
+end
+
+function ProductMarket.ApplyCertificationPrice(product, price, effects, research)
+	local basePrice = math.max(0, tonumber(price) or 0)
+	if not product or product.category ~= "Agricultural Product"
+		or not effects or not effects.requiresCertification then
+		return basePrice
+	end
+	local multiplier = ProductMarket.GetCertificationStatus(product, effects, research)
+		and (tonumber(effects.certifiedPricePremium) or 1)
+		or (tonumber(effects.uncertifiedPricePenalty) or 1)
+	return math.max(0, basePrice * math.max(0, multiplier))
+end
+
 -- Get all current prices
-function ProductMarket.GetAllPrices(gameDay)
+function ProductMarket.GetAllPrices(gameDay, multipliers)
 	local prices = {}
 	for _, product in ipairs(ProductMarket.Products) do
-		prices[product.id] = ProductMarket.GetCurrentPrice(product.id, gameDay)
+		prices[product.id] = math.floor(ProductMarket.ApplyMarketPriceMultiplier(
+			product.id, ProductMarket.GetCurrentPrice(product.id, gameDay), multipliers
+		) + 0.5)
 	end
 	return prices
 end
 
 -- Check if player has enough atoms to sell a product
-function ProductMarket.CanSell(playerAtoms, productId)
+function ProductMarket.CanSell(playerAtoms, productId, slagInventory)
 	for _, product in ipairs(ProductMarket.Products) do
 		if product.id == productId then
 			for atom, count in pairs(product.requiredAtoms) do
 				if (playerAtoms[atom] or 0) < count then
 					return false, "Need " .. count .. "x " .. atom
+				end
+			end
+			for residue, count in pairs(product.requiredSlag or {}) do
+				if not slagInventory or (slagInventory[residue] or 0) < count then
+					return false, "Need " .. count .. "x " .. residue
 				end
 			end
 			return true, "OK"

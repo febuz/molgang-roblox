@@ -16,10 +16,19 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local GetPlayerData = Remotes:WaitForChild("GetPlayerData")
+
+local function findScreenGui(name)
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if child.Name == name and child:IsA("ScreenGui") then return child end
+	end
+	return nil
+end
 
 -- Wait for remotes
 local PlayerDataLoaded = Remotes:WaitForChild("PlayerDataLoaded")
@@ -238,14 +247,35 @@ local function createQuickBtn(text, color, guiTarget)
 	btn.Text = text
 	btn.Font = Enum.Font.GothamBold
 	btn.TextScaled = true
+	btn.Active = true
+	btn.Selectable = true
+	btn.ZIndex = 20
 	btn.Parent = btnFrame
 	local bCorner = Instance.new("UICorner")
 	bCorner.CornerRadius = UDim.new(0, 4)
 	bCorner.Parent = btn
-	btn.MouseButton1Click:Connect(function()
-		local gui = playerGui:FindFirstChild(guiTarget)
+	local lastToggle = 0
+	local function toggleTarget()
+		local now = os.clock()
+		if now - lastToggle < 0.15 then return end
+		lastToggle = now
+		local gui = findScreenGui(guiTarget)
 		if gui then
 			gui.Enabled = not gui.Enabled
+		end
+	end
+	btn.Activated:Connect(toggleTarget)
+	-- Wine/Studio embedded surfaces can swallow GuiButton.Activated while
+	-- still delivering UserInputService events. Hit-test the visible control
+	-- explicitly so the HUD remains mouse-usable.
+	UserInputService.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+		local point = input.Position
+		local topLeft = btn.AbsolutePosition
+		local bottomRight = topLeft + btn.AbsoluteSize
+		if point.X >= topLeft.X and point.X <= bottomRight.X
+			and point.Y >= topLeft.Y and point.Y <= bottomRight.Y then
+			toggleTarget()
 		end
 	end)
 	return btn
@@ -253,7 +283,10 @@ end
 
 createQuickBtn("P Table", COLORS.accent, "PeriodicTableGui")
 createQuickBtn("Dash", Color3.fromRGB(80, 150, 255), "DashboardGui")
-createQuickBtn("Quests", Color3.fromRGB(200, 140, 50), "QuestTrackerGui")
+-- The quick action should open the full quest modal, not the always-on compact
+-- tracker shell. Using QuestTrackerGui here made the HUD button look alive
+-- while leaving the real quest menu inaccessible from the shortcut lane.
+createQuickBtn("Quests", Color3.fromRGB(200, 140, 50), "QuestModal")
 
 -- ── Save indicator (#76) ──
 
@@ -301,6 +334,7 @@ versionLabel.Parent = widget
 -- ═══════════════════════════════════════════════
 
 local playerData = nil
+local activeWorldEffects = {}
 
 local function countTable(t)
 	local n = 0
@@ -363,8 +397,12 @@ local function refreshHUD()
 		local fac = playerData.facilities
 		local totalFac = (fac.mines or 0) + (fac.factories or 0) + (fac.researchLabs or 0) + (fac.offices or 0)
 		if totalFac > 0 then
-			local atomsPerCycle = (fac.mines or 0) * 10 + 3  -- +3 for starter bench
-			prodLabel.Text = "Prod: " .. atomsPerCycle .. " atoms/min"
+			local baseOutdoorAtoms = (fac.starterBenches or 0) * 3 + (fac.mines or 0) * 10
+			local weatherPenalty = math.clamp(tonumber(player:GetAttribute("OutdoorPenalty")) or 1, 0, 1)
+			local speedMultiplier = math.max(0, tonumber(activeWorldEffects.productionSpeedMult) or 1)
+			local outdoorAtoms = baseOutdoorAtoms * weatherPenalty * speedMultiplier
+			local factoryMolecules = (fac.factories or 0) * 5 * speedMultiplier
+			prodLabel.Text = string.format("Prod: %.1f atoms/min | %.1f mol/120s", outdoorAtoms, factoryMolecules)
 			prodLabel.TextColor3 = COLORS.accent
 		else
 			prodLabel.Text = "Production: Buy a Starter Bench!"
@@ -391,6 +429,23 @@ end
 PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
 	refreshHUD()
+end)
+
+-- PlayerDataLoaded is a one-shot event and can precede this script under
+-- Studio/Wine startup. Fetch a server-owned snapshot until the HUD is ready.
+task.spawn(function()
+	for _ = 1, 10 do
+		if playerData then return end
+		local ok, data = pcall(function()
+			return GetPlayerData:InvokeServer()
+		end)
+		if ok and type(data) == "table" then
+			playerData = data
+			refreshHUD()
+			return
+		end
+		task.wait(0.5)
+	end
 end)
 
 -- Atom collected: update atoms + elements + molcoins
@@ -462,7 +517,7 @@ DailyClaimResult.OnClientEvent:Connect(function(data)
 		claimLabel.TextColor3 = COLORS.gold
 		refreshHUD()
 	elseif data and not data.success then
-		claimLabel.Text = "Daily: Already claimed"
+		claimLabel.Text = "Daily: " .. (data.reason or "Already claimed")
 		claimLabel.TextColor3 = Color3.fromRGB(100, 110, 130)
 	end
 end)
@@ -487,5 +542,14 @@ player:GetAttributeChangedSignal("CurrentZone"):Connect(function()
 	}
 	zoneBadge.Text = zoneNames[zone] or zone
 end)
+
+player:GetAttributeChangedSignal("OutdoorPenalty"):Connect(refreshHUD)
+
+if Remotes:FindFirstChild("WorldEffectsUpdate") then
+	Remotes.WorldEffectsUpdate.OnClientEvent:Connect(function(data)
+		activeWorldEffects = (data and data.effects) or {}
+		refreshHUD()
+	end)
+end
 
 print("[MOLGANG] HUD Widget loaded — real-time stats active")

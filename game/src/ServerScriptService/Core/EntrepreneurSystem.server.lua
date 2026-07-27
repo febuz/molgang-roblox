@@ -16,6 +16,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local FactoryEquipment = require(ReplicatedStorage.Modules.FactoryEquipment)
+local CarbonScore = require(ReplicatedStorage.Modules.CarbonScore)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
@@ -30,6 +32,7 @@ local factoryWorldModels = {}  -- {userId = Folder in workspace}
 local FACTORY_ORIGIN = Vector3.new(-1750, 10, -150)
 local FACTORY_FLOOR_Y = 10
 local CELL_SIZE_STUDS = 10  -- each grid cell = 10 studs (1m scaled up for game)
+local RENT_INTERVAL = 600  -- game month = 10 real minutes for OTAP
 
 local function persistFactory(userId, factory)
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
@@ -248,10 +251,36 @@ end
 
 local function sendFactoryUpdate(player, userId)
 	local factory = getFactory(userId)
+	local waterTreatmentUnits = 0
+	for _, placement in ipairs(factory.placements) do
+		if placement.itemId == "water_treatment" then
+			waterTreatmentUnits = waterTreatmentUnits + 1
+		end
+	end
 
 	-- Calculate stats
 	local powerDraw, powerAvail, powerBalance = FactoryEquipment.CalculatePower(factory.placements)
-	local totalCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCost(factory.placements)
+	local carbonScore = CarbonScore.CalculateScore({
+		factory_rent = 1,
+		equipment_power = powerDraw,
+		water_reuse = waterTreatmentUnits,
+	})
+	local carbonRating = select(1, CarbonScore.GetRating(carbonScore))
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local carbonCreditReward = CarbonScore.CalculateCreditReward(
+		carbonScore, eventEffects.carbonCreditMult, #factory.placements > 0
+	)
+	local operatingCostMultiplier = eventEffects.factoryOpCostMult or 1
+	local operatingCost, rent, maintenance = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
+		factory.placements, operatingCostMultiplier
+	)
+	local carbonTaxBeforeExemption = FactoryEquipment.CalculateCarbonTax(
+		powerDraw, eventEffects.carbonTaxPerKW, RENT_INTERVAL / 60
+	)
+	local carbonTax = FactoryEquipment.ApplyGreenTaxExemption(
+		carbonTaxBeforeExemption, carbonRating, eventEffects.greenExemptFromTax
+	)
+	local totalCost = operatingCost + carbonTax
 	local bonuses = FactoryEquipment.CalculateAdjacencyBonuses(factory.placements)
 
 	-- Build placement list for client
@@ -280,6 +309,12 @@ local function sendFactoryUpdate(player, userId)
 		monthlyCost = totalCost,
 		rent = rent,
 		maintenance = maintenance,
+		carbonTax = carbonTax,
+		carbonTaxExempt = carbonTaxBeforeExemption > 0 and carbonTax == 0,
+		carbonScore = carbonScore,
+		carbonRating = carbonRating,
+		carbonCredits = (PlayerDataBridge.GetPlayerData(userId) or {}).carbonCredits or 0,
+		carbonCreditReward = carbonCreditReward,
 		bonuses = bonuses,
 		placementCount = #factory.placements,
 		maxPlacements = FactoryEquipment.FloorConfig.maxEquipment,
@@ -392,8 +427,20 @@ Remotes.RequestPlaceEquipment.OnServerEvent:Connect(function(player, itemId, gri
 	local userId = player.UserId
 	local factory = getFactory(userId)
 
-	if not factory.rented then return end
-	if type(itemId) ~= "string" or type(gridX) ~= "number" or type(gridY) ~= "number" then return end
+	if not factory.rented then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Rent a factory before placing equipment.",
+			rarity = "common",
+		})
+		return
+	end
+	if type(itemId) ~= "string" or type(gridX) ~= "number" or type(gridY) ~= "number" then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Invalid factory grid placement.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Check inventory
 	if (factory.equipmentInventory[itemId] or 0) <= 0 then
@@ -480,8 +527,20 @@ Remotes.RequestRemoveEquipment.OnServerEvent:Connect(function(player, gridX, gri
 	local userId = player.UserId
 	local factory = getFactory(userId)
 
-	if not factory.rented then return end
-	if type(gridX) ~= "number" or type(gridY) ~= "number" then return end
+	if not factory.rented then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Rent a factory before removing equipment.",
+			rarity = "common",
+		})
+		return
+	end
+	if type(gridX) ~= "number" or type(gridY) ~= "number" then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "Invalid factory grid coordinate.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Find which placement is at this position
 	local foundIdx = nil
@@ -501,7 +560,13 @@ Remotes.RequestRemoveEquipment.OnServerEvent:Connect(function(player, gridX, gri
 		end
 	end
 
-	if not foundIdx or not foundItem then return end
+	if not foundIdx or not foundItem then
+		Remotes.FireClient("ServerAnnounce", player, {
+			message = "No equipment is installed at that grid cell.",
+			rarity = "common",
+		})
+		return
+	end
 
 	-- Remove from grid
 	local item = FactoryEquipment.GetItem(foundItem.itemId)
@@ -548,8 +613,6 @@ end)
 -- MONTHLY RENT COLLECTION
 -- ═══════════════════════════════════════════════
 
-local RENT_INTERVAL = 600  -- game month = 10 real minutes for teaser
-
 task.spawn(function()
 	while true do
 		task.wait(RENT_INTERVAL)
@@ -557,15 +620,46 @@ task.spawn(function()
 			local userId = player.UserId
 			local factory = playerFactories[userId]
 			if factory and factory.rented then
-				local totalCost = FactoryEquipment.CalculateMonthlyCost(factory.placements)
+				local eventEffects = WorldEvents.GetActiveEffects()
+				local powerDraw = FactoryEquipment.CalculatePower(factory.placements)
+				local operatingCost = FactoryEquipment.CalculateMonthlyCostWithMultiplier(
+					factory.placements, eventEffects.factoryOpCostMult or 1
+				)
+				local waterTreatmentUnits = 0
+				for _, placement in ipairs(factory.placements) do
+					if placement.itemId == "water_treatment" then
+						waterTreatmentUnits = waterTreatmentUnits + 1
+					end
+				end
+				local carbonTaxBeforeExemption = FactoryEquipment.CalculateCarbonTax(
+					powerDraw, eventEffects.carbonTaxPerKW, RENT_INTERVAL / 60
+				)
+				local carbonScore = CarbonScore.CalculateScore({
+					factory_rent = 1,
+					equipment_power = powerDraw,
+					water_reuse = waterTreatmentUnits,
+				})
+				local carbonRating = select(1, CarbonScore.GetRating(carbonScore))
+				local carbonTax = FactoryEquipment.ApplyGreenTaxExemption(
+					carbonTaxBeforeExemption, carbonRating, eventEffects.greenExemptFromTax
+				)
+				local totalCost = operatingCost + carbonTax
 				local success = PlayerDataBridge.SpendMolCoins(userId, totalCost)
 				if success then
+					local carbonCredits = CarbonScore.CalculateCreditReward(
+						carbonScore, eventEffects.carbonCreditMult, #factory.placements > 0
+					)
+					local playerData = PlayerDataBridge.GetPlayerData(userId)
+					if playerData and carbonCredits > 0 then
+						playerData.carbonCredits = (playerData.carbonCredits or 0) + carbonCredits
+					end
 					factory.monthsPaid = factory.monthsPaid + 1
 					persistFactory(userId, factory)
 					Remotes.FireClient("ServerAnnounce", player, {
-						message = "Monthly factory costs paid: " .. totalCost .. " MC (rent + maintenance)",
+						message = "Monthly factory costs paid: " .. totalCost .. " MC (rent + maintenance + carbon tax). Carbon credits earned: " .. carbonCredits,
 						rarity = "common",
 					})
+					sendFactoryUpdate(player, userId)
 				else
 					-- Can't pay rent — warning
 					Remotes.FireClient("ServerAnnounce", player, {

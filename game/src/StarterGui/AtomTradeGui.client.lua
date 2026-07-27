@@ -15,6 +15,7 @@ local SoundService = game:GetService("SoundService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local ResponsiveGui = require(ReplicatedStorage.Modules.ResponsiveGui)
 
 local C = {
 	bg = Color3.fromRGB(10, 14, 20),
@@ -36,11 +37,13 @@ screenGui.ResetOnSpawn = false
 screenGui.DisplayOrder = 18
 screenGui.Enabled = false
 screenGui.Parent = playerGui
+ResponsiveGui.Attach(screenGui, 500, 400)
 
 -- Main frame
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 500, 0, 400)
-main.Position = UDim2.new(0.5, -250, 0.5, -200)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.fromScale(0.5, 0.5)
 main.BackgroundColor3 = C.bg
 main.BackgroundTransparency = 0.05
 main.Parent = screenGui
@@ -68,7 +71,7 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextScaled = true
 closeBtn.Parent = title
 corner(closeBtn, 6)
-closeBtn.MouseButton1Click:Connect(function() screenGui.Enabled = false end)
+closeBtn.Activated:Connect(function() screenGui.Enabled = false end)
 
 -- Nearby players list
 local playersLabel = Instance.new("TextLabel")
@@ -169,7 +172,7 @@ local function refreshPlayers()
 				pb.TextXAlignment = Enum.TextXAlignment.Left
 				pb.Parent = playerScroll
 				corner(pb, 4)
-				pb.MouseButton1Click:Connect(function()
+				pb.Activated:Connect(function()
 					selectedPlayer = other
 					statusLabel.Text = "Trading with: " .. other.Name
 					statusLabel.TextColor3 = C.accent
@@ -211,7 +214,7 @@ local function refreshAtoms()
 				ab.TextXAlignment = Enum.TextXAlignment.Left
 				ab.Parent = atomScroll
 				corner(ab, 4)
-				ab.MouseButton1Click:Connect(function()
+				ab.Activated:Connect(function()
 					selectedAtom = sym
 					statusLabel.Text = "Selected: " .. sym .. " → " .. (selectedPlayer and selectedPlayer.Name or "???")
 					for _, c in atomScroll:GetChildren() do
@@ -226,8 +229,18 @@ local function refreshAtoms()
 	atomScroll.CanvasSize = UDim2.new(0, 0, 0, atomLayout.AbsoluteContentSize.Y)
 end
 
+local transferResult = Remotes:FindFirstChild("AtomTransferResult")
+if transferResult then
+	transferResult.OnClientEvent:Connect(function(data)
+		if type(data) ~= "table" then return end
+		statusLabel.Text = data.message or "Transfer finished"
+		statusLabel.TextColor3 = data.success and C.green or C.red
+		if data.success then refreshAtoms() end
+	end)
+end
+
 -- Trade action
-tradeBtn.MouseButton1Click:Connect(function()
+tradeBtn.Activated:Connect(function()
 	if not selectedPlayer or not selectedAtom then
 		statusLabel.Text = "Select a player AND an atom first!"
 		statusLabel.TextColor3 = C.red
@@ -237,8 +250,8 @@ tradeBtn.MouseButton1Click:Connect(function()
 	local remote = Remotes:FindFirstChild("RequestAtomTransfer")
 	if remote then
 		remote:FireServer(selectedPlayer.UserId, selectedAtom)
-		statusLabel.Text = "Sent 1x " .. selectedAtom .. " to " .. selectedPlayer.Name .. "!"
-		statusLabel.TextColor3 = C.green
+		statusLabel.Text = "Transfer pending server confirmation..."
+		statusLabel.TextColor3 = C.textDim
 		-- Play sound
 		local s = SoundService:FindFirstChild("purchase")
 		if s then local c = s:Clone(); c.Parent = SoundService; c:Play(); c.Ended:Connect(function() c:Destroy() end) end
@@ -254,4 +267,4 @@ screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	end
 end)
 
-print("[MOLGANG] AtomTradeGui loaded — press / to trade atoms with nearby players")
+print("[MOLGANG] AtomTradeGui loaded — press . to trade atoms with nearby players")

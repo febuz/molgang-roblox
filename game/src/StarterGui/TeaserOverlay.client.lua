@@ -1,5 +1,5 @@
 --[[
-	TeaserOverlay.client.lua
+	OTAPNavigationOverlay.client.lua
 	MOLGANG OTAP — Persistent Branding & Navigation
 
 	Features:
@@ -39,7 +39,7 @@ local COLORS = {
 -- ═══════════════════════════════════════════════
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TeaserOverlay"
+screenGui.Name = "OTAPNavigationOverlay"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -269,7 +269,7 @@ task.delay(10, function()
 		Position = UDim2.new(0.5, -130, 0, 50),
 	}):Play()
 
-	claimBtn.MouseButton1Click:Connect(function()
+	claimBtn.Activated:Connect(function()
 		local claimRemote = ReplicatedStorage.Remotes:FindFirstChild("RequestDailyClaim")
 		if claimRemote then
 			claimRemote:FireServer()

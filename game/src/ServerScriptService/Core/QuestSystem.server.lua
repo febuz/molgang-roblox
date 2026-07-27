@@ -22,6 +22,7 @@ local function getQuestProgress(userId)
 	progress.completed = progress.completed or {}
 	progress.inProgress = progress.inProgress or {}
 	progress.lastDaily = progress.lastDaily or {}
+	Quests.EnsureGuidedQuest(progress)
 	return data, progress
 end
 
@@ -37,12 +38,13 @@ local function completeReadyQuests(player, data, progress)
 			Quests.CompleteQuest(progress, questId)
 			local reward = quest.reward or {}
 			if reward.molCoins and reward.molCoins > 0 then
-				PlayerDataBridge.AddEarnedMolCoins(player.UserId, reward.molCoins)
+				PlayerDataBridge.AddRewardMolCoins(player.UserId, reward.molCoins)
 			end
 			if reward.badge then
 				data.badges = data.badges or {}
 				data.badges[reward.badge] = true
 			end
+			PlayerDataBridge.RecordQuestCompleted(player.UserId, questId)
 			Remotes.FireClient("QuestCompleted", player, {
 				questId = questId,
 				reward = reward,
@@ -50,6 +52,7 @@ local function completeReadyQuests(player, data, progress)
 			changed = true
 		end
 	end
+	if changed then Quests.EnsureGuidedQuest(progress) end
 	return changed
 end
 

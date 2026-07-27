@@ -171,4 +171,10 @@ function Chemistry.GetBuildableMolecules(playerAtoms)
 	return buildable
 end
 
+function Chemistry.ApplyMoleculeBonus(points, bonusMultiplier)
+	local basePoints = math.max(0, tonumber(points) or 0)
+	local multiplier = math.max(0, tonumber(bonusMultiplier) or 1)
+	return math.floor(basePoints * multiplier)
+end
+
 return Chemistry

@@ -12,23 +12,36 @@ return {
 	-- Currency
 	molCoins = 500,     -- Start bonus (500 MolCoins — enough to buy slag + test features)
 	chainTokens = 0,
+	carbonCredits = 0, -- verified sustainability credits from operating factories
 	quantumDots = {},   -- { {sym='Og', count=1}, ... }
 
 	-- Game progression
 	day = 1,            -- Current day counter
+	onboarding = {
+		completed = false,
+		path = "",
+	},
 
 	-- Facilities
 	facilities = {
+		starterBenches = 0,
 		mines = 0,
 		factories = 0,
 		researchLabs = 0,
 		offices = 0,
 	},
 
+	-- In-progress cadence survives server restarts without simulating offline
+	-- production that never ran.
+	production = {
+		factoryElapsedSeconds = 0,
+		outdoorAtomRemainder = 0,
+	},
+
 	-- Mining rights and plot state (persisted through EconomyManager)
 	mining = {
 		ownedPlots = {},
-		equipment = {},
+		equipment = {hand_pick = 1},
 		plotStates = {},
 		totalOreMined = 0,
 		totalOreValue = 0,
@@ -96,6 +109,7 @@ return {
 		crushed = 0,     -- hammer-crushed ~1cm (kg)
 		ground = 0,      -- machine-ground ~1mm (kg)
 		powder = 0,      -- ball-milled <0.1mm (kg)
+		residue = 0,     -- recovered inert residue for aggregate sales (kg)
 	},
 	activeLeaches = {},  -- { {id, reagent, size, startTime, duration, yield}, ... }
 	completedLeaches = 0,
@@ -129,6 +143,7 @@ return {
 		atomsCollected = 0,
 		moleculesBuilt = 0,
 		molCoinsEarned = 0,
+		molCoinsRewards = 0,
 	},
 	totalChainEntries = 0,
 	totalQuizCorrect = 0,

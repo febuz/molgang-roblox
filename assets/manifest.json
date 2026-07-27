@@ -3,8 +3,18 @@
   "files": [
     {
       "path": "MOLGANG_OTAP_Test.rbxl",
-      "bytes": 580758,
-      "sha256": "75d6ba7bb5b43c4df5d3de15593ab755f4418174b710183f7cfdb73b138675a9"
+      "bytes": 688909,
+      "sha256": "41f056521e960ce10a69bdc8f82f73e3958885e53c8914b207b0f483c2769d53"
+    },
+    {
+      "path": "assets/models/Barrel_01.glb",
+      "bytes": 692360,
+      "sha256": "b3539e866caae424ab398548bb58b671fa07b730b52336164f7a53b7a4ea7340"
+    },
+    {
+      "path": "assets/models/ank_counter_hd.glb",
+      "bytes": 97152,
+      "sha256": "8861401744fc3b377f1b17a052104076782163a3e77816d07f57224472992dad"
     },
     {
       "path": "assets/models/anvil_hammer.fbx",
@@ -27,6 +37,11 @@
       "sha256": "8f90fce91a9fbac5a8d0eec305490ad7a4a6fd7e0c96092820212f4ef37178d7"
     },
     {
+      "path": "assets/models/ball_mill_hd.glb",
+      "bytes": 276124,
+      "sha256": "fc073e075642aa1f2eeedce10c6f4c036ec9a902609cf629c7b38edbc95ea1f8"
+    },
+    {
       "path": "assets/models/banner_pole.fbx",
       "bytes": 113532,
       "sha256": "e415f1c0c488953e25e5e69ab2e7accb581beaff19db9651297a64ee851ac62c"
@@ -35,6 +50,11 @@
       "path": "assets/models/banner_pole.glb",
       "bytes": 300128,
       "sha256": "343357d1a24109ddd785fc6faf18b450c49f423da701fb3e1d1af7823a6487f8"
+    },
+    {
+      "path": "assets/models/barrel_03.glb",
+      "bytes": 573568,
+      "sha256": "cd3276637b3332e0e6dc24b8e379f4ecffa72c8c13d094f2083db6ed37a6b2d0"
     },
     {
       "path": "assets/models/beaker_1L.fbx",
@@ -83,8 +103,8 @@
     },
     {
       "path": "assets/models/bunsen_burner.glb",
-      "bytes": 32972,
-      "sha256": "fcf8bd08412b933d07acbc0f036bda8bf806c93defc2d4e1503d7000d6e1d96e"
+      "bytes": 2132376,
+      "sha256": "988efa3d1e46b2efcf14e8a8619e0b81d1b14ef23b2bd7bb9a64e06cf74d9f72"
     },
     {
       "path": "assets/models/cafe_bar_stool.fbx",
@@ -117,6 +137,11 @@
       "sha256": "6759541a03f733d8fa081fa4c1956af8a047ec8f86d4403f04c1776ab65fb00e"
     },
     {
+      "path": "assets/models/cafe_counter_hd.glb",
+      "bytes": 32008,
+      "sha256": "84f9e7253c3e00b6d2999b525f8c03eb592dd37895c150b25cc0a9efbe910611"
+    },
+    {
       "path": "assets/models/cafe_menu_board.fbx",
       "bytes": 47340,
       "sha256": "70e8b08e05e873d3e3d45f61a50c74ce4434aef93f0dc9c22a3aab46aba5b832"
@@ -135,6 +160,16 @@
       "path": "assets/models/cafe_planter.glb",
       "bytes": 67488,
       "sha256": "dfdac09f71fe6b5d9578fed18ba2ccc34723b25f33e5a6223ae6c32b28f58c34"
+    },
+    {
+      "path": "assets/models/caged_hanging_light.glb",
+      "bytes": 3080544,
+      "sha256": "e8f2a3a9de330d643e2a34589a2d15ecdfc9ed7ef9098f3d03e3c7f05b3d17bb"
+    },
+    {
+      "path": "assets/models/cement_bag.glb",
+      "bytes": 1447352,
+      "sha256": "a1cb959cf74465b95301438fa34a280e298d5c04fdc965659b9dc9847a9b9e97"
     },
     {
       "path": "assets/models/centrifugal_pump.fbx",
@@ -157,6 +192,11 @@
       "sha256": "c3e81c7e7d2529de622888c77f3fa8dcdbb2c36f937a3093ec6a1011e803455d"
     },
     {
+      "path": "assets/models/chemistry_set.glb",
+      "bytes": 3181352,
+      "sha256": "48b98732a17def5c6ff450c980fc9c8093a8cdc5956938466b7d65260579e067"
+    },
+    {
       "path": "assets/models/combat_arena_floor.fbx",
       "bytes": 37756,
       "sha256": "db1c0a76babd66f54f6e72260736b15e95e816a534a3709d4b2c550e00ae6e2d"
@@ -177,6 +217,16 @@
       "sha256": "31b8910318d953c73438b9e60be3bea02a6c5a6f30f35e8f588bfec89905d386"
     },
     {
+      "path": "assets/models/cone_crusher_hd.glb",
+      "bytes": 73628,
+      "sha256": "362694a337b5238641340eeab13cb03c2d19136a23c15d1126e7981d249f0076"
+    },
+    {
+      "path": "assets/models/control_console_hd.glb",
+      "bytes": 44096,
+      "sha256": "fcc78a44e8e1dcb133abf2d4810aa2e011adc88dd55673b7ef297f46dcd4b818"
+    },
+    {
       "path": "assets/models/conveyor_belt.fbx",
       "bytes": 64332,
       "sha256": "28520159ae2ca6baca662057452b5ad3c25a86ed050503d0b871ace5eb1635f2"
@@ -187,6 +237,11 @@
       "sha256": "7a3ea5ce4e6fe31ead24c15138b50ea47cfd0bbfef877272b8da386477f32212"
     },
     {
+      "path": "assets/models/conveyor_hd.glb",
+      "bytes": 106288,
+      "sha256": "d65796f529ce9c4f429c1afa0dc6438724a479008e5e0a2ca878b66b32848d48"
+    },
+    {
       "path": "assets/models/cooling_pit.fbx",
       "bytes": 32172,
       "sha256": "e37baa53b80fa037e8d20f981d7438243d6f0b38b8f1a70dcfab4ea6332ad78f"
@@ -195,6 +250,16 @@
       "path": "assets/models/cooling_pit.glb",
       "bytes": 10476,
       "sha256": "8a1d35c2d46891145b062b3e808308ea63611894a8477ccecf4218545cdddeb3"
+    },
+    {
+      "path": "assets/models/cooling_pit_hd.glb",
+      "bytes": 409816,
+      "sha256": "7a695c60a0d681d91206802c8e743460a832f992f6db8cb12d4125a2b59398b0"
+    },
+    {
+      "path": "assets/models/cooling_tower_hd.glb",
+      "bytes": 116228,
+      "sha256": "3a91cca11bf745beb3ecdba13549fc040e7112516c6ae57207d2370875ec089c"
     },
     {
       "path": "assets/models/crate_stack.fbx",
@@ -227,6 +292,11 @@
       "sha256": "03b5eef8e883345ef42b1ca3e783383aa0a4c872471ef75cb044a6c8ee7ed80e"
     },
     {
+      "path": "assets/models/diploma_frame_hd.glb",
+      "bytes": 18548,
+      "sha256": "535ac4e37c224f12cedce8034b5bea95c4a78439f1e7141d26190a7e92714764"
+    },
+    {
       "path": "assets/models/directory_signpost.fbx",
       "bytes": 40284,
       "sha256": "005ad72275e0f961db32682a136f01afdee3aabe4d58d20aee6dcfb390f142f6"
@@ -237,6 +307,11 @@
       "sha256": "b098262de130648e343528d416b454d0822afde82dec576e5bbf0205b00b6027"
     },
     {
+      "path": "assets/models/directory_signpost_hd.glb",
+      "bytes": 93832,
+      "sha256": "d25b513b19dc7adb7693e4958acda61b7da9cd31956ad08301abcc3ced613ca5"
+    },
+    {
       "path": "assets/models/distillation_column.fbx",
       "bytes": 89660,
       "sha256": "599dae033daa8aa3b16b6626b306c959d4157c84373d19e21564978d12a07c5c"
@@ -245,6 +320,11 @@
       "path": "assets/models/distillation_column.glb",
       "bytes": 75784,
       "sha256": "70411e6ab859e4ab8ce70716c9cdcc41af54ecafc2627b1f6ddfeec58102cd0d"
+    },
+    {
+      "path": "assets/models/distillation_column_hd.glb",
+      "bytes": 1466444,
+      "sha256": "7e54b43789b6371972ae76246a9e1c99d140a15b23b00d4189b4d4653c56a196"
     },
     {
       "path": "assets/models/drill_rig.fbx",
@@ -265,6 +345,11 @@
       "path": "assets/models/drink_display_fridge.glb",
       "bytes": 60604,
       "sha256": "20f427b5b126e7406a76dc3c7ec1cf70fa4981f54612165a9d4f439c9de2fafa"
+    },
+    {
+      "path": "assets/models/drying_oven_hd.glb",
+      "bytes": 126720,
+      "sha256": "dd5b795825569826a9d615617176cc808aaa1b35b3df373e9cd4b927d4bc9df5"
     },
     {
       "path": "assets/models/erlenmeyer_flask.fbx",
@@ -297,6 +382,11 @@
       "sha256": "435fbc90ff3418997004fe3eea9319f3f7e509bdedb80d513e0d545876d7b77d"
     },
     {
+      "path": "assets/models/filtration_press_hd.glb",
+      "bytes": 93108,
+      "sha256": "648572c47795c87b1b74f7482adb692f0bcff925d2818d2f025266ef804bb4b8"
+    },
+    {
       "path": "assets/models/fume_hood.fbx",
       "bytes": 44316,
       "sha256": "2e4c9cba12bb51bfc84b0b2358e1400548eb6ca54bfb8b243a1caadc22258552"
@@ -305,6 +395,16 @@
       "path": "assets/models/fume_hood.glb",
       "bytes": 14784,
       "sha256": "12af90237e2880cacba9a98204dadd17f6df4f651e5bfe016c3749969dc7a761"
+    },
+    {
+      "path": "assets/models/fume_hood_hd.glb",
+      "bytes": 40900,
+      "sha256": "fad8020d6696b535852e1f345f847f9a1942b3cc0d2791972fe1f0bd4de86314"
+    },
+    {
+      "path": "assets/models/gas_cylinder_rack_hd.glb",
+      "bytes": 479380,
+      "sha256": "e5a2e74428b17cdbb718def66193273c4d850686b6de87803aed3122ace7760b"
     },
     {
       "path": "assets/models/gate_valve.fbx",
@@ -377,6 +477,11 @@
       "sha256": "e730ba946bb82be6c5e6a8fd6b1c5786d8f358acaa286e5aad96cf6938efdeaa"
     },
     {
+      "path": "assets/models/info_kiosk_hd.glb",
+      "bytes": 14860,
+      "sha256": "b379626bdf1b92ea126bdb2eb5883ab30ce87e9cbfb33cab28fcea0e3192f303"
+    },
+    {
       "path": "assets/models/jaw_crusher.fbx",
       "bytes": 43036,
       "sha256": "8ad24a7e11ba19361ce206525bb188604340477edd902fb11371acf6a9e8a6ca"
@@ -387,6 +492,16 @@
       "sha256": "4e9386bcea3df78422e5fc2fa6d1f6f3203f8000af1de9c52d22f6d0eac22873"
     },
     {
+      "path": "assets/models/jaw_crusher_hd.glb",
+      "bytes": 74364,
+      "sha256": "5641f5e95c157e084b1561aa79e1e6a156a1fd69d6a62a873ef60006e202c1a2"
+    },
+    {
+      "path": "assets/models/korean_fire_extinguisher_01.glb",
+      "bytes": 1616672,
+      "sha256": "d1ae8e49a02b3ba9ec1f805e6eb748987b0f05ad68874d8d25b45ef25e4b6341"
+    },
+    {
       "path": "assets/models/lab_bench.fbx",
       "bytes": 66028,
       "sha256": "453378001c66367bbbbcd7a323cd88fbe657044bc5f1801233ba1ecfd47ba237"
@@ -395,6 +510,11 @@
       "path": "assets/models/lab_bench.glb",
       "bytes": 45720,
       "sha256": "d8c7d40ca31822142449692714eda5b050f43d67831b6eb2a1217bdc0244a0b1"
+    },
+    {
+      "path": "assets/models/ladder_sectioned_01.glb",
+      "bytes": 2570064,
+      "sha256": "675feb45a1ac97acd7a373b9db42a0c6b3b745ce8098b6d66197774c2023f322"
     },
     {
       "path": "assets/models/lamp_post.fbx",
@@ -427,6 +547,11 @@
       "sha256": "bceb6b7627202a17687163d073e51bf5b99935a3f2359ea703ba6f8e1fa0c547"
     },
     {
+      "path": "assets/models/leaching_tank_hd.glb",
+      "bytes": 663528,
+      "sha256": "d0396febf5befff5d28911b0e96eaeef55841d690384734116dc75dbc35cdda8"
+    },
+    {
       "path": "assets/models/magnetic_separator.fbx",
       "bytes": 51500,
       "sha256": "bfe10ef1f6a27aa8276a02fdbd0c485b017318c55f635432951c5e21d990105d"
@@ -437,6 +562,21 @@
       "sha256": "f071f5254c97cc2ca0e320274833032f0bca53da69b90117ebdfac3ddceb2199"
     },
     {
+      "path": "assets/models/magnetic_separator_hd.glb",
+      "bytes": 212400,
+      "sha256": "4053dd8ee6c928488ffc8441d20912aac7da956fca9593d8f059bd26fe94ef37"
+    },
+    {
+      "path": "assets/models/metal_jerrycan.glb",
+      "bytes": 3033888,
+      "sha256": "ac351e441eee38ebac2ef9c0e1fd706473f5ea60964857a62f89f57622f08cea"
+    },
+    {
+      "path": "assets/models/metal_toolbox.glb",
+      "bytes": 2743680,
+      "sha256": "ad07dfbc6b558e45e5631614f5da745577f925263f380039ddc1ac24af5be583"
+    },
+    {
       "path": "assets/models/microscope.fbx",
       "bytes": 48604,
       "sha256": "bc1f5939b469e8b452a26d5aea7ba3c7a3d3c634e3483bfa65d50639918af8bf"
@@ -445,6 +585,11 @@
       "path": "assets/models/microscope.glb",
       "bytes": 41724,
       "sha256": "b631fb91631c0cb406736b4ab608d0b1b19eeb1454d46b730316e941df4c9504"
+    },
+    {
+      "path": "assets/models/microscope_hd.glb",
+      "bytes": 38100,
+      "sha256": "414f6225ceae8c5d92690db8299b149b8f9edc9f192335c92af77bfd945a2668"
     },
     {
       "path": "assets/models/mine_lantern.fbx",
@@ -475,6 +620,11 @@
       "path": "assets/models/mine_support_frame.glb",
       "bytes": 13332,
       "sha256": "9363c37346fcdf257c17e90f142c2c5ac2e7d456ac4f053ec729106c6349fc75"
+    },
+    {
+      "path": "assets/models/modular_industrial_pipes_01.glb",
+      "bytes": 4819688,
+      "sha256": "0ae1db86dbc43cb23368d90700223b1064aed42916a8b0c57ceab6a398a6fddc"
     },
     {
       "path": "assets/models/molecule_model.fbx",
@@ -547,6 +697,11 @@
       "sha256": "51eec3240cc639fc48e854eed60f9caf66e345702abc67485fe49626d3cf1069"
     },
     {
+      "path": "assets/models/pipe_rack_hd.glb",
+      "bytes": 355856,
+      "sha256": "a5d5d3b4c5ed66f684a579fbba321c0911643ce546305a6bf21ea8935c7f3217"
+    },
+    {
       "path": "assets/models/pipe_section.fbx",
       "bytes": 26700,
       "sha256": "ef519bd8687c2bec07555c1a1d640c53336acde1c76369df793d21bfbfd5492b"
@@ -567,6 +722,21 @@
       "sha256": "16bb7979e2f915167fd42d0dc3bada706b1cd1dc4f77813e2edd01d09d30764d"
     },
     {
+      "path": "assets/models/plaza_bench_hd.glb",
+      "bytes": 25324,
+      "sha256": "3a0c5a33b91dc672bb8cd1c7c372afde9da6cd076c412983beaf8c03ec01f578"
+    },
+    {
+      "path": "assets/models/portable_generator.glb",
+      "bytes": 3431448,
+      "sha256": "ebb12003c6338967c85b747d292bedf9c4852037271e8dd442a6edaedb7c105b"
+    },
+    {
+      "path": "assets/models/precipitation_reactor_hd.glb",
+      "bytes": 123768,
+      "sha256": "0452e553a8254111da6f95f0b8e99eff262b3525abc25c5f23dc08871293e18e"
+    },
+    {
       "path": "assets/models/pressure_vessel.fbx",
       "bytes": 56156,
       "sha256": "c0b54a6e63c1efe5454e61878c258ff81d882cbe7fc852392a86af3b3922e093"
@@ -575,6 +745,11 @@
       "path": "assets/models/pressure_vessel.glb",
       "bytes": 56444,
       "sha256": "b3372f0f7f77e494fede5d9d838632a074d6eb54dd4d19cb00e0e99d26a411c6"
+    },
+    {
+      "path": "assets/models/propane_tank.glb",
+      "bytes": 2213472,
+      "sha256": "362ab8e4ea7fca95bcdab2d3a61e51643d86d9ef3cbc747500a8bd903a44a774"
     },
     {
       "path": "assets/models/quantum_dot.fbx",
@@ -637,6 +812,11 @@
       "sha256": "2dffde2dfd571dc91f23097a6be67aa46a6646807a8e47392322fad3601cfbcf"
     },
     {
+      "path": "assets/models/roasting_kiln_hd.glb",
+      "bytes": 199984,
+      "sha256": "9dd63686721813f2c4e2ac9e3394185f22686a2b95f1c7f43157a7562c4c97f6"
+    },
+    {
       "path": "assets/models/safety_fence_post.fbx",
       "bytes": 43084,
       "sha256": "5e0e4c806723d6e11ce1b3260cf8f59fe6ef5dda11eceb03e4e317c129aec824"
@@ -645,6 +825,16 @@
       "path": "assets/models/safety_fence_post.glb",
       "bytes": 85372,
       "sha256": "b1a3645f820a039416481ebfc13a044e6e55d1ed1cf245e6fc1c085c3b2ab4c5"
+    },
+    {
+      "path": "assets/models/safety_station_hd.glb",
+      "bytes": 150260,
+      "sha256": "6cd4fd82bd891c19e61ec21ffddabdeafb9e98efb4bea006a14fa2233fb8cb8d"
+    },
+    {
+      "path": "assets/models/sample_station_hd.glb",
+      "bytes": 58212,
+      "sha256": "2b1abd5ee3b4b65a29aca5a89f0784219e944ad8c16e69d0061c06a79ccf63ea"
     },
     {
       "path": "assets/models/screw_conveyor.fbx",
@@ -675,6 +865,16 @@
       "path": "assets/models/slag_ladle.glb",
       "bytes": 29384,
       "sha256": "54f23b40d88da80c9c0180281daee2b35c523632530c4ffabcbe607de8bea420"
+    },
+    {
+      "path": "assets/models/slag_ladle_hd.glb",
+      "bytes": 143452,
+      "sha256": "d55e29e3a53b400f47d293304610d712b73b766a9405491d17eb7a9717fe4839"
+    },
+    {
+      "path": "assets/models/small_lpg_tank.glb",
+      "bytes": 2749376,
+      "sha256": "0f431009a874d7a38c7e9c629a42147100fbadfa85d97d8bcdbdb095fced714a"
     },
     {
       "path": "assets/models/solar_panel.fbx",
@@ -717,6 +917,11 @@
       "sha256": "f71d6bfec867c305ab1991a8a3974d8af13e562862a772996d078ee2691b9888"
     },
     {
+      "path": "assets/models/storage_silo_hd.glb",
+      "bytes": 947568,
+      "sha256": "0b1e1bfcf4ee5f9b60ddd3eff20993abbc938609ee14c71f40322ea5f1dad01a"
+    },
+    {
       "path": "assets/models/tapioca_pearl_jar.fbx",
       "bytes": 32572,
       "sha256": "512a4987a702552fb7ff14694282ee9f3d8dbb9f52fcb77f46946d91c50f5b7a"
@@ -757,6 +962,11 @@
       "sha256": "3922b79f159d83e5465772dfafb16f991bb6479d65bd90deedf3dddf55199be7"
     },
     {
+      "path": "assets/models/vibrating_feeder_hd.glb",
+      "bytes": 591084,
+      "sha256": "319e7fa05b01ac7a5fe433c935558c7b895d388650a55c69a6e887d1f6ca4347"
+    },
+    {
       "path": "assets/models/vibrating_screen.fbx",
       "bytes": 42988,
       "sha256": "a7f039739ec0b9a306f7b0f353d9d0315f43a4bd8737e4a857aa1f68753c7d06"
@@ -765,6 +975,11 @@
       "path": "assets/models/vibrating_screen.glb",
       "bytes": 23760,
       "sha256": "3b3a47b0e20d081104e0df1e27e4e1b96734d5aada9b92c431d0782e66a8aeee"
+    },
+    {
+      "path": "assets/models/vibrating_screen_hd.glb",
+      "bytes": 604060,
+      "sha256": "22be0b6cc2ed21b0468f61afd63461c57a7363fbeb59cc77838494dfdfe37c4b"
     },
     {
       "path": "assets/models/victory_trophy.fbx",
@@ -805,6 +1020,11 @@
       "path": "assets/models/welcome_arch.glb",
       "bytes": 36804,
       "sha256": "426ca952a34835e7ba53a2060a6651ed27803296f9d04de09994f0d3bc42178c"
+    },
+    {
+      "path": "assets/models/welcome_arch_hd.glb",
+      "bytes": 428180,
+      "sha256": "fc547c79022d05d88028a0c0f304b15c2e88f79402f60c3107ed0cd5b67b50b1"
     }
   ]
 }

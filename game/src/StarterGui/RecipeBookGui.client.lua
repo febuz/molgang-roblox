@@ -52,8 +52,11 @@ screenGui.Parent = playerGui
 -- Main panel
 local mainPanel = Instance.new("Frame")
 mainPanel.Name = "MainPanel"
-mainPanel.Size = UDim2.new(0, 800, 0, 700)
-mainPanel.Position = UDim2.new(0.5, -400, 0.5, -350)
+-- Use viewport-relative bounds so the recipe list and Craft buttons remain
+-- reachable in compact Studio/Wine windows.
+mainPanel.Size = UDim2.new(0.92, 0, 0.86, 0)
+mainPanel.Position = UDim2.new(0.04, 0, 0.07, 0)
+mainPanel.ClipsDescendants = true
 mainPanel.BackgroundColor3 = COLORS.panel
 mainPanel.BackgroundTransparency = 0.1
 mainPanel.Parent = screenGui
@@ -129,6 +132,20 @@ Remotes.PlayerDataLoaded.OnClientEvent:Connect(function(data)
 	playerData = data
 	refreshCraftButtons()
 end)
+
+local function refreshFromServer()
+	local success, data = pcall(function()
+		return GetPlayerData:InvokeServer()
+	end)
+	if success and type(data) == "table" then
+		playerData = data
+		refreshCraftButtons()
+	end
+end
+
+-- MoleculeBuilt is authoritative: refresh atom counts after the server has
+-- consumed ingredients so Craft/Need Items never reflects stale inventory.
+Remotes.MoleculeBuilt.OnClientEvent:Connect(refreshFromServer)
 
 -- Sort molecules by points (reward)
 local molList = {}
@@ -220,15 +237,25 @@ for _, mol in ipairs(molList) do
 	craftBtn.Text = canCraft and "Craft" or "Need Items"
 	craftBtn.Font = Enum.Font.GothamBold
 	craftBtn.TextScaled = true
-	craftBtn.Enabled = canCraft
+	craftBtn.Active = canCraft
+	craftBtn.Selectable = canCraft
 	craftBtn.Parent = recipeCard
 	createCorner(craftBtn, 4)
 	table.insert(craftEntries, {recipe = recipe, button = craftBtn})
 
-	craftBtn.MouseButton1Click:Connect(function()
+	craftBtn.Activated:Connect(function()
 		print("[RecipeBook] Craft requested:", molName)
+		craftBtn.Active = false
+		craftBtn.Text = "Crafting..."
 		-- Send craft request to server via RequestBuildMolecule
 		Remotes.RequestBuildMolecule:FireServer(recipe.atoms)
+		-- A rejected request does not emit MoleculeBuilt; restore the button after
+		-- a short roundtrip window without assuming the craft succeeded.
+		task.delay(1, function()
+			if craftBtn.Parent then
+				refreshFromServer()
+			end
+		end)
 	end)
 end
 
@@ -247,16 +274,8 @@ screenGui:GetPropertyChangedSignal("Enabled"):Connect(function()
 end)
 
 -- Close handler
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
 	screenGui.Enabled = false
-end)
-
--- Keyboard shortcut
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.R then
-		screenGui.Enabled = not screenGui.Enabled
-	end
 end)
 
 _G.RecipeBookToggle = function()

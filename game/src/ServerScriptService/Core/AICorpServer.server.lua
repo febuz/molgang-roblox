@@ -3,7 +3,7 @@
 -- AI corps make decisions every 5 minutes (configurable).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local DataStoreService  = game:GetService("DataStoreService")
+local DataStoreProvider = require(ReplicatedStorage.Modules.DataStoreProvider)
 
 local AICorporation  = require(ReplicatedStorage.Modules.AICorporation)
 local WorldTerritory = require(ReplicatedStorage.Modules.WorldTerritory)
@@ -14,7 +14,7 @@ local AI_TICK_INTERVAL = 300    -- 5 minutes between AI decision rounds
 local MARKET_TICK_INTERVAL = 60 -- market prices update every minute
 
 -- DataStore for AI corp state persistence
-local aiStore = DataStoreService:GetDataStore("MolGang_AICorpState_v1")
+local aiStore = DataStoreProvider.GetDataStore("MolGang_AICorpState_v1")
 
 -- ──────────────────────────────────────────────
 -- MARKET DATA (shared with AICorpServer)

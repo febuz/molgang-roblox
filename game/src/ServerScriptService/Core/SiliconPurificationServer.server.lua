@@ -28,17 +28,43 @@ local function persistSiliconData(userId, data)
 	}
 end
 
+local function restoreSiliconData(saved)
+	local restored = {
+		products = {},
+		activeStage = nil,
+		completedStages = {},
+		startTime = nil,
+		resumeScheduled = false,
+	}
+	if type(saved) ~= "table" then return restored end
+
+	for productId, quantity in pairs(type(saved.products) == "table" and saved.products or {}) do
+		if type(productId) == "string" and type(quantity) == "number"
+			and quantity == quantity and quantity > 0 and quantity < math.huge then
+			restored.products[productId] = math.floor(quantity)
+		end
+	end
+	for stageId, completed in pairs(type(saved.completedStages) == "table" and saved.completedStages or {}) do
+		if type(stageId) == "string" and completed == true then
+			restored.completedStages[stageId] = true
+		end
+	end
+
+	local activeStage = saved.activeStage
+	local startTime = tonumber(saved.startTime)
+	if type(activeStage) == "string" and SiliconPurification.GetStage(activeStage)
+		and startTime and startTime == startTime and startTime > 0 and startTime < math.huge then
+		restored.activeStage = activeStage
+		restored.startTime = math.floor(startTime)
+	end
+	return restored
+end
+
 local function getSiliconData(userId)
 	if not playerSilicon[userId] then
 		local playerData = PlayerDataBridge.GetPlayerData(userId)
 		local saved = playerData and playerData.siliconPurification
-		playerSilicon[userId] = {
-			products = saved and saved.products or {},         -- {productId = quantity}
-			activeStage = saved and saved.activeStage or nil,   -- currently processing stage
-			completedStages = saved and saved.completedStages or {},  -- {stageId = true}
-			startTime = saved and saved.startTime or nil,
-			resumeScheduled = false,
-		}
+		playerSilicon[userId] = restoreSiliconData(saved)
 	end
 	return playerSilicon[userId]
 end
@@ -56,7 +82,7 @@ local function completeStage(player, stageId)
 	persistSiliconData(userId, data)
 
 	if stage.mcReward then
-		PlayerDataBridge.AddEarnedMolCoins(userId, stage.mcReward)
+		PlayerDataBridge.AddRewardMolCoins(userId, stage.mcReward)
 	end
 
 	Remotes.FireClient("SiliconStageComplete", player, {
@@ -218,7 +244,7 @@ Remotes.RequestBuildQuantumComputer.OnServerEvent:Connect(function(player)
 
 	-- Award
 	local qc = SiliconPurification.QuantumComputer
-	PlayerDataBridge.AddEarnedMolCoins(userId, qc.reward.molCoins)
+	PlayerDataBridge.AddRewardMolCoins(userId, qc.reward.molCoins)
 
 	Remotes.FireClient("ServerAnnounce", player, {
 		message = "QUANTUM COMPUTER BUILT! You are now a Quantum Pioneer! +" .. qc.reward.molCoins .. " MC!",

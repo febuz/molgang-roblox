@@ -18,8 +18,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local FertilizerTrack = require(ReplicatedStorage.Modules.FertilizerTrack)
+local WorldEvents = require(ReplicatedStorage.Modules.WorldEvents)
 local Remotes = require(ReplicatedStorage.Remotes.RemoteSetup)
 local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
+local GameClock = require(ReplicatedStorage.Modules.GameClock)
 
 -- ═══════════════════════════════════════════════
 -- CONFIGURATION
@@ -27,8 +29,15 @@ local PlayerDataBridge = require(script.Parent.PlayerDataBridge)
 
 local MAX_PLOTS = 4                  -- farm plots per player
 local GROWTH_CHECK_INTERVAL = 30     -- seconds between growth ticks
-local GAME_DAY_SECONDS = 120         -- 1 game day = 2 real minutes (for teaser)
+local GAME_DAY_SECONDS = GameClock.DAY_SECONDS
 local SOIL_TEST_COST = 20            -- MolCoins per soil test
+
+local function reject(player, message)
+	Remotes.FireClient("ServerAnnounce", player, {
+		message = message,
+		rarity = "common",
+	})
+end
 
 local function isValidPlotId(plotId)
 	return type(plotId) == "number"
@@ -46,19 +55,111 @@ end
 
 local playerFarms = {}  -- {userId = {plots = {}, questProgress = {}, fertilizerInventory = {}}}
 
+local function finiteOr(value, fallback, minimum, maximum)
+	local number = tonumber(value)
+	if not number or number ~= number or number == math.huge or number == -math.huge then
+		return fallback
+	end
+	return math.clamp(number, minimum, maximum)
+end
+
+local function findSoil(soilId)
+	for _, soil in ipairs(FertilizerTrack.SoilTypes) do
+		if soil.id == soilId then return soil end
+	end
+	return FertilizerTrack.SoilTypes[1]
+end
+
+-- Act 3 needs a real contaminated sample. Keep it out of the onboarding
+-- plots, then unlock one deterministic empty plot when the player reaches
+-- the crisis chapter instead of leaving the remediation quest impossible.
+local function unlockContaminatedPlot(farm)
+	if type(farm) ~= "table" or type(farm.plots) ~= "table" then return nil end
+	for _, plot in ipairs(farm.plots) do
+		if plot.soilType == "contaminated" then return plot, false end
+	end
+
+	local target
+	for _, plot in ipairs(farm.plots) do
+		if not plot.crop then
+			target = plot
+			break
+		end
+	end
+	if not target then return nil, false end
+
+	if not FertilizerTrack.ApplyContaminatedSoil(target) then return nil, false end
+	return target, true
+end
+
+local function findCrop(cropId)
+	if type(cropId) ~= "string" then return nil end
+	for _, crop in ipairs(FertilizerTrack.Crops) do
+		if crop.id == cropId then return crop end
+	end
+	return nil
+end
+
+local function sanitizeSavedFarm(savedFarm)
+	if type(savedFarm) ~= "table" or type(savedFarm.plots) ~= "table"
+		or #savedFarm.plots ~= MAX_PLOTS then
+		return nil
+	end
+	for index = 1, MAX_PLOTS do
+		local plot = savedFarm.plots[index]
+		if type(plot) ~= "table" then return nil end
+		local soil = findSoil(plot.soilType)
+		plot.id = index
+		plot.soilType = soil.id
+		plot.soilName = soil.name
+		plot.pH = finiteOr(plot.pH, soil.pH, 3, 9)
+		plot.nutrients = type(plot.nutrients) == "table" and plot.nutrients or {}
+		plot.nutrients.N = finiteOr(plot.nutrients.N, soil.baseNutrients.N, 0, 1000)
+		plot.nutrients.P = finiteOr(plot.nutrients.P, soil.baseNutrients.P, 0, 1000)
+		plot.nutrients.K = finiteOr(plot.nutrients.K, soil.baseNutrients.K, 0, 1000)
+		plot.growthProgress = finiteOr(plot.growthProgress, 0, 0, 100)
+		plot.growthDays = finiteOr(plot.growthDays, 0, 0, 10000)
+		plot.growthStartTime = finiteOr(plot.growthStartTime, 0, 0, math.huge)
+		plot.totalGrowthDays = finiteOr(plot.totalGrowthDays, 0, 0, 10000)
+		plot.fertilized = plot.fertilized == true
+		plot.tested = plot.tested == true
+		plot.ready = plot.ready == true
+		plot.cropName = type(plot.cropName) == "string" and plot.cropName or nil
+		plot.fertilizerUsed = type(plot.fertilizerUsed) == "string" and plot.fertilizerUsed or nil
+		plot.contaminants = type(plot.contaminants) == "table" and plot.contaminants or nil
+
+		local crop = findCrop(plot.crop)
+		if crop and plot.totalGrowthDays > 0 then
+			plot.crop = crop.id
+			plot.cropName = crop.name
+		else
+			-- An unknown crop or incomplete timer cannot be resumed safely.
+			plot.crop = nil
+			plot.cropName = nil
+			plot.ready = false
+			plot.growthProgress = 0
+			plot.growthDays = 0
+			plot.growthStartTime = 0
+			plot.totalGrowthDays = 0
+		end
+	end
+	savedFarm.questProgress = type(savedFarm.questProgress) == "table" and savedFarm.questProgress or {}
+	savedFarm.fertilizerInventory = type(savedFarm.fertilizerInventory) == "table" and savedFarm.fertilizerInventory or {}
+	savedFarm.totalHarvests = finiteOr(savedFarm.totalHarvests, 0, 0, 1000000000)
+	savedFarm.totalYield = finiteOr(savedFarm.totalYield, 0, 0, 1000000000)
+	savedFarm.currentAct = math.floor(finiteOr(savedFarm.currentAct, 1, 1, 3))
+	return savedFarm
+end
+
 local function getPlayerFarm(userId)
 	if not playerFarms[userId] then
 		local playerData = PlayerDataBridge.GetPlayerData(userId)
 		local savedFarm = playerData and playerData.fertilizerFarm
-		if savedFarm and type(savedFarm.plots) == "table" and #savedFarm.plots == MAX_PLOTS then
+		local restoredFarm = sanitizeSavedFarm(savedFarm)
+		if restoredFarm then
 			-- Reuse the canonical economy table so EconomyManager's normal
 			-- autosave persists farm changes without a second datastore.
-			savedFarm.questProgress = savedFarm.questProgress or {}
-			savedFarm.fertilizerInventory = savedFarm.fertilizerInventory or {}
-			savedFarm.totalHarvests = savedFarm.totalHarvests or 0
-			savedFarm.totalYield = savedFarm.totalYield or 0
-			savedFarm.currentAct = savedFarm.currentAct or 1
-			playerFarms[userId] = savedFarm
+			playerFarms[userId] = restoredFarm
 			return playerFarms[userId]
 		end
 
@@ -126,9 +227,9 @@ Remotes.RequestTestSoil.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Invalid farm plot."); return end
 	local plot = farm.plots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Farm plot not found."); return end
 
 	-- Cost
 	local success = PlayerDataBridge.SpendMolCoins(userId, SOIL_TEST_COST)
@@ -171,11 +272,11 @@ Remotes.RequestCraftFertilizer.OnServerEvent:Connect(function(player, fertilizer
 	local farm = getPlayerFarm(userId)
 	local playerData = PlayerDataBridge.GetPlayerData(userId)
 
-	if type(fertilizerId) ~= "string" then return end
+	if type(fertilizerId) ~= "string" then reject(player, "Invalid fertilizer selection."); return end
 	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
-	if not fert then return end
+	if not fert then reject(player, "Unknown fertilizer recipe."); return end
 
-	if not playerData then return end
+	if not playerData then reject(player, "Player inventory is still loading."); return end
 	local missing = FertilizerTrack.GetMissingAtoms(playerData.atoms, fertilizerId)
 	local missingList = {}
 	for symbol, amount in pairs(missing or {}) do
@@ -239,7 +340,7 @@ Remotes.RequestSellFertilizer.OnServerEvent:Connect(function(player, fertilizerI
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if type(fertilizerId) ~= "string" then return end
+	if type(fertilizerId) ~= "string" then reject(player, "Invalid fertilizer selection."); return end
 	if (farm.fertilizerInventory[fertilizerId] or 0) <= 0 then
 		Remotes.FireClient("ServerAnnounce", player, {
 			message = "No " .. fertilizerId .. " to sell.",
@@ -249,9 +350,13 @@ Remotes.RequestSellFertilizer.OnServerEvent:Connect(function(player, fertilizerI
 	end
 
 	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
-	if not fert then return end
+	if not fert then reject(player, "Unknown fertilizer product."); return end
 
-	local sellPrice = math.floor(fert.points * 0.5)
+	local baseSellPrice = math.floor(fert.points * 0.5)
+	local eventEffects = WorldEvents.GetActiveEffects()
+	local sellPrice = FertilizerTrack.ApplyDemandMultiplier(
+		baseSellPrice, eventEffects.fertilizerDemandMult
+	)
 	farm.fertilizerInventory[fertilizerId] = farm.fertilizerInventory[fertilizerId] - 1
 	PlayerDataBridge.AddEarnedMolCoins(userId, sellPrice)
 
@@ -270,9 +375,12 @@ Remotes.RequestApplyFertilizer.OnServerEvent:Connect(function(player, plotId, fe
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if not isValidPlotId(plotId) or type(fertilizerId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(fertilizerId) ~= "string" then
+		reject(player, "Invalid plot or fertilizer selection.")
+		return
+	end
 	local plot = farm.plots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Farm plot not found."); return end
 
 	-- Check fertilizer in inventory
 	if (farm.fertilizerInventory[fertilizerId] or 0) <= 0 then
@@ -284,7 +392,7 @@ Remotes.RequestApplyFertilizer.OnServerEvent:Connect(function(player, plotId, fe
 	end
 
 	local fert = FertilizerTrack.GetFertilizer(fertilizerId)
-	if not fert then return end
+	if not fert then reject(player, "Unknown fertilizer product."); return end
 
 	-- Consume 1 unit
 	farm.fertilizerInventory[fertilizerId] = farm.fertilizerInventory[fertilizerId] - 1
@@ -325,9 +433,12 @@ Remotes.RequestPlantCrop.OnServerEvent:Connect(function(player, plotId, cropId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if not isValidPlotId(plotId) or type(cropId) ~= "string" then return end
+	if not isValidPlotId(plotId) or type(cropId) ~= "string" then
+		reject(player, "Invalid plot or crop selection.")
+		return
+	end
 	local plot = farm.plots[plotId]
-	if not plot then return end
+	if not plot then reject(player, "Farm plot not found."); return end
 
 	-- Can't plant if already growing
 	if plot.crop then
@@ -352,7 +463,7 @@ Remotes.RequestPlantCrop.OnServerEvent:Connect(function(player, plotId, cropId)
 	for _, c in ipairs(FertilizerTrack.Crops) do
 		if c.id == cropId then crop = c break end
 	end
-	if not crop then return end
+	if not crop then reject(player, "Unknown crop selection."); return end
 
 	-- Planting cost (seeds)
 	local seedCost = 30
@@ -389,9 +500,10 @@ Remotes.RequestHarvestCrop.OnServerEvent:Connect(function(player, plotId)
 	local userId = player.UserId
 	local farm = getPlayerFarm(userId)
 
-	if not isValidPlotId(plotId) then return end
+	if not isValidPlotId(plotId) then reject(player, "Invalid farm plot."); return end
 	local plot = farm.plots[plotId]
-	if not plot or not plot.crop then return end
+	if not plot then reject(player, "Farm plot not found."); return end
+	if not plot.crop then reject(player, "No crop is planted on this plot."); return end
 
 	if not plot.ready then
 		Remotes.FireClient("ServerAnnounce", player, {
@@ -403,13 +515,15 @@ Remotes.RequestHarvestCrop.OnServerEvent:Connect(function(player, plotId)
 
 	-- Calculate yield
 	local yieldPct, cropName = FertilizerTrack.CalculateYield(plot.nutrients, plot.crop, plot.pH)
+	local eventEffects = WorldEvents.GetActiveEffects()
+	yieldPct = FertilizerTrack.ApplyYieldMultiplier(yieldPct, eventEffects.cropYieldMult)
 
 	-- Find crop reward
 	local crop = nil
 	for _, c in ipairs(FertilizerTrack.Crops) do
 		if c.id == plot.crop then crop = c break end
 	end
-	if not crop then return end
+	if not crop then reject(player, "Crop data is unavailable; harvest cancelled safely."); return end
 
 	local coins = math.floor(crop.rewardCoins * yieldPct / 100)
 	coins = math.max(coins, 10)  -- minimum 10 coins
@@ -557,7 +671,7 @@ local function checkQuestProgress(player, userId)
 
 			-- Award reward
 			if quest.reward.molCoins then
-				PlayerDataBridge.AddEarnedMolCoins(userId, quest.reward.molCoins)
+				PlayerDataBridge.AddRewardMolCoins(userId, quest.reward.molCoins)
 			end
 
 			-- Update act
@@ -588,6 +702,17 @@ local function checkQuestProgress(player, userId)
 			end
 
 			print("[FertilizerSystem]", player.Name, "completed quest:", quest.id, quest.title)
+		end
+	end
+
+	-- Retry on every sync so a temporarily full farm cannot strand Act 3.
+	if farm.currentAct >= 3 then
+		local crisisPlot, unlocked = unlockContaminatedPlot(farm)
+		if unlocked and crisisPlot then
+			Remotes.FireClient("ServerAnnounce", player, {
+				message = "ACT 3 UNLOCKED: Contaminated Plot " .. crisisPlot.id .. " is now available for soil analysis and remediation.",
+				rarity = "epic",
+			})
 		end
 	end
 

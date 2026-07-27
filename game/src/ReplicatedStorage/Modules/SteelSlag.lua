@@ -15,6 +15,17 @@
 
 local SteelSlag = {}
 
+local ACTIVATION_ENERGIES = {
+	CaO = 25, FeO = 40, V2O5 = 55, TiO2 = 70, SiO2 = 90,
+	Al2O3 = 35, Cr2O3 = 50, MnO = 50, MgO = 50, P2O5 = 50,
+}
+
+local function arrheniusMultiplier(tempCelsius, activationEnergy)
+	local T = tempCelsius + 273.15
+	local exponent = (-(activationEnergy * 1000) / 8.314) * (1 / T - 1 / 298.15)
+	return math.clamp(math.exp(exponent), 0.01, 100)
+end
+
 -- ═══════════════════════════════════════════════
 -- BOF SLAG COMPOSITION (weight % of oxides)
 -- Based on typical European BOF slag
@@ -413,6 +424,36 @@ SteelSlag.BATCH_WEIGHT_KG = 1.0
 SteelSlag.RAW_SLAG_COST = 50         -- MolCoins per 1kg chunk
 SteelSlag.MAX_ACTIVE_LEACHES = 3     -- max concurrent leaching processes
 SteelSlag.MAX_SLAG_INVENTORY = 20    -- max kg in storage
+SteelSlag.CRUSHING_DUST_FRACTION = 0.01
+SteelSlag.MAGNETIC_IRON_RECOVERY_KG = 0.12
+
+-- Return the oxide masses that actually reach the leach tank after the
+-- physical pre-treatment steps. Keeping this shared prevents the product
+-- yield calculator from creating Fe atoms that magnetic separation already
+-- recovered from the feed.
+function SteelSlag.GetPostMagneticSeparationMasses(batchWeightKg)
+	local batchWeight = tonumber(batchWeightKg) or SteelSlag.BATCH_WEIGHT_KG
+	batchWeight = math.max(0, batchWeight)
+	local afterCrushing = batchWeight * (1 - SteelSlag.CRUSHING_DUST_FRACTION)
+	local oxideMasses = {}
+	local representedMass = 0
+	for oxide, data in pairs(SteelSlag.Composition) do
+		local mass = afterCrushing * ((tonumber(data.pct) or 0) / 100)
+		oxideMasses[oxide] = mass
+		representedMass = representedMass + mass
+	end
+
+	local referenceBatch = math.max(SteelSlag.BATCH_WEIGHT_KG, 0.000001)
+	local requestedMagneticRecovery = SteelSlag.MAGNETIC_IRON_RECOVERY_KG
+		* (batchWeight / referenceBatch)
+	local magneticRecovery = math.min(
+		math.max(0, oxideMasses.FeO or 0),
+		requestedMagneticRecovery
+	)
+	oxideMasses.FeO = math.max(0, (oxideMasses.FeO or 0) - magneticRecovery)
+	return oxideMasses, afterCrushing - magneticRecovery, magneticRecovery,
+		math.max(0, afterCrushing - representedMass)
+end
 
 -- ═══════════════════════════════════════════════
 -- CALCULATION FUNCTIONS
@@ -444,21 +485,46 @@ function SteelSlag.FormatLeachTime(minutes)
 	end
 end
 
--- Calculate what products a leaching process yields
+-- Calculate what products a leaching process yields. Temperature is optional
+-- for UI previews and defaults to 25°C; the server passes its live process
+-- temperature so production matches the engineering mass-balance model.
 -- Returns: { {element = "Fe", amount = N}, {element = "V", amount = N}, ... }
-function SteelSlag.CalculateYield(particleSize, reagentId, batchWeightKg)
+function SteelSlag.CalculateYield(particleSize, reagentId, batchWeightKg, temperature)
 	local size = SteelSlag.ParticleSizes[particleSize]
 	local reagent = SteelSlag.Reagents[reagentId]
 	if not size or not reagent then return {} end
 
 	local yield = {}
 	local batchWeight = batchWeightKg or SteelSlag.BATCH_WEIGHT_KG
+	temperature = temperature or 25
+	local contactFactor = math.clamp(1 / math.max(size.leachMultiplier, 0.05), 0.05, 4)
+	local oxideMasses = SteelSlag.GetPostMagneticSeparationMasses(batchWeight)
+	local targetProducts = {}
+	for _, element in ipairs(reagent.products or {}) do
+		targetProducts[element] = true
+	end
 
 	for oxide, data in pairs(SteelSlag.Composition) do
 		local extraction = reagent.extraction[oxide] or 0
-		if extraction > 0 then
+		local elements = SteelSlag.OxideToElements[oxide]
+		local isTargetProduct = next(targetProducts) == nil
+		if elements and next(targetProducts) ~= nil then
+			isTargetProduct = false
+			for element in pairs(elements) do
+				if targetProducts[element] then
+					isTargetProduct = true
+					break
+				end
+			end
+		end
+		if extraction > 0 and isTargetProduct then
+			local temperatureExtraction = math.clamp(
+				extraction * arrheniusMultiplier(temperature, ACTIVATION_ENERGIES[oxide] or 50),
+				0, 0.99
+			)
+			extraction = math.clamp(1 - ((1 - temperatureExtraction) ^ contactFactor), 0, 0.99)
 			-- Weight of this oxide in the batch (grams)
-			local oxideWeight = batchWeight * 1000 * (data.pct / 100)
+			local oxideWeight = (oxideMasses[oxide] or 0) * 1000
 			-- Amount extracted (grams)
 			local extracted = oxideWeight * extraction
 			-- Convert to game "atoms" (1 atom per 10g extracted, minimum 1 if any)
