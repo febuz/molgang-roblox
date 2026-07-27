@@ -16,7 +16,10 @@ def hash_file(path):
 
 files = []
 for path in sorted(ROOT.rglob("*")):
-    if path.is_file() and path.suffix.lower() in EXTENSIONS and "build" not in path.parts:
+    # "deploy" is the untracked bundle output of build_deploy.sh: hashing it
+    # bakes machine-local files into the manifest and breaks CI verification.
+    if (path.is_file() and path.suffix.lower() in EXTENSIONS
+            and "build" not in path.parts and "deploy" not in path.parts):
         files.append({"path": path.relative_to(ROOT).as_posix(), "bytes": path.stat().st_size, "sha256": hash_file(path)})
 
 manifest = {"schema": 1, "files": files}
