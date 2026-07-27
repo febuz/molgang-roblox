@@ -35,11 +35,15 @@ cp -r "$ROOT/assets/viscosity" "$OUT/viscosity"
 # STARTS at the player's nearest real steel plant.
 cp -r "$ROOT/assets/steelworks" "$OUT/steelworks"
 
+# 4d. rivierlab — kids' levels at the river (synced from molgang-knitweb
+# web/rivierlab.html, see SYNC.md): the natural cycle & what chemistry is.
+cp -r "$ROOT/assets/rivierlab" "$OUT/rivierlab"
+
 # 5. entry: knitweb.art/molgang/ -> start at your nearest steel plant
 cat > "$OUT/index.html" <<'HTML'
 <!doctype html><meta charset="utf-8">
 <meta http-equiv="refresh" content="0; url=./steelworks/">
-<title>MOLGANG</title><a href="./steelworks/">Start: jouw staalfabriek 🏭</a> · <a href="./world/">Moleculia →</a> · <a href="./viscosity/">Viscositeitsruimte 🌀</a> · <a href="./quantumlab/">Kwantumcomputer-lab ⚛️</a>
+<title>MOLGANG</title><a href="./steelworks/">Start: jouw staalfabriek 🏭</a> · <a href="./rivierlab/">Rivierlab 🏞</a> · <a href="./world/">Moleculia →</a> · <a href="./viscosity/">Viscositeitsruimte 🌀</a> · <a href="./quantumlab/">Kwantumcomputer-lab ⚛️</a>
 HTML
 
 BYTES=$(du -sh "$OUT" | cut -f1)

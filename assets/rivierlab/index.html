@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MOLGANG — Rivierlab (voor kinderen)</title>
+<style>
+  :root{
+    --bg:#0a0e13; --panel:#141c25; --panel2:#18222d; --line:#243342;
+    --ink:#eaf2f5; --dim:#89a0b0; --teal:#3fb6a8; --amber:#f4b41a;
+    --good:#38d39f; --bad:#ff6b6b; --sky1:#7ec8f7; --sky2:#cfeaff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);overflow:hidden;
+    font:17px/1.5 -apple-system,"Segoe UI",system-ui,sans-serif}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;
+    border-bottom:1px solid var(--line);background:rgba(10,14,19,.75)}
+  .brand{font-weight:800;font-size:1.05em}
+  .brand .dim{color:var(--dim);font-weight:500}
+  header .spacer{flex:1}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--dim);
+    border-radius:10px;padding:7px 12px;cursor:pointer;text-decoration:none;font-size:.9em}
+  .ghost:hover{color:var(--ink);border-color:var(--teal)}
+  #stars{font-size:1.1em;letter-spacing:2px}
+  main{position:relative;height:calc(100% - 51px)}
+  #scene{display:block;width:100%;height:100%;touch-action:none}
+  .hot{position:absolute;transform:translate(-50%,-100%);
+    background:var(--panel);border:2px solid var(--teal);color:var(--ink);
+    border-radius:16px;padding:10px 16px;font-size:1.05em;font-weight:700;
+    cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.45)}
+  .hot:hover{background:var(--panel2);transform:translate(-50%,-104%)}
+  .hot .st{font-size:.8em;color:var(--amber);font-weight:600}
+  .modal{position:absolute;inset:0;display:none;align-items:center;
+    justify-content:center;background:rgba(6,9,13,.72);z-index:10}
+  .modal.open{display:flex}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    width:min(720px,94vw);max-height:92%;overflow-y:auto;padding:18px 20px}
+  .card h2{font-size:1.25em;margin-bottom:4px}
+  .card .sub{color:var(--dim);font-size:.92em;margin-bottom:10px}
+  .card canvas{display:block;width:100%;border-radius:12px;background:#0e141b;
+    touch-action:none}
+  .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .big{background:var(--panel2);border:2px solid var(--line);color:var(--ink);
+    border-radius:12px;padding:10px 16px;font-size:1em;font-weight:700;cursor:pointer}
+  .big:hover{border-color:var(--teal)}
+  .big.on{border-color:var(--good);background:#12303a}
+  .learn{background:#10202b;border-left:4px solid var(--teal);border-radius:8px;
+    padding:8px 12px;margin-top:10px;font-size:.95em}
+  .done{color:var(--good);font-weight:800}
+  input[type=range]{width:100%;accent-color:var(--amber);height:32px}
+  .close{float:right;font-size:1.3em;background:none;border:0;color:var(--dim);
+    cursor:pointer;padding:2px 8px}
+  .close:hover{color:var(--ink)}
+  #toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);
+    background:var(--panel2);border:2px solid var(--teal);border-radius:14px;
+    padding:10px 20px;font-weight:800;font-size:1.05em;opacity:0;transition:.35s;
+    pointer-events:none;z-index:20}
+  #toast.show{opacity:1}
+  #diploma{border-color:var(--amber)}
+</style>
+<script src="quest-input.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">MOLGANG <span class="dim">/ 🏞 Rivierlab</span></div>
+  <div id="stars">☆☆☆☆</div>
+  <div class="spacer"></div>
+  <a class="ghost" href="../steelworks/">🏭 Staalfabriek</a>
+  <a class="ghost" href="../viscosity/">🌀 Viscositeitslab</a>
+  <a class="ghost" href="../world/">← Bar</a>
+</header>
+<main>
+  <canvas id="scene"></canvas>
+  <div id="toast"></div>
+  <button class="hot" id="h-cycle" style="left:18%;top:30%">💧 Waterkringloop<div class="st">☆</div></button>
+  <button class="hot" id="h-gold"  style="left:56%;top:56%">🥇 Goudpannen<div class="st">☆</div></button>
+  <button class="hot" id="h-brick" style="left:73%;top:64%">🧱 Bakstenen<div class="st">☆</div></button>
+  <button class="hot" id="h-water" style="left:87%;top:46%">🚰 Water zuiveren<div class="st">☆</div></button>
+
+  <!-- 💧 waterkringloop -->
+  <div class="modal" id="m-cycle"><div class="card">
+    <button class="close" data-close="m-cycle">✕</button>
+    <h2>💧 De waterkringloop</h2>
+    <div class="sub">Schuif de zon feller of zwakker en kijk wat het water doet.
+      Klik op een blauw bolletje om het H<sub>2</sub>O-molecuul te vangen!</div>
+    <canvas id="c-cycle" width="680" height="330"></canvas>
+    <div style="margin-top:8px">☀️ Zonkracht
+      <input type="range" id="sun" min="0" max="100" value="20"></div>
+    <div id="cycle-caught" style="margin-top:6px">Gevangen: nog niets</div>
+    <div class="learn">Chemie = leren wat alles is gemaakt van hele kleine
+      bouwsteentjes: <b>moleculen</b>. Water is H<sub>2</sub>O — twee waterstof
+      (H) en één zuurstof (O). Het molecuul blijft <b>precies hetzelfde</b> als
+      damp, wolk, regen of rivier — het reist alleen rond!</div>
+  </div></div>
+
+  <!-- 🥇 goudpannen -->
+  <div class="modal" id="m-gold"><div class="card">
+    <button class="close" data-close="m-gold">✕</button>
+    <h2>🥇 Goudpannen bij de goudader</h2>
+    <div class="sub">De rivier schuurt langs de gele goudader in de heuvel en
+      neemt korreltjes mee. Schep zand, en <b>draai rondjes</b> in de pan:
+      licht zand spoelt weg, zwaar goud blijft liggen!</div>
+    <canvas id="c-gold" width="680" height="300"></canvas>
+    <div class="rowbtns">
+      <button class="big" id="g-scoop">🥄 Schep rivierzand</button>
+      <div style="flex:1;align-self:center" id="g-status">Pan is leeg</div>
+    </div>
+    <div class="learn"><b>Waarom werkt dit?</b> Goud is véél zwaarder dan zand
+      (19,3 om 2,7 gram per cm³). Zware korrels zakken naar de bodem van de pan
+      — net zoals het staalslak-slib in het viscositeitslab bezinkt!</div>
+  </div></div>
+
+  <!-- 🧱 bakstenen -->
+  <div class="modal" id="m-brick"><div class="card">
+    <button class="close" data-close="m-brick">✕</button>
+    <h2>🧱 Bakstenen van rivierklei</h2>
+    <div class="sub">1: schep klei uit de oever. 2: laat hem drogen in de zon.
+      3: bak hem in de oven op de juiste temperatuur (900–1100 °C).</div>
+    <canvas id="c-brick" width="680" height="240"></canvas>
+    <div class="rowbtns">
+      <button class="big" id="b-scoop">🥄 Schep klei</button>
+      <button class="big" id="b-dry">☀️ Drogen</button>
+      <button class="big" id="b-bake">🔥 Bakken</button>
+    </div>
+    <div style="margin-top:8px">🔥 Oventemperatuur: <span id="b-temp-v">1000</span> °C
+      <input type="range" id="b-temp" min="500" max="1400" value="1000"></div>
+    <div id="b-status" style="margin-top:6px">Nog geen klei geschept</div>
+    <div class="learn"><b>Drogen</b> haalt alleen water weg — dat kan weer
+      terug (fysisch). <b>Bakken</b> verandert de klei-moleculen voorgoed in
+      steen (chemisch!). Te heet (&gt;1100 °C) smelt of barst hij.</div>
+  </div></div>
+
+  <!-- 🚰 water zuiveren -->
+  <div class="modal" id="m-water"><div class="card">
+    <button class="close" data-close="m-water">✕</button>
+    <h2>🚰 Water zuiveren voor de staalfabriek</h2>
+    <div class="sub">Bouw het filter in de goede volgorde (grof → fijn):
+      klik de lagen in de buis. Kies dan welk water waarheen gaat!</div>
+    <canvas id="c-water" width="680" height="260"></canvas>
+    <div class="rowbtns" id="w-layers">
+      <button class="big" data-layer="grind">🪨 Grind</button>
+      <button class="big" data-layer="zand">⏳ Zand</button>
+      <button class="big" data-layer="kool">⬛ Koolstof</button>
+      <button class="big" id="w-run">▶ Laat water lopen</button>
+    </div>
+    <div class="rowbtns">
+      <span style="align-self:center">Gezuiverd rivierwater naar:</span>
+      <button class="big" data-dest="koel">🌡 Koelwater staaloven</button>
+      <button class="big" data-dest="drink">🥤 Drinken</button>
+    </div>
+    <div id="w-status" style="margin-top:6px">Filterbuis is leeg</div>
+    <div class="learn">De staaloven wordt gekoeld met <b>gezuiverd
+      koelwater</b>. Voor het <b>proceswater</b> pompt de fabriek óók
+      <b>ongezuiverd grondwater</b> op — goed genoeg voor het proces, maar
+      niet om te drinken! Filteren haalt vuiltjes (deeltjes) weg; opgeloste
+      stoffen blijven — daarom is drinkwater maken nóg een stap moeilijker.</div>
+  </div></div>
+
+  <!-- diploma -->
+  <div class="modal" id="m-diploma"><div class="card" id="diploma">
+    <button class="close" data-close="m-diploma">✕</button>
+    <h2>🏅 Kringloop-diploma!</h2>
+    <div class="sub">Je hebt alle vier de rivier-activiteiten gedaan!</div>
+    <div style="font-size:1.05em;line-height:1.7">
+      💧 Water reist rond, maar H<sub>2</sub>O blijft H<sub>2</sub>O<br>
+      🥇 Zwaar zakt, licht spoelt weg (dichtheid)<br>
+      🧱 Bakken verandert stof voorgoed (chemie!), drogen niet<br>
+      🚰 Filteren haalt deeltjes weg — de staaloven krijgt koelwater,
+      het proces mag grondwater gebruiken</div>
+    <div class="learn">Dát is chemie: kijken waar stoffen van gemaakt zijn en
+      hoe ze veranderen. Klaar voor het echte werk? Ga naar de
+      <a href="../steelworks/">staalfabriek</a> of het
+      <a href="../viscosity/">viscositeitslab</a>!</div>
+  </div></div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const state = { cycle:false, gold:false, brick:false, water:false };
+function stars(){
+  const n = Object.values(state).filter(Boolean).length;
+  $("#stars").textContent = "★".repeat(n) + "☆".repeat(4 - n);
+  for (const [k, id] of [["cycle","h-cycle"],["gold","h-gold"],
+                         ["brick","h-brick"],["water","h-water"]]) {
+    document.querySelector(`#${id} .st`).textContent = state[k] ? "★" : "☆";
+  }
+  if (n === 4 && !stars._done) { stars._done = true; open('m-diploma'); }
+  return n;
+}
+let toastT = 0;
+function toast(msg){
+  const el = $("#toast");
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+function open(id){ $("#" + id).classList.add('open'); }
+document.querySelectorAll('.close').forEach(b =>
+  b.onclick = () => $("#" + b.dataset.close).classList.remove('open'));
+function win(key, msg){
+  if (!state[key]) { state[key] = true; toast(msg); stars(); }
+}
+
+/* ================= panorama =================
+   Sun -> evaporation -> cloud -> rain over the hill -> river back to sea:
+   the natural cycle, with the steel plant + gold vein + clay bank + well. */
+const sc = $("#scene"), sx = sc.getContext('2d');
+let W = 0, H = 0;
+function resize(){
+  W = sc.clientWidth; H = sc.clientHeight;
+  sc.width = W * devicePixelRatio; sc.height = H * devicePixelRatio;
+  sx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+}
+new ResizeObserver(resize).observe(sc); resize();
+
+let sun = 20;                       // shared with the cycle mini-game
+$("#sun").addEventListener('input', e => { sun = +e.target.value; });
+const vapor = [], drops = [];
+let cloud = 8;                      // cloud water content
+function stepWorld(dt){
+  // evaporation from the sea/river scales with sun strength
+  if (Math.random() < sun / 100 * 0.9) {
+    vapor.push({ x: W * (0.05 + Math.random() * 0.35), y: H * 0.78, vy: -22 - sun * 0.3 });
+  }
+  for (const v of vapor) { v.y += v.vy * dt; v.x += Math.sin(v.y * 0.03) * 0.6; }
+  for (let i = vapor.length - 1; i >= 0; i--) {
+    if (vapor[i].y < H * 0.18) { vapor.splice(i, 1); cloud = Math.min(60, cloud + 1); }
+  }
+  if (cloud > 26 && Math.random() < 0.5) {
+    drops.push({ x: W * (0.42 + Math.random() * 0.18), y: H * 0.2, vy: 130 });
+    cloud -= 0.6;
+  }
+  for (const d of drops) d.y += d.vy * dt;
+  for (let i = drops.length - 1; i >= 0; i--) if (drops[i].y > H * 0.62) drops.splice(i, 1);
+}
+function drawWorld(t){
+  const g = sx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#8fd0f2'); g.addColorStop(0.6, '#cfe9fa'); g.addColorStop(0.61, '#31404a');
+  sx.fillStyle = g; sx.fillRect(0, 0, W, H);
+  // sun
+  sx.fillStyle = `rgba(255, 210, 80, ${0.55 + sun / 200})`;
+  sx.beginPath(); sx.arc(W * 0.12, H * 0.14, 26 + sun * 0.25, 0, 7); sx.fill();
+  // hill with gold vein
+  sx.fillStyle = '#3d5240';
+  sx.beginPath(); sx.moveTo(W * 0.34, H * 0.62); sx.quadraticCurveTo(W * 0.5, H * 0.22, W * 0.66, H * 0.62); sx.fill();
+  sx.strokeStyle = '#e8c33a'; sx.lineWidth = 5;
+  sx.beginPath(); sx.moveTo(W * 0.5, H * 0.34); sx.quadraticCurveTo(W * 0.52, H * 0.5, W * 0.56, H * 0.6); sx.stroke();
+  // river: from the hill to the sea (left), wobbling
+  sx.strokeStyle = '#2f7fb5'; sx.lineWidth = 18;
+  sx.beginPath(); sx.moveTo(W * 0.56, H * 0.62);
+  sx.quadraticCurveTo(W * 0.42, H * 0.72 + Math.sin(t * 2) * 2, W * 0.05, H * 0.78);
+  sx.stroke();
+  // sea
+  sx.fillStyle = '#25628c'; sx.fillRect(0, H * 0.76, W * 0.16, H * 0.24);
+  // clay bank
+  sx.fillStyle = '#8a6a4f'; sx.beginPath();
+  sx.ellipse(W * 0.72, H * 0.68, 60, 18, 0, 0, 7); sx.fill();
+  // steel plant (right): hall + chimneys + cooling tower, groundwater well
+  sx.fillStyle = '#55606b'; sx.fillRect(W * 0.8, H * 0.5, W * 0.13, H * 0.14);
+  sx.fillStyle = '#6d7681';
+  sx.fillRect(W * 0.82, H * 0.38, 12, H * 0.12); sx.fillRect(W * 0.86, H * 0.34, 12, H * 0.16);
+  sx.fillStyle = `rgba(230,235,240,0.7)`;
+  for (let i = 0; i < 3; i++) {
+    sx.beginPath();
+    sx.arc(W * 0.865 + 6 + Math.sin(t + i) * 6, H * 0.32 - i * 14, 8 + i * 3, 0, 7); sx.fill();
+  }
+  sx.fillStyle = '#4a565f';
+  sx.beginPath(); sx.moveTo(W * 0.955, H * 0.64); sx.lineTo(W * 0.965, H * 0.46);
+  sx.lineTo(W * 0.985, H * 0.46); sx.lineTo(W * 0.995, H * 0.64); sx.fill();
+  sx.fillStyle = '#33507a'; sx.fillRect(W * 0.905, H * 0.6, 16, 10);  // well
+  // vapor + cloud + rain
+  sx.fillStyle = 'rgba(160, 210, 240, 0.9)';
+  for (const v of vapor) { sx.beginPath(); sx.arc(v.x, v.y, 4, 0, 7); sx.fill(); }
+  sx.fillStyle = `rgba(240, 246, 252, ${0.5 + cloud / 90})`;
+  sx.beginPath();
+  sx.arc(W * 0.46, H * 0.17, 18 + cloud * 0.7, 0, 7);
+  sx.arc(W * 0.52, H * 0.15, 14 + cloud * 0.6, 0, 7);
+  sx.arc(W * 0.57, H * 0.18, 12 + cloud * 0.5, 0, 7); sx.fill();
+  sx.strokeStyle = '#7ec8f7'; sx.lineWidth = 2;
+  for (const d of drops) { sx.beginPath(); sx.moveTo(d.x, d.y); sx.lineTo(d.x, d.y + 8); sx.stroke(); }
+}
+
+/* ================= 💧 cycle mini-game ================= */
+const cc = $("#c-cycle"), cg = cc.getContext('2d');
+const phases = { damp: false, wolk: false, regen: false, rivier: false };
+const cVapor = [], cDrops = [];
+let cCloud = 6;
+function cycleStep(dt){
+  if (Math.random() < sun / 100) {
+    cVapor.push({ x: 60 + Math.random() * 180, y: 285, vy: -30 - sun * 0.4, mol: Math.random() < 0.3 });
+  }
+  for (const v of cVapor) v.y += v.vy * dt;
+  for (let i = cVapor.length - 1; i >= 0; i--) {
+    if (cVapor[i].y < 70) { cVapor.splice(i, 1); cCloud = Math.min(50, cCloud + 1.2); }
+  }
+  if (cCloud > 22) { cDrops.push({ x: 400 + Math.random() * 160, y: 80, vy: 150, mol: Math.random() < 0.3 }); cCloud -= 0.8; }
+  for (const d of cDrops) d.y += d.vy * dt;
+  for (let i = cDrops.length - 1; i >= 0; i--) if (cDrops[i].y > 265) cDrops.splice(i, 1);
+}
+function drawMol(x, y, r){
+  cg.fillStyle = '#e34a4a'; cg.beginPath(); cg.arc(x, y, r, 0, 7); cg.fill();
+  cg.fillStyle = '#f2f5f8';
+  cg.beginPath(); cg.arc(x - r * 0.9, y - r * 0.8, r * 0.55, 0, 7); cg.fill();
+  cg.beginPath(); cg.arc(x + r * 0.9, y - r * 0.8, r * 0.55, 0, 7); cg.fill();
+}
+function cycleDraw(){
+  cg.fillStyle = '#0e141b'; cg.fillRect(0, 0, 680, 330);
+  cg.fillStyle = `rgba(255, 210, 80, ${0.5 + sun / 160})`;
+  cg.beginPath(); cg.arc(50, 45, 22 + sun * 0.2, 0, 7); cg.fill();
+  cg.fillStyle = '#25628c'; cg.fillRect(0, 285, 340, 45);          // sea
+  cg.fillStyle = '#3d5240'; cg.beginPath();                        // hill
+  cg.moveTo(360, 330); cg.quadraticCurveTo(480, 140, 640, 330); cg.fill();
+  cg.strokeStyle = '#2f7fb5'; cg.lineWidth = 10;                   // river
+  cg.beginPath(); cg.moveTo(500, 250); cg.quadraticCurveTo(420, 290, 340, 300); cg.stroke();
+  cg.fillStyle = `rgba(240,246,252,${0.5 + cCloud / 80})`;         // cloud
+  cg.beginPath(); cg.arc(440, 60, 16 + cCloud, 0, 7); cg.arc(480, 52, 13 + cCloud * 0.8, 0, 7); cg.fill();
+  for (const v of cVapor) { if (v.mol) drawMol(v.x, v.y, 6); else { cg.fillStyle = 'rgba(160,210,240,.9)'; cg.beginPath(); cg.arc(v.x, v.y, 4, 0, 7); cg.fill(); } }
+  for (const d of cDrops) { if (d.mol) drawMol(d.x, d.y, 6); else { cg.strokeStyle = '#7ec8f7'; cg.lineWidth = 2; cg.beginPath(); cg.moveTo(d.x, d.y); cg.lineTo(d.x, d.y + 8); cg.stroke(); } }
+  cg.fillStyle = '#dbe6f5'; cg.font = '13px sans-serif';
+  cg.fillText('zee', 10, 300); cg.fillText('wolk', 430, 30);
+  cg.fillText('regen boven de berg', 430, 110); cg.fillText('rivier terug naar zee', 350, 250);
+}
+cc.addEventListener('pointerdown', e => {
+  const r = cc.getBoundingClientRect();
+  const x = (e.clientX - r.left) * 680 / r.width, y = (e.clientY - r.top) * 330 / r.height;
+  const grab = (arr, phase) => {
+    for (const v of arr) {
+      if (v.mol && Math.hypot(v.x - x, v.y - y) < 22) {
+        phases[phase] = true; v.mol = false;
+        const got = Object.entries(phases).filter(([, b]) => b).map(([k]) => k);
+        $("#cycle-caught").innerHTML = 'Gevangen: ' + got.map(p => `<b>${p}</b>`).join(' · ')
+          + ' — zelfde H<sub>2</sub>O!';
+        return true;
+      }
+    }
+    return false;
+  };
+  if (y < 160 ? grab(cVapor, 'damp') || grab(cDrops, 'regen')
+              : grab(cVapor, 'damp') || grab(cDrops, 'regen')) { /* caught */ }
+  else if (Math.hypot(x - 460, y - 58) < 40 + cCloud) {
+    phases.wolk = true;
+    $("#cycle-caught").innerHTML = 'Gevangen: wolk erbij — zelfde H<sub>2</sub>O!';
+  } else if (y > 240 && x < 520) {
+    phases.rivier = true;
+    $("#cycle-caught").innerHTML = 'Gevangen: rivier erbij — zelfde H<sub>2</sub>O!';
+  }
+  if (phases.damp && phases.wolk && phases.regen && phases.rivier) {
+    win('cycle', '💧 Kringloop compleet: H₂O blijft overal H₂O!');
+  }
+});
+
+/* ================= 🥇 gold panning ================= */
+const gc = $("#c-gold"), gg = gc.getContext('2d');
+let pan = null;                    // {grains:[{a, r, gold, settled}], swirl}
+$("#g-scoop").onclick = () => {
+  pan = { grains: [], swirl: 0 };
+  for (let i = 0; i < 90; i++) {
+    pan.grains.push({ a: Math.random() * 7, r: 30 + Math.random() * 80,
+                      gold: Math.random() < 0.12, out: false });
+  }
+  $("#g-status").textContent = 'Draai rondjes in de pan! (sleep rond)';
+};
+let lastAng = null;
+gc.addEventListener('pointermove', e => {
+  if (!pan || !(e.buttons & 1)) { lastAng = null; return; }
+  const r = gc.getBoundingClientRect();
+  const x = (e.clientX - r.left) * 680 / r.width - 340;
+  const y = (e.clientY - r.top) * 300 / r.height - 160;
+  const ang = Math.atan2(y, x);
+  if (lastAng !== null) {
+    let d = ang - lastAng;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    pan.swirl += Math.abs(d);
+    for (const gr of pan.grains) {
+      if (gr.out) continue;
+      gr.a += d * (gr.gold ? 0.3 : 1.1);
+      // light grains wash outward and out of the pan; gold sinks to centre
+      gr.r += gr.gold ? -Math.abs(d) * 6 : Math.abs(d) * 9;
+      if (gr.gold) gr.r = Math.max(12, gr.r);
+      if (!gr.gold && gr.r > 130) gr.out = true;
+    }
+    const left = pan.grains.filter(g => !g.out);
+    const goldLeft = left.filter(g => g.gold).length;
+    const sandLeft = left.length - goldLeft;
+    $("#g-status").textContent =
+      `In de pan: ${goldLeft} goudkorrels, ${sandLeft} zandkorrels`;
+    if (sandLeft === 0 && goldLeft > 0) {
+      win('gold', `🥇 ${goldLeft} goudkorrels gepand — zwaar goud blijft!`);
+      $("#g-status").innerHTML = `<span class="done">🥇 ${goldLeft} goudkorrels — knap gepand!</span>`;
+    }
+  }
+  lastAng = ang;
+});
+function goldDraw(){
+  gg.fillStyle = '#0e141b'; gg.fillRect(0, 0, 680, 300);
+  gg.strokeStyle = '#2f7fb5'; gg.lineWidth = 26;                  // river edge
+  gg.beginPath(); gg.moveTo(0, 30); gg.quadraticCurveTo(340, 5, 680, 40); gg.stroke();
+  gg.fillStyle = '#e8c33a'; gg.font = '13px sans-serif';
+  gg.fillText('← de goudader voedt de rivier', 20, 20);
+  gg.fillStyle = '#39424e';                                        // pan
+  gg.beginPath(); gg.arc(340, 160, 135, 0, 7); gg.fill();
+  gg.fillStyle = '#242b33';
+  gg.beginPath(); gg.arc(340, 160, 55, 0, 7); gg.fill();
+  if (pan) for (const gr of pan.grains) {
+    if (gr.out) continue;
+    const x = 340 + Math.cos(gr.a) * gr.r, y = 160 + Math.sin(gr.a) * gr.r * 0.75;
+    gg.fillStyle = gr.gold ? '#ffd34d' : '#c9b391';
+    gg.beginPath(); gg.arc(x, y, gr.gold ? 5 : 4, 0, 7); gg.fill();
+  }
+}
+
+/* ================= 🧱 bricks ================= */
+const bc = $("#c-brick"), bg = bc.getContext('2d');
+let brick = { stage: 'geen' };     // geen -> nat -> droog -> gebakken/kapot
+$("#b-temp").addEventListener('input', e => $("#b-temp-v").textContent = e.target.value);
+$("#b-scoop").onclick = () => { brick = { stage: 'nat' };
+  $("#b-status").textContent = 'Natte klei in de vorm — eerst drogen!'; };
+$("#b-dry").onclick = () => {
+  if (brick.stage !== 'nat') return toast('Eerst klei scheppen!');
+  brick.stage = 'droog';
+  $("#b-status").textContent = 'Droog! Het water is eruit (dat is fysisch — '
+    + 'maak je hem nat, dan is het weer klei). Nu bakken!';
+};
+$("#b-bake").onclick = () => {
+  if (brick.stage === 'nat') return toast('Natte klei barst in de oven — eerst drogen!');
+  if (brick.stage !== 'droog') return toast('Eerst klei scheppen en drogen!');
+  const T = +$("#b-temp").value;
+  if (T < 900) { $("#b-status").textContent =
+    `${T} °C is te koud — de klei blijft klei. Probeer heter!`; }
+  else if (T > 1100) { brick.stage = 'kapot'; $("#b-status").textContent =
+    `${T} °C is te heet — gesmolten en gebarsten! Schep nieuwe klei.`; }
+  else { brick.stage = 'gebakken';
+    $("#b-status").innerHTML = `<span class="done">🧱 Perfecte baksteen bij ${T} °C! `
+      + 'De klei is nu voorgoed steen — een chemische verandering.</span>';
+    win('brick', '🧱 Baksteen gelukt — bakken is échte chemie!'); }
+};
+function brickDraw(){
+  bg.fillStyle = '#0e141b'; bg.fillRect(0, 0, 680, 240);
+  bg.fillStyle = '#8a6a4f'; bg.beginPath();                        // clay bank
+  bg.ellipse(90, 200, 80, 26, 0, 0, 7); bg.fill();
+  bg.fillStyle = '#dbe6f5'; bg.font = '13px sans-serif';
+  bg.fillText('rivierklei', 60, 165);
+  bg.fillText('zon', 300, 40);
+  bg.fillStyle = '#f4b41a'; bg.beginPath(); bg.arc(330, 60, 20, 0, 7); bg.fill();
+  bg.fillStyle = '#39424e'; bg.fillRect(480, 90, 150, 110);        // oven
+  bg.fillStyle = '#1a0f0a'; bg.fillRect(500, 120, 110, 60);
+  const T = +$("#b-temp").value;
+  bg.fillStyle = `rgba(255, ${Math.max(60, 220 - (T - 500) / 5)}, 40, ${0.25 + (T - 500) / 1500})`;
+  bg.fillRect(500, 120, 110, 60);
+  bg.fillStyle = '#dbe6f5'; bg.fillText('oven', 530, 85);
+  const colors = { geen: null, nat: '#7a5c42', droog: '#a5825f',
+                   gebakken: '#b3502e', kapot: '#5a4638' };
+  if (colors[brick.stage]) {
+    bg.fillStyle = colors[brick.stage];
+    bg.fillRect(280, 150, 120, 54);
+    bg.strokeStyle = '#0e141b';
+    for (let i = 1; i < 4; i++) { bg.beginPath(); bg.moveTo(280 + i * 30, 150); bg.lineTo(280 + i * 30, 204); bg.stroke(); }
+    if (brick.stage === 'kapot') {
+      bg.strokeStyle = '#0a0a0a'; bg.lineWidth = 3;
+      bg.beginPath(); bg.moveTo(290, 154); bg.lineTo(340, 200); bg.lineTo(365, 160); bg.stroke(); bg.lineWidth = 1;
+    }
+    bg.fillStyle = '#dbe6f5';
+    bg.fillText({ nat: 'natte klei', droog: 'droge klei', gebakken: 'baksteen!', kapot: 'gebarsten…' }[brick.stage], 300, 145);
+  }
+}
+
+/* ================= 🚰 water purification ================= */
+const wc = $("#c-water"), wg = wc.getContext('2d');
+let layers = [];                   // from top: should be grind, zand, kool
+let purified = false;
+document.querySelectorAll('#w-layers [data-layer]').forEach(b => {
+  b.onclick = () => {
+    if (layers.length >= 3 || layers.includes(b.dataset.layer)) return;
+    layers.push(b.dataset.layer);
+    b.classList.add('on');
+    $("#w-status").textContent = 'Filter: ' + layers.join(' → ');
+  };
+});
+$("#w-run").onclick = () => {
+  if (layers.length < 3) return toast('Bouw eerst alle drie de lagen!');
+  const ok = layers[0] === 'grind' && layers[1] === 'zand' && layers[2] === 'kool';
+  if (ok) { purified = true;
+    $("#w-status").innerHTML = '<span class="done">Helder! Grof vangt takjes, '
+      + 'zand de kleine deeltjes, koolstof de kleur/geur. Kies nu waar het heen gaat →</span>'; }
+  else {
+    $("#w-status").textContent = 'Troebel… verkeerde volgorde (grof → fijn). Reset en probeer opnieuw!';
+    layers = [];
+    document.querySelectorAll('#w-layers [data-layer]').forEach(x => x.classList.remove('on'));
+  }
+};
+document.querySelectorAll('[data-dest]').forEach(b => {
+  b.onclick = () => {
+    if (!purified) return toast('Eerst zuiveren!');
+    if (b.dataset.dest === 'koel') {
+      win('water', '🚰 Koelwater naar de staaloven — en het proces pakt grondwater!');
+      $("#w-status").innerHTML = '<span class="done">✔ Koelwater naar de staaloven! '
+        + 'Het proceswater komt uit de grondwaterput (ongezuiverd is daar prima). '
+        + 'Drinken? Daarvoor is óók het gefilterde water nog niet schoon genoeg — '
+        + 'opgeloste stoffen zitten er nog in.</span>';
+    } else {
+      toast('🥤 Nog niet drinken! Filteren haalt deeltjes weg, geen opgeloste stoffen.');
+    }
+  };
+});
+function waterDraw(){
+  wg.fillStyle = '#0e141b'; wg.fillRect(0, 0, 680, 260);
+  wg.fillStyle = '#5a4a35'; wg.fillRect(40, 30, 90, 40);           // dirty water in
+  wg.fillStyle = '#dbe6f5'; wg.font = '13px sans-serif';
+  wg.fillText('rivier-/grondwater', 30, 25);
+  wg.strokeStyle = '#39424e'; wg.lineWidth = 4;                    // filter tube
+  wg.strokeRect(280, 20, 120, 200);
+  const cols = { grind: '#7d8794', zand: '#c9b391', kool: '#20242a' };
+  layers.forEach((l, i) => { wg.fillStyle = cols[l]; wg.fillRect(284, 26 + i * 62, 112, 56);
+    wg.fillStyle = '#dbe6f5'; wg.fillText(l, 320, 56 + i * 62); });
+  wg.fillStyle = purified ? '#7ec8f7' : '#5a4a35';                 // out
+  wg.fillRect(470, 180, 90, 40);
+  wg.fillStyle = '#dbe6f5';
+  wg.fillText(purified ? 'helder!' : 'nog troebel', 478, 175);
+  wg.fillText('🌡 koeltoren', 560, 60); wg.fillText('🏭 grondwaterput → proces', 480, 250);
+}
+
+/* ================= hotspots + loop ================= */
+$("#h-cycle").onclick = () => open('m-cycle');
+$("#h-gold").onclick = () => open('m-gold');
+$("#h-brick").onclick = () => open('m-brick');
+$("#h-water").onclick = () => open('m-water');
+
+let prev = 0;
+function loop(tms){
+  const t = tms / 1000, dt = Math.min(t - prev || 0.033, 0.1);
+  prev = t;
+  stepWorld(dt); drawWorld(t);
+  if ($("#m-cycle").classList.contains('open')) { cycleStep(dt); cycleDraw(); }
+  if ($("#m-gold").classList.contains('open')) goldDraw();
+  if ($("#m-brick").classList.contains('open')) brickDraw();
+  if ($("#m-water").classList.contains('open')) waterDraw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+toast('🏞 Welkom bij de rivier! Klik op een activiteit.');
+
+/* e2e/debug hook */
+window.__rivier = {
+  state, phases,
+  get pan(){ return pan; },
+  get brick(){ return brick; },
+  set layers(v){ layers = v; },
+  get layers(){ return layers; },
+  forceCloud(v){ cCloud = v; },
+  win,
+};
+</script>
+</body>
+</html>
