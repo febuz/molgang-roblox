@@ -204,6 +204,12 @@ ZONE_PROPS = {
         # through to ../viscosity/ (steel-slag slurry stirring room, a
         # synced copy of molgang-knitweb web/viscosity-*, see SYNC.md).
         ("sample_station_hd.glb", -14, -22, 0.3, 2.0, {"interact": "viscosity"}),
+        # Heavy-logistics props (generate_logistics_props.py) — the plant's
+        # hot-metal/slag chain, click-inspectable; two proximity-interactive:
+        ("torpedo_ladle_hd.glb", 8, -28, 1.5708, 13.0),
+        ("slag_pot_hd.glb", -34, -8, 0.5, 4.5, {"interact": "slagpot"}),
+        ("gantry_crane_hd.glb", 8, -20, 0.0, 16.4),
+        ("weighbridge_hd.glb", 34, 22, 0.2, 18.6, {"interact": "weigh"}),
     ],
     "Quantum Lab": [
         ("chemistry_set.glb", 0, -8, 0.2, 2.6, {"console": "chemsim"}),   # the paid ChemSim console

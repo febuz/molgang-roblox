@@ -438,8 +438,59 @@ async function spawnAsset(o) {
   const b2 = new THREE.Box3().setFromObject(obj);
   obj.position.set(o.x, -b2.min.y, o.z);
   obj.rotation.y = o.r;
+  obj.userData.def = o;                 // for click/trigger inspection
   return obj;
 }
+
+// ---------- click/trigger inspection: what is this thing? ----------
+// Trigger (VR) or left-click while pointer-locked (desktop) rays into the
+// streamed props and shows name + what it does. PROP_INFO keys are the GLB
+// refs from moleculia.json; interactive props also state their option.
+const PROP_INFO = {
+  'cooling_tower_hd.glb': ['Koeltoren', 'koelt proceswater voor de plant; de pluim is waterdamp'],
+  'control_console_hd.glb': ['Operator-console', 'optie: bedien de plant via het reactorpaneel (kom dichterbij)'],
+  'safety_station_hd.glb': ['Veiligheidsdouche', 'optie: PPE-check — nooddouche & oogspoeling (+MolCoins)'],
+  'sample_station_hd.glb': ['XRF-monsterstation', 'optie: röntgen-assay van het leach-batch; één station is de portal naar het viscositeitslab'],
+  'info_kiosk_hd.glb': ['Informatiekiosk', 'optie: wegwijzer door Moleculia'],
+  'ank_counter_hd.glb': ['ANK Kredietunie', 'optie: saldo & handel in MolCoins'],
+  'pipe_rack_hd.glb': ['Leidingbrug', 'draagt proces- en stoomleidingen tussen de units'],
+  'gas_cylinder_rack_hd.glb': ['Gasflessenrek', 'EN 1089-3 schouderkleuren: weet wat er in de fles zit'],
+  'storage_silo_hd.glb': ['Opslagsilo', 'bulkopslag voor geplette slak en toeslagstoffen'],
+  'distillation_column_hd.glb': ['Destillatiekolom', 'scheidt vloeistoffen op kookpunt'],
+  'torpedo_ladle_hd.glb': ['Torpedowagen', 'vervoert 300 t vloeibaar ruwijzer van hoogoven naar staalfabriek'],
+  'slag_pot_hd.glb': ['Slakkenpot', 'vangt vloeibare slak — na koelen en malen wordt dit ons staalslak-slib (zie het viscositeitslab!)'],
+  'gantry_crane_hd.glb': ['Portaalkraan', 'tilt slakkenpotten en schroot over spoor en kade'],
+  'weighbridge_hd.glb': ['Weegbrug', 'optie: weeg de slakkenpot-transporten de poort in en uit'],
+};
+const _inspectCaster = new THREE.Raycaster();
+function inspectFrom(origin, dir) {
+  _inspectCaster.set(origin, dir.normalize());
+  _inspectCaster.far = 60;
+  const pool = [];
+  for (const obj of live.values()) pool.push(obj);
+  const hits = _inspectCaster.intersectObjects(pool, true);
+  for (const h of hits) {
+    let n = h.object;
+    while (n && !n.userData.def) n = n.parent;
+    if (!n) continue;
+    const def = n.userData.def;
+    const info = PROP_INFO[def.ref];
+    const name = info ? info[0]
+      : def.ref.replace(/\.glb$/, '').replace(/_/g, ' ');
+    return info ? `🔍 ${name} — ${info[1]}` : `🔍 ${name}`;
+  }
+  return null;
+}
+addEventListener('mousedown', (e) => {
+  if (e.button !== 0 || !document.pointerLockElement) return;
+  camera.getWorldPosition(_camPos);
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+  const msg = inspectFrom(_camPos.clone(), dir);
+  if (msg) worldToast(msg);
+});
+window.__inspect = (ox, oy, oz, dx, dy, dz) =>       // e2e/debug hook
+  inspectFrom(new THREE.Vector3(ox, oy, oz), new THREE.Vector3(dx, dy, dz));
 
 // ---------- AR "glasses" overlay: label objects in view ----------
 // Real objects are named from the identified asset; diffusion objects from the
@@ -902,14 +953,33 @@ async function enterXR() {
   // the loop syncs player.pos to the camera's WORLD position every frame — so
   // streaming, interactions, element collection and the sun all follow the
   // headset (they used to stay parked at the spawn point: barely any objects).
-  const xrOff = { x: 0, z: 0, base: null };
+  const xrOff = { x: 0, z: 0, yaw: 0, base: null };
   xrActiveSession = session;
-  session.__recenter = () => { xrOff.x = 0; xrOff.z = 0; session.__syncSpace(); xrToastShow('🧭 world recentered'); };
+  session.__recenter = () => { xrOff.x = 0; xrOff.z = 0; xrOff.yaw = 0; session.__syncSpace(); xrToastShow('🧭 world recentered'); };
   session.__syncSpace = () => {
     xrOff.base = xrOff.base || renderer.xr.getReferenceSpace();
-    if (xrOff.base && window.XRRigidTransform) renderer.xr.setReferenceSpace(
-      xrOff.base.getOffsetReferenceSpace(new XRRigidTransform(
-        { x: -xrOff.x, y: -xrSettings.floorOffset, z: -xrOff.z })));
+    if (!xrOff.base || !window.XRRigidTransform) return;
+    // Offset transform T with cam_world = R(yaw)·phys + offset, so snap-turn
+    // rotates the world around the player instead of around the play origin.
+    const m = new THREE.Matrix4().makeRotationY(-xrOff.yaw).multiply(
+      new THREE.Matrix4().makeTranslation(-xrOff.x, -xrSettings.floorOffset, -xrOff.z));
+    const p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+    m.decompose(p, q, sc);
+    renderer.xr.setReferenceSpace(xrOff.base.getOffsetReferenceSpace(
+      new XRRigidTransform({ x: p.x, y: p.y, z: p.z },
+        { x: q.x, y: q.y, z: q.z, w: q.w })));
+  };
+  // Snap-turn (right stick flick): rotate the offset about the player's
+  // current world position so the view pivots in place, comfort-style.
+  const snapTurn = (dir) => {
+    const d = -dir * Math.PI / 4;                 // push right = turn right
+    camera.getWorldPosition(_camPos);
+    const vx = xrOff.x - _camPos.x, vz = xrOff.z - _camPos.z;
+    const c = Math.cos(d), s = Math.sin(d);
+    xrOff.x = _camPos.x + (c * vx + s * vz);
+    xrOff.z = _camPos.z + (-s * vx + c * vz);
+    xrOff.yaw += d;
+    session.__syncSpace();
   };
   // B/Y teleports through the zones (the "reposition" ask): the next zone's
   // centre lands ~6 m in front of where you physically stand.
@@ -939,7 +1009,16 @@ async function enterXR() {
       });
       const ax = Math.abs(gp.axes[2] || 0) > 0.16 ? gp.axes[2] : 0;   // xr-standard thumbstick
       const ay = Math.abs(gp.axes[3] || 0) > 0.16 ? gp.axes[3] : 0;
-      if ((ax || ay) && dt) {
+      if (src.handedness === 'right') {
+        // Right stick X = snap-turn (armed flick, no drift); Y reserved.
+        if (Math.abs(gp.axes[2] || 0) < 0.35) src._snapArmed = true;
+        else if (src._snapArmed && Math.abs(gp.axes[2]) > 0.6) {
+          src._snapArmed = false;
+          snapTurn(Math.sign(gp.axes[2]));
+        }
+      } else if ((ax || ay) && dt) {
+        // Left (or unknown-hand) stick = full locomotion: forward, back
+        // and strafe, relative to where you look.
         camera.getWorldDirection(_xrFwd); _xrFwd.y = 0; _xrFwd.normalize();
         const right = { x: -_xrFwd.z, z: _xrFwd.x };
         const sp = (xrSettings.speed || 6) * dt;
@@ -949,8 +1028,25 @@ async function enterXR() {
       }
     }
   };
+  // Trigger = inspect: ray from the controller, show info/options for the
+  // prop you point at (PROP_INFO below; interactive props state their use).
+  session.addEventListener('select', (ev) => {
+    try {
+      const src = ev.inputSource;
+      const frame = ev.frame;
+      const ref = renderer.xr.getReferenceSpace();
+      const pose = frame && src.targetRaySpace
+        ? frame.getPose(src.targetRaySpace, ref) : null;
+      if (!pose) return;
+      const o = pose.transform.position, d = pose.transform.orientation;
+      const dir = new THREE.Vector3(0, 0, -1)
+        .applyQuaternion(new THREE.Quaternion(d.x, d.y, d.z, d.w));
+      const hit = inspectFrom(new THREE.Vector3(o.x, o.y, o.z), dir);
+      if (hit) xrToastShow(hit);
+    } catch { /* inspection is best-effort */ }
+  });
   session.__syncSpace();                          // apply the saved floor offset
-  xrToastShow('🥽 stick = walk · A = AR · B = next zone');
+  xrToastShow('🥽 L-stick = lopen (alle richtingen) · R-stick = draaien · trigger = inspecteer · A = AR · B = zone');
   session.addEventListener('end', () => {
     scene.background = skyBg; setFloorHidden(false); xrActiveSession = null;
     if (xrBtn) xrBtn.disabled = false;
@@ -1521,6 +1617,14 @@ function checkInteract(now) {
           + 'rheologie en zie het kW-verbruik. Stap dichterbij om binnen te gaan');
         lastInteractAt = now - 3000;   // re-arm fast so stepping in triggers
       }
+    } else if (o.interact === 'weigh') {
+      const gross = 18.4, tare = 6.2;
+      worldToast(`⚖ Weegbrug — slakkenpot gewogen: ${gross.toFixed(1)} t bruto − `
+        + `${tare.toFixed(1)} t tarra = ${(gross - tare).toFixed(1)} t slak `
+        + 'voor het Slakkenspoor');
+    } else if (o.interact === 'slagpot') {
+      worldToast('🫕 Slakkenpot — 1550 °C vloeibare slak. Na koelen, breken en '
+        + 'malen (5 µm) wordt dit het staalslak-slib van het viscositeitslab');
     }
     return;
   }
