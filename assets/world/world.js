@@ -1603,8 +1603,8 @@ function checkInteract(now) {
         + 'grind, de-iron, roast, then set T/P/flow/pH');
     } else if (o.interact === 'directory') {
       worldToast('🗺 Moleculia — ⛏ Slakkenspoor: run the plant · 🧪 Periodic Biome: '
-        + 'collect 118 elements · ⚛️ Quantum Lab: ChemSim · 🌱 Lab & Farm: fertilize '
-        + '& harvest · 🏦 ANK: your MolCoins');
+        + 'collect 118 elements · ⚛️ Quantum Lab: ChemSim · 🔬 Quantum Computer Lab: '
+        + 'refine Si-28 · 🌱 Lab & Farm: fertilize & harvest · 🏦 ANK: your MolCoins');
     } else if (o.interact === 'bank') {
       worldToast(`🏦 ANK Kredietunie — balance ${molcoins.toLocaleString('en-US')} MolCoins. `
         + 'Earn: sell V₂O₅ from the plant, harvest crops, pass PPE checks');
@@ -1615,6 +1615,16 @@ function checkInteract(now) {
       } else {
         worldToast('🌀 Viscositeitslab — roer staalslak-slib (1–100%), voel de '
           + 'rheologie en zie het kW-verbruik. Stap dichterbij om binnen te gaan');
+        lastInteractAt = now - 3000;   // re-arm fast so stepping in triggers
+      }
+    } else if (o.interact === 'quantumcomputer') {
+      if (dx * dx + dz * dz < 2.25) {                    // within 1.5 m: enter
+        worldToast('⚛️ Naar het Kwantumcomputer-lab…');
+        setTimeout(() => { location.href = '../quantumlab/'; }, 600);
+      } else {
+        worldToast('⚛️ Kwantumcomputer-lab — zuiver afgevloeid silicium tot ²⁸Si, '
+          + 'bouw je eerste kwantumcomputer en speel de quantum-gate levels (WebXR AR). '
+          + 'Stap dichterbij om binnen te gaan');
         lastInteractAt = now - 3000;   // re-arm fast so stepping in triggers
       }
     } else if (o.interact === 'weigh') {
