@@ -1,0 +1,491 @@
+{
+  "version": 1,
+  "network": "p2p",
+  "assets": [
+    {
+      "id": "anvil-hammer",
+      "path": "anvil_hammer.glb",
+      "sourcePath": "anvil_hammer.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "aa34100fdd7aafa62457dd70f8d110e118714421a12706749677628f46759dc1",
+      "bytes": 15152,
+      "kind": "model"
+    },
+    {
+      "id": "ball-mill",
+      "path": "ball_mill.glb",
+      "sourcePath": "ball_mill.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "51e077df36d7bbc831988e61aff4884daa63dfbf94c2b296309e32aa702dcf8f",
+      "bytes": 22780,
+      "kind": "model"
+    },
+    {
+      "id": "beaker-1L",
+      "path": "beaker_1L.glb",
+      "sourcePath": "beaker_1L.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "e9ed02262bb766def90e9469414e32164c90ff2363f49756a47ea39d14f5622e",
+      "bytes": 30852,
+      "kind": "model"
+    },
+    {
+      "id": "boba-tea-cup",
+      "path": "boba_tea_cup.glb",
+      "sourcePath": "boba_tea_cup.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "8baafadee97ea99a6c7471de5d3c6783e45b3a3b5321fd1fade2a4b93e39cdf1",
+      "bytes": 444376,
+      "kind": "model"
+    },
+    {
+      "id": "bof-converter",
+      "path": "bof_converter.glb",
+      "sourcePath": "bof_converter.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "5dbda73f547b2fabee7b3f94c2f66ca48cf9c33f0f8cf753dabc4ab9194ccd41",
+      "bytes": 48408,
+      "kind": "model"
+    },
+    {
+      "id": "centrifugal-pump",
+      "path": "centrifugal_pump.glb",
+      "sourcePath": "centrifugal_pump.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "f94bcd00aa0fe73d38ff1fc30b52a44a66fcba0d96e304600b52c7597e3eb118",
+      "bytes": 41944,
+      "kind": "model"
+    },
+    {
+      "id": "centrifuge",
+      "path": "centrifuge.glb",
+      "sourcePath": "centrifuge.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "c0b214812f7db12e9cd3d428dfe22d21998dfdb6bc9679f88b11ba42b381d063",
+      "bytes": 20112,
+      "kind": "model"
+    },
+    {
+      "id": "combat-arena-floor",
+      "path": "combat_arena_floor.glb",
+      "sourcePath": "combat_arena_floor.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "9def12f2e86034efbfff0603d36814569dc2d8bcf705f2027d4328badcef4369",
+      "bytes": 84708,
+      "kind": "model"
+    },
+    {
+      "id": "cone-crusher",
+      "path": "cone_crusher.glb",
+      "sourcePath": "cone_crusher.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "dc375c34517c382e2043be3bf8a10f9158a2a7b6563e4af0c9f3dbba59477939",
+      "bytes": 45244,
+      "kind": "model"
+    },
+    {
+      "id": "conveyor-belt",
+      "path": "conveyor_belt.glb",
+      "sourcePath": "conveyor_belt.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "7ba806d84cf321fe59cd53266d56a1ec299f132b29f49ec8bfe6d9578cc65012",
+      "bytes": 45376,
+      "kind": "model"
+    },
+    {
+      "id": "cooling-pit",
+      "path": "cooling_pit.glb",
+      "sourcePath": "cooling_pit.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "45defb66d72c3884297a3cd0472642c861fa92671393125dcc6ebe2f6d031454",
+      "bytes": 10476,
+      "kind": "model"
+    },
+    {
+      "id": "cyclone-separator",
+      "path": "cyclone_separator.glb",
+      "sourcePath": "cyclone_separator.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "57f63f840d42d9d5979cd1869581a1c9a09e72e8e1882bc68692b0586aadfbc0",
+      "bytes": 22364,
+      "kind": "model"
+    },
+    {
+      "id": "diploma-frame",
+      "path": "diploma_frame.glb",
+      "sourcePath": "diploma_frame.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "eea932fc28d49c198298837fdb4cd6213218731876777ef70daa5db67fbe2118",
+      "bytes": 11068,
+      "kind": "model"
+    },
+    {
+      "id": "distillation-column",
+      "path": "distillation_column.glb",
+      "sourcePath": "distillation_column.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "2cf86c25afb809adce3366ebd97446d04d51b073f9d383bbf6645a3e170a0dba",
+      "bytes": 75784,
+      "kind": "model"
+    },
+    {
+      "id": "drill-rig",
+      "path": "drill_rig.glb",
+      "sourcePath": "drill_rig.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "d2060f82d3b4e2cd43249e06a9beebc3968d399c0108ec7999f0cee657e708a5",
+      "bytes": 18828,
+      "kind": "model"
+    },
+    {
+      "id": "erlenmeyer-flask",
+      "path": "erlenmeyer_flask.glb",
+      "sourcePath": "erlenmeyer_flask.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "733cd856d11b1e38163d5c759a117773928fab19324102634a6f2d259b619fc6",
+      "bytes": 16728,
+      "kind": "model"
+    },
+    {
+      "id": "excavator",
+      "path": "excavator.glb",
+      "sourcePath": "excavator.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "a9ae2a5fd12c36a8d3df9518478ee31209bcb738f9835b4d7bf8f4ab7850159a",
+      "bytes": 11772,
+      "kind": "model"
+    },
+    {
+      "id": "filtration-press",
+      "path": "filtration_press.glb",
+      "sourcePath": "filtration_press.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "6d4005faaefca1dc55f447bfa0872d281a27eaaa44da76839aaf1e5fafcfc8d0",
+      "bytes": 30460,
+      "kind": "model"
+    },
+    {
+      "id": "gate-valve",
+      "path": "gate_valve.glb",
+      "sourcePath": "gate_valve.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "8e764128483fddb6f9c26e799118716d73038cf9c2a8fed935b409a97ddbd7f6",
+      "bytes": 99784,
+      "kind": "model"
+    },
+    {
+      "id": "haul-truck",
+      "path": "haul_truck.glb",
+      "sourcePath": "haul_truck.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "79f4b3cb1f33fd398307646454d3ef043ce28cdd3ed970e13d7f507d5840c296",
+      "bytes": 29680,
+      "kind": "model"
+    },
+    {
+      "id": "heat-exchanger",
+      "path": "heat_exchanger.glb",
+      "sourcePath": "heat_exchanger.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "f90f58c66e3c8f085352f8479dcdf04f4afa7d4c15db3a9acfeb6d1dcb5d4ae5",
+      "bytes": 54820,
+      "kind": "model"
+    },
+    {
+      "id": "hero-shield-generator",
+      "path": "hero_shield_generator.glb",
+      "sourcePath": "hero_shield_generator.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "686dca7d7291e4417ba9e030bd861e6898bc156cc846df888863e1039b38c5da",
+      "bytes": 148700,
+      "kind": "model"
+    },
+    {
+      "id": "jaw-crusher",
+      "path": "jaw_crusher.glb",
+      "sourcePath": "jaw_crusher.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "33a5f09d060922fca5b802f076062faddebcb68fa7917e86eb23b529d0fc5c9f",
+      "bytes": 18828,
+      "kind": "model"
+    },
+    {
+      "id": "lab-bench",
+      "path": "lab_bench.glb",
+      "sourcePath": "lab_bench.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "454c7f433ff0e382e2d2b59d7b47c17c2b3a09728cb83242c76ce355948956eb",
+      "bytes": 45720,
+      "kind": "model"
+    },
+    {
+      "id": "leaching-tank",
+      "path": "leaching_tank.glb",
+      "sourcePath": "leaching_tank.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "2548cc32d6824224c0b352dbf43bdb6631184d76e56b0fe70a473dba7dfb08a3",
+      "bytes": 41416,
+      "kind": "model"
+    },
+    {
+      "id": "leaching-tank-500L-from-photo",
+      "path": "leaching_tank_500L_from_photo.glb",
+      "sourcePath": "leaching_tank_500L_from_photo.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "530e7f58ae67468c0b292585debd705b6c5cd34690c957bf7196acc6e707d5bd",
+      "bytes": 47352,
+      "kind": "model"
+    },
+    {
+      "id": "magnetic-separator",
+      "path": "magnetic_separator.glb",
+      "sourcePath": "magnetic_separator.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "87f4182975339ce66bfe38cd0b28361376956504a25c24b608a13be676d7076e",
+      "bytes": 23136,
+      "kind": "model"
+    },
+    {
+      "id": "pipe-section",
+      "path": "pipe_section.glb",
+      "sourcePath": "pipe_section.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "2fae0c7e2feff56123494d4dc197d0a9133bf76f4cb88845fdca9f67eb94c226",
+      "bytes": 13036,
+      "kind": "model"
+    },
+    {
+      "id": "pressure-vessel",
+      "path": "pressure_vessel.glb",
+      "sourcePath": "pressure_vessel.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "9279f7ac91fb55e13013f83d163ade25723ab2ffc324c19e5e42afd0cff5cf8f",
+      "bytes": 56444,
+      "kind": "model"
+    },
+    {
+      "id": "quantum-dot",
+      "path": "quantum_dot.glb",
+      "sourcePath": "quantum_dot.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "75b2233840c22b5537e588df8335bf3e454536ecfb9a53abfd720a0f93cf31d3",
+      "bytes": 265300,
+      "kind": "model"
+    },
+    {
+      "id": "quantum-tunnel-ring",
+      "path": "quantum_tunnel_ring.glb",
+      "sourcePath": "quantum_tunnel_ring.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "d3c550662b9e948a712e927a27ffbe53715754ba6fda8cda9a323e17fb076edb",
+      "bytes": 84164,
+      "kind": "model"
+    },
+    {
+      "id": "race-checkpoint",
+      "path": "race_checkpoint.glb",
+      "sourcePath": "race_checkpoint.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "d17e08d3da37fccb359c2d63780a77a2b73995a0b0e1a189d223813289bfaa9c",
+      "bytes": 18096,
+      "kind": "model"
+    },
+    {
+      "id": "rail-cart",
+      "path": "rail_cart.glb",
+      "sourcePath": "rail_cart.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "32381e0cc9b409685d08b47cf5927730d4500ef188ca7464b50f9fe3803ce478",
+      "bytes": 100728,
+      "kind": "model"
+    },
+    {
+      "id": "roasting-kiln",
+      "path": "roasting_kiln.glb",
+      "sourcePath": "roasting_kiln.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "f55ff5d9e396a98d22533b26bf7f8dcca59fa7cad9335de7700d193254dd53ef",
+      "bytes": 104344,
+      "kind": "model"
+    },
+    {
+      "id": "safety-fence-post",
+      "path": "safety_fence_post.glb",
+      "sourcePath": "safety_fence_post.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "f374d8d69412ed61b47b01046c06f8997546bf8b3d658221326b49e141d4100e",
+      "bytes": 85372,
+      "kind": "model"
+    },
+    {
+      "id": "screw-conveyor",
+      "path": "screw_conveyor.glb",
+      "sourcePath": "screw_conveyor.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "6987500a284b4cdc85b4aee32270438535ebe29331e0236c087771c45854b141",
+      "bytes": 102812,
+      "kind": "model"
+    },
+    {
+      "id": "slag-chunk",
+      "path": "slag_chunk.glb",
+      "sourcePath": "slag_chunk.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "cc74a038ade0c7583cd226fd088bc69416bf035e00b7ef967890454b63ec180b",
+      "bytes": 17536,
+      "kind": "model"
+    },
+    {
+      "id": "slag-ladle",
+      "path": "slag_ladle.glb",
+      "sourcePath": "slag_ladle.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "60c4c6ca7ed8b9ea965b8ce275604f6657d45c87320595da01126850f9b8bab2",
+      "bytes": 29384,
+      "kind": "model"
+    },
+    {
+      "id": "solar-panel",
+      "path": "solar_panel.glb",
+      "sourcePath": "solar_panel.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "9831aa620bb3f4239058014ed42505a9e2ee532a66d51ee2d3d91d06b9b31ff8",
+      "bytes": 9924,
+      "kind": "model"
+    },
+    {
+      "id": "speed-boost-pad",
+      "path": "speed_boost_pad.glb",
+      "sourcePath": "speed_boost_pad.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "2259e04fc26639abcb0dccadcd1b34213b5f27227d85bf3e89e565a05857c27e",
+      "bytes": 24060,
+      "kind": "model"
+    },
+    {
+      "id": "spray-dryer",
+      "path": "spray_dryer.glb",
+      "sourcePath": "spray_dryer.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "a5b7ed4ff33b6a58a7406818bd716984b9e544ee3cdcccce8cc3090632572775",
+      "bytes": 58148,
+      "kind": "model"
+    },
+    {
+      "id": "storage-silo",
+      "path": "storage_silo.glb",
+      "sourcePath": "storage_silo.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "f73a6e2fe7e5ac1ab306b4e35971a81ae6219a021f2b5eb89a77b02afa2aec38",
+      "bytes": 35868,
+      "kind": "model"
+    },
+    {
+      "id": "teleport-pad",
+      "path": "teleport_pad.glb",
+      "sourcePath": "teleport_pad.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "556fa42008b6c14b2b8becf2e62c737c8e6ca76d66db9821da8ff4d163cf6074",
+      "bytes": 120336,
+      "kind": "model"
+    },
+    {
+      "id": "thickener-tank",
+      "path": "thickener_tank.glb",
+      "sourcePath": "thickener_tank.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "fa4fe6df461045e5698f8da3bae6d12ceffd31625cb14197deba1e33409b7090",
+      "bytes": 73328,
+      "kind": "model"
+    },
+    {
+      "id": "vibrating-screen",
+      "path": "vibrating_screen.glb",
+      "sourcePath": "vibrating_screen.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "7ca6c57a7c66704c2725ed72e3b940f276dc7a3e1e071defa0ecc6542ea94121",
+      "bytes": 23760,
+      "kind": "model"
+    },
+    {
+      "id": "victory-trophy",
+      "path": "victory_trophy.glb",
+      "sourcePath": "victory_trophy.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "ba6c669f440742eaae45907e9c574e302d8387ff7f4e02ea246c9687783a7405",
+      "bytes": 181812,
+      "kind": "model"
+    },
+    {
+      "id": "villain-pedestal",
+      "path": "villain_pedestal.glb",
+      "sourcePath": "villain_pedestal.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "1b77a8f70f4486b128a1dcd38f02c7d0fa7a7cfcc345801d851900f9f8ea180f",
+      "bytes": 114700,
+      "kind": "model"
+    },
+    {
+      "id": "warning-beacon",
+      "path": "warning_beacon.glb",
+      "sourcePath": "warning_beacon.fbx",
+      "sourceFormat": "fbx",
+      "cid": "bafybeibakegszqcdr7glvxutrwhpbrllzi5qzr3u2jbugsm36ilxfsjbc4",
+      "sha256": "59b790a6f32a21232df6fd70bc70678df4d880c388d3f0338d44eb41e7310c2c",
+      "bytes": 85616,
+      "kind": "model"
+    },
+    {
+      "id": "world-config",
+      "path": "/world-config.json",
+      "kind": "data"
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOLGANG Chem Lab 3D</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<style>
+  :root { --panel: rgba(12, 16, 24, 0.82); --line: #263247; --text: #dbe6f5; --dim: #8fa2bd; --accent: #4c8dff; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: #0b0e13; color: var(--text);
+    font: 14px/1.45 "Segoe UI", system-ui, sans-serif; overflow: hidden;
+    position: fixed; inset: 0; width: 100%; }
+  #scene { width: 100vw; height: 100vh; display: block; touch-action: none; }
+  .panel { position: absolute; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(6px); }
+  h1 { font-size: 15px; letter-spacing: 0.4px; margin-bottom: 8px; }
+  h2 { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin: 10px 0 6px; }
+  .row { display: flex; justify-content: space-between; gap: 14px; padding: 1px 0; }
+  .row b { font-variant-numeric: tabular-nums; font-weight: 600; }
+  #control { top: 14px; left: 14px; width: 265px; }
+  #meter { height: 7px; border-radius: 4px; background: #10151d; margin: 6px 0 2px; overflow: hidden; }
+  #temp-bar { height: 100%; width: 0%; transition: width 0.2s; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  button { background: #1a2333; border: 1px solid var(--line); color: var(--text);
+    border-radius: 7px; padding: 6px 12px; margin-right: 6px; cursor: pointer; font-size: 13px; }
+  button:hover { border-color: var(--accent); color: #fff; }
+  /* Keep the lower analysis panel out of the control panel's button row on
+     laptop-sized tester viewports. */
+  #redox { bottom: 14px; left: 295px; width: 340px; pointer-events: none; }
+  #equations { white-space: pre; font: 11.5px/1.6 ui-monospace, monospace; color: #a9c4ea; }
+  #inspector { top: 14px; right: 14px; width: 300px; display: none; }
+  #dapp { right: 14px; bottom: 14px; width: 300px; }
+  #dapp button { margin-top: 5px; font-size: 12px; }
+  #dapp-status { color: #8fa2bd; font-size: 11px; min-height: 32px; }
+  #pulse-hash { color: #8ee7ff; font: 10px ui-monospace, monospace; overflow-wrap: anywhere; }
+  #sel-reaction { font: 12px ui-monospace, monospace; color: #ffce7a; }
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--dim); font-size: 15px; letter-spacing: 1px; pointer-events: none; }
+  #fx { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .fx-ring { position: absolute; width: 18px; height: 18px; margin: -9px; border: 2px solid #6ee7ff;
+    border-radius: 50%; box-shadow: 0 0 18px #22d3ee; animation: fx-ring .55s ease-out forwards; }
+  .fx-spark { position: absolute; width: 5px; height: 14px; margin: -7px -2px; border-radius: 4px;
+    background: linear-gradient(#fff7ad, #ff7b39); box-shadow: 0 0 12px #ff8a3d; animation: fx-spark .65s ease-out forwards; }
+  .fx-float { position: absolute; color: #ffe082; font: 700 16px ui-monospace, monospace;
+    text-shadow: 0 0 10px #ff8a3d; animation: fx-float .9s ease-out forwards; }
+  .fx-flash { position: absolute; inset: 0; background: #e8f7ff; animation: fx-flash .28s ease-out forwards; }
+  @keyframes fx-ring { to { transform: scale(6); opacity: 0; } }
+  @keyframes fx-spark { to { transform: translate(var(--dx), var(--dy)) rotate(160deg); opacity: 0; } }
+  @keyframes fx-float { to { transform: translateY(-54px); opacity: 0; } }
+  @keyframes fx-flash { from { opacity: .28; } to { opacity: 0; } }
+  .hint { color: var(--dim); font-size: 11.5px; margin-top: 8px; }
+  @media (max-width: 900px) {
+    #control { width: min(265px, calc(100vw - 28px)); }
+    #redox { left: 14px; top: 270px; bottom: auto; width: min(340px, calc(100vw - 28px)); }
+    #dapp { width: min(300px, calc(100vw - 28px)); }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="fx" aria-hidden="true"></div>
+<div id="loading">Loading lab equipment…</div>
+
+<div class="panel" id="control">
+  <h1>MOLGANG — BOF Vanadium Lab</h1>
+  <div class="row"><span>Temperature</span><b id="temp">1600 K</b></div>
+  <div id="meter"><div id="temp-bar"></div></div>
+  <div class="row"><span>Process time</span><b id="time">0.0 s</b></div>
+  <div class="row"><span>Metal</span><b id="metal">80.0 kg</b></div>
+  <div class="row"><span>Slag</span><b id="slag">20.0 kg</b></div>
+  <div class="row"><span>V recovery</span><b id="recovery">0.0 %</b></div>
+  <h2>O₂ lance</h2>
+  <input id="o2" type="range" min="0" max="150" step="5" value="80">
+  <div class="row"><span>Flow</span><b id="o2-val">80 Nm³/h</b></div>
+  <div style="margin-top:10px">
+    <button id="btn-start">Start blow</button><button id="btn-pause">Pause</button><button id="btn-reset">Reset</button>
+  </div>
+  <div class="hint">P2P/IPFS node · WebGPU budget 49% · drag to orbit · click equipment · <span id="fps"></span></div>
+</div>
+
+<div class="panel" id="redox">
+  <h2>Redox balance (mol &amp; charge)</h2>
+  <div class="row"><span>e⁻ transferred</span><b id="electrons">0.0 mol</b></div>
+  <div class="row" style="margin-bottom:6px"><span id="mols">V – | FeO – | V₂O₅ – | CO –</span></div>
+  <div id="equations"></div>
+</div>
+
+<div class="panel" id="inspector">
+  <h1 id="sel-name">—</h1>
+  <div id="sel-info" style="color:var(--dim)"></div>
+  <h2>Reaction</h2>
+  <div id="sel-reaction">—</div>
+</div>
+
+<div class="panel" id="dapp">
+  <h1>MOLGANG P2P dApp</h1>
+  <div class="row"><span>Asset node</span><b id="p2p-node">checking…</b></div>
+  <div class="row"><span>Asset integrity</span><b id="asset-integrity">checking…</b></div>
+  <div class="row"><span>Render path</span><b id="render-path">probing…</b></div>
+  <div class="row"><span>Wallet</span><b id="pulse-wallet">demo</b></div>
+  <div class="row"><span>Pulse events</span><b id="pulse-count">0</b></div>
+  <div class="row"><span>Journal</span><b id="pulse-integrity">checking…</b></div>
+  <div id="dapp-status">Offline-first demo; events are hash-chained locally.</div>
+  <div id="pulse-hash">GENESIS</div>
+  <button id="connect-wallet">Connect wallet</button>
+  <button id="record-event">Record Pulse event</button>
+  <button id="sign-pulse">Sign Pulse root</button>
+  <button id="export-journal">Export journal</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.js",
+    "three/addons/": "./vendor/three/jsm/"
+  }
+}
+</script>
+<script type="module" src="./lab.js?v=20260721-a4000-guard"></script>
+</body>
+</html>
