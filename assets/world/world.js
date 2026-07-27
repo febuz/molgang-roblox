@@ -7,6 +7,7 @@
 // the diffusion gap-fill. Renders on a 49% duty cycle to spare the GPU.
 
 import * as THREE from 'three';
+import { Garden, CROPS, FERTILISERS } from './garden.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
@@ -468,12 +469,14 @@ function inspectFrom(origin, dir) {
   _inspectCaster.far = 60;
   const pool = [];
   for (const obj of live.values()) pool.push(obj);
+  if (gardenGroup) pool.push(gardenGroup);
   const hits = _inspectCaster.intersectObjects(pool, true);
   for (const h of hits) {
     let n = h.object;
     while (n && !n.userData.def) n = n.parent;
     if (!n) continue;
     const def = n.userData.def;
+    if (def.garden) return gardenActivate(def.garden);
     const info = PROP_INFO[def.ref];
     const name = info ? info[0]
       : def.ref.replace(/\.glb$/, '').replace(/_/g, ' ');
@@ -1862,6 +1865,7 @@ function loop(now) {
   if (crClientActive && !simOk) crTick(dt);
   if (now - lastStream > 180) {
     lastStream = now; stream(); checkCollect(); checkInteract(now); tutorTick(); updateGoals();
+    gardenTick(now);
     if (crClientActive && !simOk) applyReactorState(crStateObj());
   }
   // Keep the sun (and its shadow frustum) centred on the player for crisp shadows.
@@ -1996,3 +2000,215 @@ renderer.setAnimationLoop(loop);      // works for both desktop RAF and WebXR
   }
   stream(); // first populate
 })();
+
+// ---------- 🏡 every player's own garden (Liebig NPK growth) ----------
+// A personal 6-plot bed near spawn. Pure chemistry lives in garden.js;
+// here we render it, wire the pedestal tools into the same click/trigger
+// inspection ray as everything else, and pay/charge MolCoins.
+const GARDEN_AT = { x: 14, z: 24 };
+const garden = Garden.load(localStorage);
+let gardenGroup = null, gardenTool = null;
+const gardenPlots3D = [], gardenPedestals = {};
+let gardenBoardCtx = null, gardenBoardTex = null;
+let gardenLastVis = 0, gardenLastSave = 0, gardenLastBoard = 0;
+
+function gardenLabel(text, w = 256, h = 96, size = 34) {
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#10151d'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#2f4356'; g.lineWidth = 4; g.strokeRect(2, 2, w - 4, h - 4);
+  g.fillStyle = '#eaf2f5'; g.font = `${size}px sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, w / 2, h / 2);
+  const tex = new THREE.CanvasTexture(cv);
+  return new THREE.MeshBasicMaterial({ map: tex });
+}
+
+function buildGarden() {
+  gardenGroup = new THREE.Group();
+  const wood = new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: .8 });
+  const soil = new THREE.MeshStandardMaterial({ color: 0x2e2118, roughness: 1 });
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.5, 3.6), wood);
+  frame.position.y = 0.25; gardenGroup.add(frame);
+  for (let i = 0; i < 6; i++) {
+    const px = (i % 3 - 1) * 1.55, pz = (i < 3 ? -0.85 : 0.85);
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, 1.5), soil);
+    bed.position.set(px, 0.53, pz);
+    bed.userData.def = { garden: `plot:${i}` };
+    gardenGroup.add(bed);
+    const plantG = new THREE.Group();
+    plantG.position.set(px, 0.58, pz);
+    gardenGroup.add(plantG);
+    gardenPlots3D.push({ bed, plantG, sig: '' });
+  }
+  const tools = [
+    ['tarwe', '🌾 Tarwe'], ['tomaat', '🍅 Tomaat'], ['zonnebloem', '🌻 Zonnebl.'],
+    ['water', '💧 Water'], ['ureum', 'N Ureum'], ['dap', 'P DAP'],
+    ['mop', 'K MOP'], ['kalk', 'Kalk pH+'], ['oogst', '✂️ Oogst'],
+  ];
+  tools.forEach(([key, label], i) => {
+    const px = -4.2 + i * 1.05;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.0, 8),
+      new THREE.MeshStandardMaterial({ color: 0x39424e }));
+    pole.position.set(px, 0.5, 2.6);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.34),
+      gardenLabel(label, 256, 96, key.length > 5 ? 30 : 34));
+    sign.position.set(px, 1.15, 2.6);
+    sign.rotation.y = Math.PI;
+    sign.userData.def = { garden: `tool:${key}` };
+    pole.userData.def = { garden: `tool:${key}` };
+    gardenGroup.add(pole, sign);
+    gardenPedestals[key] = sign;
+  });
+  const boardCv = document.createElement('canvas');
+  boardCv.width = 512; boardCv.height = 340;
+  gardenBoardCtx = boardCv.getContext('2d');
+  gardenBoardTex = new THREE.CanvasTexture(boardCv);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.7),
+    new THREE.MeshBasicMaterial({ map: gardenBoardTex }));
+  board.position.set(0, 1.9, -2.4);
+  gardenGroup.add(board);
+  const title = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.4),
+    gardenLabel('🏡 Mijn tuintje', 512, 96, 44));
+  title.position.set(0, 3.0, -2.42);
+  gardenGroup.add(title);
+  gardenGroup.position.set(GARDEN_AT.x, 0, GARDEN_AT.z);
+  scene.add(gardenGroup);
+  gardenDrawBoard();
+}
+
+const GARDEN_SYMPTOM_COLORS = {
+  ok: 0x3f9b45, geel: 0xd9c34a, paars: 0x7a4a8a, bladrand: 0x8a6a3a, ph: 0x6a7a4a,
+};
+function gardenPlantVisual(i) {
+  const p = garden.plots[i], v = gardenPlots3D[i];
+  const sym = garden.symptoms(p);
+  const sig = p.crop ? `${p.crop}:${(p.growth * 20) | 0}:${sym.join()}` : 'leeg';
+  if (sig === v.sig) return;
+  v.sig = sig;
+  v.plantG.clear();
+  if (!p.crop) return;
+  const leafCol = sym.includes('geel') ? GARDEN_SYMPTOM_COLORS.geel
+    : sym.includes('paars') ? GARDEN_SYMPTOM_COLORS.paars
+    : sym.includes('bladrand') ? GARDEN_SYMPTOM_COLORS.bladrand
+    : GARDEN_SYMPTOM_COLORS.ok;
+  const h = 0.15 + p.growth * (p.crop === 'zonnebloem' ? 1.5 : 0.9);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, h, 6),
+    new THREE.MeshStandardMaterial({ color: 0x3a6b30, roughness: .8 }));
+  stem.position.y = h / 2;
+  if (sym.includes('slap')) stem.rotation.z = 0.5;      // wilting
+  v.plantG.add(stem);
+  const leafMat = new THREE.MeshStandardMaterial({
+    color: leafCol, roughness: .7, side: THREE.DoubleSide });
+  for (let k = 0; k < 4; k++) {
+    const leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.14), leafMat);
+    leaf.position.set(Math.cos(k * 1.6) * 0.14, h * (0.35 + k * 0.15),
+                      Math.sin(k * 1.6) * 0.14);
+    leaf.rotation.set(-0.5, k * 1.6, 0);
+    if (sym.includes('slap')) leaf.rotation.x = -1.2;
+    v.plantG.add(leaf);
+  }
+  if (p.growth > 0.7) {
+    const fruitCol = { tarwe: 0xd9c34a, tomaat: 0xc23b2e, zonnebloem: 0xe8b93a }[p.crop];
+    const n = p.crop === 'zonnebloem' ? 1 : 3;
+    for (let k = 0; k < n; k++) {
+      const fr = new THREE.Mesh(new THREE.SphereGeometry(
+        p.crop === 'zonnebloem' ? 0.16 : 0.06, 10, 8),
+        new THREE.MeshStandardMaterial({ color: fruitCol, roughness: .5 }));
+      fr.position.set(Math.cos(k * 2.1) * 0.1, h - k * 0.06,
+                      Math.sin(k * 2.1) * 0.1);
+      v.plantG.add(fr);
+    }
+  }
+}
+
+function gardenDrawBoard() {
+  if (!gardenBoardCtx) return;
+  const g = gardenBoardCtx;
+  g.fillStyle = '#10151d'; g.fillRect(0, 0, 512, 340);
+  g.font = '17px monospace'; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  garden.plots.forEach((p, i) => {
+    const x = 14 + (i % 2) * 256, y = 26 + Math.floor(i / 2) * 106;
+    g.fillStyle = '#89a0b0';
+    g.fillText(`${i + 1}. ${p.crop ? CROPS[p.crop].name : 'leeg'}`, x, y);
+    if (p.crop) {
+      const lim = garden.limiting(p);
+      g.fillStyle = '#eaf2f5';
+      g.fillText(`groei ${(p.growth * 100) | 0}%  ` +
+        (p.growth >= 0.95 ? 'RIJP ✂️' : `min: ${lim.name}`), x, y + 20);
+    }
+    const bars = [['N', p.soil.N / 300, '#5aa5e0'], ['P', p.soil.P / 200, '#b07ae0'],
+                  ['K', p.soil.K / 300, '#e0a05a'], ['w', p.soil.water / 40, '#7ec8f7']];
+    bars.forEach(([lbl, frac, col], b) => {
+      g.fillStyle = '#243342'; g.fillRect(x + b * 58, y + 32, 50, 12);
+      g.fillStyle = col;
+      g.fillRect(x + b * 58, y + 32, 50 * Math.min(1, Math.max(0, frac)), 12);
+      g.fillStyle = '#89a0b0'; g.fillText(lbl, x + b * 58 + 20, y + 60);
+    });
+  });
+  g.fillStyle = '#f4b41a'; g.font = '16px monospace';
+  g.fillText(gardenTool ? `gereedschap: ${gardenTool}` : 'kies gereedschap op een bordje →', 14, 330);
+  gardenBoardTex.needsUpdate = true;
+}
+
+function gardenActivate(tag) {
+  const [kind, val] = tag.split(':');
+  if (kind === 'tool') {
+    gardenTool = val;
+    for (const [k, sign] of Object.entries(gardenPedestals)) {
+      sign.material.color.setHex(k === val ? 0x9fffd9 : 0xffffff);
+    }
+    gardenDrawBoard();
+    const hints = {
+      tarwe: 'veel stikstof (N)', tomaat: 'kaliumvreter (K)',
+      zonnebloem: 'houdt van P en K', water: 'tegen verwelken',
+      ureum: '46-0-0: stikstof, verzuurt licht', dap: '18-46-0: fosfor',
+      mop: '0-0-60: kalium', kalk: 'pH omhoog', oogst: 'alleen rijp (95%+)',
+    };
+    return `🧰 ${val} gekozen — ${hints[val]}. Klik nu op een plantvak.`;
+  }
+  const i = +val;
+  if (!gardenTool) return '🏡 Kies eerst gereedschap op een bordje';
+  let r;
+  if (['tarwe', 'tomaat', 'zonnebloem'].includes(gardenTool)) {
+    if (molcoins < CROPS[gardenTool].seed) return '🪙 Te weinig MolCoins voor zaad';
+    r = garden.sow(i, gardenTool);
+    if (r.ok) earn(-r.cost);
+  } else if (gardenTool === 'water') {
+    r = garden.waterPlot(i);
+  } else if (gardenTool === 'oogst') {
+    r = garden.harvest(i);
+    if (r.ok) earn(r.pay);
+  } else {
+    if (molcoins < FERTILISERS[gardenTool].cost) return '🪙 Te weinig MolCoins';
+    r = garden.fertilise(i, gardenTool);
+    if (r.ok) earn(-r.cost);
+  }
+  gardenPlantVisual(i);
+  gardenDrawBoard();
+  garden.save(localStorage);
+  return (r.ok ? '✅ ' : '⚠️ ') + r.msg;
+}
+
+function gardenTick(now) {
+  if (!gardenGroup) return;
+  garden.step(0.18);                       // called from the 180 ms throttle
+  if (now - gardenLastVis > 500) {
+    gardenLastVis = now;
+    for (let i = 0; i < 6; i++) gardenPlantVisual(i);
+  }
+  if (now - gardenLastBoard > 1000) { gardenLastBoard = now; gardenDrawBoard(); }
+  if (now - gardenLastSave > 5000) { gardenLastSave = now; garden.save(localStorage); }
+}
+buildGarden();
+
+// e2e/debug hook: drive the chemistry without waiting real minutes.
+window.__garden = {
+  garden, CROPS, FERTILISERS,
+  activate: gardenActivate,
+  fastForward(seconds) { for (let t = 0; t < seconds; t += 5) garden.step(5); 
+    for (let i = 0; i < 6; i++) gardenPlantVisual(i); gardenDrawBoard();
+    return garden.plots.map(p => ({ crop: p.crop, growth: p.growth,
+      health: p.health, symptoms: garden.symptoms(p) })); },
+};
