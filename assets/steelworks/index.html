@@ -67,8 +67,9 @@
   <div class="brand">MOLGANG <span class="dim">/ Jouw staalfabriek</span></div>
   <div class="spacer"></div>
   <button class="ghost" id="enter-vr" disabled>Enter VR (maquette)</button>
+  <a class="ghost" id="btn-enter-world" href="../world/" style="border-color:var(--teal);color:var(--ink)">🚶 Loop de wereld in →</a>
+  <a class="ghost" href="../rivierlab/">🏞 Rivierlab</a>
   <a class="ghost" href="../viscosity/">🌀 Viscositeitslab</a>
-  <a class="ghost" href="../world/">Moleculia →</a>
 </header>
 <main>
   <div id="stage">
@@ -101,9 +102,9 @@
     </div>
     <div class="lbl">Verder spelen</div>
     <div class="card">
-      <div class="row"><a href="../rivierlab/">→ 🏞 Rivierlab (kringloop &amp; chemie, voor kinderen)</a></div>
-      <div class="row"><a href="../viscosity/">→ Viscositeitslab (roeren &amp; Si-afvloei)</a></div>
-      <div class="row"><a href="../world/">→ 3D Moleculenlab</a></div>
+      <div class="row"><a href="rivierlab.html">→ 🏞 Rivierlab (kringloop &amp; chemie, voor kinderen)</a></div>
+      <div class="row"><a href="viscosity-room.html">→ Viscositeitslab (roeren &amp; Si-afvloei)</a></div>
+      <div class="row"><a href="lab-3d.html">→ 3D Moleculenlab</a></div>
     </div>
   </aside>
 </main>
@@ -321,6 +322,17 @@ async function chooseSite(s, note){
     currentSite = site;
     buildScene(site);
     updatePanel(site);
+    // Remember the pick so the walkable world grounds itself on this same
+    // terrain — map and game are one place now, not two disconnected pages.
+    try {
+      localStorage.setItem('molgang.site',
+        JSON.stringify({ id: use.id, name: site.name, lat: site.lat, lon: site.lon }));
+    } catch { /* quota */ }
+    const enterBtn = $("#btn-enter-world");
+    if (enterBtn) {
+      enterBtn.href = `../world/?site=${use.id}`;
+      enterBtn.textContent = `🚶 Loop de wereld in bij ${site.name} →`;
+    }
   } finally {
     $("#loading").classList.remove('show');
   }
