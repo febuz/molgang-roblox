@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MOLGANG — Jouw staalfabriek</title>
+<style>
+  :root{
+    --bg:#0a0e13; --bg2:#0e141b; --panel:#141c25; --panel2:#18222d;
+    --line:#243342; --line2:#2f4356; --ink:#eaf2f5;
+    --dim:#89a0b0; --teal:#3fb6a8; --amber:#f4b41a;
+    --good:#38d39f; --bad:#ff6b6b; --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.5 -apple-system,"Segoe UI",system-ui,sans-serif;overflow:hidden}
+  a{color:var(--teal);text-decoration:none}
+  header{display:flex;align-items:center;gap:14px;padding:12px 18px;
+    border-bottom:1px solid var(--line);background:rgba(10,14,19,.7);
+    backdrop-filter:blur(8px);position:relative;z-index:5}
+  .brand{font-weight:700}
+  .brand .dim{color:var(--dim);font-weight:400}
+  header .spacer{flex:1}
+  .ghost{background:transparent;border:1px solid var(--line2);color:var(--dim);
+    border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.9em}
+  .ghost:hover{color:var(--ink);border-color:var(--teal)}
+  #enter-vr:disabled{opacity:.4;cursor:default}
+  main{display:grid;grid-template-columns:1fr 320px;height:calc(100% - 53px)}
+  #stage{position:relative}
+  #c{display:block;width:100%;height:100%}
+  aside{overflow-y:auto;padding:14px;background:var(--bg2);border-left:1px solid var(--line)}
+  .lbl{text-transform:uppercase;letter-spacing:.09em;font-size:.7em;color:var(--dim);
+    margin:14px 0 8px;font-weight:600}
+  .lbl:first-child{margin-top:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:14px;margin-bottom:12px}
+  .card button.big{width:100%;background:var(--panel2);border:1px solid var(--teal);
+    color:var(--ink);border-radius:9px;padding:10px;cursor:pointer;font-size:.95em}
+  .card button.big:hover{background:#1d2937}
+  input[type=text]{width:100%;background:#10151d;border:1px solid var(--line2);
+    color:var(--ink);border-radius:8px;padding:8px 10px;font-size:.9em}
+  #sitelist{max-height:220px;overflow-y:auto;margin-top:8px}
+  #sitelist button{display:block;width:100%;text-align:left;background:transparent;
+    border:0;border-bottom:1px solid var(--line);color:var(--ink);padding:7px 6px;
+    cursor:pointer;font-size:.85em}
+  #sitelist button:hover{background:var(--panel2)}
+  #sitelist .d{color:var(--teal);font-family:var(--mono);font-size:.85em}
+  .row{display:flex;justify-content:space-between;margin:4px 0;font-size:.88em;gap:10px}
+  .row .k{color:var(--dim);white-space:nowrap}
+  .row b{text-align:right}
+  .badge{display:inline-block;background:#12303a;border:1px solid var(--teal);
+    color:var(--teal);border-radius:14px;padding:2px 10px;font-size:.8em;margin:2px 2px 0 0}
+  #attrib{font-size:.72em;color:var(--dim);margin-top:8px}
+  .hud{position:absolute;left:16px;bottom:16px;font-family:var(--mono);font-size:.8em;
+    color:var(--dim);background:rgba(10,14,19,.6);border:1px solid var(--line);
+    border-radius:8px;padding:8px 12px;pointer-events:none}
+  #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--dim);font-size:1.05em;pointer-events:none;opacity:0;transition:.3s}
+  #loading.show{opacity:1}
+  @media (max-width:860px){ main{grid-template-columns:1fr} aside{display:none} }
+</style>
+<script src="quest-input.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">MOLGANG <span class="dim">/ Jouw staalfabriek</span></div>
+  <div class="spacer"></div>
+  <button class="ghost" id="enter-vr" disabled>Enter VR (maquette)</button>
+  <a class="ghost" href="../viscosity/">🌀 Viscositeitslab</a>
+  <a class="ghost" href="../world/">Moleculia →</a>
+</header>
+<main>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="loading">terrein laden…</div>
+    <div class="hud">sleep = draaien · scroll = zoomen · echte OSM-footprints,
+      rivieren &amp; spoor rond de fabriek</div>
+  </div>
+  <aside>
+    <div class="lbl">Start van het spel</div>
+    <div class="card">
+      <button class="big" id="b-geo">📍 Mijn dichtstbijzijnde staalfabriek</button>
+      <div id="geo-msg" style="font-size:.8em;color:var(--dim);margin-top:6px"></div>
+    </div>
+    <div class="lbl">Of kies een fabriek</div>
+    <div class="card">
+      <input type="text" id="search" placeholder="Zoek (naam)…" />
+      <div id="sitelist"></div>
+    </div>
+    <div class="lbl">Terrein</div>
+    <div class="card">
+      <div class="row"><span class="k">Fabriek</span><b id="i-name">—</b></div>
+      <div class="row"><span class="k">Water</span><b id="i-water">—</b></div>
+      <div class="row"><span class="k">Rivier(en)</span><b id="i-rivers">—</b></div>
+      <div class="row"><span class="k">Gebouwen</span><b id="i-buildings">—</b></div>
+      <div class="row"><span class="k">Spoor</span><b id="i-rail">—</b></div>
+      <div id="i-badges"></div>
+      <div id="attrib">Kaartdata © OpenStreetMap-bijdragers (ODbL).
+        Rivierdata is het startpunt voor latere mijnbouwactiviteiten.</div>
+    </div>
+    <div class="lbl">Verder spelen</div>
+    <div class="card">
+      <div class="row"><a href="../viscosity/">→ Viscositeitslab (roeren &amp; Si-afvloei)</a></div>
+      <div class="row"><a href="../world/">→ De wereld in: Moleculia</a></div>
+    </div>
+  </aside>
+</main>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+
+const $ = s => document.querySelector(s);
+
+/* ---------- renderer / scene ---------- */
+const canvas = $("#c");
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.xr.enabled = true;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b1017);
+scene.fog = new THREE.Fog(0x0b1017, 2600, 6200);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
+camera.position.set(650, 720, 900);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.maxDistance = 4200;
+
+scene.add(new THREE.HemisphereLight(0xbcd6ff, 0x1a2028, 0.9));
+const sun = new THREE.DirectionalLight(0xfff2df, 2.0);
+sun.position.set(-1400, 1800, 900);
+scene.add(sun);
+
+/* world group: full scale on desktop, miniature diorama in VR */
+const world = new THREE.Group();
+scene.add(world);
+
+const MATS = {
+  ground: new THREE.MeshStandardMaterial({color:0x1d242c, roughness:1}),
+  site:   new THREE.MeshStandardMaterial({color:0x262e37, roughness:.95}),
+  water:  new THREE.MeshStandardMaterial({color:0x14425e, roughness:.25, metalness:.1}),
+  river:  new THREE.MeshStandardMaterial({color:0x1a567a, roughness:.3}),
+  road:   new THREE.MeshStandardMaterial({color:0x2c333b, roughness:.9}),
+  rail:   new THREE.LineBasicMaterial({color:0x556270}),
+  bld:    [new THREE.MeshStandardMaterial({color:0x59636e, roughness:.8}),
+           new THREE.MeshStandardMaterial({color:0x6d7681, roughness:.8}),
+           new THREE.MeshStandardMaterial({color:0x7a6a5a, roughness:.85}),
+           new THREE.MeshStandardMaterial({color:0x4d5762, roughness:.8})],
+  chimney:new THREE.MeshStandardMaterial({color:0x8d949c, roughness:.7}),
+  marker: new THREE.MeshBasicMaterial({color:0x3fb6a8}),
+};
+
+function ribbon(pts, width, mat, y) {
+  // Flat ribbon along a polyline in the XZ plane.
+  if (pts.length < 2) return null;
+  const pos = [], idx = [];
+  const hw = width / 2;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const q = pts[Math.min(i + 1, pts.length - 1)];
+    const r = pts[Math.max(i - 1, 0)];
+    let dx = q[0] - r[0], dz = q[1] - r[1];
+    const len = Math.hypot(dx, dz) || 1;
+    dx /= len; dz /= len;
+    pos.push(p[0] - dz * hw, y, p[1] + dx * hw,
+             p[0] + dz * hw, y, p[1] - dx * hw);
+    if (i) {
+      const a = (i - 1) * 2;
+      idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+
+function polyMesh(pts, mat, y) {
+  if (pts.length < 3) return null;
+  const shape = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], -p[1])));
+  const g = new THREE.ShapeGeometry(shape);
+  g.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(g, mat);
+  m.position.y = y;
+  return m;
+}
+
+let counts = {buildings:0, rivers:0, water:0, rail:0, roads:0};
+function buildScene(site) {
+  world.clear();
+  counts = {buildings:0, rivers:0, water:0, rail:0, roads:0};
+
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(site.radius_m + 600, 72),
+    MATS.ground);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.5;
+  world.add(ground);
+
+  for (const poly of site.water) {
+    const m = polyMesh(poly, MATS.water, 0.25);
+    if (m) { world.add(m); counts.water++; }
+  }
+  for (const line of site.coast) {
+    const m = ribbon(line, 90, MATS.water, 0.3);
+    if (m) { world.add(m); counts.water++; }
+  }
+  for (const rv of site.rivers) {
+    const m = ribbon(rv.pts, rv.kind === 'river' ? 42 : 22, MATS.river, 0.35);
+    if (m) { world.add(m); counts.rivers++; }
+  }
+  for (const rd of site.roads) {
+    const m = ribbon(rd, 9, MATS.road, 0.5);
+    if (m) { world.add(m); counts.roads++; }
+  }
+  for (const line of site.rail) {
+    const pos = [];
+    for (let i = 0; i + 1 < line.length; i++) {
+      pos.push(line[i][0], 0.8, line[i][1], line[i+1][0], 0.8, line[i+1][1]);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    world.add(new THREE.LineSegments(g, MATS.rail));
+    counts.rail++;
+  }
+
+  let biggest = null;
+  site.buildings.forEach((b, i) => {
+    const h = b.h || (b.a > 8000 ? 26 : b.a > 2000 ? 15 : 8);
+    const shape = new THREE.Shape(b.pts.map(p => new THREE.Vector2(p[0], -p[1])));
+    const g = new THREE.ExtrudeGeometry(shape, {depth:h, bevelEnabled:false});
+    g.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, MATS.bld[i % MATS.bld.length]);
+    m.position.y = h;
+    world.add(m);
+    counts.buildings++;
+    if (!biggest || b.a > biggest.a) biggest = b;
+  });
+  // Chimneys on the biggest hall: instantly reads as "steel plant".
+  if (biggest) {
+    const cx = biggest.pts.reduce((s,p)=>s+p[0],0)/biggest.pts.length;
+    const cz = biggest.pts.reduce((s,p)=>s+p[1],0)/biggest.pts.length;
+    for (let k = 0; k < 3; k++) {
+      const ch = new THREE.Mesh(
+        new THREE.CylinderGeometry(4, 5.5, 90 + k * 18, 12), MATS.chimney);
+      ch.position.set(cx + k * 42 - 42, (90 + k * 18) / 2, cz);
+      world.add(ch);
+    }
+  }
+  // Player start marker at the plant centre.
+  const ring = new THREE.Mesh(new THREE.RingGeometry(16, 24, 40), MATS.marker);
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 1.2;
+  world.add(ring);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 60, 8),
+    MATS.marker);
+  pole.position.y = 30; world.add(pole);
+}
+
+/* ---------- data ---------- */
+let INDEX = null, currentSite = null;
+const km = (a,b,c,d) => {
+  const p1=a*Math.PI/180, p2=c*Math.PI/180, dl=(d-b)*Math.PI/180;
+  const h=Math.sin((p2-p1)/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 12742*Math.asin(Math.sqrt(h));
+};
+
+async function loadIndex(){
+  INDEX = await (await fetch('data/index.json')).json();
+  renderList('');
+}
+function detailed(){ return INDEX.sites.filter(s => s.detail); }
+function renderList(filter){
+  const box = $("#sitelist");
+  box.innerHTML = '';
+  const f = filter.trim().toLowerCase();
+  const pool = f
+    ? INDEX.sites.filter(s => s.name.toLowerCase().includes(f))
+    : detailed();
+  for (const s of pool.slice(0, 40)) {
+    const b = document.createElement('button');
+    b.innerHTML = `${s.name} ${s.detail ? '<span class="d">terrein ✓</span>' : ''}`;
+    b.onclick = () => chooseSite(s);
+    box.appendChild(b);
+  }
+  if (!pool.length) box.innerHTML =
+    '<div style="color:var(--dim);font-size:.85em;padding:6px">geen match</div>';
+}
+
+async function chooseSite(s, note){
+  let use = s;
+  if (!s.detail) {
+    // No terrain detail yet for this one: use the nearest detailed site.
+    let best = null, bd = 1e9;
+    for (const t of detailed()) {
+      const d = km(s.lat, s.lon, t.lat, t.lon);
+      if (d < bd) { bd = d; best = t; }
+    }
+    $("#geo-msg").textContent =
+      `${s.name} heeft nog geen terrein-detail — we tonen ${best.name} `
+      + `(${bd.toFixed(0)} km verderop). Batch-uitbreiding volgt.`;
+    use = best;
+  } else if (note) $("#geo-msg").textContent = note;
+  $("#loading").classList.add('show');
+  try {
+    const site = await (await fetch(`data/sites/${use.id}.json`)).json();
+    currentSite = site;
+    buildScene(site);
+    updatePanel(site);
+  } finally {
+    $("#loading").classList.remove('show');
+  }
+}
+
+function updatePanel(site){
+  $("#i-name").textContent = site.name;
+  $("#i-water").textContent = site.coast.length ? 'kust/estuarium'
+    : (site.water.length ? 'rivier/kanaal + plassen' : (site.rivers.length ? 'rivier' : 'binnenland'));
+  $("#i-rivers").textContent = site.river_names.length
+    ? site.river_names.slice(0,3).join(', ') : '—';
+  $("#i-buildings").textContent = `${counts.buildings} footprints`;
+  $("#i-rail").textContent = `${counts.rail} sporen`;
+  const badges = [];
+  if (site.delta) badges.push('🌊 delta / riviermonding');
+  if (site.rivers.length) badges.push('⛏ rivier → latere mijnbouw');
+  if (site.coast_nearby_km !== null && !site.coast.length)
+    badges.push('kust < 20 km');
+  $("#i-badges").innerHTML = badges.map(b=>`<span class="badge">${b}</span>`).join('');
+}
+
+/* geolocation start */
+$("#b-geo").onclick = () => {
+  if (!navigator.geolocation) {
+    $("#geo-msg").textContent = 'Geen geolocatie beschikbaar — kies hieronder.';
+    return;
+  }
+  $("#geo-msg").textContent = 'Locatie ophalen…';
+  navigator.geolocation.getCurrentPosition(pos => {
+    const {latitude:la, longitude:lo} = pos.coords;
+    let best=null, bd=1e9;
+    for (const s of INDEX.sites) {
+      const d = km(la, lo, s.lat, s.lon);
+      if (d < bd) { bd = d; best = s; }
+    }
+    chooseSite(best, `Dichtstbijzijnde staalfabriek: ${best.name} `
+      + `(${bd.toFixed(0)} km van jou).`);
+  }, () => {
+    $("#geo-msg").textContent =
+      'Locatie geweigerd — kies hieronder een fabriek.';
+  }, {timeout: 8000});
+};
+$("#search").addEventListener('input', e => renderList(e.target.value));
+
+/* ---------- loop / VR ---------- */
+renderer.setAnimationLoop(() => {
+  if (!renderer.xr.isPresenting) controls.update();
+  renderer.render(scene, camera);
+});
+function resize(){
+  const w = canvas.parentElement.clientWidth, h = canvas.parentElement.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe($("#stage"));
+resize();
+
+if (navigator.xr) {
+  navigator.xr.isSessionSupported('immersive-vr').then(ok => {
+    if (!ok) return;
+    const b = $("#enter-vr");
+    b.disabled = false;
+    const vrBtn = VRButton.createButton(renderer);
+    vrBtn.style.display = 'none';
+    document.body.appendChild(vrBtn);
+    b.onclick = () => vrBtn.click();
+  }).catch(()=>{});
+}
+renderer.xr.addEventListener('sessionstart', () => {
+  // Diorama: the whole 5 km terrain as a table-top model in front of you.
+  world.scale.setScalar(0.0012);
+  world.position.set(0, 0.85, -1.6);
+  scene.fog = null;
+});
+renderer.xr.addEventListener('sessionend', () => {
+  world.scale.setScalar(1);
+  world.position.set(0, 0, 0);
+  scene.fog = new THREE.Fog(0x0b1017, 2600, 6200);
+});
+
+/* boot: index + default site (first detailed) */
+const boot = (async () => {
+  await loadIndex();
+  const first = detailed()[0];
+  if (first) await chooseSite(first);
+})();
+
+/* e2e hook */
+window.__steel = {
+  get index(){ return INDEX; },
+  get site(){ return currentSite; },
+  get counts(){ return counts; },
+  ready: boot,
+  choose(id){
+    return chooseSite(INDEX.sites.find(s => s.id === id));
+  },
+};
+</script>
+</body>
+</html>

@@ -26,11 +26,20 @@ cp "$ROOT/assets/viewer/manifest.json" "$OUT/viewer/manifest.json"
 # 4. viscosity room (synced copy of molgang-knitweb web/viscosity-*, SYNC.md)
 cp -r "$ROOT/assets/viscosity" "$OUT/viscosity"
 
-# 5. entry: knitweb.art/molgang/ -> the world
+# 4b. quantum computer lab (parallel lane's synced bundle; ship it whenever
+# the assets are present so a steelworks deploy never drops their work)
+[ -d "$ROOT/assets/quantumlab" ] && cp -r "$ROOT/assets/quantumlab" "$OUT/quantumlab"
+
+# 4c. steelworks start-environment (synced copy of molgang-knitweb
+# web/steelworks.html + OSM terrain dataset, see SYNC.md): the game now
+# STARTS at the player's nearest real steel plant.
+cp -r "$ROOT/assets/steelworks" "$OUT/steelworks"
+
+# 5. entry: knitweb.art/molgang/ -> start at your nearest steel plant
 cat > "$OUT/index.html" <<'HTML'
 <!doctype html><meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url=./world/">
-<title>MOLGANG</title><a href="./world/">Enter MOLGANG →</a> · <a href="./viscosity/">Viscositeitsruimte 🌀</a>
+<meta http-equiv="refresh" content="0; url=./steelworks/">
+<title>MOLGANG</title><a href="./steelworks/">Start: jouw staalfabriek 🏭</a> · <a href="./world/">Moleculia →</a> · <a href="./viscosity/">Viscositeitsruimte 🌀</a> · <a href="./quantumlab/">Kwantumcomputer-lab ⚛️</a>
 HTML
 
 BYTES=$(du -sh "$OUT" | cut -f1)

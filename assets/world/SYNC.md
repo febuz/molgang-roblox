@@ -56,3 +56,13 @@ to it by `tests/test_viscosity_sim_parity.py` in molgang-knitweb. Update
 flow: change molgang-knitweb first, re-copy here, rebuild the bundle with
 `build_deploy.sh`. The world links to it via the `interact: "viscosity"`
 prop (moleculia_gen.py) handled in world.js.
+
+## Synced copy — assets/steelworks/ (start-environment)
+
+`assets/steelworks/` is a deploy-ready copy of the steelworks start page
+from **molgang-knitweb** (`web/steelworks.html` → `index.html`, header
+links rewritten to `../world/` & `../viscosity/`, data paths flattened to
+`data/`) plus the OSM terrain dataset (`web/steelworks/data`, ODbL,
+attribution shown in the UI). The game entry redirect now lands here:
+the player starts at their nearest real steel plant. Update flow: change
+molgang-knitweb first, re-copy, rebuild with `build_deploy.sh`.
