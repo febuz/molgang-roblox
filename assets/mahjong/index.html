@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theehuis — Kantonese Mahjong 3D · MOLGANG</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #140d08; font: 14px sans-serif; }
+  #scene { width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud {
+    position: absolute; top: 10px; left: 12px; color: #f3e2c7; z-index: 5;
+    background: rgba(20, 10, 4, .65); border: 1px solid #6b4a2b; border-radius: 8px;
+    padding: 10px 14px; max-width: 330px;
+  }
+  #hud h1 { font-size: 17px; margin: 0 0 4px; color: #ffd9a0; }
+  #status { color: #d9c39f; min-height: 18px; }
+  #log { color: #a98f6f; font-size: 12px; max-height: 72px; overflow-y: auto; margin-top: 6px; }
+  #claims { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 6; display: none; gap: 8px; }
+  #claims button, #result button {
+    border: 1px solid #ffd9a0; border-radius: 8px; background: rgba(60, 30, 8, .9);
+    color: #ffe9c4; font: 15px sans-serif; padding: 10px 16px; cursor: pointer; margin: 0 4px;
+  }
+  #claims button:hover { background: rgba(120, 60, 16, .9); }
+  #result {
+    position: absolute; inset: 0; display: none; z-index: 10; place-items: center;
+    background: rgba(10, 5, 2, .78); color: #ffe9c4; text-align: center;
+  }
+  #result .card { background: rgba(30, 16, 6, .95); border: 1px solid #b98a4d; border-radius: 12px; padding: 26px 34px; }
+  #result h2 { color: #ffd9a0; margin: 0 0 8px; }
+  #result ul { text-align: left; color: #d9c39f; }
+  a.back { position: absolute; top: 10px; right: 12px; z-index: 6; color: #ffd9a0; text-decoration: none;
+    background: rgba(20, 10, 4, .65); border: 1px solid #6b4a2b; border-radius: 8px; padding: 8px 12px; }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="hud">
+  <h1>🀄 Theehuis — Kantonese mahjong</h1>
+  <div id="status">Tegels worden gedeeld…</div>
+  <div id="log"></div>
+</div>
+<a class="back" href="../world/?tp=-95,-107,180">← terug naar Moleculia</a>
+<div id="claims"></div>
+<div id="result"><div class="card">
+  <h2 id="result-title"></h2>
+  <div id="result-faan"></div>
+  <ul id="result-details"></ul>
+  <button onclick="location.reload()">Nog een potje 🀄</button>
+</div></div>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js",
+               "three/addons/": "./vendor/three/jsm/" } }
+</script>
+<script type="module" src="./mahjong.js"></script>
+</body>
+</html>
