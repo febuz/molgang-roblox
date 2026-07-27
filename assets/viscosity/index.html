@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MOLGANG — Viscositeitsruimte</title>
+<style>
+  :root{
+    --bg:#0a0e13; --bg2:#0e141b; --panel:#141c25; --panel2:#18222d;
+    --line:#243342; --line2:#2f4356; --ink:#eaf2f5;
+    --dim:#89a0b0; --teal:#3fb6a8; --amber:#f4b41a; --violet:#a855f7;
+    --good:#38d39f; --bad:#ff6b6b; --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:radial-gradient(1200px 700px at 70% -10%,#122230 0%,var(--bg) 60%);
+    color:var(--ink);font:15px/1.5 -apple-system,"Segoe UI",system-ui,sans-serif;overflow:hidden}
+  a{color:var(--teal);text-decoration:none}
+  header{display:flex;align-items:center;gap:14px;padding:12px 18px;
+    border-bottom:1px solid var(--line);background:rgba(10,14,19,.7);backdrop-filter:blur(8px);
+    position:relative;z-index:5}
+  .brand{font-weight:700;letter-spacing:.02em}
+  .brand .dim{color:var(--dim);font-weight:400}
+  header .spacer{flex:1}
+  .ghost{background:transparent;border:1px solid var(--line2);color:var(--dim);border-radius:8px;
+    padding:6px 12px;cursor:pointer;font-size:.9em}
+  .ghost:hover{color:var(--ink);border-color:var(--teal)}
+  #enter-vr:disabled{opacity:.4;cursor:default}
+  main{display:grid;grid-template-columns:1fr 300px;height:calc(100% - 53px)}
+  #stage{position:relative}
+  #c{display:block;width:100%;height:100%}
+  aside{overflow-y:auto;padding:14px;background:var(--bg2);border-left:1px solid var(--line)}
+  .lbl{text-transform:uppercase;letter-spacing:.09em;font-size:.7em;color:var(--dim);
+    margin:14px 0 8px;font-weight:600}
+  .lbl:first-child{margin-top:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  input[type=range]{width:100%;accent-color:var(--teal)}
+  .sl{display:flex;justify-content:space-between;font-size:.85em;color:var(--dim);margin-top:2px}
+  .sl b{color:var(--ink);font-family:var(--mono)}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .btns button{background:var(--panel2);border:1px solid var(--line2);color:var(--ink);
+    border-radius:8px;padding:7px 8px;cursor:pointer;font-size:.85em}
+  .btns button:hover{border-color:var(--teal)}
+  .btns button.wide{grid-column:1 / -1}
+  .row{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0;font-size:.88em}
+  .row .k{color:var(--dim)}
+  .row b{font-family:var(--mono);font-weight:600}
+  #status{min-height:22px;font-weight:600;font-size:.9em;color:var(--amber)}
+  #status.bad{color:var(--bad)}
+  .toast{position:absolute;left:50%;top:22px;transform:translateX(-50%);background:var(--panel2);
+    border:1px solid var(--teal);border-radius:10px;padding:10px 18px;font-weight:600;opacity:0;
+    transition:.35s;pointer-events:none;z-index:6}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(4px)}
+  .hud{position:absolute;left:16px;bottom:16px;font-family:var(--mono);font-size:.8em;color:var(--dim);
+    background:rgba(10,14,19,.6);border:1px solid var(--line);border-radius:8px;padding:8px 12px;pointer-events:none}
+  @media (max-width:820px){ main{grid-template-columns:1fr} aside{display:none} }
+</style>
+<script src="quest-input.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">MOLGANG <span class="dim">/ Viscositeitsruimte</span></div>
+  <div class="spacer"></div>
+  <button class="ghost" id="enter-vr" disabled>Enter VR</button>
+  <a class="ghost" href="../world/">Moleculia</a>
+  <a class="ghost" href="../world/">← Wereld</a>
+</header>
+<main>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div class="toast" id="toast"></div>
+    <div class="hud">sleep in de bak = handroeren · klik objecten: bak, slang,
+      slak-bak, stekker, roerder</div>
+  </div>
+  <aside>
+    <div class="lbl">Mengsel</div>
+    <div class="card">
+      <input type="range" id="s-w" min="1" max="100" step="1" value="20" />
+      <div class="sl"><span>Staalslak-slib</span><b><span id="v-w">20</span> massa-%</b></div>
+      <input type="range" id="s-rpm" min="0" max="600" step="10" value="300" style="margin-top:10px" />
+      <div class="sl"><span>Roerintensiteit</span><b><span id="v-rpm">300</span> RPM</b></div>
+    </div>
+    <div class="lbl">Handelingen</div>
+    <div class="card btns">
+      <button id="b-place">Bak: geplaatst</button>
+      <button id="b-plug">Stekker: uit</button>
+      <button id="b-on">Roerder: UIT</button>
+      <button id="b-trip">Reset zekering</button>
+      <button id="b-hose">Slang: +2 L water</button>
+      <button id="b-slag">Stort: +1 kg slak</button>
+      <button id="b-reset" class="wide">Opnieuw (bezonken start)</button>
+    </div>
+    <div class="lbl">Meting</div>
+    <div class="card" id="readouts">
+      <div id="status"></div>
+      <div class="row"><span class="k">Vaste stof φ</span><b id="r-phi">—</b></div>
+      <div class="row"><span class="k">Viscositeit η</span><b id="r-eta">—</b></div>
+      <div class="row"><span class="k">Reynolds</span><b id="r-re">—</b></div>
+      <div class="row"><span class="k">RPM werkelijk</span><b id="r-rpm">—</b></div>
+      <div class="row"><span class="k">Koppel</span><b id="r-tq">—</b></div>
+      <div class="row"><span class="k">Stopcontact</span><b id="r-pel">—</b></div>
+      <div class="row"><span class="k">kWh-meter</span><b id="r-kwh">—</b></div>
+      <div class="row"><span class="k">Menggraad</span><b id="r-mix">—</b></div>
+      <div class="row"><span class="k">Bezinken</span><b id="r-settle">—</b></div>
+      <div class="row"><span class="k">Volume</span><b id="r-vol">—</b></div>
+    </div>
+  </aside>
+</main>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { VRButton } from 'three/addons/webxr/VRButton.js';
+import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+import { MixingTank } from './viscosity-sim.js';
+
+const $ = s => document.querySelector(s);
+
+/* ---------- simulation (Python-parity core) ---------- */
+const GRID_N = 64;
+let tank = newTank(20);
+function newTank(wPct){
+  const t = new MixingTank({ n: GRID_N, diameter: 0.40, waterL: 14, wPct });
+  t.settleBottom();
+  return t;
+}
+
+/* ---------- renderer / scene ---------- */
+const canvas = $("#c");
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.xr.enabled = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e13);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 60);
+camera.position.set(1.45, 1.5, 1.85);
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, 1.0, 0);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.55;
+
+const key = new THREE.DirectionalLight(0xffffff, 2.0);
+key.position.set(2.5, 4.5, 2.5); key.castShadow = true;
+key.shadow.mapSize.set(1024,1024);
+scene.add(key);
+scene.add(new THREE.HemisphereLight(0x9fd0ff, 0x141c25, 0.65));
+const spot = new THREE.PointLight(0xffe9c4, 12, 8); spot.position.set(-1.2, 2.6, -0.6);
+scene.add(spot);
+
+const MAT = {
+  floor: new THREE.MeshStandardMaterial({color:0x18222d, roughness:.9}),
+  wall:  new THREE.MeshStandardMaterial({color:0x121a23, roughness:.95}),
+  steel: new THREE.MeshStandardMaterial({color:0xb9c4cc, metalness:.85, roughness:.35}),
+  steelDark: new THREE.MeshStandardMaterial({color:0x5a6672, metalness:.8, roughness:.45}),
+  table: new THREE.MeshStandardMaterial({color:0x2a3644, roughness:.7}),
+  slag:  new THREE.MeshStandardMaterial({color:0x8b7d6b, roughness:1}),
+  hose:  new THREE.MeshStandardMaterial({color:0x2f6f4f, roughness:.6}),
+  plug:  new THREE.MeshStandardMaterial({color:0xf4b41a, roughness:.5}),
+  water: new THREE.MeshStandardMaterial({color:0x9fd0ff, transparent:true, opacity:.55, roughness:.1}),
+};
+
+/* room */
+const floor = new THREE.Mesh(new THREE.BoxGeometry(6, 0.05, 6), MAT.floor);
+floor.position.y = -0.025; floor.receiveShadow = true; scene.add(floor);
+const wallB = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.08), MAT.wall);
+wallB.position.set(0, 1.5, -1.6); scene.add(wallB);
+const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 3, 6), MAT.wall);
+wallL.position.set(-2.2, 1.5, 0); scene.add(wallL);
+
+/* workbench */
+const table = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.06, 0.9), MAT.table);
+table.position.set(0, 0.87, 0); table.castShadow = table.receiveShadow = true;
+scene.add(table);
+for (const [sx, sz] of [[-0.68,-0.38],[0.68,-0.38],[-0.68,0.38],[0.68,0.38]]) {
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.87, 0.06), MAT.steelDark);
+  leg.position.set(sx, 0.435, sz); scene.add(leg);
+}
+/* placement marker on the bench */
+const marker = new THREE.Mesh(new THREE.RingGeometry(0.205, 0.23, 48),
+  new THREE.MeshBasicMaterial({color:0x3fb6a8, transparent:true, opacity:.5, side:THREE.DoubleSide}));
+marker.rotation.x = -Math.PI/2; marker.position.set(0, 0.905, 0.02); scene.add(marker);
+
+/* ---------- the tank (bak) ---------- */
+const TANK_R = 0.20, TANK_H = 0.34;
+const TANK_POS = new THREE.Vector3(0, 0.90, 0.02);       // placed on bench
+const HELD_POS = new THREE.Vector3(0.62, 1.02, 0.55);    // picked-up spot
+const tankGroup = new THREE.Group();
+const shell = new THREE.Mesh(
+  new THREE.CylinderGeometry(TANK_R, TANK_R*0.96, TANK_H, 48, 1, true), MAT.steel);
+shell.material = MAT.steel.clone();
+shell.material.side = THREE.DoubleSide;
+shell.castShadow = true;
+tankGroup.add(shell);
+const tankBottom = new THREE.Mesh(new THREE.CircleGeometry(TANK_R*0.96, 48), MAT.steelDark);
+tankBottom.rotation.x = -Math.PI/2; tankBottom.position.y = -TANK_H/2 + 0.004;
+tankGroup.add(tankBottom);
+
+/* liquid: side cylinder + top surface with the live phi-field texture */
+const texData = new Uint8Array(GRID_N * GRID_N * 4);
+const surfTex = new THREE.DataTexture(texData, GRID_N, GRID_N, THREE.RGBAFormat);
+surfTex.flipY = true; surfTex.needsUpdate = true;
+surfTex.magFilter = THREE.LinearFilter; surfTex.minFilter = THREE.LinearFilter;
+const surfMat = new THREE.MeshStandardMaterial({map:surfTex, roughness:.25});
+const surf = new THREE.Mesh(new THREE.CircleGeometry(TANK_R*0.94, 48), surfMat);
+surf.rotation.x = -Math.PI/2;
+const liquidSide = new THREE.Mesh(
+  new THREE.CylinderGeometry(TANK_R*0.94, TANK_R*0.92, 1, 48, 1, true),
+  new THREE.MeshStandardMaterial({color:0x4d6f8f, roughness:.4, transparent:true, opacity:.92}));
+tankGroup.add(surf, liquidSide);
+tankGroup.position.copy(TANK_POS);
+scene.add(tankGroup);
+
+/* ---------- overhead stirrer (roerapparaat) ---------- */
+const rig = new THREE.Group();
+const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.15, 16), MAT.steelDark);
+mast.position.set(0, 1.475, -0.33); rig.add(mast);
+const mastFoot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.05, 24), MAT.steelDark);
+mastFoot.position.set(0, 0.925, -0.33); rig.add(mastFoot);
+const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.36), MAT.steelDark);
+arm.position.set(0, 2.02, -0.15); rig.add(arm);
+const motor = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.2, 0.13), MAT.steel);
+motor.position.set(0, 1.95, 0.02); motor.castShadow = true; rig.add(motor);
+const motorLamp = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 8),
+  new THREE.MeshStandardMaterial({color:0x333, emissive:0x000000}));
+motorLamp.position.set(0.05, 1.88, 0.09); rig.add(motorLamp);
+const shaftGroup = new THREE.Group();
+const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.78, 12), MAT.steel);
+shaft.position.y = -0.39; shaftGroup.add(shaft);
+for (const s of [-1, 1]) {
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.028, 0.012), MAT.steel);
+  blade.position.set(s * 0.058, -0.75, 0); blade.rotation.y = s * 0.5;
+  shaftGroup.add(blade);
+}
+shaftGroup.position.set(0, 1.85, 0.02);
+rig.add(shaftGroup);
+scene.add(rig);
+
+/* ---------- wall: socket, plug, cable, kW-meter board ---------- */
+const socket = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, 0.03), MAT.steel);
+socket.position.set(-0.55, 1.25, -1.55); scene.add(socket);
+const socketHoles = new THREE.Mesh(new THREE.CircleGeometry(0.032, 20),
+  new THREE.MeshStandardMaterial({color:0x10151d}));
+socketHoles.position.set(-0.55, 1.25, -1.533); scene.add(socketHoles);
+const plug = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.06), MAT.plug);
+scene.add(plug);
+let cable = null;
+function layCable(pluggedIn){
+  if (cable) { scene.remove(cable); cable.geometry.dispose(); cable = null; }
+  const from = pluggedIn
+    ? new THREE.Vector3(-0.55, 1.25, -1.52)
+    : new THREE.Vector3(-0.35, 0.92, -0.9);
+  plug.position.copy(pluggedIn ? new THREE.Vector3(-0.55,1.25,-1.5)
+                               : new THREE.Vector3(-0.35,0.945,-0.9));
+  const to = new THREE.Vector3(0, 1.9, -0.03);
+  const mid = from.clone().add(to).multiplyScalar(0.5); mid.y -= 0.45;
+  const curve = new THREE.QuadraticBezierCurve3(from, mid, to);
+  cable = new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.012, 8),
+    new THREE.MeshStandardMaterial({color:0x1c242e, roughness:.8}));
+  scene.add(cable);
+}
+layCable(false);
+
+/* kW-meter board (CanvasTexture works inside VR too) */
+const boardCv = document.createElement('canvas');
+boardCv.width = 512; boardCv.height = 384;
+const boardCtx = boardCv.getContext('2d');
+const boardTex = new THREE.CanvasTexture(boardCv);
+const board = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.64),
+  new THREE.MeshBasicMaterial({map:boardTex}));
+board.position.set(-1.15, 1.78, -1.55); scene.add(board);
+
+/* ---------- hose (slang) & slag container ---------- */
+const hoseBase = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.3, 16), MAT.hose);
+hoseBase.rotation.z = Math.PI/2; hoseBase.position.set(-2.1, 1.5, 0.55); scene.add(hoseBase);
+const hoseCurve = new THREE.QuadraticBezierCurve3(
+  new THREE.Vector3(-2.1, 1.5, 0.55), new THREE.Vector3(-1.0, 1.9, 0.4),
+  new THREE.Vector3(-0.28, 1.42, 0.18));
+const hose = new THREE.Mesh(new THREE.TubeGeometry(hoseCurve, 32, 0.028, 10), MAT.hose);
+scene.add(hose);
+const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.032, 0.12, 14), MAT.steelDark);
+nozzle.position.set(-0.28, 1.38, 0.18); nozzle.rotation.x = 0.35; scene.add(nozzle);
+let waterJet = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 1, 10), MAT.water);
+waterJet.visible = false; scene.add(waterJet);
+
+const slagBin = new THREE.Group();
+const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.2, 24, 1, true), MAT.steelDark);
+bin.material = MAT.steelDark.clone(); bin.material.side = THREE.DoubleSide;
+slagBin.add(bin);
+const binHeap = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.03, 24), MAT.slag);
+binHeap.position.y = 0.07; slagBin.add(binHeap);
+const heapCone = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.06, 24), MAT.slag);
+heapCone.position.y = 0.115; slagBin.add(heapCone);
+slagBin.position.set(0.52, 1.0, -0.18); scene.add(slagBin);
+let slagStream = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.02, 1, 8), MAT.slag);
+slagStream.visible = false; scene.add(slagStream);
+
+/* stirrer on/off + rpm buttons on the motor housing */
+function smallBtn(color, x, y, z){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.012),
+    new THREE.MeshStandardMaterial({color}));
+  m.position.set(x, y, z); rig.add(m); return m;
+}
+const btnOn  = smallBtn(0x38d39f, -0.045, 1.99, 0.087);
+const btnMin = smallBtn(0x89a0b0, 0.0,   1.99, 0.087);
+const btnPlus= smallBtn(0xf4b41a, 0.045, 1.99, 0.087);
+
+/* ---------- interactables ---------- */
+const toastEl = $("#toast");
+let toastT = 0;
+function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(()=>toastEl.classList.remove('show'), 2300); }
+
+let hoseTimer = 0;
+const actions = {
+  tank(){ tank.placed = !tank.placed;
+    toast(tank.placed ? "Bak op de werkbank geplaatst" : "Bak gepakt");
+    syncButtons(); },
+  hose(){ if (!tank.placed) return toast("Plaats eerst de bak");
+    const got = tank.addWater(2.0);
+    hoseTimer = got > 0 ? 0.9 : 0;
+    toast(got > 0 ? `Slang: +${got.toFixed(1)} L water` : "Bak is vol");
+    syncSliders(); },
+  slag(){ if (!tank.placed) return toast("Plaats eerst de bak");
+    const got = tank.addSlag(1.0);
+    toast(got > 0 ? `Storten: +${got.toFixed(1)} kg staalslak` : "Bak is vol");
+    syncSliders(); },
+  plug(){ const st = tank.stirrer; st.pluggedIn = !st.pluggedIn;
+    layCable(st.pluggedIn);
+    toast(st.pluggedIn ? "Stekker in het stopcontact" : "Stekker eruit");
+    syncButtons(); },
+  power(){ const st = tank.stirrer;
+    if (!st.pluggedIn) return toast("Stekker zit niet in het stopcontact");
+    st.on = !st.on; toast(st.on ? "Roerder AAN" : "Roerder UIT");
+    syncButtons(); },
+  rpmMin(){ setRpm(Math.max(0, tank.stirrer.rpmSet - 60)); },
+  rpmPlus(){ setRpm(Math.min(600, tank.stirrer.rpmSet + 60)); },
+  fuse(){ tank.stirrer.resetTrip(); toast("Zekering gereset"); },
+};
+const interactables = [
+  [tankGroup, 'tank', 'bak pakken / plaatsen'],
+  [shell, 'tank', ''], [surf, 'stir-here', ''],
+  [hose, 'hose', 'slang: +2 L water'], [hoseBase, 'hose', ''], [nozzle, 'hose', ''],
+  [slagBin, 'slag', 'stort: +1 kg staalslak'],
+  [plug, 'plug', 'stekker'], [socket, 'plug', ''],
+  [motor, 'power', 'roerder aan/uit'], [btnOn, 'power', ''],
+  [btnMin, 'rpmMin', 'RPM −60'], [btnPlus, 'rpmPlus', 'RPM +60'],
+  [board, 'fuse', 'meterbord / zekering'],
+];
+for (const [obj, act] of interactables) obj.traverse
+  ? obj.traverse(o => { o.userData.action = o.userData.action || act; })
+  : (obj.userData.action = act);
+
+/* ---------- picking: mouse + XR controllers ---------- */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let hovered = null;
+
+function pickFromRay(){
+  const meshes = [];
+  scene.traverse(o => { if (o.isMesh && o.userData.action) meshes.push(o); });
+  const hit = raycaster.intersectObjects(meshes, false)[0];
+  return hit ? hit : null;
+}
+function setPointerFromEvent(ev){
+  const r = canvas.getBoundingClientRect();
+  pointer.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
+  pointer.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+}
+
+/* drag inside the liquid = hand stirring (splat, like the Python GUI) */
+let dragStir = null;
+canvas.addEventListener('pointerdown', ev => {
+  setPointerFromEvent(ev);
+  const hit = pickFromRay();
+  if (!hit) return;
+  const act = hit.object.userData.action;
+  if (act === 'stir-here') { dragStir = { last: hit.point.clone() }; return; }
+  if (actions[act]) actions[act]();
+});
+canvas.addEventListener('pointermove', ev => {
+  setPointerFromEvent(ev);
+  if (dragStir) {
+    const hit = raycaster.intersectObject(surf, false)[0];
+    if (hit) {
+      const p = hit.point, l = dragStir.last;
+      const local = surf.worldToLocal(p.clone());
+      const gx = tank.grid.cx + local.x / (TANK_R*0.94) * tank.grid.radiusCells;
+      const gy = tank.grid.cy + local.y / (TANK_R*0.94) * tank.grid.radiusCells * -1;
+      const k = 22;
+      mouseSplat = [gx, gy,
+        THREE.MathUtils.clamp((p.x - l.x) * k, -1.5, 1.5),
+        THREE.MathUtils.clamp((p.z - l.z) * k, -1.5, 1.5)];
+      dragStir.last = p.clone();
+    }
+    return;
+  }
+  const hit = pickFromRay();
+  const obj = hit && hit.object.userData.action !== 'stir-here' ? hit.object : null;
+  if (hovered !== obj) {
+    if (hovered && hovered.material.emissive) hovered.material.emissive.setHex(0x000000);
+    hovered = obj;
+    if (hovered && hovered.material.emissive) hovered.material.emissive.setHex(0x114455);
+    canvas.style.cursor = hovered ? 'pointer' : 'default';
+  }
+});
+addEventListener('pointerup', () => { dragStir = null; });
+let mouseSplat = null;
+
+/* XR controllers: laser ray + trigger to activate (lab-3d pattern) */
+const ctlFactory = new XRControllerModelFactory();
+const rayGeo = new THREE.BufferGeometry().setFromPoints(
+  [new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-1)]);
+for (let i = 0; i < 2; i++) {
+  const ctl = renderer.xr.getController(i);
+  const line = new THREE.Line(rayGeo,
+    new THREE.LineBasicMaterial({color:0x3fb6a8, transparent:true, opacity:.6}));
+  line.scale.z = 3; ctl.add(line);
+  ctl.addEventListener('selectstart', () => {
+    const m = new THREE.Matrix4().identity().extractRotation(ctl.matrixWorld);
+    raycaster.ray.origin.setFromMatrixPosition(ctl.matrixWorld);
+    raycaster.ray.direction.set(0, 0, -1).applyMatrix4(m);
+    const hit = pickFromRay();
+    if (hit) {
+      const act = hit.object.userData.action;
+      if (act === 'stir-here') actions.power();
+      else if (actions[act]) actions[act]();
+    }
+  });
+  scene.add(ctl);
+  const grip = renderer.xr.getControllerGrip(i);
+  grip.add(ctlFactory.createControllerModel(grip));
+  scene.add(grip);
+}
+
+/* ---------- DOM panel wiring ---------- */
+function setRpm(v){ tank.stirrer.rpmSet = v; $("#s-rpm").value = v;
+  $("#v-rpm").textContent = v; }
+$("#s-w").addEventListener('input', e => {
+  $("#v-w").textContent = e.target.value;
+  tank.setComposition(parseFloat(e.target.value), true); });
+$("#s-rpm").addEventListener('input', e => setRpm(parseFloat(e.target.value)));
+$("#b-place").onclick = actions.tank;
+$("#b-plug").onclick = actions.plug;
+$("#b-on").onclick = actions.power;
+$("#b-trip").onclick = actions.fuse;
+$("#b-hose").onclick = actions.hose;
+$("#b-slag").onclick = actions.slag;
+$("#b-reset").onclick = () => {
+  tank = newTank(parseFloat($("#s-w").value));
+  tank.stirrer.rpmSet = parseFloat($("#s-rpm").value);
+  layCable(false); syncButtons(); toast("Verse bezonken start");
+};
+function syncButtons(){
+  $("#b-place").textContent = `Bak: ${tank.placed ? 'geplaatst' : 'gepakt'}`;
+  $("#b-plug").textContent = `Stekker: ${tank.stirrer.pluggedIn ? 'in' : 'uit'}`;
+  $("#b-on").textContent = `Roerder: ${tank.stirrer.on ? 'AAN' : 'UIT'}`;
+}
+function syncSliders(){
+  const w = Math.round(tank.w() * 100);
+  $("#s-w").value = w; $("#v-w").textContent = w;
+}
+setRpm(300);
+
+/* ---------- field texture + board ---------- */
+const WATER = [22, 56, 112], SLIB = [150, 133, 108];
+function updateSurfaceTexture(){
+  const g = tank.grid, n = GRID_N;
+  for (let i = 0; i < n * n; i++) {
+    const t = Math.pow(Math.min(g.c[i] / 0.45, 1), 0.7);
+    const sp = Math.min(Math.hypot(g.u[i], g.v[i]) * 45, 28);
+    const j = i * 4;
+    texData[j]   = WATER[0] * (1 - t) + SLIB[0] * t + sp;
+    texData[j+1] = WATER[1] * (1 - t) + SLIB[1] * t + sp;
+    texData[j+2] = WATER[2] * (1 - t) + SLIB[2] * t + sp;
+    texData[j+3] = g.liquid[i] ? 255 : 0;
+  }
+  surfTex.needsUpdate = true;
+  const t = Math.pow(Math.min(tank.grid.meanPhi() / 0.45, 1), 0.7);
+  liquidSide.material.color.setRGB(
+    (WATER[0]*(1-t)+SLIB[0]*t)/255, (WATER[1]*(1-t)+SLIB[1]*t)/255,
+    (WATER[2]*(1-t)+SLIB[2]*t)/255);
+}
+function fmtEta(eta){
+  if (eta < 0.1) return (eta*1000).toFixed(1) + " mPa·s";
+  if (eta < 1000) return eta.toFixed(2) + " Pa·s";
+  return eta.toExponential(1) + " Pa·s";
+}
+function drawBoard(s){
+  const c = boardCtx;
+  c.fillStyle = "#10151d"; c.fillRect(0,0,512,384);
+  c.strokeStyle = "#2f4356"; c.lineWidth = 4; c.strokeRect(4,4,504,376);
+  c.fillStyle = "#89a0b0"; c.font = "22px monospace";
+  c.fillText("STOPCONTACT — kW-METING", 24, 40);
+  c.fillStyle = s.tripped ? "#ff6b6b" : (s.overload ? "#f4b41a" : "#38d39f");
+  c.font = "bold 64px monospace";
+  c.fillText((s.p_electric_w/1000).toFixed(3) + " kW", 24, 118);
+  c.fillStyle = "#eaf2f5"; c.font = "26px monospace";
+  c.fillText((s.energy_kwh*1000).toFixed(2) + " Wh   € " + s.cost_eur.toFixed(4), 24, 164);
+  c.fillStyle = "#89a0b0"; c.font = "20px monospace";
+  c.fillText("η  " + fmtEta(s.eta_app_pa_s), 24, 210);
+  c.fillText("Re " + s.re_impeller.toExponential(1) + "  " + s.regime, 24, 238);
+  c.fillText("RPM " + s.rpm_actual.toFixed(0) + " / " + s.rpm_set.toFixed(0), 24, 266);
+  c.fillText("menggraad " + s.mixedness_pct.toFixed(0) + " %", 24, 294);
+  if (s.tripped) { c.fillStyle = "#ff6b6b"; c.font = "bold 24px monospace";
+    c.fillText("⚡ ZEKERING — klik bord", 24, 340); }
+  else if (s.overload) { c.fillStyle = "#f4b41a"; c.font = "bold 24px monospace";
+    c.fillText("⚠ OVERBELAST (stall)", 24, 340); }
+  else if (s.settle_boost) { c.fillStyle = "#89a0b0"; c.font = "20px monospace";
+    c.fillText("⏩ bezinken ×200", 24, 340); }
+  boardTex.needsUpdate = true;
+}
+function updateReadouts(s){
+  $("#r-phi").textContent = s.phi_pct.toFixed(1) + " vol% (" + s.w_pct.toFixed(0) + " m%)";
+  $("#r-eta").textContent = fmtEta(s.eta_app_pa_s);
+  $("#r-re").textContent = s.re_impeller.toExponential(2) + " (" + s.regime + ")";
+  $("#r-rpm").textContent = s.rpm_actual.toFixed(0) + " / " + s.rpm_set.toFixed(0);
+  $("#r-tq").textContent = s.torque_nm.toFixed(2) + " N·m";
+  $("#r-pel").textContent = (s.p_electric_w/1000).toFixed(3) + " kW";
+  $("#r-kwh").textContent = (s.energy_kwh*1000).toFixed(2) + " Wh (€" + s.cost_eur.toFixed(4) + ")";
+  $("#r-mix").textContent = s.mixedness_pct.toFixed(0) + " %";
+  $("#r-settle").textContent = s.settling_mm_h.toFixed(1) + " mm/h";
+  $("#r-vol").textContent = s.volume_l.toFixed(1) + " L";
+  const st = $("#status");
+  if (s.tripped) { st.textContent = "⚡ ZEKERING ERUIT — Reset zekering"; st.className = "bad"; }
+  else if (s.overload) { st.textContent = "⚠ OVERBELAST — slib te dik"; st.className = ""; }
+  else if (!tank.stirrer.pluggedIn) { st.textContent = "Stekker zit niet in het stopcontact"; st.className = ""; }
+  else st.textContent = "";
+}
+
+/* ---------- main loop ---------- */
+const SIM_DT = 1/30;
+let acc = 0, prevT = 0, frame = 0, mixedToastDone = false;
+renderer.setAnimationLoop((tMs) => {
+  const t = tMs / 1000;
+  const dt = Math.min(t - prevT || SIM_DT, 0.1);
+  prevT = t;
+  acc += dt;
+  while (acc >= SIM_DT) {
+    tank.step(SIM_DT, mouseSplat);
+    mouseSplat = null;
+    acc -= SIM_DT;
+  }
+  frame++;
+
+  /* visuals from sim state */
+  const depth = tank.liquidDepthM();            // 0..~0.16 m
+  const lh = Math.min(depth / 0.16, 1) * (TANK_H - 0.06);
+  liquidSide.scale.y = Math.max(lh, 0.01);
+  liquidSide.position.y = -TANK_H/2 + 0.01 + lh/2;
+  surf.position.y = -TANK_H/2 + 0.012 + lh;
+  shaftGroup.rotation.y = -tank.stirrer.theta;
+  motorLamp.material.emissive.setHex(
+    tank.stirrer.tripped ? 0xaa2222 :
+    (tank.stirrer.on && tank.stirrer.pluggedIn ? 0x22aa66 : 0x000000));
+  tankGroup.position.lerp(tank.placed ? TANK_POS : HELD_POS, 0.12);
+  marker.material.opacity = tank.placed ? 0.12 : 0.55;
+
+  if (hoseTimer > 0) {
+    hoseTimer -= dt;
+    waterJet.visible = true;
+    const a = new THREE.Vector3(-0.28, 1.34, 0.2);
+    const b = tankGroup.position.clone(); b.y += 0.1;
+    waterJet.position.copy(a.clone().add(b).multiplyScalar(0.5));
+    waterJet.scale.y = a.distanceTo(b);
+    waterJet.lookAt(b); waterJet.rotateX(Math.PI/2);
+  } else waterJet.visible = false;
+
+  if (tank.pourQueueKg > 1e-6 && tank.placed) {
+    slagStream.visible = true;
+    const a = new THREE.Vector3(0.45, 1.06, -0.12);
+    const b = TANK_POS.clone(); b.y += 0.12;
+    slagStream.position.copy(a.clone().add(b).multiplyScalar(0.5));
+    slagStream.scale.y = a.distanceTo(b);
+    slagStream.lookAt(b); slagStream.rotateX(Math.PI/2);
+  } else slagStream.visible = false;
+
+  if (frame % 2 === 0) updateSurfaceTexture();
+  if (frame % 8 === 0) {
+    const s = tank.snapshot();
+    drawBoard(s);
+    if (!renderer.xr.isPresenting) updateReadouts(s);
+    if (s.mixedness_pct >= 95 && !mixedToastDone && tank.stirrer.on) {
+      mixedToastDone = true; toast("Goed gemengd! ✓ (menggraad ≥ 95%)");
+    } else if (s.mixedness_pct < 80) mixedToastDone = false;
+  }
+
+  if (!renderer.xr.isPresenting) controls.update();
+  renderer.render(scene, camera);
+});
+
+/* resize + VR entry (lab-3d pattern) */
+function resize(){
+  const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+  const h = canvas.clientHeight || canvas.parentElement.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe($("#stage"));
+resize();
+
+if (navigator.xr) {
+  navigator.xr.isSessionSupported('immersive-vr').then(ok => {
+    if (!ok) return;
+    const b = $("#enter-vr");
+    b.disabled = false;
+    const vrBtn = VRButton.createButton(renderer);
+    vrBtn.style.display = 'none';
+    document.body.appendChild(vrBtn);
+    b.onclick = () => vrBtn.click();
+  }).catch(()=>{});
+}
+renderer.xr.addEventListener('sessionstart', () => {
+  // Face the bench: XR origin is the floor; nothing to move, room is real-scale.
+});
+</script>
+</body>
+</html>

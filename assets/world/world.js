@@ -1512,6 +1512,15 @@ function checkInteract(now) {
     } else if (o.interact === 'bank') {
       worldToast(`🏦 ANK Kredietunie — balance ${molcoins.toLocaleString('en-US')} MolCoins. `
         + 'Earn: sell V₂O₅ from the plant, harvest crops, pass PPE checks');
+    } else if (o.interact === 'viscosity') {
+      if (dx * dx + dz * dz < 2.25) {                    // within 1.5 m: enter
+        worldToast('🌀 Naar het viscositeitslab…');
+        setTimeout(() => { location.href = '../viscosity/'; }, 600);
+      } else {
+        worldToast('🌀 Viscositeitslab — roer staalslak-slib (1–100%), voel de '
+          + 'rheologie en zie het kW-verbruik. Stap dichterbij om binnen te gaan');
+        lastInteractAt = now - 3000;   // re-arm fast so stepping in triggers
+      }
     }
     return;
   }

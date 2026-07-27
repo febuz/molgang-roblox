@@ -200,6 +200,10 @@ ZONE_PROPS = {
         ("control_console_hd.glb", 0, -22, 0.0, 2.4, {"interact": "console"}),
         ("safety_station_hd.glb", -30, 19, 3.14, 0.9, {"interact": "safety"}),
         ("sample_station_hd.glb", 26, 13, 1.2, 2.2, {"interact": "assay"}),
+        # Viscosity-lab portal: step close and world.js walks the player
+        # through to ../viscosity/ (steel-slag slurry stirring room, a
+        # synced copy of molgang-knitweb web/viscosity-*, see SYNC.md).
+        ("sample_station_hd.glb", -14, -22, 0.3, 2.0, {"interact": "viscosity"}),
     ],
     "Quantum Lab": [
         ("chemistry_set.glb", 0, -8, 0.2, 2.6, {"console": "chemsim"}),   # the paid ChemSim console

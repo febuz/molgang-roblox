@@ -23,11 +23,14 @@ cp "$ROOT"/assets/models/*.glb "$OUT/models/" 2>/dev/null || true
 cp -r "$ROOT/assets/viewer/vendor/three" "$OUT/viewer/vendor/three"
 cp "$ROOT/assets/viewer/manifest.json" "$OUT/viewer/manifest.json"
 
-# 4. entry: knitweb.art/molgang/ -> the world
+# 4. viscosity room (synced copy of molgang-knitweb web/viscosity-*, SYNC.md)
+cp -r "$ROOT/assets/viscosity" "$OUT/viscosity"
+
+# 5. entry: knitweb.art/molgang/ -> the world
 cat > "$OUT/index.html" <<'HTML'
 <!doctype html><meta charset="utf-8">
 <meta http-equiv="refresh" content="0; url=./world/">
-<title>MOLGANG</title><a href="./world/">Enter MOLGANG →</a>
+<title>MOLGANG</title><a href="./world/">Enter MOLGANG →</a> · <a href="./viscosity/">Viscositeitsruimte 🌀</a>
 HTML
 
 BYTES=$(du -sh "$OUT" | cut -f1)

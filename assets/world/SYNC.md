@@ -44,3 +44,15 @@ flow here via Rule 1.
 Web work ships on `web/*` branches with `web(moleculia):` commit prefixes and a
 PR against `main`, so Roblox-side agents can review data-contract changes.
 Rule-2 guards must pass before merge.
+
+## Synced copy — assets/viscosity/ (web viscosity room)
+
+`assets/viscosity/` is a deploy-ready copy of the viscosity room from the
+**molgang-knitweb** repo (`web/viscosity-room.html` → `index.html`, plus
+`viscosity-sim.js` and `quest-input.js`; header links rewritten to
+`../world/`). The physics authority is the Python module in molgang-web
+(`simulation/viscosity_lab/`, 50-check proof suite); the JS port is pinned
+to it by `tests/test_viscosity_sim_parity.py` in molgang-knitweb. Update
+flow: change molgang-knitweb first, re-copy here, rebuild the bundle with
+`build_deploy.sh`. The world links to it via the `interact: "viscosity"`
+prop (moleculia_gen.py) handled in world.js.
